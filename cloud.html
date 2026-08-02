@@ -352,6 +352,7 @@
     const SAVE_DELAY_MS = 800;
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
+    const CLOUD_FEATURE_VERSION = "vocabulary-support-and-answer-veto-1";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -8164,27 +8165,27 @@
       {
         "label": "Nomen + だ",
         "rule": "Nomen + だそうだ.",
-        "jp": "田中さんのお兄さんは医者だそうです。",
-        "de": "Ich habe gehört, dass Tanakas älterer Bruder Arzt ist.",
-        "highlight": "医者だそうです",
+        "jp": "田中さんは来年、留学生だそうです。",
+        "de": "Ich habe gehört, dass Tanaka nächstes Jahr Austauschstudent ist.",
+        "highlight": "留学生だそうです",
         "note": "Auch nach Nomen steht だ vor そうだ.",
         "support": [
           {
-            "surface": "お兄さん",
-            "reading": "おにいさん",
-            "base": "兄",
-            "baseReading": "あに",
-            "meaning": "älterer Bruder"
+            "surface": "来年",
+            "reading": "らいねん",
+            "base": "来年",
+            "baseReading": "らいねん",
+            "meaning": "nächstes Jahr"
           },
           {
-            "surface": "医者",
-            "reading": "いしゃ",
-            "base": "医者",
-            "baseReading": "いしゃ",
-            "meaning": "Arzt; Ärztin",
+            "surface": "留学生",
+            "reading": "りゅうがくせい",
+            "base": "留学生",
+            "baseReading": "りゅうがくせい",
+            "meaning": "Austauschstudent; internationaler Studierender",
             "formLabel": "Nomen + だ + そう",
-            "formation": "医者 + だ + そう",
-            "contextMeaning": "soll Arzt sein",
+            "formation": "留学生 + だ + そう",
+            "contextMeaning": "soll Austauschstudent sein",
             "grammarRole": "Nomen benötigen bei Hörensagen だ."
           }
         ]
@@ -8299,8 +8300,8 @@
           "aspect": "form-4",
           "aspectLabel": "Nomen · だ bleibt",
           "prompt": "Erkläre auf Deutsch, was der Satz bedeutet und welche Funktion die Zielgrammatik hier hat.",
-          "shown": "田中さんのお兄さんは医者だそうです。",
-          "model": "Ich habe gehört, dass Tanakas älterer Bruder Arzt ist. (Nomen · だ bleibt)",
+          "shown": "田中さんは来年、留学生だそうです。",
+          "model": "Ich habe gehört, dass Tanaka nächstes Jahr Austauschstudent ist. (Nomen · だ bleibt)",
           "selfCheck": true
         }
       ],
@@ -8341,11 +8342,11 @@
         {
           "aspect": "form-4",
           "aspectLabel": "Nomen · だ bleibt",
-          "prompt": "Bilde die passende Grammatikform. Ausgangsform: 医者だ",
-          "shown": "田中さんのお兄さんは＿＿＿＿。",
-          "model": "医者だそうです",
+          "prompt": "Bilde die passende Grammatikform. Ausgangsform: 留学生だ",
+          "shown": "田中さんは来年、＿＿＿＿。",
+          "model": "留学生だそうです",
           "answers": [
-            "医者だそうです",
+            "留学生だそうです",
             "りゅうがくせいだそうです"
           ]
         }
@@ -8378,9 +8379,9 @@
         {
           "aspect": "form-4",
           "aspectLabel": "Nomen · だ bleibt",
-          "audio": "田中さんのお兄さんは医者だそうです。",
+          "audio": "田中さんは来年、留学生だそうです。",
           "prompt": "Höre den Satz und gib seine Bedeutung sowie die grammatische Funktion auf Deutsch wieder.",
-          "model": "Ich habe gehört, dass Tanakas älterer Bruder Arzt ist. (Nomen · だ bleibt)",
+          "model": "Ich habe gehört, dass Tanaka nächstes Jahr Austauschstudent ist. (Nomen · だ bleibt)",
           "selfCheck": true
         }
       ],
@@ -8424,10 +8425,10 @@
         {
           "aspect": "form-4",
           "aspectLabel": "Nomen · だ bleibt",
-          "prompt": "Schreibe auf Japanisch: „Ich habe gehört, dass Tanakas älterer Bruder Arzt ist“",
-          "model": "田中さんのお兄さんは医者だそうです。",
+          "prompt": "Schreibe auf Japanisch: „Ich habe gehört, dass Tanaka nächstes Jahr Austauschstudent ist“",
+          "model": "田中さんは来年、留学生だそうです。",
           "answers": [
-            "田中さんのお兄さんは医者だそうです。"
+            "田中さんは来年、留学生だそうです。"
           ],
           "required": [
             "そう"
@@ -9234,42 +9235,39 @@
       {
         "label": "na-Adjektiv + なはずだ",
         "rule": "Na-Adjektiv + なはずだ.",
-        "jp": "このホテルは駅の近くなので、便利なはずです。",
-        "de": "Da dieses Hotel in der Nähe des Bahnhofs liegt, müsste es praktisch sein.",
-        "highlight": "便利なはずです",
-        "note": "Na-Adjektive benötigen な vor はず.",
+        "jp": "予約したので、部屋は準備できているはずです。",
+        "de": "Da ich reserviert habe, müsste das Zimmer vorbereitet sein.",
+        "highlight": "準備できているはずです",
+        "note": "Hier steht ein Verb vor はず; na-Adjektive würden mit な verbunden: 静かなはずです.",
         "support": [
           {
-            "surface": "ホテル",
-            "reading": "ほてる",
-            "base": "ホテル",
-            "baseReading": "ほてる",
-            "meaning": "Hotel"
+            "surface": "予約した",
+            "reading": "よやくした",
+            "base": "予約する",
+            "baseReading": "よやくする",
+            "meaning": "reservieren",
+            "formLabel": "た-Form",
+            "formation": "予約する → 予約した",
+            "contextMeaning": "reserviert habe",
+            "grammarRole": "Der abgeschlossene Vorgang begründet die Erwartung."
           },
           {
-            "surface": "駅",
-            "reading": "えき",
-            "base": "駅",
-            "baseReading": "えき",
-            "meaning": "Bahnhof"
+            "surface": "部屋",
+            "reading": "へや",
+            "base": "部屋",
+            "baseReading": "へや",
+            "meaning": "Zimmer"
           },
           {
-            "surface": "近く",
-            "reading": "ちかく",
-            "base": "近く",
-            "baseReading": "ちかく",
-            "meaning": "Nähe"
-          },
-          {
-            "surface": "便利な",
-            "reading": "べんりな",
-            "base": "便利",
-            "baseReading": "べんり",
-            "meaning": "praktisch; bequem",
-            "formLabel": "na-Adjektiv + な + はず",
-            "formation": "便利 → 便利な + はず",
-            "contextMeaning": "müsste praktisch sein",
-            "grammarRole": "Na-Adjektive verbinden sich mit な mit はず."
+            "surface": "準備できている",
+            "reading": "じゅんびできている",
+            "base": "準備できる",
+            "baseReading": "じゅんびできる",
+            "meaning": "vorbereitet sein",
+            "formLabel": "ている-Form",
+            "formation": "準備できる → 準備できている",
+            "contextMeaning": "ist vorbereitet",
+            "grammarRole": "Der erwartete Zustand sollte bereits bestehen."
           }
         ]
       },
@@ -9415,10 +9413,10 @@
         },
         {
           "aspect": "form-3",
-          "aspectLabel": "na-Adjektiv · なはず",
+          "aspectLabel": "Zustand · erwartetes Ergebnis",
           "prompt": "Erkläre auf Deutsch, was der Satz bedeutet und welche Funktion die Zielgrammatik hier hat.",
-          "shown": "このホテルは駅の近くなので、便利なはずです。",
-          "model": "Da dieses Hotel in der Nähe des Bahnhofs liegt, müsste es praktisch sein. (na-Adjektiv · なはず)",
+          "shown": "予約したので、部屋は準備できているはずです。",
+          "model": "Da ich reserviert habe, müsste das Zimmer vorbereitet sein. (Zustand · erwartetes Ergebnis)",
           "selfCheck": true
         },
         {
@@ -9455,13 +9453,13 @@
         },
         {
           "aspect": "form-3",
-          "aspectLabel": "na-Adjektiv · なはず",
-          "prompt": "Bilde die passende Grammatikform. Ausgangsform: 便利",
-          "shown": "このホテルは駅の近くなので、＿＿＿＿。",
-          "model": "便利なはずです",
+          "aspectLabel": "Zustand · erwartetes Ergebnis",
+          "prompt": "Bilde die passende Grammatikform. Ausgangsform: 準備できている",
+          "shown": "予約したので、部屋は＿＿＿＿。",
+          "model": "準備できているはずです",
           "answers": [
-            "便利なはずです",
-            "べんりなはずです"
+            "準備できているはずです",
+            "じゅんびできているはずです"
           ]
         },
         {
@@ -9495,10 +9493,10 @@
         },
         {
           "aspect": "form-3",
-          "aspectLabel": "na-Adjektiv · なはず",
-          "audio": "このホテルは駅の近くなので、便利なはずです。",
+          "aspectLabel": "Zustand · erwartetes Ergebnis",
+          "audio": "予約したので、部屋は準備できているはずです。",
           "prompt": "Höre den Satz und gib seine Bedeutung sowie die grammatische Funktion auf Deutsch wieder.",
-          "model": "Da dieses Hotel in der Nähe des Bahnhofs liegt, müsste es praktisch sein. (na-Adjektiv · なはず)",
+          "model": "Da ich reserviert habe, müsste das Zimmer vorbereitet sein. (Zustand · erwartetes Ergebnis)",
           "selfCheck": true
         },
         {
@@ -9537,11 +9535,11 @@
         },
         {
           "aspect": "form-3",
-          "aspectLabel": "na-Adjektiv · なはず",
-          "prompt": "Schreibe auf Japanisch: „Da dieses Hotel in der Nähe des Bahnhofs liegt, müsste es praktisch sein“",
-          "model": "このホテルは駅の近くなので、便利なはずです。",
+          "aspectLabel": "Zustand · erwartetes Ergebnis",
+          "prompt": "Schreibe auf Japanisch: „Da ich reserviert habe, müsste das Zimmer vorbereitet sein“",
+          "model": "予約したので、部屋は準備できているはずです。",
           "answers": [
-            "このホテルは駅の近くなので、便利なはずです。"
+            "予約したので、部屋は準備できているはずです。"
           ],
           "required": [
             "はず"
@@ -9619,9 +9617,9 @@
       {
         "label": "i-Adjektiv",
         "rule": "i-Adjektiv direkt + に違いない.",
-        "jp": "行列が長いので、この店はおいしいに違いありません。",
+        "jp": "行列が長いので、この店はおいしいに違いないです。",
         "de": "Da die Schlange lang ist, muss dieses Restaurant gut sein.",
-        "highlight": "おいしいに違いありません",
+        "highlight": "おいしいに違いないです",
         "note": "Der Sprecher ist aufgrund eines Hinweises sehr überzeugt.",
         "support": [
           {
@@ -9783,7 +9781,7 @@
           "aspect": "form-2",
           "aspectLabel": "i-Adjektiv · Gewissheit",
           "prompt": "Erkläre auf Deutsch, was der Satz bedeutet und welche Funktion die Zielgrammatik hier hat.",
-          "shown": "行列が長いので、この店はおいしいに違いありません。",
+          "shown": "行列が長いので、この店はおいしいに違いないです。",
           "model": "Da die Schlange lang ist, muss dieses Restaurant gut sein. (i-Adjektiv · Gewissheit)",
           "selfCheck": true
         },
@@ -9813,9 +9811,9 @@
           "aspectLabel": "i-Adjektiv · Gewissheit",
           "prompt": "Bilde die passende Grammatikform. Ausgangsform: おいしい",
           "shown": "行列が長いので、この店は＿＿＿＿。",
-          "model": "おいしいに違いありません",
+          "model": "おいしいに違いないです",
           "answers": [
-            "おいしいに違いありません",
+            "おいしいに違いないです",
             "おいしいにちがいないです"
           ]
         },
@@ -9843,7 +9841,7 @@
         {
           "aspect": "form-2",
           "aspectLabel": "i-Adjektiv · Gewissheit",
-          "audio": "行列が長いので、この店はおいしいに違いありません。",
+          "audio": "行列が長いので、この店はおいしいに違いないです。",
           "prompt": "Höre den Satz und gib seine Bedeutung sowie die grammatische Funktion auf Deutsch wieder.",
           "model": "Da die Schlange lang ist, muss dieses Restaurant gut sein. (i-Adjektiv · Gewissheit)",
           "selfCheck": true
@@ -9874,9 +9872,9 @@
           "aspect": "form-2",
           "aspectLabel": "i-Adjektiv · Gewissheit",
           "prompt": "Schreibe auf Japanisch: „Da die Schlange lang ist, muss dieses Restaurant gut sein“",
-          "model": "行列が長いので、この店はおいしいに違いありません。",
+          "model": "行列が長いので、この店はおいしいに違いないです。",
           "answers": [
-            "行列が長いので、この店はおいしいに違いありません。"
+            "行列が長いので、この店はおいしいに違いないです。"
           ],
           "required": [
             "に違い"
@@ -12041,48 +12039,6 @@
             "grammarRole": "Ereignis im Verlauf."
           }
         ]
-      },
-      {
-        "label": "Nomen + の途中に",
-        "rule": "途中に kann einen konkreten Punkt oder Ort innerhalb eines Weges markieren.",
-        "jp": "駅までの途中に、小さな公園があります。",
-        "de": "Auf dem Weg zum Bahnhof gibt es einen kleinen Park.",
-        "highlight": "途中に",
-        "note": "に markiert den Ort, der innerhalb des Weges liegt.",
-        "support": [
-          {
-            "surface": "駅",
-            "reading": "えき",
-            "base": "駅",
-            "baseReading": "えき",
-            "meaning": "Bahnhof"
-          },
-          {
-            "surface": "途中",
-            "reading": "とちゅう",
-            "base": "途中",
-            "baseReading": "とちゅう",
-            "meaning": "Wegstrecke; Verlauf"
-          },
-          {
-            "surface": "小さな",
-            "reading": "ちいさな",
-            "base": "小さい",
-            "baseReading": "ちいさい",
-            "meaning": "klein",
-            "formLabel": "attributive Sonderform",
-            "formation": "小さい → 小さな",
-            "contextMeaning": "klein",
-            "grammarRole": "Beschreibt das folgende Nomen."
-          },
-          {
-            "surface": "公園",
-            "reading": "こうえん",
-            "base": "公園",
-            "baseReading": "こうえん",
-            "meaning": "Park"
-          }
-        ]
       }
     ],
     "contrast": {
@@ -12207,14 +12163,6 @@
           "shown": "旅行の途中で、予定を変更しました。",
           "model": "Während der Reise änderten wir den Plan. (Nomen · Verlauf)",
           "selfCheck": true
-        },
-        {
-          "aspect": "form-4",
-          "aspectLabel": "途中に · Ort innerhalb des Weges",
-          "prompt": "Erkläre auf Deutsch, was der Satz bedeutet und welche Funktion die Zielgrammatik hier hat.",
-          "shown": "駅までの途中に、小さな公園があります。",
-          "model": "Auf dem Weg zum Bahnhof gibt es einen kleinen Park. (途中に · Ort innerhalb des Weges)",
-          "selfCheck": true
         }
       ],
       "form": [
@@ -12250,17 +12198,6 @@
             "旅行の途中で",
             "りょこうのとちゅうで"
           ]
-        },
-        {
-          "aspect": "form-4",
-          "aspectLabel": "途中に · Ort innerhalb des Weges",
-          "prompt": "Bilde die passende Grammatikform. Ausgangsform: 駅までの途中",
-          "shown": "＿＿＿＿、小さな公園があります。",
-          "model": "駅までの途中に",
-          "answers": [
-            "駅までの途中に",
-            "えきまでのとちゅうに"
-          ]
         }
       ],
       "listening": [
@@ -12286,14 +12223,6 @@
           "audio": "旅行の途中で、予定を変更しました。",
           "prompt": "Höre den Satz und gib seine Bedeutung sowie die grammatische Funktion auf Deutsch wieder.",
           "model": "Während der Reise änderten wir den Plan. (Nomen · Verlauf)",
-          "selfCheck": true
-        },
-        {
-          "aspect": "form-4",
-          "aspectLabel": "途中に · Ort innerhalb des Weges",
-          "audio": "駅までの途中に、小さな公園があります。",
-          "prompt": "Höre den Satz und gib seine Bedeutung sowie die grammatische Funktion auf Deutsch wieder.",
-          "model": "Auf dem Weg zum Bahnhof gibt es einen kleinen Park. (途中に · Ort innerhalb des Weges)",
           "selfCheck": true
         }
       ],
@@ -12329,18 +12258,6 @@
           "model": "旅行の途中で、予定を変更しました。",
           "answers": [
             "旅行の途中で、予定を変更しました。"
-          ],
-          "required": [
-            "途中"
-          ]
-        },
-        {
-          "aspect": "form-4",
-          "aspectLabel": "途中に · Ort innerhalb des Weges",
-          "prompt": "Schreibe auf Japanisch: „Auf dem Weg zum Bahnhof gibt es einen kleinen Park“",
-          "model": "駅までの途中に、小さな公園があります。",
-          "answers": [
-            "駅までの途中に、小さな公園があります。"
           ],
           "required": [
             "途中"
@@ -13122,31 +13039,24 @@
       {
         "label": "Nomen + につれて",
         "rule": "Nomen + につれて – mit einer Entwicklung oder Zeitspanne verändert sich etwas anderes.",
-        "jp": "季節の変化につれて、服装も変わります。",
-        "de": "Mit dem Wechsel der Jahreszeiten verändert sich auch die Kleidung.",
-        "highlight": "季節の変化につれて",
+        "jp": "年齢につれて、体力が変わります。",
+        "de": "Mit zunehmendem Alter verändert sich die körperliche Kraft.",
+        "highlight": "年齢につれて",
         "note": "Das Nomen bezeichnet die sich entwickelnde Dimension.",
         "support": [
           {
-            "surface": "季節",
-            "reading": "きせつ",
-            "base": "季節",
-            "baseReading": "きせつ",
-            "meaning": "Jahreszeit"
+            "surface": "年齢",
+            "reading": "ねんれい",
+            "base": "年齢",
+            "baseReading": "ねんれい",
+            "meaning": "Alter"
           },
           {
-            "surface": "変化",
-            "reading": "へんか",
-            "base": "変化",
-            "baseReading": "へんか",
-            "meaning": "Veränderung"
-          },
-          {
-            "surface": "服装",
-            "reading": "ふくそう",
-            "base": "服装",
-            "baseReading": "ふくそう",
-            "meaning": "Kleidung; Bekleidung"
+            "surface": "体力",
+            "reading": "たいりょく",
+            "base": "体力",
+            "baseReading": "たいりょく",
+            "meaning": "körperliche Kraft"
           },
           {
             "surface": "変わります",
@@ -13330,8 +13240,8 @@
           "aspect": "form-2",
           "aspectLabel": "Nomen · Entwicklung",
           "prompt": "Erkläre auf Deutsch, was der Satz bedeutet und welche Funktion die Zielgrammatik hier hat.",
-          "shown": "季節の変化につれて、服装も変わります。",
-          "model": "Mit dem Wechsel der Jahreszeiten verändert sich auch die Kleidung. (Nomen · Entwicklung)",
+          "shown": "年齢につれて、体力が変わります。",
+          "model": "Mit zunehmendem Alter verändert sich die körperliche Kraft. (Nomen · Entwicklung)",
           "selfCheck": true
         },
         {
@@ -13358,12 +13268,12 @@
         {
           "aspect": "form-2",
           "aspectLabel": "Nomen · Entwicklung",
-          "prompt": "Bilde die passende Grammatikform. Ausgangsform: 季節の変化",
-          "shown": "＿＿＿＿、服装も変わります。",
-          "model": "季節の変化につれて",
+          "prompt": "Bilde die passende Grammatikform. Ausgangsform: 年齢",
+          "shown": "＿＿＿＿、体力が変わります。",
+          "model": "年齢につれて",
           "answers": [
-            "季節の変化につれて",
-            "きせつのへんかにつれて"
+            "年齢につれて",
+            "ねんれいにつれて"
           ]
         },
         {
@@ -13390,9 +13300,9 @@
         {
           "aspect": "form-2",
           "aspectLabel": "Nomen · Entwicklung",
-          "audio": "季節の変化につれて、服装も変わります。",
+          "audio": "年齢につれて、体力が変わります。",
           "prompt": "Höre den Satz und gib seine Bedeutung sowie die grammatische Funktion auf Deutsch wieder.",
-          "model": "Mit dem Wechsel der Jahreszeiten verändert sich auch die Kleidung. (Nomen · Entwicklung)",
+          "model": "Mit zunehmendem Alter verändert sich die körperliche Kraft. (Nomen · Entwicklung)",
           "selfCheck": true
         },
         {
@@ -13420,10 +13330,10 @@
         {
           "aspect": "form-2",
           "aspectLabel": "Nomen · Entwicklung",
-          "prompt": "Schreibe auf Japanisch: „Mit dem Wechsel der Jahreszeiten verändert sich auch die Kleidung“",
-          "model": "季節の変化につれて、服装も変わります。",
+          "prompt": "Schreibe auf Japanisch: „Mit zunehmendem Alter verändert sich die körperliche Kraft“",
+          "model": "年齢につれて、体力が変わります。",
           "answers": [
-            "季節の変化につれて、服装も変わります。"
+            "年齢につれて、体力が変わります。"
           ],
           "required": [
             "につれて"
@@ -15717,7 +15627,7 @@
         if (!count || !list) return;
         count.textContent = String(knownVocabularyPool.length);
         if (!knownVocabularyPool.length) {
-          list.innerHTML = `<div class="empty">Noch keine zusätzlichen bekannten Vokabeln. In Grammatiklektionen kannst du passende Wörter direkt als bekannt markieren.</div>`;
+          list.innerHTML = `<div class="empty">Noch keine zusätzlichen bekannten Vokabeln. In Grammatik- und Vokabellektionen kannst du passende Wörter direkt als bekannt markieren.</div>`;
           return;
         }
         const sorted = [...knownVocabularyPool].sort((a, b) => b.createdAt - a.createdAt);
@@ -16764,6 +16674,23 @@
       document.getElementById("dashboardGrammarOpen")?.addEventListener("click", () => openGrammarView("grammar"));
       document.getElementById("dashboardGrammarReview")?.addEventListener("click", () => startReviewSession(false));
 
+      window.KotobaQuestGrammarSupportApi = {
+        getKnownVocabularyPool: () => knownVocabularyPool,
+        getSupportLexicon: () => {
+          const byKey = new Map();
+          Object.values(GRAMMAR_SENTENCE_SUPPORT).flat().forEach(word => {
+            const key = `${normalizeVocabKey(word.base)}|${normalizeVocabKey(word.baseReading)}`;
+            if (!key || byKey.has(key)) return;
+            byKey.set(key, { ...word });
+          });
+          return [...byKey.values()];
+        },
+        renderKnownVocabularyPool,
+        refreshGrammarLesson: () => {
+          try { renderLesson(); } catch {}
+        }
+      };
+
       installKnownVocabularyPanel();
       persistKnownVocabularyPool();
       persistGrammar();
@@ -16772,12 +16699,854 @@
       updateGrammarDashboard();
     }
 
+
+    function vocabularyExperienceBootstrap() {
+      if (window.__KOTOBA_VOCAB_EXPERIENCE_V2__) return;
+      window.__KOTOBA_VOCAB_EXPERIENCE_V2__ = true;
+
+      if (
+        typeof renderLesson !== "function" ||
+        typeof renderQuestionCard !== "function" ||
+        typeof gradeReview !== "function" ||
+        typeof gradePlacementProof !== "function"
+      ) {
+        console.warn("Kotoba Quest vocabulary enhancements could not be installed.");
+        return;
+      }
+
+      const LOCAL_STORAGE_KEY = "kotobaQuestDataV3";
+      const VOCAB_STAGE_NAMES = [
+        "Neu", "Apprentice 1", "Apprentice 2", "Apprentice 3", "Apprentice 4",
+        "Guru 1", "Guru 2", "Master", "Erleuchtet", "Abgeschlossen"
+      ];
+      const GRAMMAR_PARTICLES = new Set([
+        "は", "が", "を", "に", "へ", "で", "と", "も", "の", "や", "か", "ね", "よ", "な", "さ",
+        "から", "まで", "より", "だけ", "ほど", "しか", "でも", "って", "ので", "のに", "なら", "たら",
+        "です", "ます", "でした", "ません", "だ", "だった", "では", "じゃ"
+      ]);
+      const meaningOverrides = readMeaningOverrides();
+      let lessonSupportRegistry = new Map();
+      let lessonSupportSerial = 0;
+      let lexiconCache = null;
+      let lexiconFingerprint = "";
+
+      function normalizeKey(value) {
+        return String(value || "").normalize("NFKC").replace(/[\s・･]/g, "").toLowerCase();
+      }
+
+      function normalizeMeaning(value) {
+        try {
+          if (typeof normalizeLatin === "function") return normalizeLatin(value);
+        } catch {}
+        return String(value || "").trim().toLocaleLowerCase("de-DE").normalize("NFKC")
+          .replace(/[.!?;:()[\]{}"'`´]/g, "").replace(/\s+/g, " ");
+      }
+
+      function escape(value) {
+        try {
+          if (typeof escapeHtml === "function") return escapeHtml(value);
+        } catch {}
+        return String(value ?? "")
+          .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+      }
+
+      function containsKanji(value) {
+        return /[\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]/.test(String(value || ""));
+      }
+
+      function containsJapanese(value) {
+        return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]/.test(String(value || ""));
+      }
+
+      function katakanaToHiragana(value) {
+        return String(value || "").replace(/[\u30a1-\u30f6]/g, char =>
+          String.fromCharCode(char.charCodeAt(0) - 0x60)
+        );
+      }
+
+      function ruby(surface, reading) {
+        const shown = escape(surface);
+        if (!reading || !containsKanji(surface)) return shown;
+        return `<ruby>${shown}<rt>${escape(reading)}</rt></ruby>`;
+      }
+
+      function readMeaningOverrides() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "null");
+          const source = parsed?.vocabularyMeaningOverrides;
+          if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+          return Object.fromEntries(Object.entries(source).map(([key, values]) => [
+            String(key),
+            Array.isArray(values) ? values.map(String).map(value => value.trim()).filter(Boolean) : []
+          ]));
+        } catch {
+          return {};
+        }
+      }
+
+      function overrideKey(item) {
+        return String(item?.packEntryId || item?.id || `${item?.word || ""}|${item?.reading || ""}`);
+      }
+
+      function applyMeaningOverrides() {
+        try {
+          if (typeof data === "undefined" || !Array.isArray(data.vocabulary)) return;
+          data.vocabularyMeaningOverrides = meaningOverrides;
+          for (const item of data.vocabulary) {
+            const additions = meaningOverrides[overrideKey(item)] || [];
+            if (!additions.length) continue;
+            const seen = new Set((item.meanings || []).map(normalizeMeaning));
+            for (const addition of additions) {
+              const normalized = normalizeMeaning(addition);
+              if (!normalized || seen.has(normalized)) continue;
+              item.meanings.push(addition);
+              seen.add(normalized);
+            }
+          }
+        } catch (error) {
+          console.warn("Stored meaning alternatives could not be restored", error);
+        }
+      }
+
+      function persistWithoutRerender() {
+        try {
+          data.vocabularyMeaningOverrides = meaningOverrides;
+          if (typeof persist === "function") {
+            persist();
+            return;
+          }
+        } catch {}
+        try {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+        } catch (error) {
+          console.error("Kotoba Quest progress could not be saved", error);
+        }
+      }
+
+      function addMeaningOverride(item, enteredAnswer) {
+        const answer = String(enteredAnswer || "").trim();
+        if (!answer) return false;
+        const key = overrideKey(item);
+        const stored = Array.isArray(meaningOverrides[key]) ? meaningOverrides[key] : [];
+        const normalized = normalizeMeaning(answer);
+        const alreadyStored = stored.some(value => normalizeMeaning(value) === normalized);
+        const alreadyOnCard = (item.meanings || []).some(value => normalizeMeaning(value) === normalized);
+        if (!alreadyStored) stored.push(answer);
+        meaningOverrides[key] = stored;
+        if (!alreadyOnCard) item.meanings.push(answer);
+        persistWithoutRerender();
+        return !alreadyStored && !alreadyOnCard;
+      }
+
+      function knownPool() {
+        try {
+          const shared = window.KotobaQuestGrammarSupportApi?.getKnownVocabularyPool?.();
+          if (Array.isArray(shared)) return shared;
+        } catch {}
+        try {
+          if (Array.isArray(data.knownVocabulary)) return data.knownVocabulary;
+        } catch {}
+        return [];
+      }
+
+      function vocabularyEntries() {
+        try {
+          return Array.isArray(data.vocabulary) ? data.vocabulary : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function sameWord(left, right) {
+        const leftWord = normalizeKey(left?.base || left?.word);
+        const rightWord = normalizeKey(right?.base || right?.word);
+        if (!leftWord || leftWord !== rightWord) return false;
+        const leftReading = normalizeKey(left?.baseReading || left?.reading);
+        const rightReading = normalizeKey(right?.baseReading || right?.reading);
+        return !leftReading || !rightReading || leftReading === rightReading;
+      }
+
+      function findVocabularyEntry(word) {
+        return vocabularyEntries().find(item => sameWord(word, item)) || null;
+      }
+
+      function findKnownEntry(word) {
+        return knownPool().find(item => sameWord(word, item)) || null;
+      }
+
+      function isGuru(entry) {
+        return Boolean(entry && (entry.guruPassed || Number(entry.stage || 0) >= 5));
+      }
+
+      function stageName(stage) {
+        const index = Math.max(0, Math.min(9, Number(stage || 0)));
+        return VOCAB_STAGE_NAMES[index];
+      }
+
+      function pathStatus(entry) {
+        if (!entry) return "Nicht im Core Path oder Mining";
+        if (entry.sourceType === "core") {
+          return Number(entry.stage || 0) > 0
+            ? `Core-Level ${Number(entry.level || 1)} · ${stageName(entry.stage)}`
+            : `Wird in Core-Level ${Number(entry.level || 1)} behandelt`;
+        }
+        if (entry.sourceType === "mining") return `Bereits im Mining · ${stageName(entry.stage)}`;
+        return stageName(entry.stage);
+      }
+
+      function wordIsKnown(word) {
+        return Boolean(findKnownEntry(word) || isGuru(findVocabularyEntry(word)));
+      }
+
+      function grammarSupportLexicon() {
+        try {
+          const words = window.KotobaQuestGrammarSupportApi?.getSupportLexicon?.();
+          return Array.isArray(words) ? words : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function addCandidate(target, item, surface, reading, formLabel = "", formation = "") {
+        const cleanSurface = String(surface || "").trim();
+        if (!cleanSurface || GRAMMAR_PARTICLES.has(cleanSurface)) return;
+        target.push({
+          surface: cleanSurface,
+          reading: String(reading || "").trim(),
+          base: String(item?.base || item?.word || cleanSurface).trim(),
+          baseReading: String(item?.baseReading || item?.reading || reading || "").trim(),
+          meaning: String(item?.meaning || item?.meanings?.[0] || "Bedeutung noch nicht gespeichert").trim(),
+          formLabel: String(formLabel || item?.formLabel || "").trim(),
+          formation: String(formation || item?.formation || "").trim(),
+          contextMeaning: String(item?.contextMeaning || "").trim(),
+          grammarRole: String(item?.grammarRole || "").trim(),
+          sourceEntry: item?.sourceEntry || (item?.id ? item : null),
+          unresolved: Boolean(item?.unresolved)
+        });
+      }
+
+      function generateForms(item, force = false) {
+        const result = [];
+        const word = String(item?.word || item?.base || "").trim();
+        const reading = String(item?.reading || item?.baseReading || "").trim();
+        const pos = String(item?.pos || "").toLowerCase();
+        if (!word) return result;
+        addCandidate(result, item, word, reading, "Grundform", word);
+
+        const verbish = force || /verb|動詞|ichidan|godan|一段|五段|する-verb|irregular/.test(pos);
+        const adjectiveI = force || /i-adj|i-adjective|い-adjekt|形容詞/.test(pos);
+        const adjectiveNa = /na-adj|na-adjective|な-adjekt|形容動詞/.test(pos);
+
+        const appendForms = (surfaceStem, readingStem, forms) => {
+          for (const [surfaceSuffix, readingSuffix, label, explanation] of forms) {
+            addCandidate(result, item, surfaceStem + surfaceSuffix, readingStem + readingSuffix, label, explanation);
+          }
+        };
+
+        if (word.endsWith("する") && (verbish || force)) {
+          const stem = word.slice(0, -2);
+          const readingStem = reading.endsWith("する") ? reading.slice(0, -2) : reading;
+          appendForms(stem, readingStem, [
+            ["します", "します", "höfliche Form", `${word} → ${stem}します`],
+            ["しました", "しました", "höfliche Vergangenheit", `${word} → ${stem}しました`],
+            ["して", "して", "て-Form", `${word} → ${stem}して`],
+            ["した", "した", "た-Form", `${word} → ${stem}した`],
+            ["しない", "しない", "ない-Form", `${word} → ${stem}しない`],
+            ["しなかった", "しなかった", "negative Vergangenheit", `${word} → ${stem}しなかった`],
+            ["できる", "できる", "Potentialform", `${word} → ${stem}できる`],
+            ["できない", "できない", "negative Potentialform", `${word} → ${stem}できない`]
+          ]);
+        } else if ((word === "来る" || reading === "くる") && (verbish || force)) {
+          const forms = [
+            ["来ます", "きます", "höfliche Form", "来る → 来ます"],
+            ["来ました", "きました", "höfliche Vergangenheit", "来る → 来ました"],
+            ["来て", "きて", "て-Form", "来る → 来て"],
+            ["来た", "きた", "た-Form", "来る → 来た"],
+            ["来ない", "こない", "ない-Form", "来る → 来ない"],
+            ["来られる", "こられる", "Potentialform", "来る → 来られる"]
+          ];
+          for (const form of forms) addCandidate(result, item, ...form);
+        } else if ((verbish || force) && /[うくぐすつぬぶむる]$/.test(word)) {
+          const ending = word.slice(-1);
+          const readingEnding = reading.slice(-1);
+          const surfaceStem = word.slice(0, -1);
+          const readingStem = reading.slice(0, -1);
+          const maps = {
+            "う": ["い", "わ", "え", "って", "った"],
+            "く": ["き", "か", "け", "いて", "いた"],
+            "ぐ": ["ぎ", "が", "げ", "いで", "いだ"],
+            "す": ["し", "さ", "せ", "して", "した"],
+            "つ": ["ち", "た", "て", "って", "った"],
+            "ぬ": ["に", "な", "ね", "んで", "んだ"],
+            "ぶ": ["び", "ば", "べ", "んで", "んだ"],
+            "む": ["み", "ま", "め", "んで", "んだ"],
+            "る": ["り", "ら", "れ", "って", "った"]
+          };
+          const [iRow, aRow, eRow, teForm, taForm] = maps[ending] || [];
+          const readingMap = maps[readingEnding] || maps[ending];
+          if (iRow && readingMap) {
+            const [riRow, raRow, reRow, rteForm, rtaForm] = readingMap;
+            appendForms(surfaceStem, readingStem, [
+              [iRow + "ます", riRow + "ます", "höfliche Form", `${word} → ${surfaceStem}${iRow}ます`],
+              [iRow + "ました", riRow + "ました", "höfliche Vergangenheit", `${word} → ${surfaceStem}${iRow}ました`],
+              [aRow + "ない", raRow + "ない", "ない-Form", `${word} → ${surfaceStem}${aRow}ない`],
+              [aRow + "なかった", raRow + "なかった", "negative Vergangenheit", `${word} → ${surfaceStem}${aRow}なかった`],
+              [eRow + "る", reRow + "る", "Potentialform", `${word} → ${surfaceStem}${eRow}る`],
+              [teForm, rteForm, "て-Form", `${word} → ${surfaceStem}${teForm}`],
+              [taForm, rtaForm, "た-Form", `${word} → ${surfaceStem}${taForm}`],
+              [iRow + "たい", riRow + "たい", "たい-Form", `${word} → ${surfaceStem}${iRow}たい`]
+            ]);
+          }
+
+          if (ending === "る") {
+            appendForms(surfaceStem, readingStem, [
+              ["ます", "ます", "höfliche Form (Ichidan)", `${word} → ${surfaceStem}ます`],
+              ["ました", "ました", "höfliche Vergangenheit (Ichidan)", `${word} → ${surfaceStem}ました`],
+              ["て", "て", "て-Form (Ichidan)", `${word} → ${surfaceStem}て`],
+              ["た", "た", "た-Form (Ichidan)", `${word} → ${surfaceStem}た`],
+              ["ない", "ない", "ない-Form (Ichidan)", `${word} → ${surfaceStem}ない`],
+              ["られる", "られる", "Potentialform (Ichidan)", `${word} → ${surfaceStem}られる`]
+            ]);
+          }
+        }
+
+        if ((adjectiveI || force) && word.endsWith("い")) {
+          const stem = word.slice(0, -1);
+          const readingStem = reading.endsWith("い") ? reading.slice(0, -1) : reading;
+          appendForms(stem, readingStem, [
+            ["く", "く", "Adverbialform eines i-Adjektivs", `${word} → ${stem}く`],
+            ["かった", "かった", "Vergangenheit eines i-Adjektivs", `${word} → ${stem}かった`],
+            ["くない", "くない", "negative Form eines i-Adjektivs", `${word} → ${stem}くない`],
+            ["くなかった", "くなかった", "negative Vergangenheit", `${word} → ${stem}くなかった`],
+            ["ければ", "ければ", "Bedingungsform", `${word} → ${stem}ければ`]
+          ]);
+        }
+
+        if (adjectiveNa) {
+          appendForms(word, reading, [
+            ["な", "な", "attributive Form eines na-Adjektivs", `${word} → ${word}な`],
+            ["で", "で", "て-Form eines na-Adjektivs", `${word} → ${word}で`],
+            ["だった", "だった", "Vergangenheit eines na-Adjektivs", `${word} → ${word}だった`],
+            ["ではない", "ではない", "negative Form eines na-Adjektivs", `${word} → ${word}ではない`]
+          ]);
+        }
+
+        const unique = new Map();
+        for (const candidate of result) {
+          const key = `${candidate.surface}|${candidate.base}|${candidate.reading}`;
+          if (!unique.has(key)) unique.set(key, candidate);
+        }
+        return [...unique.values()];
+      }
+
+      function buildLexicon() {
+        const fingerprint = `${vocabularyEntries().length}|${knownPool().length}|${grammarSupportLexicon().length}`;
+        if (lexiconCache && lexiconFingerprint === fingerprint) return lexiconCache;
+        const all = [];
+
+        for (const item of vocabularyEntries()) {
+          generateForms(item, false).forEach(candidate => {
+            candidate.sourceEntry = item;
+            all.push(candidate);
+          });
+        }
+        for (const item of knownPool()) {
+          addCandidate(all, {
+            base: item.word,
+            baseReading: item.reading,
+            meaning: item.meaning,
+            sourceEntry: null
+          }, item.word, item.reading, "Grundform", item.word);
+        }
+        for (const item of grammarSupportLexicon()) {
+          const supportItem = {
+            base: item.base,
+            baseReading: item.baseReading,
+            meaning: item.meaning,
+            formLabel: item.formLabel,
+            formation: item.formation,
+            contextMeaning: item.contextMeaning,
+            grammarRole: item.grammarRole,
+            sourceEntry: null
+          };
+          addCandidate(all, supportItem, item.surface || item.base, item.reading || item.baseReading, item.formLabel, item.formation);
+          if (item.base && item.base !== item.surface) {
+            addCandidate(all, supportItem, item.base, item.baseReading, "Grundform", item.base);
+          }
+        }
+
+        const byFirst = new Map();
+        const seen = new Set();
+        for (const candidate of all) {
+          if (!candidate.surface || candidate.surface.length < 1) continue;
+          const key = `${candidate.surface}|${candidate.base}|${candidate.baseReading}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const first = candidate.surface[0];
+          if (!byFirst.has(first)) byFirst.set(first, []);
+          byFirst.get(first).push(candidate);
+        }
+        for (const list of byFirst.values()) {
+          list.sort((a, b) => b.surface.length - a.surface.length || Number(Boolean(b.sourceEntry)) - Number(Boolean(a.sourceEntry)));
+        }
+        lexiconFingerprint = fingerprint;
+        lexiconCache = byFirst;
+        return byFirst;
+      }
+
+      function fallbackSegments(sentence, occupied) {
+        const segments = [];
+        if (!("Segmenter" in Intl)) return segments;
+        try {
+          const segmenter = new Intl.Segmenter("ja", { granularity: "word" });
+          for (const part of segmenter.segment(sentence)) {
+            const surface = String(part.segment || "");
+            const start = Number(part.index || 0);
+            const end = start + surface.length;
+            if (!part.isWordLike || !containsJapanese(surface)) continue;
+            if (GRAMMAR_PARTICLES.has(surface)) continue;
+            if (!containsKanji(surface) && !/[\u30a0-\u30ff]{2,}/.test(surface)) continue;
+            if (occupied.some(range => start < range.end && end > range.start)) continue;
+            segments.push({
+              start,
+              end,
+              candidate: {
+                surface,
+                reading: containsKanji(surface) ? "" : katakanaToHiragana(surface),
+                base: surface,
+                baseReading: containsKanji(surface) ? "" : katakanaToHiragana(surface),
+                meaning: "Bedeutung noch nicht gespeichert",
+                formLabel: "",
+                formation: "",
+                contextMeaning: "",
+                grammarRole: "",
+                sourceEntry: null,
+                unresolved: true
+              }
+            });
+          }
+        } catch {}
+        return segments;
+      }
+
+      function analyzeSentence(sentence, targetItem) {
+        const source = String(sentence || "");
+        const byFirst = buildLexicon();
+        const targetForms = generateForms(targetItem || {}, true);
+        const targetByFirst = new Map();
+        for (const candidate of targetForms) {
+          candidate.sourceEntry = targetItem || null;
+          const first = candidate.surface[0];
+          if (!targetByFirst.has(first)) targetByFirst.set(first, []);
+          targetByFirst.get(first).push(candidate);
+        }
+        for (const list of targetByFirst.values()) list.sort((a, b) => b.surface.length - a.surface.length);
+
+        const ranges = [];
+        let index = 0;
+        while (index < source.length) {
+          const first = source[index];
+          const candidates = [
+            ...(targetByFirst.get(first) || []),
+            ...(byFirst.get(first) || [])
+          ];
+          const match = candidates.find(candidate => source.startsWith(candidate.surface, index));
+          if (!match) {
+            index += 1;
+            continue;
+          }
+          ranges.push({ start: index, end: index + match.surface.length, candidate: match });
+          index += match.surface.length;
+        }
+
+        ranges.push(...fallbackSegments(source, ranges));
+        ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+        const nonOverlapping = [];
+        for (const range of ranges) {
+          if (nonOverlapping.some(existing => range.start < existing.end && range.end > existing.start)) continue;
+          nonOverlapping.push(range);
+        }
+        return nonOverlapping;
+      }
+
+      function isTargetCandidate(candidate, targetItem) {
+        if (!targetItem) return false;
+        if (candidate.sourceEntry?.id && candidate.sourceEntry.id === targetItem.id) return true;
+        return sameWord(candidate, targetItem);
+      }
+
+      function renderLessonSupport(sentence, translation, targetItem) {
+        const ranges = analyzeSentence(sentence, targetItem);
+        const noteCandidates = [];
+        const noteKeyToNumber = new Map();
+
+        for (const range of ranges) {
+          const word = range.candidate;
+          if (isTargetCandidate(word, targetItem) || wordIsKnown(word)) continue;
+          const key = `${normalizeKey(word.base)}|${normalizeKey(word.baseReading)}`;
+          if (noteKeyToNumber.has(key)) continue;
+          noteKeyToNumber.set(key, noteCandidates.length + 1);
+          noteCandidates.push(word);
+        }
+
+        let cursor = 0;
+        let sentenceHtml = "";
+        for (const range of ranges) {
+          sentenceHtml += escape(sentence.slice(cursor, range.start));
+          const word = range.candidate;
+          const target = isTargetCandidate(word, targetItem);
+          const noteKey = `${normalizeKey(word.base)}|${normalizeKey(word.baseReading)}`;
+          const noteNumber = noteKeyToNumber.get(noteKey);
+          const classes = ["vocab-lesson-token"];
+          if (target) classes.push("target");
+          if (noteNumber) classes.push("unknown");
+          sentenceHtml += `<span class="${classes.join(" ")}">${ruby(word.surface, word.reading)}</span>`;
+          if (noteNumber) sentenceHtml += `<sup class="grammar-vocab-marker">${noteNumber}</sup>`;
+          cursor = range.end;
+        }
+        sentenceHtml += escape(sentence.slice(cursor));
+
+        lessonSupportRegistry = new Map();
+        const notesHtml = noteCandidates.length
+          ? `<div class="vocab-lesson-support grammar-vocab-help">
+              <div class="grammar-vocab-heading"><strong>Vokabelhilfen</strong><span>Das aktuelle Lernwort sowie Wörter ab Guru 1 werden nicht als unbekannt markiert.</span></div>
+              ${noteCandidates.map((word, index) => renderFootnote(word, index + 1, sentence, translation, targetItem)).join("")}
+            </div>`
+          : "";
+        return { sentenceHtml, notesHtml };
+      }
+
+      function registerSupportWord(word, sentence, translation, targetItem) {
+        const id = `vocab-support-${++lessonSupportSerial}`;
+        lessonSupportRegistry.set(id, { word, sentence, translation, targetItem });
+        return id;
+      }
+
+      function renderFootnote(word, number, sentence, translation, targetItem) {
+        const entry = findVocabularyEntry(word);
+        const status = findKnownEntry(word) ? "Als bekannt markiert" : pathStatus(entry);
+        const supportId = registerSupportWord(word, sentence, translation, targetItem);
+        const hasAnalysis = Boolean(word.formLabel || word.formation || word.contextMeaning || word.grammarRole || word.surface !== word.base);
+        const actions = entry
+          ? `<div class="grammar-vocab-path-note">${escape(status)}</div>`
+          : `<div class="grammar-vocab-actions">
+              <button class="grammar-add-vocab" type="button" data-vocab-lesson-mining="${escape(supportId)}">Zum Mining hinzufügen</button>
+              <button class="grammar-known-vocab" type="button" data-vocab-lesson-known="${escape(supportId)}">Zu bekannten Vokabeln hinzufügen</button>
+            </div>`;
+        return `<div class="grammar-vocab-footnote">
+          <span class="grammar-vocab-number">${number}</span>
+          <div class="grammar-vocab-content">
+            <div class="grammar-vocab-base"><strong>${ruby(word.base, word.baseReading)}</strong><span>– ${escape(word.meaning)}</span><em>${escape(status)}</em></div>
+            ${word.unresolved ? `<div class="vocab-unresolved-note">Lesung und Bedeutung sind noch nicht im Lernwortschatz hinterlegt. Beim Hinzufügen kannst du sie einmal ergänzen.</div>` : ""}
+            ${hasAnalysis ? `<details class="grammar-vocab-analysis"><summary>Verwendete Form auflösen</summary><div class="grammar-vocab-analysis-grid">
+              <div><span>Im Satz</span><strong>${ruby(word.surface, word.reading)}</strong></div>
+              ${word.formLabel ? `<div><span>Form</span><strong>${escape(word.formLabel)}</strong></div>` : ""}
+              ${word.formation ? `<div class="wide"><span>Bildung</span><strong>${escape(word.formation)}</strong></div>` : ""}
+              ${word.contextMeaning ? `<div class="wide"><span>Bedeutung hier</span><strong>${escape(word.contextMeaning)}</strong></div>` : ""}
+              ${word.grammarRole ? `<div class="wide grammar-vocab-role">${escape(word.grammarRole)}</div>` : ""}
+            </div></details>` : ""}
+            ${actions}
+          </div>
+        </div>`;
+      }
+
+      function lessonSourceLabel(targetItem) {
+        if (!targetItem) return "Vokabellektion";
+        if (targetItem.sourceType === "core") return `Vokabellektion · Core-Level ${Number(targetItem.level || 1)} · ${targetItem.word}`;
+        return `Vokabellektion · Mining${targetItem.collection ? ` · ${targetItem.collection}` : ""} · ${targetItem.word}`;
+      }
+
+      function completeSupportDetails(record) {
+        const word = { ...record.word };
+        if (!word.baseReading && containsKanji(word.base)) {
+          const reading = window.prompt(`Lesung für „${word.base}“ eingeben:`, "");
+          if (reading == null) return null;
+          word.baseReading = String(reading).trim();
+          word.reading ||= word.baseReading;
+        }
+        if (!word.meaning || word.meaning === "Bedeutung noch nicht gespeichert") {
+          const meaning = window.prompt(`Deutsche Bedeutung für „${word.base}“ eingeben:`, "");
+          if (meaning == null) return null;
+          word.meaning = String(meaning).trim();
+        }
+        if (!word.base || !word.meaning) return null;
+        return word;
+      }
+
+      function addLessonWordToMining(supportId) {
+        const record = lessonSupportRegistry.get(supportId);
+        if (!record) return;
+        const word = completeSupportDetails(record);
+        if (!word) return;
+        const existing = findVocabularyEntry(word);
+        if (existing) {
+          try { toast(pathStatus(existing)); } catch {}
+          enhanceLessonSentence();
+          return;
+        }
+        const raw = {
+          word: word.base,
+          reading: word.baseReading || word.reading,
+          meanings: [word.meaning],
+          productionCue: word.meaning,
+          sourceType: "mining",
+          collection: lessonSourceLabel(record.targetItem),
+          example: record.sentence,
+          exampleTranslation: record.translation,
+          stage: 0,
+          availableAt: null,
+          correct: 0,
+          incorrect: 0,
+          guruPassed: false,
+          createdAt: Date.now()
+        };
+        const created = typeof makeVocabulary === "function" ? makeVocabulary(raw) : raw;
+        data.vocabulary.push(created);
+        lexiconCache = null;
+        if (typeof saveData === "function") saveData();
+        else persistWithoutRerender();
+        try { toast(`${word.base} wurde zum Mining hinzugefügt.`); } catch {}
+      }
+
+      function addLessonWordToKnown(supportId) {
+        const record = lessonSupportRegistry.get(supportId);
+        if (!record) return;
+        const word = completeSupportDetails(record);
+        if (!word) return;
+        const existing = findVocabularyEntry(word);
+        if (existing) {
+          try { toast(pathStatus(existing)); } catch {}
+          enhanceLessonSentence();
+          return;
+        }
+        if (findKnownEntry(word)) {
+          try { toast("Diese Vokabel ist bereits als bekannt gespeichert."); } catch {}
+          enhanceLessonSentence();
+          return;
+        }
+        const pool = knownPool();
+        pool.push({
+          id: `known-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          word: word.base,
+          reading: word.baseReading || word.reading || "",
+          meaning: word.meaning,
+          source: lessonSourceLabel(record.targetItem),
+          example: record.sentence,
+          exampleTranslation: record.translation,
+          createdAt: Date.now()
+        });
+        data.knownVocabulary = pool;
+        lexiconCache = null;
+        if (typeof saveData === "function") saveData();
+        else persistWithoutRerender();
+        try { window.KotobaQuestGrammarSupportApi?.renderKnownVocabularyPool?.(); } catch {}
+        try { toast(`${word.base} wurde zu den bekannten Vokabeln hinzugefügt.`); } catch {}
+      }
+
+      function attachLessonSupportActions(container) {
+        container?.querySelectorAll("[data-vocab-lesson-mining]").forEach(button => {
+          button.addEventListener("click", () => addLessonWordToMining(button.dataset.vocabLessonMining || ""));
+        });
+        container?.querySelectorAll("[data-vocab-lesson-known]").forEach(button => {
+          button.addEventListener("click", () => addLessonWordToKnown(button.dataset.vocabLessonKnown || ""));
+        });
+      }
+
+      function enhanceLessonSentence() {
+        try {
+          if (!lessonSession?.revealed) return;
+          const item = lessonSession.items?.[lessonSession.index];
+          const sentenceElement = document.getElementById("lessonSentenceText");
+          const panel = document.getElementById("lessonContextPanel");
+          if (!item || !sentenceElement || !panel) return;
+          const displayed = typeof sentenceDisplay === "function"
+            ? sentenceDisplay(item)
+            : { text: item.example || "", translation: item.exampleTranslation || "" };
+          const sentence = String(sentenceElement.textContent || displayed.text || "").trim();
+          if (!sentence) return;
+          const translationElement = document.getElementById("lessonSentenceTranslation");
+          const translation = String(translationElement?.textContent || displayed.translation || "").trim();
+          const rendered = renderLessonSupport(sentence, translation, item);
+          sentenceElement.classList.add("vocab-lesson-sentence");
+          sentenceElement.innerHTML = rendered.sentenceHtml;
+          panel.querySelector(".vocab-lesson-support")?.remove();
+          if (rendered.notesHtml) {
+            const holder = document.createElement("div");
+            holder.innerHTML = rendered.notesHtml;
+            panel.appendChild(holder.firstElementChild);
+          }
+          attachLessonSupportActions(panel);
+        } catch (error) {
+          console.warn("Vocabulary lesson sentence support could not be rendered", error);
+        }
+      }
+
+      function installVetoButtons(card, feedback) {
+        if (!feedback?.vetoEligible) return;
+        const nextButton = card.querySelector("#nextQuestion");
+        const row = nextButton?.closest(".button-row");
+        if (!row || row.querySelector("[data-vocab-veto]")) return;
+        row.classList.add("vocab-veto-row");
+        if (feedback.questionType === "listening") {
+          const synonym = document.createElement("button");
+          synonym.type = "button";
+          synonym.className = "secondary vocab-veto-synonym";
+          synonym.dataset.vocabVeto = "synonym";
+          synonym.textContent = "Meine Übersetzung ist richtig (Synonym)";
+          synonym.addEventListener("click", () => resolveVeto(feedback, "synonym"));
+          row.insertBefore(synonym, nextButton);
+        }
+        const typo = document.createElement("button");
+        typo.type = "button";
+        typo.className = "ghost vocab-veto-typo";
+        typo.dataset.vocabVeto = "typo";
+        typo.textContent = "Nur vertippt";
+        typo.addEventListener("click", () => resolveVeto(feedback, "typo"));
+        row.insertBefore(typo, nextButton);
+
+        const note = document.createElement("div");
+        note.className = "vocab-veto-note";
+        note.textContent = feedback.questionType === "listening"
+          ? "Bei einem Synonym wird deine Eingabe dauerhaft als zulässige Übersetzung gespeichert. In beiden Fällen kommt die Karte später erneut und dieser Versuch zählt nicht als Fehler."
+          : "Die Karte kommt später erneut und dieser Versuch zählt nicht als Fehler.";
+        row.parentElement?.insertBefore(note, row);
+      }
+
+      function resolveVeto(feedback, mode) {
+        const session = feedback.sessionType === "placement" ? placementSession : reviewSession;
+        if (!session || session.feedback !== feedback) return;
+        const item = vocabularyEntries().find(entry => entry.id === feedback.itemId);
+        if (!item) return;
+
+        if (mode === "synonym" && feedback.questionType === "listening") {
+          const added = addMeaningOverride(item, feedback.enteredAnswer);
+          try {
+            toast(added
+              ? `„${feedback.enteredAnswer}“ wurde als gültige Übersetzung gespeichert.`
+              : "Diese Übersetzung war bereits gespeichert.");
+          } catch {}
+        } else {
+          persistWithoutRerender();
+          try { toast("Als Tippfehler gewertet – kein Fehler wurde gespeichert."); } catch {}
+        }
+
+        if (!feedback.priorError) {
+          session.errors[feedback.itemId][feedback.questionType] = false;
+        }
+
+        if (feedback.sessionType === "placement") {
+          placementSession.proofIndex++;
+          placementSession.feedback = null;
+          placementSession.locked = false;
+          renderPlacement();
+        } else {
+          reviewSession.index++;
+          reviewSession.feedback = null;
+          reviewSession.locked = false;
+          renderReview();
+        }
+      }
+
+      const style = document.createElement("style");
+      style.id = "kotobaVocabularyExperienceStyles";
+      style.textContent = `
+        .vocab-lesson-sentence { color:var(--text); font-size:1.08rem; font-weight:850; line-height:1.85; }
+        .vocab-lesson-sentence ruby { ruby-align:center; }
+        .vocab-lesson-sentence rt { color:#655e78; font-size:.58em; font-weight:750; }
+        .vocab-lesson-token.target { padding:2px 5px; border-radius:7px; background:rgba(121,87,213,.14); color:var(--primary-dark); font-weight:950; }
+        .vocab-lesson-token.unknown { text-decoration:underline dotted #d47a2c 2px; text-underline-offset:4px; }
+        .vocab-lesson-support { width:100%; margin-top:14px; text-align:left; }
+        .vocab-unresolved-note { margin:7px 0; color:var(--muted); font-size:.78rem; line-height:1.45; }
+        .vocab-veto-row { max-width:720px; margin-inline:auto; }
+        .vocab-veto-row #nextQuestion { order:3; }
+        .vocab-veto-note { max-width:690px; margin:12px auto 0; color:var(--muted); font-size:.8rem; line-height:1.45; }
+        .vocab-veto-synonym { color:#237b58; background:#e7f7f0; }
+        .vocab-veto-typo { color:#8b5b17; background:#fff7e5; border-color:#ecd29b; }
+        @media (max-width:620px) {
+          .vocab-veto-row { display:grid; grid-template-columns:1fr; }
+          .vocab-veto-row button { width:100%; }
+        }
+      `;
+      document.head.appendChild(style);
+
+      applyMeaningOverrides();
+      persistWithoutRerender();
+
+      const originalRenderLesson = renderLesson;
+      renderLesson = function(...args) {
+        const result = originalRenderLesson.apply(this, args);
+        setTimeout(enhanceLessonSentence, 0);
+        return result;
+      };
+
+      if (typeof updateSentenceContext === "function") {
+        const originalUpdateSentenceContext = updateSentenceContext;
+        updateSentenceContext = function(config, sentence) {
+          const result = originalUpdateSentenceContext.apply(this, arguments);
+          if (config?.textId === "lessonSentenceText") setTimeout(enhanceLessonSentence, 0);
+          return result;
+        };
+      }
+
+      const originalRenderQuestionCard = renderQuestionCard;
+      renderQuestionCard = function(card, question, item, options) {
+        const result = originalRenderQuestionCard.apply(this, arguments);
+        installVetoButtons(card, options?.feedback);
+        return result;
+      };
+
+      const originalGradeReview = gradeReview;
+      gradeReview = function(question, item, answer) {
+        const result = evaluateAnswer(question, item, answer);
+        const priorError = Boolean(reviewSession?.errors?.[item.id]?.[question.type]);
+        const output = originalGradeReview.apply(this, arguments);
+        if (result.status === "incorrect" && reviewSession?.feedback) {
+          reviewSession.feedback = {
+            ...reviewSession.feedback,
+            vetoEligible: true,
+            sessionType: "review",
+            itemId: item.id,
+            questionType: question.type,
+            enteredAnswer: String(answer || "").trim(),
+            priorError
+          };
+          renderReview();
+        }
+        return output;
+      };
+
+      const originalGradePlacementProof = gradePlacementProof;
+      gradePlacementProof = function(question, item, answer) {
+        const result = evaluateAnswer(question, item, answer);
+        const priorError = Boolean(placementSession?.errors?.[item.id]?.[question.type]);
+        const output = originalGradePlacementProof.apply(this, arguments);
+        if (result.status === "incorrect" && placementSession?.feedback) {
+          placementSession.feedback = {
+            ...placementSession.feedback,
+            vetoEligible: true,
+            sessionType: "placement",
+            itemId: item.id,
+            questionType: question.type,
+            enteredAnswer: String(answer || "").trim(),
+            priorError
+          };
+          renderPlacement();
+        }
+        return output;
+      };
+
+      setTimeout(enhanceLessonSentence, 0);
+    }
+
     function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
+      const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
+      const enhancementScripts = `${grammarScript}\n${vocabularyScript}`;
       if (/<\/body>/i.test(html)) {
-        return html.replace(/<\/body>/i, `${grammarScript}\n</body>`);
+        return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
-      return `${html}${grammarScript}`;
+      return `${html}${enhancementScripts}`;
     }
 
     async function loadAppDocument({ force = false } = {}) {
