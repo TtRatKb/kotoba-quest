@@ -449,7 +449,7 @@
       if (document.getElementById("grammar")) return;
 
       const STORAGE_KEY = "kotobaQuestDataV3";
-      const GRAMMAR_VERSION = 1;
+      const GRAMMAR_VERSION = 2;
       const SKILLS = [
         { id: "meaning", label: "Verstehen", icon: "💡" },
         { id: "form", label: "Form bilden", icon: "🧩" },
@@ -473,20 +473,54 @@
         {
           id: "you-ni-naru",
           title: "〜ようになる",
-          subtitle: "Eine Fähigkeit oder ein Zustand verändert sich",
+          subtitle: "Eine Fähigkeit, ein Verhalten oder ein Zustand verändert sich",
           color: "#6c63d9",
-          summary: "Etwas ist mit der Zeit möglich oder zur Gewohnheit geworden – ohne dass der Satz die bewusste Anstrengung in den Mittelpunkt stellt.",
+          summary: "ようになる blickt auf das Ergebnis einer Veränderung: Etwas, das früher nicht möglich oder nicht üblich war, ist inzwischen möglich beziehungsweise zu einem neuen Verhalten geworden.",
           formation: [
-            "Verb in Wörterbuchform + ようになる",
-            "Verb in ない-Form + ようになる",
-            "Potentialform + ようになる ist besonders häufig"
+            {
+              label: "Wörterbuchform",
+              rule: "Verb in Wörterbuchform + ようになる – ein neues regelmäßiges Verhalten entsteht.",
+              jp: "毎朝、早く起きるようになりました。",
+              de: "Ich stehe inzwischen jeden Morgen früh auf.",
+              highlight: "起きるようになりました",
+              note: "Früher war frühes Aufstehen nicht die übliche Gewohnheit; inzwischen ist es so."
+            },
+            {
+              label: "ない-Form",
+              rule: "Verb in ない-Form + ようになる – ein neues Verhalten besteht darin, etwas nicht mehr beziehungsweise nicht mehr gewöhnlich zu tun.",
+              jp: "忘れ物をしないようになりました。",
+              de: "Ich vergesse inzwischen keine Sachen mehr.",
+              highlight: "しないようになりました",
+              note: "Die Veränderung führt zu einem neuen Muster: Vergessene Sachen kommen nicht mehr vor."
+            },
+            {
+              label: "Potentialform",
+              rule: "Potentialform + ようになる – besonders häufig für eine neu erworbene Fähigkeit.",
+              jp: "漢字が読めるようになりました。",
+              de: "Ich kann inzwischen Kanji lesen.",
+              highlight: "読めるようになりました",
+              note: "読める beschreibt die Fähigkeit; ようになりました macht deutlich, dass sie neu entstanden ist."
+            }
           ],
-          contrast: "ようになる beschreibt das Ergebnis einer Veränderung. ようにする beschreibt dagegen eine bewusste Bemühung oder Gewohnheit.",
-          examples: [
-            { jp: "日本語のニュースが分かるようになりました。", de: "Ich kann inzwischen japanische Nachrichten verstehen." },
-            { jp: "毎朝、早く起きるようになりました。", de: "Ich stehe inzwischen jeden Morgen früh auf." },
-            { jp: "コーヒーを飲まないようになりました。", de: "Ich trinke inzwischen keinen Kaffee mehr." }
-          ],
+          contrast: {
+            title: "Aktueller Zustand oder eingetretene Veränderung?",
+            intro: "Beide Sätze beschreiben eine Fähigkeit. Nur ようになる zeigt ausdrücklich den Weg von „früher nicht“ zu „jetzt möglich“.",
+            left: {
+              label: "Nur aktueller Zustand",
+              jp: "漢字が読めます。",
+              de: "Ich kann Kanji lesen.",
+              highlight: "読めます",
+              explanation: "Der Satz nennt lediglich die gegenwärtige Fähigkeit. Ob sie neu ist, bleibt offen."
+            },
+            right: {
+              label: "Veränderung bis jetzt",
+              jp: "漢字が読めるようになりました。",
+              de: "Ich kann inzwischen Kanji lesen.",
+              highlight: "読めるようになりました",
+              explanation: "Die Person konnte es früher nicht oder schlechter und hat diese Fähigkeit inzwischen erworben."
+            },
+            takeaway: "Merke: ようになる beantwortet gedanklich die Frage „Was ist inzwischen anders als früher?“"
+          },
           checkpoint: {
             cue: "Schreibe auf Japanisch: „Ich kann inzwischen ein wenig Japanisch sprechen.“",
             models: ["少し日本語が話せるようになりました。", "日本語が少し話せるようになりました。"],
@@ -498,16 +532,16 @@
               { prompt: "Erkläre die Veränderung auf Deutsch.", shown: "最近、野菜を食べるようになりました。", model: "Die Person isst seit Kurzem beziehungsweise inzwischen regelmäßig Gemüse.", keywords: [["gemüse"], ["inzwischen", "seit kurzem", "neuerdings"], ["essen"]] }
             ],
             form: [
-              { prompt: "Setze die passende Form ein. Grundform: 話せる", shown: "日本語が＿＿＿＿なりました。", model: "話せるように", answers: ["話せるように"] },
-              { prompt: "Setze die passende Form ein. Grundform: 忘れない", shown: "約束を＿＿＿＿なりました。", model: "忘れないように", answers: ["忘れないように"] }
+              { prompt: "Setze die passende Form ein. Grundform: 話せる", shown: "日本語が＿＿＿＿なりました。", model: "話せるように", answers: ["話せるように", "はなせるように"] },
+              { prompt: "Setze die passende Form ein. Grundform: 忘れない", shown: "約束を＿＿＿＿なりました。", model: "忘れないように", answers: ["忘れないように", "わすれないように"] }
             ],
             listening: [
               { audio: "前より速く読めるようになりました。", prompt: "Höre den Satz und schreibe seine Kernaussage auf Deutsch.", model: "Ich kann inzwischen schneller lesen als früher.", keywords: [["schneller"], ["lesen"], ["inzwischen", "jetzt", "kann"]] },
-              { audio: "最近、テレビを見なくなりました。", prompt: "Was hat sich verändert?", model: "Die Person schaut in letzter Zeit kein Fernsehen mehr.", keywords: [["fernsehen", "tv"], ["nicht mehr"], ["schauen", "sehen"]] }
+              { audio: "忘れ物をしないようになりました。", prompt: "Was hat sich verändert?", model: "Die Person vergisst inzwischen keine Sachen mehr.", keywords: [["vergess"], ["nicht mehr", "keine"], ["sachen", "dinge"]] }
             ],
             production: [
-              { prompt: "Schreibe auf Japanisch: „Ich kann inzwischen ohne Untertitel Anime verstehen.“", model: "字幕なしでアニメが分かるようになりました。", answers: ["字幕なしでアニメが分かるようになりました", "字幕がなくてもアニメが分かるようになりました"], required: ["ようにな"] },
-              { prompt: "Schreibe auf Japanisch: „Ich stehe inzwischen jeden Tag um sieben Uhr auf.“", model: "毎日七時に起きるようになりました。", answers: ["毎日七時に起きるようになりました", "毎日7時に起きるようになりました"], required: ["ようにな"] }
+              { prompt: "Schreibe auf Japanisch: „Ich kann inzwischen Anime ohne Untertitel verstehen.“", model: "字幕なしでアニメが分かるようになりました。", answers: ["字幕なしでアニメが分かるようになりました", "字幕がなくてもアニメが分かるようになりました", "じまくなしであにめがわかるようになりました"], required: ["ようにな"] },
+              { prompt: "Schreibe auf Japanisch: „Ich stehe inzwischen jeden Tag um sieben Uhr auf.“", model: "毎日七時に起きるようになりました。", answers: ["毎日七時に起きるようになりました", "毎日7時に起きるようになりました", "まいにちしちじにおきるようになりました"], required: ["ようにな"] }
             ]
           }
         },
@@ -516,18 +550,52 @@
           title: "〜ようにする",
           subtitle: "Bewusste Bemühung oder selbst gewählte Gewohnheit",
           color: "#bf5ea8",
-          summary: "Die Person bemüht sich bewusst darum, etwas zu tun oder zu vermeiden. In der Form ようにしている wird daraus eine fortlaufende Gewohnheit.",
+          summary: "ようにする richtet den Blick nicht auf ein bereits eingetretenes Ergebnis, sondern auf die bewusste Absicht: Du sorgst aktiv dafür, etwas zu tun oder zu vermeiden. ようにしている beschreibt diese Bemühung als fortlaufende Gewohnheit.",
           formation: [
-            "Verb in Wörterbuchform + ようにする",
-            "Verb in ない-Form + ようにする",
-            "Für eine laufende Gewohnheit: ようにしている"
+            {
+              label: "Wörterbuchform",
+              rule: "Verb in Wörterbuchform + ようにする – du nimmst dir bewusst vor, etwas zu tun.",
+              jp: "明日から毎日歩くようにします。",
+              de: "Ab morgen werde ich darauf achten, jeden Tag zu Fuß zu gehen.",
+              highlight: "歩くようにします",
+              note: "Die Person formuliert eine bewusste Absicht für die Zukunft."
+            },
+            {
+              label: "ない-Form",
+              rule: "Verb in ない-Form + ようにする – du achtest bewusst darauf, etwas zu vermeiden.",
+              jp: "夜はスマホを見ないようにします。",
+              de: "Ich werde darauf achten, abends nicht aufs Smartphone zu schauen.",
+              highlight: "見ないようにします",
+              note: "Nicht das Aufhören an sich, sondern die bewusste Selbststeuerung steht im Mittelpunkt."
+            },
+            {
+              label: "Fortlaufende Bemühung",
+              rule: "Verb + ようにしている – du bemühst dich regelmäßig oder hast dir eine Gewohnheit gesetzt.",
+              jp: "毎日、日本語を読むようにしています。",
+              de: "Ich versuche, jeden Tag etwas auf Japanisch zu lesen.",
+              highlight: "読むようにしています",
+              note: "している zeigt, dass die Bemühung nicht nur einmalig, sondern fortlaufend ist."
+            }
           ],
-          contrast: "ようにする betont deine Absicht und dein Handeln. ようになる betont die eingetretene Veränderung.",
-          examples: [
-            { jp: "毎日、日本語を読むようにしています。", de: "Ich versuche, jeden Tag etwas auf Japanisch zu lesen." },
-            { jp: "夜はコーヒーを飲まないようにしています。", de: "Ich achte darauf, abends keinen Kaffee zu trinken." },
-            { jp: "忘れないようにしてください。", de: "Bitte achte darauf, es nicht zu vergessen." }
-          ],
+          contrast: {
+            title: "〜ようになる oder 〜ようにする?",
+            intro: "Du kennst ようになる bereits. Mit demselben Verb wird der Unterschied besonders sichtbar: Ergebnis einer Veränderung gegenüber bewusster Bemühung.",
+            left: {
+              label: "Ergebnis: ようになる",
+              jp: "毎朝、早く起きるようになりました。",
+              de: "Ich stehe inzwischen jeden Morgen früh auf.",
+              highlight: "起きるようになりました",
+              explanation: "Das frühe Aufstehen ist inzwischen zur Realität beziehungsweise Gewohnheit geworden. Wie bewusst das geschah, ist nicht der Schwerpunkt."
+            },
+            right: {
+              label: "Bemühung: ようにする",
+              jp: "毎朝、早く起きるようにしています。",
+              de: "Ich bemühe mich, jeden Morgen früh aufzustehen.",
+              highlight: "起きるようにしています",
+              explanation: "Die Person lenkt ihr Verhalten bewusst. Ob es wirklich jeden Morgen gelingt, sagt der Satz nicht sicher."
+            },
+            takeaway: "Merke: なる = so ist es geworden. する = ich versuche aktiv, es so zu machen."
+          },
           checkpoint: {
             cue: "Schreibe auf Japanisch: „Ich versuche, jeden Tag früh ins Bett zu gehen.“",
             models: ["毎日早く寝るようにしています。"],
@@ -536,39 +604,73 @@
           questions: {
             meaning: [
               { prompt: "Was wird hier betont?", shown: "できるだけ日本語で話すようにしています。", model: "Die Person bemüht sich bewusst, möglichst auf Japanisch zu sprechen.", keywords: [["bemüh", "versuch", "achte"], ["japanisch"], ["sprechen"]] },
-              { prompt: "Erkläre den Unterschied zur bloßen Veränderung.", shown: "甘い物を食べないようにしています。", model: "Die Person entscheidet beziehungsweise bemüht sich bewusst, keine Süßigkeiten zu essen.", keywords: [["bewusst", "bemüh", "versuch", "achte"], ["süß", "süßigkeiten"], ["nicht"]] }
+              { prompt: "Erkläre, warum hier ようにする und nicht ようになる passt.", shown: "甘い物を食べないようにしています。", model: "Die Person steuert ihr Verhalten bewusst und bemüht sich, keine Süßigkeiten zu essen.", keywords: [["bewusst", "bemüh", "versuch", "achte"], ["süß", "süßigkeiten"], ["nicht"]] }
             ],
             form: [
-              { prompt: "Setze die passende Form ein. Grundform: 遅れない", shown: "約束に＿＿＿＿しています。", model: "遅れないように", answers: ["遅れないように"] },
-              { prompt: "Setze die passende Form ein. Grundform: 運動する", shown: "毎日＿＿＿＿しています。", model: "運動するように", answers: ["運動するように"] }
+              { prompt: "Setze die passende Form ein. Grundform: 遅れない", shown: "約束に＿＿＿＿しています。", model: "遅れないように", answers: ["遅れないように", "おくれないように"] },
+              { prompt: "Setze die passende Form ein. Grundform: 運動する", shown: "毎日＿＿＿＿しています。", model: "運動するように", answers: ["運動するように", "うんどうするように"] }
             ],
             listening: [
               { audio: "寝る前にスマホを見ないようにしています。", prompt: "Welche bewusste Gewohnheit hörst du?", model: "Die Person achtet darauf, vor dem Schlafengehen nicht aufs Smartphone zu schauen.", keywords: [["smartphone", "handy"], ["vor dem schlafen", "schlafengehen", "bett"], ["nicht"]] },
               { audio: "毎日、新しい言葉を三つ覚えるようにしています。", prompt: "Was versucht die Person täglich zu tun?", model: "Sie versucht, jeden Tag drei neue Wörter zu lernen.", keywords: [["drei", "3"], ["wörter", "vokabel"], ["lernen", "merken"]] }
             ],
             production: [
-              { prompt: "Schreibe auf Japanisch: „Ich versuche, nicht zu spät zu kommen.“", model: "遅れないようにしています。", answers: ["遅れないようにしています", "遅くならないようにしています"], required: ["ようにして"] },
-              { prompt: "Schreibe auf Japanisch: „Ich achte darauf, jeden Tag Wasser zu trinken.“", model: "毎日水を飲むようにしています。", answers: ["毎日水を飲むようにしています"], required: ["ようにして"] }
+              { prompt: "Schreibe auf Japanisch: „Ich versuche, nicht zu spät zu kommen.“", model: "遅れないようにしています。", answers: ["遅れないようにしています", "遅くならないようにしています", "おくれないようにしています"], required: ["ようにして"] },
+              { prompt: "Schreibe auf Japanisch: „Ich achte darauf, jeden Tag Wasser zu trinken.“", model: "毎日水を飲むようにしています。", answers: ["毎日水を飲むようにしています", "まいにちみずをのむようにしています"], required: ["ようにして"] }
             ]
           }
         },
         {
           id: "koto-ni-naru",
           title: "〜ことになる",
-          subtitle: "Eine Entscheidung oder Regel entsteht außerhalb des Sprechers",
+          subtitle: "Eine Entscheidung, Regel oder Folge entsteht außerhalb des Sprechers",
           color: "#3f8abf",
-          summary: "Etwas wurde entschieden, ergibt sich aus den Umständen oder gilt als Regel. Der Sprecher stellt es nicht als eigene freie Entscheidung dar.",
+          summary: "ことになる berichtet ein Ergebnis, das durch andere Personen, Regeln oder äußere Umstände festgelegt wurde. Der Sprecher stellt es nicht als seine eigene freie Entscheidung dar.",
           formation: [
-            "Verb in Wörterbuchform + ことになる",
-            "Verb in ない-Form + ことになる",
-            "Vergangenheit: ことになった"
+            {
+              label: "Wörterbuchform",
+              rule: "Verb in Wörterbuchform + ことになる – es wird entschieden beziehungsweise ergibt sich, dass etwas geschieht.",
+              jp: "来月、東京で働くことになりました。",
+              de: "Es wurde entschieden, dass ich ab nächstem Monat in Tokio arbeite.",
+              highlight: "働くことになりました",
+              note: "Die Arbeit in Tokio wird als äußere Entscheidung oder Folge der Umstände dargestellt."
+            },
+            {
+              label: "ない-Form",
+              rule: "Verb in ない-Form + ことになる – es wird entschieden beziehungsweise ergibt sich, dass etwas nicht geschieht.",
+              jp: "明日の会議には参加しないことになりました。",
+              de: "Es wurde entschieden, dass ich an der morgigen Besprechung nicht teilnehme.",
+              highlight: "参加しないことになりました",
+              note: "Auch die negative Entscheidung wird nicht als persönlicher Entschluss präsentiert."
+            },
+            {
+              label: "Geltende Regel",
+              rule: "Verb + ことになっている – etwas ist als Regel, Verfahren oder feste Vereinbarung festgelegt.",
+              jp: "この部屋では食べないことになっています。",
+              de: "Es gilt die Regel, dass in diesem Raum nicht gegessen wird.",
+              highlight: "食べないことになっています",
+              note: "なっている zeigt den fortbestehenden Zustand einer bereits festgelegten Regel."
+            }
           ],
-          contrast: "ことになる: Es wurde entschieden oder ergibt sich. ことにする: Ich entscheide es selbst.",
-          examples: [
-            { jp: "来月、日本へ出張することになりました。", de: "Es wurde entschieden, dass ich nächsten Monat dienstlich nach Japan reise." },
-            { jp: "この部屋では食べないことになっています。", de: "Es gilt die Regel, dass in diesem Raum nicht gegessen wird." },
-            { jp: "会議は中止することになりました。", de: "Es wurde beschlossen, die Besprechung abzusagen." }
-          ],
+          contrast: {
+            title: "Nicht jedes なる beschreibt dieselbe Art von Veränderung",
+            intro: "Du kennst bereits ようになる. Bei ようになる verändert sich eine Fähigkeit oder Gewohnheit; bei ことになる wird ein zukünftiges Ereignis beziehungsweise eine Regel von außen festgelegt.",
+            left: {
+              label: "Fähigkeit verändert sich",
+              jp: "日本語が話せるようになりました。",
+              de: "Ich kann inzwischen Japanisch sprechen.",
+              highlight: "話せるようになりました",
+              explanation: "Die Person selbst hat eine neue Fähigkeit erworben. Es geht nicht um einen Beschluss."
+            },
+            right: {
+              label: "Äußere Entscheidung",
+              jp: "来月、日本で働くことになりました。",
+              de: "Es wurde entschieden, dass ich nächsten Monat in Japan arbeite.",
+              highlight: "働くことになりました",
+              explanation: "Ein Plan oder Umstand wurde festgelegt. Der Satz lässt offen, ob der Sprecher das selbst wollte."
+            },
+            takeaway: "Merke: ようになる = Fähigkeit/Verhalten wird anders. ことになる = ein Plan, eine Regel oder Folge wird festgelegt."
+          },
           checkpoint: {
             cue: "Schreibe auf Japanisch: „Es wurde entschieden, dass ich ab April in Tokio arbeite.“",
             models: ["四月から東京で働くことになりました。", "4月から東京で働くことになりました。"],
@@ -580,16 +682,16 @@
               { prompt: "Welche Funktion hat die Form?", shown: "図書館では電話を使わないことになっています。", model: "Sie beschreibt eine geltende Regel: In der Bibliothek benutzt man kein Telefon.", keywords: [["regel"], ["bibliothek"], ["telefon", "handy"], ["nicht"]] }
             ],
             form: [
-              { prompt: "Setze die passende Form ein. Grundform: 参加する", shown: "私も会議に＿＿＿＿なりました。", model: "参加することに", answers: ["参加することに"] },
-              { prompt: "Setze die passende Form ein. Grundform: 入らない", shown: "ここには＿＿＿＿なっています。", model: "入らないことに", answers: ["入らないことに"] }
+              { prompt: "Setze die passende Form ein. Grundform: 参加する", shown: "私も会議に＿＿＿＿なりました。", model: "参加することに", answers: ["参加することに", "さんかすることに"] },
+              { prompt: "Setze die passende Form ein. Grundform: 入らない", shown: "ここには＿＿＿＿なっています。", model: "入らないことに", answers: ["入らないことに", "はいらないことに"] }
             ],
             listening: [
-              { audio: "来週の授業はオンラインですることになりました。", prompt: "Was wurde entschieden?", model: "Der Unterricht nächste Woche findet online statt.", keywords: [["unterricht"], ["nächste woche"], ["online"]] },
-              { audio: "この会社では日本語だけで話すことになっています。", prompt: "Welche Regel hörst du?", model: "In dieser Firma soll beziehungsweise darf nur Japanisch gesprochen werden.", keywords: [["firma"], ["nur"], ["japanisch"], ["sprechen"]] }
+              { audio: "来週の授業はオンラインで行うことになりました。", prompt: "Was wurde entschieden?", model: "Der Unterricht nächste Woche findet online statt.", keywords: [["unterricht"], ["nächste woche"], ["online"]] },
+              { audio: "この会社では日本語だけで話すことになっています。", prompt: "Welche Regel hörst du?", model: "In dieser Firma soll nur Japanisch gesprochen werden.", keywords: [["firma"], ["nur"], ["japanisch"], ["sprechen"]] }
             ],
             production: [
-              { prompt: "Schreibe auf Japanisch: „Es wurde entschieden, dass die Reise abgesagt wird.“", model: "旅行は中止することになりました。", answers: ["旅行は中止することになりました", "旅行を中止することになりました"], required: ["ことにな"] },
-              { prompt: "Schreibe auf Japanisch: „In dieser Schule gilt die Regel, dass man Uniform trägt.“", model: "この学校では制服を着ることになっています。", answers: ["この学校では制服を着ることになっています"], required: ["ことにな"] }
+              { prompt: "Schreibe auf Japanisch: „Es wurde entschieden, dass die Reise abgesagt wird.“", model: "旅行は中止することになりました。", answers: ["旅行は中止することになりました", "旅行を中止することになりました", "りょこうはちゅうしすることになりました"], required: ["ことにな"] },
+              { prompt: "Schreibe auf Japanisch: „In dieser Schule gilt die Regel, dass man Uniform trägt.“", model: "この学校では制服を着ることになっています。", answers: ["この学校では制服を着ることになっています", "このがっこうではせいふくをきることになっています"], required: ["ことにな"] }
             ]
           }
         },
@@ -598,18 +700,52 @@
           title: "〜ことにする",
           subtitle: "Der Sprecher trifft selbst eine Entscheidung",
           color: "#2b9a78",
-          summary: "Du entscheidest bewusst, etwas zu tun oder nicht zu tun. Mit ことにしている beschreibst du eine selbst gesetzte Regel oder Gewohnheit.",
+          summary: "ことにする stellt eine Entscheidung als eigenen Entschluss dar. Mit ことにしている wird daraus eine selbst gesetzte, wiederholt geltende Regel oder Gewohnheit.",
           formation: [
-            "Verb in Wörterbuchform + ことにする",
-            "Verb in ない-Form + ことにする",
-            "Selbst gesetzte Gewohnheit: ことにしている"
+            {
+              label: "Wörterbuchform",
+              rule: "Verb in Wörterbuchform + ことにする – du entscheidest selbst, etwas zu tun.",
+              jp: "毎日三十分勉強することにします。",
+              de: "Ich entscheide mich, jeden Tag dreißig Minuten zu lernen.",
+              highlight: "勉強することにします",
+              note: "Der Entschluss wird in diesem Moment beziehungsweise für die Zukunft gefasst."
+            },
+            {
+              label: "ない-Form",
+              rule: "Verb in ない-Form + ことにする – du entscheidest selbst, etwas nicht zu tun.",
+              jp: "今日は出かけないことにします。",
+              de: "Ich entscheide mich, heute nicht auszugehen.",
+              highlight: "出かけないことにします",
+              note: "Die negative Handlung ist eine bewusste persönliche Entscheidung."
+            },
+            {
+              label: "Selbst gesetzte Regel",
+              rule: "Verb + ことにしている – du hast eine persönliche Regel oder feste Gewohnheit beschlossen.",
+              jp: "日曜日は仕事をしないことにしています。",
+              de: "Ich habe für mich festgelegt, sonntags nicht zu arbeiten.",
+              highlight: "しないことにしています",
+              note: "Die Entscheidung gilt wiederholt und wird als persönliche Regel beibehalten."
+            }
           ],
-          contrast: "ことにする ist deine Entscheidung. ことになる klingt, als sei die Entscheidung außerhalb deiner Kontrolle gefallen.",
-          examples: [
-            { jp: "今年、日本へ行くことにしました。", de: "Ich habe beschlossen, dieses Jahr nach Japan zu reisen." },
-            { jp: "今日は出かけないことにします。", de: "Ich entscheide mich, heute nicht auszugehen." },
-            { jp: "日曜日は仕事をしないことにしています。", de: "Ich habe für mich festgelegt, sonntags nicht zu arbeiten." }
-          ],
+          contrast: {
+            title: "〜ことになる oder 〜ことにする?",
+            intro: "Die Sätze können fast identisch aussehen. Entscheidend ist, woher die Entscheidung kommt: von außen oder vom Sprecher selbst.",
+            left: {
+              label: "Von außen: ことになる",
+              jp: "来月、東京で働くことになりました。",
+              de: "Es wurde entschieden, dass ich nächsten Monat in Tokio arbeite.",
+              highlight: "働くことになりました",
+              explanation: "Firma, Umstände oder eine andere Instanz haben die Situation festgelegt."
+            },
+            right: {
+              label: "Eigener Entschluss: ことにする",
+              jp: "来月、東京で働くことにしました。",
+              de: "Ich habe beschlossen, nächsten Monat in Tokio zu arbeiten.",
+              highlight: "働くことにしました",
+              explanation: "Der Sprecher übernimmt ausdrücklich die Entscheidung als seinen eigenen Entschluss."
+            },
+            takeaway: "Merke: ことになる = es wurde entschieden. ことにする = ich habe entschieden."
+          },
           checkpoint: {
             cue: "Schreibe auf Japanisch: „Ich habe beschlossen, jeden Tag dreißig Minuten zu lernen.“",
             models: ["毎日三十分勉強することにしました。", "毎日30分勉強することにしました。"],
@@ -621,36 +757,70 @@
               { prompt: "Ist das eine fremde Regel oder eine eigene Entscheidung? Erkläre.", shown: "夜は十一時までに寝ることにしています。", model: "Es ist eine selbst gesetzte Gewohnheit beziehungsweise Regel, bis elf Uhr ins Bett zu gehen.", keywords: [["eigene", "selbst"], ["regel", "gewohnheit"], ["elf", "11"], ["schlafen", "bett"]] }
             ],
             form: [
-              { prompt: "Setze die passende Form ein. Grundform: 買わない", shown: "今月は何も＿＿＿＿しました。", model: "買わないことに", answers: ["買わないことに"] },
-              { prompt: "Setze die passende Form ein. Grundform: 勉強する", shown: "毎朝＿＿＿＿しています。", model: "勉強することに", answers: ["勉強することに"] }
+              { prompt: "Setze die passende Form ein. Grundform: 買わない", shown: "今月は何も＿＿＿＿しました。", model: "買わないことに", answers: ["買わないことに", "かわないことに"] },
+              { prompt: "Setze die passende Form ein. Grundform: 勉強する", shown: "毎朝＿＿＿＿しています。", model: "勉強することに", answers: ["勉強することに", "べんきょうすることに"] }
             ],
             listening: [
               { audio: "今日は家でゆっくり休むことにしました。", prompt: "Welche Entscheidung hat die Person getroffen?", model: "Sie hat beschlossen, sich heute zu Hause in Ruhe auszuruhen.", keywords: [["heute"], ["zu hause"], ["ausruhen", "erholen"]] },
-              { audio: "お金を使いすぎないことにしています。", prompt: "Welche selbst gesetzte Regel hörst du?", model: "Die Person achtet darauf beziehungsweise hat festgelegt, nicht zu viel Geld auszugeben.", keywords: [["geld"], ["nicht zu viel"], ["ausgeben"]] }
+              { audio: "お金を使いすぎないことにしています。", prompt: "Welche selbst gesetzte Regel hörst du?", model: "Die Person hat für sich festgelegt, nicht zu viel Geld auszugeben.", keywords: [["geld"], ["nicht zu viel"], ["ausgeben"]] }
             ],
             production: [
-              { prompt: "Schreibe auf Japanisch: „Ich habe beschlossen, heute nicht zu lernen.“", model: "今日は勉強しないことにしました。", answers: ["今日は勉強しないことにしました"], required: ["ことにし"] },
-              { prompt: "Schreibe auf Japanisch: „Ich habe für mich festgelegt, sonntags zu kochen.“", model: "日曜日は料理することにしています。", answers: ["日曜日は料理することにしています", "日曜日に料理することにしています"], required: ["ことにして"] }
+              { prompt: "Schreibe auf Japanisch: „Ich habe beschlossen, heute nicht zu lernen.“", model: "今日は勉強しないことにしました。", answers: ["今日は勉強しないことにしました", "きょうはべんきょうしないことにしました"], required: ["ことにし"] },
+              { prompt: "Schreibe auf Japanisch: „Ich habe für mich festgelegt, sonntags zu kochen.“", model: "日曜日は料理することにしています。", answers: ["日曜日は料理することにしています", "日曜日に料理することにしています", "にちようびはりょうりすることにしています"], required: ["ことにして"] }
             ]
           }
         },
         {
           id: "naku-naru",
           title: "〜なくなる",
-          subtitle: "Etwas geschieht nicht mehr oder ein Zustand verschwindet",
+          subtitle: "Eine Handlung oder Eigenschaft besteht nicht mehr",
           color: "#df8237",
-          summary: "Die ない-Form wird zu なく und verbindet sich mit なる. Damit beschreibst du, dass eine Handlung oder ein negativer Zustand nicht mehr besteht.",
+          summary: "なくなる beschreibt eine eingetretene negative Veränderung: Jemand tut etwas nicht mehr oder eine Eigenschaft beziehungsweise Zugehörigkeit ist nicht mehr vorhanden.",
           formation: [
-            "Verb: ない → なくなる, z. B. 行かない → 行かなくなる",
-            "i-Adjektiv: い → くなる, z. B. 寒い → 寒くなる",
-            "na-Adjektiv/Nomen: ではない → ではなくなる"
+            {
+              label: "Verb",
+              rule: "Verb in ない-Form: ない → なくなる – eine Handlung findet nicht mehr statt.",
+              jp: "最近、テレビを見なくなりました。",
+              de: "In letzter Zeit schaue ich kein Fernsehen mehr.",
+              highlight: "見なくなりました",
+              note: "見ない wird zu 見なく und verbindet sich mit なる."
+            },
+            {
+              label: "i-Adjektiv in negativer Form",
+              rule: "〜くない: ない → なくなる – die negative Eigenschaft tritt ein beziehungsweise die positive Eigenschaft gilt nicht mehr.",
+              jp: "日本語を話すのが怖くなくなりました。",
+              de: "Ich habe keine Angst mehr davor, Japanisch zu sprechen.",
+              highlight: "怖くなくなりました",
+              note: "怖くない wird zu 怖くなくなる: Der Zustand „nicht beängstigend“ ist neu entstanden."
+            },
+            {
+              label: "na-Adjektiv oder Nomen",
+              rule: "〜ではない → 〜ではなくなる – eine Eigenschaft, Rolle oder Zuordnung gilt nicht mehr.",
+              jp: "この町は静かではなくなりました。",
+              de: "Diese Stadt ist nicht mehr ruhig.",
+              highlight: "静かではなくなりました",
+              note: "静かではない wird mit なる zu einer Veränderung: Früher war die Stadt ruhig, jetzt nicht mehr."
+            }
           ],
-          contrast: "なくなる beschreibt das Verschwinden oder Aufhören. Bei einer bewusst vermiedenen Handlung passt häufig ようにする besser.",
-          examples: [
-            { jp: "最近、テレビを見なくなりました。", de: "In letzter Zeit schaue ich kein Fernsehen mehr." },
-            { jp: "前ほど緊張しなくなりました。", de: "Ich bin nicht mehr so nervös wie früher." },
-            { jp: "冬になると、暖かくなります。", de: "Wenn der Winter kommt, wird es wärmer." }
-          ],
+          contrast: {
+            title: "Aufgehört oder bewusst vermieden?",
+            intro: "Da du ようにする bereits kennst, kannst du Ergebnis und bewusste Bemühung direkt unterscheiden.",
+            left: {
+              label: "Ergebnis: なくなる",
+              jp: "最近、コーヒーを飲まなくなりました。",
+              de: "In letzter Zeit trinke ich keinen Kaffee mehr.",
+              highlight: "飲まなくなりました",
+              explanation: "Der Satz berichtet die eingetretene Veränderung. Der Grund oder die bewusste Anstrengung bleibt offen."
+            },
+            right: {
+              label: "Bewusste Bemühung: ようにする",
+              jp: "夜はコーヒーを飲まないようにしています。",
+              de: "Ich achte darauf, abends keinen Kaffee zu trinken.",
+              highlight: "飲まないようにしています",
+              explanation: "Die Person steuert ihr Verhalten bewusst. Ob sie bereits vollständig aufgehört hat, ist nicht garantiert."
+            },
+            takeaway: "Merke: なくなる beschreibt, was nicht mehr geschieht. ないようにする beschreibt, was du bewusst vermeiden willst."
+          },
           checkpoint: {
             cue: "Schreibe auf Japanisch: „Ich esse inzwischen kein Fleisch mehr.“",
             models: ["肉を食べなくなりました。"],
@@ -662,16 +832,17 @@
               { prompt: "Erkläre die Veränderung.", shown: "日本語を話すのが怖くなくなりました。", model: "Die Person hat keine Angst mehr davor, Japanisch zu sprechen.", keywords: [["keine angst mehr", "nicht mehr angst"], ["japanisch"], ["sprechen"]] }
             ],
             form: [
-              { prompt: "Bilde die richtige Form aus 飲まない.", shown: "コーヒーを＿＿＿＿ました。", model: "飲まなくなり", answers: ["飲まなくなり"] },
-              { prompt: "Bilde die richtige Form aus 忙しい.", shown: "仕事が＿＿＿＿ました。", model: "忙しくなり", answers: ["忙しくなり"] }
+              { prompt: "Bilde die richtige Form aus 飲まない.", shown: "コーヒーを＿＿＿＿ました。", model: "飲まなくなり", answers: ["飲まなくなり", "のまなくなり"] },
+              { prompt: "Bilde die richtige Form aus 怖くない.", shown: "日本語を話すのが＿＿＿＿ました。", model: "怖くなくなり", answers: ["怖くなくなり", "こわくなくなり"] },
+              { prompt: "Bilde die richtige Form aus 静かではない.", shown: "この町は＿＿＿＿ました。", model: "静かではなくなり", answers: ["静かではなくなり", "しずかではなくなり"] }
             ],
             listening: [
               { audio: "前ほど漢字を忘れなくなりました。", prompt: "Was hat sich verbessert?", model: "Die Person vergisst Kanji nicht mehr so häufig wie früher.", keywords: [["kanji"], ["vergessen"], ["nicht mehr so", "seltener"]] },
               { audio: "この薬を飲んで、頭が痛くなくなりました。", prompt: "Welche Veränderung hörst du?", model: "Nach der Medizin hat die Person keine Kopfschmerzen mehr.", keywords: [["kopf", "kopfschmerz"], ["nicht mehr", "weg"], ["medizin", "medikament"]] }
             ],
             production: [
-              { prompt: "Schreibe auf Japanisch: „Ich trinke keinen Alkohol mehr.“", model: "お酒を飲まなくなりました。", answers: ["お酒を飲まなくなりました", "アルコールを飲まなくなりました"], required: ["なくな"] },
-              { prompt: "Schreibe auf Japanisch: „Ich bin nicht mehr so beschäftigt wie früher.“", model: "前ほど忙しくなくなりました。", answers: ["前ほど忙しくなくなりました"], required: ["なくな"] }
+              { prompt: "Schreibe auf Japanisch: „Ich trinke keinen Alkohol mehr.“", model: "お酒を飲まなくなりました。", answers: ["お酒を飲まなくなりました", "アルコールを飲まなくなりました", "おさけをのまなくなりました"], required: ["なくな"] },
+              { prompt: "Schreibe auf Japanisch: „Ich habe keine Angst mehr vor Hunden.“", model: "犬が怖くなくなりました。", answers: ["犬が怖くなくなりました", "いぬがこわくなくなりました"], required: ["なくな"] }
             ]
           }
         }
@@ -714,15 +885,34 @@
         .grammar-kicker { color:var(--primary); text-transform:uppercase; letter-spacing:.1em; font-size:.76rem; font-weight:950; }
         .grammar-study-card h2 { margin:8px 0 9px; font-size:clamp(1.55rem,4vw,2.35rem); }
         .grammar-explanation { color:var(--muted); line-height:1.65; font-size:1.02rem; }
-        .grammar-form-list { display:grid; gap:8px; margin:18px 0; }
-        .grammar-form-item { padding:12px 14px; border-radius:13px; background:#faf8ff; border:1px solid var(--border); font-weight:800; }
+        .grammar-form-list { display:grid; gap:13px; margin:18px 0; }
+        .grammar-form-item { padding:15px; border-radius:16px; background:#faf8ff; border:1px solid var(--border); }
+        .grammar-form-head { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+        .grammar-form-number { display:inline-grid; place-items:center; width:27px; height:27px; border-radius:9px; color:white; font-size:.78rem; font-weight:950; }
+        .grammar-form-label { font-weight:950; }
+        .grammar-form-rule { color:var(--text); line-height:1.55; font-weight:780; }
+        .grammar-form-note { margin-top:8px; color:var(--muted); font-size:.86rem; line-height:1.5; }
         .grammar-example-list { display:grid; gap:10px; margin:18px 0; }
         .grammar-example { display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:start; padding:13px; border-radius:14px; border:1px solid var(--border); background:white; }
         .grammar-audio { width:38px; height:38px; border-radius:50%; background:#edf2ff; color:#3557ae; border:1px solid #cad6f8; font-weight:900; }
-        .grammar-example-jp { font-size:1.08rem; font-weight:900; }
-        .grammar-example-de { color:var(--muted); margin-top:4px; font-size:.9rem; }
-        .grammar-contrast { padding:15px; border-left:5px solid var(--primary); border-radius:13px; background:#f5f1ff; line-height:1.55; }
+        .grammar-example-jp { font-size:1.08rem; font-weight:900; line-height:1.65; }
+        .grammar-example-jp mark { padding:2px 5px; border-radius:7px; color:inherit; font-weight:950; }
+        .grammar-example-de { color:var(--muted); margin-top:4px; font-size:.9rem; line-height:1.5; }
+        .grammar-contrast { padding:16px; border-left:5px solid var(--primary); border-radius:15px; background:#f5f1ff; line-height:1.55; }
+        .grammar-contrast h3 { margin:0 0 6px; }
+        .grammar-contrast-intro { color:var(--muted); margin-bottom:14px; }
+        .grammar-contrast-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .grammar-contrast-card { padding:15px; border-radius:15px; border:1px solid var(--border); background:white; }
+        .grammar-contrast-card.left { border-top:6px solid #6c63d9; }
+        .grammar-contrast-card.right { border-top:6px solid #bf5ea8; }
+        .grammar-contrast-label { display:inline-flex; padding:5px 8px; border-radius:999px; background:#f1edff; color:#5747b6; font-size:.75rem; font-weight:950; }
+        .grammar-contrast-card.right .grammar-contrast-label { background:#fff0f7; color:#a44186; }
+        .grammar-contrast-explanation { margin-top:9px; color:var(--muted); font-size:.88rem; line-height:1.5; }
+        .grammar-takeaway { margin-top:13px; padding:12px 13px; border-radius:12px; background:#fff7df; border:1px solid #efd79a; color:#79520f; font-weight:850; }
         .grammar-input { width:100%; min-height:55px; margin-top:12px; padding:13px; border:1px solid var(--border); border-radius:13px; font:inherit; resize:vertical; }
+        .grammar-input-help { margin-top:6px; color:var(--muted); font-size:.8rem; }
+        .grammar-lock button[disabled] { cursor:not-allowed; opacity:.58; }
+        @media (max-width:680px) { .grammar-contrast-grid { grid-template-columns:1fr; } }
         .grammar-input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 4px rgba(121,87,213,.11); }
         .grammar-feedback { margin-top:14px; padding:15px; border-radius:14px; background:#faf8ff; border:1px solid var(--border); line-height:1.55; }
         .grammar-feedback.good { background:#eaf8f2; border-color:#bce7d5; }
@@ -785,7 +975,7 @@
             <p class="muted">Eigene Grammatik-Level mit Erklärungen, offenen Aufgaben, Hörtraining und getrenntem SRS.</p>
             <div class="status-box">
               <strong id="grammarDashboardStatus">Test-Level bereit</strong>
-              <span class="small muted" id="grammarDashboardDetail">Fünf Strukturen zu Veränderungen und Entscheidungen.</span>
+              <span class="small muted" id="grammarDashboardDetail">Fünf aufeinander aufbauende Strukturen zu Veränderungen und Entscheidungen.</span>
             </div>
           </div>
           <div class="button-row">
@@ -890,6 +1080,16 @@
         return POINTS.filter(point => grammarState.points[point.id].lessonComplete);
       }
 
+      function pointIndex(pointId) {
+        return POINTS.findIndex(point => point.id === pointId);
+      }
+
+      function isPointUnlocked(pointOrIndex) {
+        const index = typeof pointOrIndex === "number" ? pointOrIndex : pointIndex(pointOrIndex);
+        if (index <= 0) return index === 0;
+        return POINTS.slice(0, index).every(point => grammarState.points[point.id].lessonComplete);
+      }
+
       function dueItems() {
         const now = Date.now();
         const items = [];
@@ -957,13 +1157,124 @@
           .replaceAll("'", "&#039;");
       }
 
+      const GRAMMAR_ROMAJI = {
+        kya:"きゃ",kyu:"きゅ",kyo:"きょ",gya:"ぎゃ",gyu:"ぎゅ",gyo:"ぎょ",
+        sha:"しゃ",shu:"しゅ",sho:"しょ",sya:"しゃ",syu:"しゅ",syo:"しょ",
+        ja:"じゃ",ji:"じ",ju:"じゅ",jo:"じょ",jya:"じゃ",jyu:"じゅ",jyo:"じょ",
+        cha:"ちゃ",chu:"ちゅ",cho:"ちょ",cya:"ちゃ",cyu:"ちゅ",cyo:"ちょ",
+        nya:"にゃ",nyu:"にゅ",nyo:"にょ",hya:"ひゃ",hyu:"ひゅ",hyo:"ひょ",
+        bya:"びゃ",byu:"びゅ",byo:"びょ",pya:"ぴゃ",pyu:"ぴゅ",pyo:"ぴょ",
+        mya:"みゃ",myu:"みゅ",myo:"みょ",rya:"りゃ",ryu:"りゅ",ryo:"りょ",
+        she:"しぇ",che:"ちぇ",je:"じぇ",tsa:"つぁ",tsi:"つぃ",tse:"つぇ",tso:"つぉ",
+        fa:"ふぁ",fi:"ふぃ",fe:"ふぇ",fo:"ふぉ",fyu:"ふゅ",ti:"てぃ",di:"でぃ",
+        wi:"うぃ",we:"うぇ",va:"ゔぁ",vi:"ゔぃ",vu:"ゔ",ve:"ゔぇ",vo:"ゔぉ",
+        shi:"し",chi:"ち",tsu:"つ",dzu:"づ",
+        ka:"か",ki:"き",ku:"く",ke:"け",ko:"こ",ga:"が",gi:"ぎ",gu:"ぐ",ge:"げ",go:"ご",
+        sa:"さ",si:"し",su:"す",se:"せ",so:"そ",za:"ざ",zi:"じ",zu:"ず",ze:"ぜ",zo:"ぞ",
+        ta:"た",te:"て",to:"と",da:"だ",de:"で",do:"ど",na:"な",ni:"に",nu:"ぬ",ne:"ね",no:"の",
+        ha:"は",hi:"ひ",hu:"ふ",fu:"ふ",he:"へ",ho:"ほ",ba:"ば",bi:"び",bu:"ぶ",be:"べ",bo:"ぼ",
+        pa:"ぱ",pi:"ぴ",pu:"ぷ",pe:"ぺ",po:"ぽ",ma:"ま",mi:"み",mu:"む",me:"め",mo:"も",
+        ya:"や",yu:"ゆ",yo:"よ",ra:"ら",ri:"り",ru:"る",re:"れ",ro:"ろ",wa:"わ",wo:"を",
+        xa:"ぁ",xi:"ぃ",xu:"ぅ",xe:"ぇ",xo:"ぉ",xya:"ゃ",xyu:"ゅ",xyo:"ょ",xtsu:"っ",ltsu:"っ",
+        a:"あ",i:"い",u:"う",e:"え",o:"お"
+      };
+      const GRAMMAR_ROMAJI_KEYS = Object.keys(GRAMMAR_ROMAJI).sort((a, b) => b.length - a.length);
+
+      function convertRomajiRun(run, commitTrailingN = false) {
+        const source = String(run || "").toLowerCase();
+        let result = "";
+        let index = 0;
+        while (index < source.length) {
+          const tail = source.slice(index);
+          const first = tail[0];
+
+          if (tail.startsWith("n'")) {
+            result += "ん";
+            index += 2;
+            continue;
+          }
+          if (first === "n") {
+            if (tail.length === 1) {
+              result += commitTrailingN ? "ん" : "n";
+              index += 1;
+              continue;
+            }
+            if (tail.startsWith("nn")) {
+              if (tail.length === 2 && !commitTrailingN) {
+                result += "nn";
+                index += 2;
+                continue;
+              }
+              result += "ん";
+              index += tail.length === 2 ? 2 : 1;
+              continue;
+            }
+            if (!/[aeiouy]/.test(tail[1])) {
+              result += "ん";
+              index += 1;
+              continue;
+            }
+          }
+
+          if (tail.length >= 2 && tail[0] === tail[1] && /[bcdfghjklmpqrstvwxyz]/.test(first) && first !== "n") {
+            result += "っ";
+            index += 1;
+            continue;
+          }
+
+          const key = GRAMMAR_ROMAJI_KEYS.find(candidate => tail.startsWith(candidate));
+          if (key) {
+            result += GRAMMAR_ROMAJI[key];
+            index += key.length;
+          } else {
+            result += source[index];
+            index += 1;
+          }
+        }
+        return result;
+      }
+
+      function romajiToHiraganaLive(value) {
+        const source = String(value || "");
+        return source.replace(/[A-Za-z']+/g, (run, offset) => {
+          const endedByDelimiter = offset + run.length < source.length;
+          return convertRomajiRun(run, endedByDelimiter);
+        });
+      }
+
+      function attachJapaneseInput(element) {
+        if (!element || element.dataset.romajiReady === "true") return;
+        element.dataset.romajiReady = "true";
+        element.setAttribute("lang", "ja");
+        element.setAttribute("spellcheck", "false");
+        element.setAttribute("autocapitalize", "off");
+        element.addEventListener("input", () => {
+          const start = element.selectionStart ?? element.value.length;
+          const prefix = element.value.slice(0, start);
+          const convertedPrefix = romajiToHiraganaLive(prefix);
+          const convertedAll = romajiToHiraganaLive(element.value);
+          if (convertedAll === element.value) return;
+          element.value = convertedAll;
+          const nextCaret = convertedPrefix.length;
+          element.setSelectionRange?.(nextCaret, nextCaret);
+        });
+      }
+
+      function highlightedJapanese(sentence, highlight, color = "#f0eaff") {
+        const source = String(sentence || "");
+        const target = String(highlight || "");
+        const position = target ? source.indexOf(target) : -1;
+        if (position < 0) return escapeHtml(source);
+        return `${escapeHtml(source.slice(0, position))}<mark style="background:${color}">${escapeHtml(target)}</mark>${escapeHtml(source.slice(position + target.length))}`;
+      }
+
       function renderGrammarOverview() {
         const learned = learnedPoints().length;
         const due = dueItems().length;
         const guru = guruSkillCount();
         const totalSkills = POINTS.length * SKILLS.length;
         const progress = Math.round((guru / totalSkills) * 100);
-        const nextPoint = POINTS.find(point => !grammarState.points[point.id].lessonComplete);
+        const nextPoint = POINTS.find((point, index) => !grammarState.points[point.id].lessonComplete && isPointUnlocked(index));
         const overview = document.getElementById("grammarOverviewContent");
         if (!overview) return;
 
@@ -972,7 +1283,7 @@
             <article class="card grammar-hero">
               <p class="eyebrow">Grammar Path · Test-Level 1</p>
               <h2>Veränderungen und Entscheidungen wirklich abrufen.</h2>
-              <p>Fünf eng verwandte Strukturen werden erklärt, kontrastiert, gehört und in offenen Antworten produziert. Jede Teilfähigkeit besitzt ihren eigenen SRS-Stand.</p>
+              <p>Fünf eng verwandte Strukturen werden nacheinander erklärt, mit bereits bekannten Formen kontrastiert, gehört und in offenen Antworten produziert. Jede Teilfähigkeit besitzt ihren eigenen SRS-Stand.</p>
               <div class="button-row">
                 <button class="primary" id="grammarNextLesson">${nextPoint ? "Nächste Grammatik lernen" : "Alle Lektionen abgeschlossen"}</button>
                 <button class="secondary" id="grammarStartReview">${due ? `${due} Reviews starten` : "Reviews ansehen"}</button>
@@ -999,7 +1310,7 @@
 
           ${grammarState.levelCompleted ? `<div class="grammar-level-complete" style="margin-bottom:18px"><strong>🎉 Grammatik-Level 1 abgeschlossen</strong><div class="small muted" style="margin-top:4px">Das Test-Level ist vollständig gefestigt. Ein späteres Level 2 kann auf demselben System aufbauen.</div></div>` : ""}
 
-          <div class="section-title"><div><h2>Level 1 · Veränderungen & Entscheidungen</h2><p>Ähnliche Formen werden bewusst gemeinsam gelernt, damit du sie im Kontext auswählen kannst.</p></div></div>
+          <div class="section-title"><div><h2>Level 1 · Veränderungen & Entscheidungen</h2><p>Die Lektionen werden nacheinander freigeschaltet. Jede neue Gegenüberstellung verwendet nur Formen, die du bereits gelernt hast.</p></div></div>
           <div class="grammar-point-list">
             ${POINTS.map((point, index) => renderPointCard(point, index)).join("")}
           </div>`;
@@ -1020,19 +1331,27 @@
 
       function renderPointCard(point, index) {
         const pointState = grammarState.points[point.id];
+        const unlocked = isPointUnlocked(index) || pointState.lessonComplete;
         const minStage = pointMinimumStage(point.id);
         const pointDue = SKILLS.filter(skill => {
           const skillState = pointState.skills[skill.id];
           return pointState.lessonComplete && skillState.stage > 0 && skillState.stage < 9 && Number(skillState.dueAt || 0) <= Date.now();
         }).length;
+        const badge = !unlocked
+          ? "🔒 Vorherige Lektion zuerst"
+          : pointDue
+            ? `${pointDue} fällig`
+            : pointState.lessonComplete
+              ? stageName(minStage)
+              : `Lektion ${index + 1}`;
         return `
-          <article class="grammar-point ${pointState.lessonComplete ? "" : "grammar-lock"}">
+          <article class="grammar-point ${unlocked ? "" : "grammar-lock"}">
             <div class="grammar-point-head">
               <div class="grammar-point-title">
                 <span class="grammar-color" style="background:${point.color}"></span>
                 <div><h3>${escapeHtml(point.title)}</h3><p>${escapeHtml(point.subtitle)}</p></div>
               </div>
-              <span class="grammar-badge ${pointDue ? "due" : pointState.lessonComplete ? "ready" : ""}">${pointDue ? `${pointDue} fällig` : pointState.lessonComplete ? stageName(minStage) : `Lektion ${index + 1}`}</span>
+              <span class="grammar-badge ${pointDue ? "due" : pointState.lessonComplete ? "ready" : ""}">${badge}</span>
             </div>
             <div class="grammar-skill-row">
               ${SKILLS.map(skill => {
@@ -1041,7 +1360,7 @@
               }).join("")}
             </div>
             <div class="button-row" style="margin-top:13px">
-              <button class="${pointState.lessonComplete ? "ghost" : "primary"}" data-grammar-lesson="${point.id}">${pointState.lessonComplete ? "Lektion wiederholen" : "Lektion starten"}</button>
+              <button class="${pointState.lessonComplete ? "ghost" : "primary"}" data-grammar-lesson="${point.id}" ${unlocked ? "" : "disabled"}>${pointState.lessonComplete ? "Lektion wiederholen" : unlocked ? "Lektion starten" : "Noch gesperrt"}</button>
               ${pointState.lessonComplete ? `<button class="secondary" data-grammar-practice="${point.id}">Frei üben</button>` : ""}
             </div>
           </article>`;
@@ -1066,7 +1385,14 @@
       let lessonChecked = false;
 
       function startLesson(pointId) {
-        lessonPoint = POINTS.find(point => point.id === pointId) || POINTS[0];
+        const index = pointIndex(pointId);
+        if (index < 0) return;
+        if (!isPointUnlocked(index) && !grammarState.points[pointId].lessonComplete) {
+          notify("Schließe zuerst die vorherige Grammatiklektion ab.");
+          openGrammarView("grammar");
+          return;
+        }
+        lessonPoint = POINTS[index];
         lessonStep = 0;
         lessonChecked = false;
         openGrammarView("grammarLesson");
@@ -1082,33 +1408,34 @@
 
         if (lessonStep === 0) {
           card.innerHTML = `${commonHead}<h2>${escapeHtml(lessonPoint.subtitle)}</h2><p class="grammar-explanation">${escapeHtml(lessonPoint.summary)}</p>
-            <div class="grammar-example-list">${lessonPoint.examples.slice(0, 1).map(renderExample).join("")}</div>
-            <div class="button-row"><button class="ghost" id="grammarLessonBackOverview">Zur Übersicht</button><button class="primary" id="grammarLessonNext">Bildung ansehen</button></div>`;
+            <div class="grammar-example-list">${renderExample(lessonPoint.formation[0], lessonPoint.color)}</div>
+            <div class="button-row"><button class="ghost" id="grammarLessonBackOverview">Zur Übersicht</button><button class="primary" id="grammarLessonNext">Alle Bildungsformen ansehen</button></div>`;
         } else if (lessonStep === 1) {
-          card.innerHTML = `${commonHead}<h2>So wird die Form gebildet</h2><div class="grammar-form-list">${lessonPoint.formation.map(item => `<div class="grammar-form-item">${escapeHtml(item)}</div>`).join("")}</div>
-            <div class="grammar-example-list">${lessonPoint.examples.map(renderExample).join("")}</div>
+          card.innerHTML = `${commonHead}<h2>Bildung und Beispiele</h2><p class="grammar-explanation">Jede genannte Bildungsform hat ein eigenes Beispiel. Die farbig markierte Stelle zeigt genau die Grammatikform im Satz.</p>
+            <div class="grammar-form-list">${lessonPoint.formation.map((item, index) => renderFormation(item, index, lessonPoint.color)).join("")}</div>
             <div class="button-row"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Unterschied verstehen</button></div>`;
         } else if (lessonStep === 2) {
-          card.innerHTML = `${commonHead}<h2>Nicht mit der ähnlichen Form verwechseln</h2><div class="grammar-contrast">${escapeHtml(lessonPoint.contrast)}</div>
-            <div class="grammar-example-list">${lessonPoint.examples.slice(1).map(renderExample).join("")}</div>
-            <div class="button-row"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Selbst abrufen</button></div>`;
+          card.innerHTML = `${commonHead}<h2>Unterschied im direkten Vergleich</h2>${renderContrast(lessonPoint.contrast, lessonPoint.color)}
+            <div class="button-row" style="margin-top:16px"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Selbst abrufen</button></div>`;
         } else {
           const model = lessonPoint.checkpoint.models[0];
-          card.innerHTML = `${commonHead}<h2>Aktiver Abruf</h2><p class="grammar-explanation">Formuliere den Satz selbst. Erst danach erscheint eine Musterlösung.</p>
+          card.innerHTML = `${commonHead}<h2>Aktiver Abruf</h2><p class="grammar-explanation">Formuliere den Satz selbst. Du kannst Romaji tippen; die Eingabe wird unmittelbar in Hiragana umgewandelt.</p>
             <div class="grammar-review-prompt">${escapeHtml(lessonPoint.checkpoint.cue)}</div>
-            <textarea class="grammar-input" id="grammarLessonAnswer" rows="3" placeholder="日本語で書いてください…"></textarea>
+            <textarea class="grammar-input" id="grammarLessonAnswer" rows="3" placeholder="Romaji oder Japanisch eingeben …" autocomplete="off"></textarea>
+            <div class="grammar-input-help">Beispiel: <strong>hanaseru you ni narimashita</strong> → はなせる ように なりました</div>
             <div id="grammarLessonFeedback"></div>
             <div class="button-row" style="margin-top:15px">
               <button class="ghost" id="grammarLessonPrev">Zurück</button>
               <button class="primary" id="grammarLessonCheck">Antwort prüfen</button>
               <button class="primary" id="grammarLessonComplete" hidden>Lektion abschließen</button>
             </div>`;
+          attachJapaneseInput(document.getElementById("grammarLessonAnswer"));
           document.getElementById("grammarLessonCheck")?.addEventListener("click", () => {
             const answer = document.getElementById("grammarLessonAnswer")?.value || "";
             if (!answer.trim()) { notify("Schreibe zuerst einen eigenen Satz."); return; }
             const likely = lessonPoint.checkpoint.required.every(part => normalizeJapanese(answer).includes(normalizeJapanese(part)));
             const feedback = document.getElementById("grammarLessonFeedback");
-            feedback.innerHTML = `<div class="grammar-feedback ${likely ? "good" : "warn"}"><strong>${likely ? "Die Zielstruktur wurde erkannt." : "Die Zielstruktur wurde noch nicht eindeutig erkannt."}</strong><div style="margin-top:7px">Musterlösung: <strong>${escapeHtml(model)}</strong></div><div class="small muted" style="margin-top:5px">Vergleiche besonders die Form direkt vor ${escapeHtml(lessonPoint.title)}.</div></div>`;
+            feedback.innerHTML = `<div class="grammar-feedback ${likely ? "good" : "warn"}"><strong>${likely ? "Die Zielstruktur wurde erkannt." : "Die Zielstruktur wurde noch nicht eindeutig erkannt."}</strong><div style="margin-top:7px">Musterlösung: <strong>${escapeHtml(model)}</strong></div><div class="small muted" style="margin-top:5px">Hiragana statt Kanji ist vollkommen in Ordnung. Vergleiche besonders die Form direkt vor ${escapeHtml(lessonPoint.title)}.</div></div>`;
             lessonChecked = true;
             document.getElementById("grammarLessonCheck").hidden = true;
             document.getElementById("grammarLessonComplete").hidden = false;
@@ -1122,8 +1449,38 @@
         document.getElementById("grammarLessonNext")?.addEventListener("click", () => { lessonStep = Math.min(3, lessonStep + 1); renderLesson(); });
       }
 
-      function renderExample(example) {
-        return `<div class="grammar-example"><button class="grammar-audio" data-audio="${escapeHtml(example.jp)}" title="Satz anhören">🔊</button><div><div class="grammar-example-jp">${escapeHtml(example.jp)}</div><div class="grammar-example-de">${escapeHtml(example.de)}</div></div></div>`;
+      function renderExample(example, color = "#6c63d9") {
+        return `<div class="grammar-example"><button class="grammar-audio" data-audio="${escapeHtml(example.jp)}" title="Satz anhören">🔊</button><div><div class="grammar-example-jp">${highlightedJapanese(example.jp, example.highlight, `${color}22`)}</div><div class="grammar-example-de">${escapeHtml(example.de)}</div>${example.note ? `<div class="grammar-form-note">${escapeHtml(example.note)}</div>` : ""}</div></div>`;
+      }
+
+      function renderFormation(item, index, color) {
+        return `<div class="grammar-form-item" style="border-left:5px solid ${color}">
+          <div class="grammar-form-head"><span class="grammar-form-number" style="background:${color}">${index + 1}</span><span class="grammar-form-label">${escapeHtml(item.label)}</span></div>
+          <div class="grammar-form-rule">${escapeHtml(item.rule)}</div>
+          <div class="grammar-example-list" style="margin-bottom:0">${renderExample(item, color)}</div>
+        </div>`;
+      }
+
+      function renderContrast(contrast, color) {
+        const left = contrast.left;
+        const right = contrast.right;
+        return `<div class="grammar-contrast" style="border-left-color:${color}">
+          <h3>${escapeHtml(contrast.title)}</h3>
+          <div class="grammar-contrast-intro">${escapeHtml(contrast.intro)}</div>
+          <div class="grammar-contrast-grid">
+            <div class="grammar-contrast-card left" style="border-top-color:${color}">
+              <span class="grammar-contrast-label">${escapeHtml(left.label)}</span>
+              <div class="grammar-example-list" style="margin:12px 0 0">${renderExample(left, color)}</div>
+              <div class="grammar-contrast-explanation">${escapeHtml(left.explanation)}</div>
+            </div>
+            <div class="grammar-contrast-card right">
+              <span class="grammar-contrast-label">${escapeHtml(right.label)}</span>
+              <div class="grammar-example-list" style="margin:12px 0 0">${renderExample(right, "#bf5ea8")}</div>
+              <div class="grammar-contrast-explanation">${escapeHtml(right.explanation)}</div>
+            </div>
+          </div>
+          <div class="grammar-takeaway">${escapeHtml(contrast.takeaway)}</div>
+        </div>`;
       }
 
       function completeLesson() {
@@ -1234,7 +1591,8 @@
           ${isListening
             ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz bleibt bis zur Auswertung verborgen.</div></div>`
             : `<div class="grammar-review-sentence">${escapeHtml(shown)}</div>`}
-          <textarea class="grammar-input" id="grammarReviewAnswer" rows="3" placeholder="Deine Antwort…" autocomplete="off"></textarea>
+          <textarea class="grammar-input" id="grammarReviewAnswer" rows="3" placeholder="${skill.id === "form" || skill.id === "production" ? "Romaji oder Japanisch eingeben …" : "Deine Antwort …"}" autocomplete="off"></textarea>
+          ${skill.id === "form" || skill.id === "production" ? `<div class="grammar-input-help">Romaji wird beim Tippen automatisch in Hiragana umgewandelt. Hiragana statt Kanji wird akzeptiert, wenn es als Lösung hinterlegt ist.</div>` : ""}
           <div id="grammarReviewFeedback"></div>
           <div class="button-row" style="margin-top:15px"><button class="ghost" id="grammarReviewExit">Session verlassen</button><button class="primary" id="grammarReviewCheck">Antwort prüfen</button></div>`;
 
@@ -1242,7 +1600,9 @@
         if (isListening) setTimeout(() => speakJapanese(question.audio), 180);
         document.getElementById("grammarReviewExit")?.addEventListener("click", () => openGrammarView("grammar"));
         document.getElementById("grammarReviewCheck")?.addEventListener("click", revealReviewAnswer);
-        document.getElementById("grammarReviewAnswer")?.focus();
+        const grammarReviewAnswer = document.getElementById("grammarReviewAnswer");
+        if (skill.id === "form" || skill.id === "production") attachJapaneseInput(grammarReviewAnswer);
+        grammarReviewAnswer?.focus();
       }
 
       function normalizeJapanese(value) {
