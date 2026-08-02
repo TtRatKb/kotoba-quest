@@ -449,7 +449,7 @@
       if (document.getElementById("grammar")) return;
 
       const STORAGE_KEY = "kotobaQuestDataV3";
-      const GRAMMAR_VERSION = 2;
+      const GRAMMAR_VERSION = 3;
       const SKILLS = [
         { id: "meaning", label: "Verstehen", icon: "💡" },
         { id: "form", label: "Form bilden", icon: "🧩" },
@@ -848,6 +848,347 @@
         }
       ];
 
+
+      const REVIEW_VARIANTS = {
+        "you-ni-naru": [
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · neue Gewohnheit",
+            base: "読む", jp: "毎晩、寝る前に本を読むようになりました。",
+            de: "Ich lese inzwischen jeden Abend vor dem Schlafengehen ein Buch.",
+            cloze: "毎晩、寝る前に本を＿＿＿＿。", answer: "読むようになりました", answerKana: "よむようになりました"
+          },
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · neue Gewohnheit",
+            base: "料理する", jp: "週末は自分で料理するようになりました。",
+            de: "Ich koche inzwischen am Wochenende selbst.",
+            cloze: "週末は自分で＿＿＿＿。", answer: "料理するようになりました", answerKana: "りょうりするようになりました"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · neues Nicht-Tun",
+            base: "しない", jp: "最近、夜更かしをしないようになりました。",
+            de: "Ich bleibe in letzter Zeit nicht mehr bis spät nachts auf.",
+            cloze: "最近、夜更かしを＿＿＿＿。", answer: "しないようになりました", answerKana: "しないようになりました"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · neues Nicht-Tun",
+            base: "抜かない", jp: "忙しくても朝ご飯を抜かないようになりました。",
+            de: "Ich lasse inzwischen auch dann das Frühstück nicht mehr aus, wenn ich beschäftigt bin.",
+            cloze: "忙しくても朝ご飯を＿＿＿＿。", answer: "抜かないようになりました", answerKana: "ぬかないようになりました"
+          },
+          {
+            aspect: "potential", aspectLabel: "Potentialform · neue Fähigkeit",
+            base: "読める", jp: "長い文章も読めるようになりました。",
+            de: "Ich kann inzwischen auch lange Texte lesen.",
+            cloze: "長い文章も＿＿＿＿。", answer: "読めるようになりました", answerKana: "よめるようになりました"
+          },
+          {
+            aspect: "potential", aspectLabel: "Potentialform · neue Fähigkeit",
+            base: "話せる", jp: "日本人の友達と自然に話せるようになりました。",
+            de: "Ich kann inzwischen natürlich mit japanischen Freunden sprechen.",
+            cloze: "日本人の友達と自然に＿＿＿＿。", answer: "話せるようになりました", answerKana: "はなせるようになりました"
+          }
+        ],
+        "you-ni-suru": [
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · bewusster Vorsatz",
+            base: "覚える", jp: "毎日、新しい単語を五つ覚えるようにします。",
+            de: "Ich werde darauf achten, jeden Tag fünf neue Wörter zu lernen.",
+            cloze: "毎日、新しい単語を五つ＿＿＿＿。", answer: "覚えるようにします", answerKana: "おぼえるようにします"
+          },
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · bewusster Vorsatz",
+            base: "使う", jp: "これからは階段を使うようにします。",
+            de: "Von jetzt an werde ich darauf achten, die Treppe zu benutzen.",
+            cloze: "これからは階段を＿＿＿＿。", answer: "使うようにします", answerKana: "つかうようにします"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · bewusst vermeiden",
+            base: "飲まない", jp: "寝る前にコーヒーを飲まないようにします。",
+            de: "Ich werde darauf achten, vor dem Schlafengehen keinen Kaffee zu trinken.",
+            cloze: "寝る前にコーヒーを＿＿＿＿。", answer: "飲まないようにします", answerKana: "のまないようにします"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · bewusst vermeiden",
+            base: "忘れない", jp: "大事な予定を忘れないようにします。",
+            de: "Ich werde darauf achten, wichtige Termine nicht zu vergessen.",
+            cloze: "大事な予定を＿＿＿＿。", answer: "忘れないようにします", answerKana: "わすれないようにします"
+          },
+          {
+            aspect: "ongoing", aspectLabel: "〜ようにしている · fortlaufende Bemühung",
+            base: "読む", jp: "電車では日本語の本を読むようにしています。",
+            de: "Ich bemühe mich, im Zug Bücher auf Japanisch zu lesen.",
+            cloze: "電車では日本語の本を＿＿＿＿。", answer: "読むようにしています", answerKana: "よむようにしています"
+          },
+          {
+            aspect: "ongoing", aspectLabel: "〜ようにしている · fortlaufende Bemühung",
+            base: "調べる", jp: "分からない言葉はすぐ調べるようにしています。",
+            de: "Ich bemühe mich, unbekannte Wörter sofort nachzuschlagen.",
+            cloze: "分からない言葉はすぐ＿＿＿＿。", answer: "調べるようにしています", answerKana: "しらべるようにしています"
+          }
+        ],
+        "koto-ni-naru": [
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · äußere Entscheidung",
+            base: "働く", jp: "来月から新しい部署で働くことになりました。",
+            de: "Es wurde entschieden, dass ich ab nächstem Monat in einer neuen Abteilung arbeite.",
+            cloze: "来月から新しい部署で＿＿＿＿。", answer: "働くことになりました", answerKana: "はたらくことになりました"
+          },
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · äußere Entscheidung",
+            base: "する", jp: "次の試合では私がキャプテンをすることになりました。",
+            de: "Es wurde entschieden, dass ich beim nächsten Spiel Kapitän bin.",
+            cloze: "次の試合では私がキャプテンを＿＿＿＿。", answer: "することになりました", answerKana: "することになりました"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · äußere negative Entscheidung",
+            base: "出発しない", jp: "悪天候のため、明日は出発しないことになりました。",
+            de: "Wegen des schlechten Wetters wurde entschieden, morgen nicht abzufahren.",
+            cloze: "悪天候のため、明日は＿＿＿＿。", answer: "出発しないことになりました", answerKana: "しゅっぱつしないことになりました"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · äußere negative Entscheidung",
+            base: "参加しない", jp: "今回の会議には学生は参加しないことになりました。",
+            de: "Es wurde entschieden, dass Studierende an dieser Besprechung nicht teilnehmen.",
+            cloze: "今回の会議には学生は＿＿＿＿。", answer: "参加しないことになりました", answerKana: "さんかしないことになりました"
+          },
+          {
+            aspect: "rule", aspectLabel: "〜ことになっている · geltende Regel",
+            base: "帰る", jp: "この寮では夜十一時までに帰ることになっています。",
+            de: "In diesem Wohnheim gilt die Regel, bis elf Uhr abends zurück zu sein.",
+            cloze: "この寮では夜十一時までに＿＿＿＿。", answer: "帰ることになっています", answerKana: "かえることになっています"
+          },
+          {
+            aspect: "rule", aspectLabel: "〜ことになっている · geltende Regel",
+            base: "使わない", jp: "試験中は辞書を使わないことになっています。",
+            de: "Während der Prüfung gilt die Regel, kein Wörterbuch zu benutzen.",
+            cloze: "試験中は辞書を＿＿＿＿。", answer: "使わないことになっています", answerKana: "つかわないことになっています"
+          }
+        ],
+        "koto-ni-suru": [
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · eigener Entschluss",
+            base: "留学する", jp: "来年、日本へ留学することにしました。",
+            de: "Ich habe beschlossen, nächstes Jahr in Japan zu studieren.",
+            cloze: "来年、日本へ＿＿＿＿。", answer: "留学することにしました", answerKana: "りゅうがくすることにしました"
+          },
+          {
+            aspect: "dictionary", aspectLabel: "Wörterbuchform · eigener Entschluss",
+            base: "行く", jp: "今日は歩いて駅まで行くことにしました。",
+            de: "Ich habe beschlossen, heute zu Fuß zum Bahnhof zu gehen.",
+            cloze: "今日は歩いて駅まで＿＿＿＿。", answer: "行くことにしました", answerKana: "いくことにしました"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · eigener negativer Entschluss",
+            base: "買わない", jp: "今月は服を買わないことにしました。",
+            de: "Ich habe beschlossen, diesen Monat keine Kleidung zu kaufen.",
+            cloze: "今月は服を＿＿＿＿。", answer: "買わないことにしました", answerKana: "かわないことにしました"
+          },
+          {
+            aspect: "nai", aspectLabel: "ない-Form · eigener negativer Entschluss",
+            base: "出かけない", jp: "疲れているので、今夜は出かけないことにしました。",
+            de: "Weil ich müde bin, habe ich beschlossen, heute Abend nicht auszugehen.",
+            cloze: "疲れているので、今夜は＿＿＿＿。", answer: "出かけないことにしました", answerKana: "でかけないことにしました"
+          },
+          {
+            aspect: "habit", aspectLabel: "〜ことにしている · selbst gesetzte Regel",
+            base: "読む", jp: "毎朝、ニュースを日本語で読むことにしています。",
+            de: "Ich habe für mich festgelegt, jeden Morgen die Nachrichten auf Japanisch zu lesen.",
+            cloze: "毎朝、ニュースを日本語で＿＿＿＿。", answer: "読むことにしています", answerKana: "よむことにしています"
+          },
+          {
+            aspect: "habit", aspectLabel: "〜ことにしている · selbst gesetzte Regel",
+            base: "寝る", jp: "平日は十二時前に寝ることにしています。",
+            de: "Ich habe für mich festgelegt, an Werktagen vor Mitternacht schlafen zu gehen.",
+            cloze: "平日は十二時前に＿＿＿＿。", answer: "寝ることにしています", answerKana: "ねることにしています"
+          }
+        ],
+        "naku-naru": [
+          {
+            aspect: "verb", aspectLabel: "Verb · nicht mehr tun",
+            base: "使わない", jp: "最近、紙の辞書を使わなくなりました。",
+            de: "In letzter Zeit benutze ich kein gedrucktes Wörterbuch mehr.",
+            cloze: "最近、紙の辞書を＿＿＿＿。", answer: "使わなくなりました", answerKana: "つかわなくなりました"
+          },
+          {
+            aspect: "verb", aspectLabel: "Verb · nicht mehr tun",
+            base: "乗らない", jp: "引っ越してから、車に乗らなくなりました。",
+            de: "Seit dem Umzug fahre ich nicht mehr mit dem Auto.",
+            cloze: "引っ越してから、車に＿＿＿＿。", answer: "乗らなくなりました", answerKana: "のらなくなりました"
+          },
+          {
+            aspect: "i-adjective", aspectLabel: "i-Adjektiv · nicht mehr so sein",
+            base: "寒くない", jp: "春になって、朝も寒くなくなりました。",
+            de: "Seit es Frühling ist, ist es auch morgens nicht mehr kalt.",
+            cloze: "春になって、朝も＿＿＿＿。", answer: "寒くなくなりました", answerKana: "さむくなくなりました"
+          },
+          {
+            aspect: "i-adjective", aspectLabel: "i-Adjektiv · nicht mehr so sein",
+            base: "難しくない", jp: "何度も練習したら、この問題は難しくなくなりました。",
+            de: "Nachdem ich oft geübt hatte, war diese Aufgabe nicht mehr schwierig.",
+            cloze: "何度も練習したら、この問題は＿＿＿＿。", answer: "難しくなくなりました", answerKana: "むずかしくなくなりました"
+          },
+          {
+            aspect: "na-noun", aspectLabel: "na-Adjektiv/Nomen · Zuordnung gilt nicht mehr",
+            base: "危険ではない", jp: "この道は以前ほど危険ではなくなりました。",
+            de: "Dieser Weg ist nicht mehr so gefährlich wie früher.",
+            cloze: "この道は以前ほど＿＿＿＿。", answer: "危険ではなくなりました", answerKana: "きけんではなくなりました"
+          },
+          {
+            aspect: "na-noun", aspectLabel: "na-Adjektiv/Nomen · Zuordnung gilt nicht mehr",
+            base: "学生ではない", jp: "卒業して、もう学生ではなくなりました。",
+            de: "Nach dem Abschluss bin ich kein Student mehr.",
+            cloze: "卒業して、もう＿＿＿＿。", answer: "学生ではなくなりました", answerKana: "がくせいではなくなりました"
+          }
+        ]
+      };
+
+      const CONTRAST_REVIEWS = {
+        "you-ni-naru": {
+          meaning: {
+            aspect: "contrast", aspectLabel: "Kontrast · Zustand oder Veränderung",
+            prompt: "Erkläre den Bedeutungsunterschied zwischen beiden Sätzen.",
+            shown: "① 漢字が読めます。\n② 漢字が読めるようになりました。",
+            model: "① nennt nur die aktuelle Fähigkeit. ② sagt zusätzlich, dass diese Fähigkeit neu entstanden ist.", selfCheck: true
+          },
+          listening: {
+            aspect: "contrast", aspectLabel: "Kontrast · Veränderung erkennen",
+            audio: "前は泳げませんでしたが、今は泳げるようになりました。",
+            prompt: "Welche Veränderung wird beschrieben?", model: "Früher konnte die Person nicht schwimmen; inzwischen kann sie es.", selfCheck: true
+          },
+          production: {
+            aspect: "contrast", aspectLabel: "Kontrast · ausdrücklich ‚inzwischen‘",
+            prompt: "Schreibe auf Japanisch: „Früher konnte ich nicht kochen, aber inzwischen kann ich es.“",
+            model: "前は料理できませんでしたが、今は料理できるようになりました。",
+            required: ["ようにな"]
+          }
+        },
+        "you-ni-suru": {
+          meaning: {
+            aspect: "contrast", aspectLabel: "Kontrast · Ergebnis oder Bemühung",
+            prompt: "Erkläre den Unterschied zwischen den beiden Aussagen.",
+            shown: "① 毎朝早く起きるようになりました。\n② 毎朝早く起きるようにしています。",
+            model: "① berichtet, dass frühes Aufstehen zur Realität geworden ist. ② betont die bewusste fortlaufende Bemühung.", selfCheck: true
+          },
+          listening: {
+            aspect: "contrast", aspectLabel: "Kontrast · bewusste Bemühung erkennen",
+            audio: "健康のために、毎日歩くようにしています。",
+            prompt: "Hörst du ein erreichtes Ergebnis oder eine bewusste Bemühung? Erkläre.", model: "Es ist eine bewusste fortlaufende Bemühung, täglich zu gehen.", selfCheck: true
+          },
+          production: {
+            aspect: "contrast", aspectLabel: "Kontrast · bewusste Selbststeuerung",
+            prompt: "Schreibe auf Japanisch: „Ich bemühe mich bewusst, vor dem Schlafengehen nicht aufs Handy zu schauen.“",
+            model: "寝る前にスマホを見ないようにしています。", required: ["ようにして"]
+          }
+        },
+        "koto-ni-naru": {
+          meaning: {
+            aspect: "contrast", aspectLabel: "Kontrast · Veränderung oder äußere Festlegung",
+            prompt: "Warum passt hier ことになる und nicht ようになる?",
+            shown: "来月から大阪で働くことになりました。",
+            model: "Es geht um einen von außen festgelegten Plan, nicht um eine neu erworbene Fähigkeit oder Gewohnheit.", selfCheck: true
+          },
+          listening: {
+            aspect: "contrast", aspectLabel: "Kontrast · äußere Entscheidung hören",
+            audio: "会社の決定で、来年から海外で働くことになりました。",
+            prompt: "Wer beziehungsweise was hat die Situation festgelegt?", model: "Die Firma hat entschieden, dass die Person ab nächstem Jahr im Ausland arbeitet.", selfCheck: true
+          },
+          production: {
+            aspect: "contrast", aspectLabel: "Kontrast · Entscheidung von außen",
+            prompt: "Schreibe auf Japanisch: „Es wurde entschieden, dass ich ab Montag von zu Hause arbeite.“",
+            model: "月曜日から家で働くことになりました。", required: ["ことにな"]
+          }
+        },
+        "koto-ni-suru": {
+          meaning: {
+            aspect: "contrast", aspectLabel: "Kontrast · fremde oder eigene Entscheidung",
+            prompt: "Erkläre, wer jeweils entscheidet.",
+            shown: "① 東京で働くことになりました。\n② 東京で働くことにしました。",
+            model: "① stellt die Entscheidung als von außen oder durch Umstände entstanden dar. ② ist der eigene Entschluss des Sprechers.", selfCheck: true
+          },
+          listening: {
+            aspect: "contrast", aspectLabel: "Kontrast · eigenen Entschluss hören",
+            audio: "いろいろ考えて、今年は日本へ行かないことにしました。",
+            prompt: "Ist das eine äußere Festlegung oder der eigene Entschluss?", model: "Es ist der eigene Entschluss, dieses Jahr nicht nach Japan zu fahren.", selfCheck: true
+          },
+          production: {
+            aspect: "contrast", aspectLabel: "Kontrast · eigener Entschluss",
+            prompt: "Schreibe auf Japanisch: „Ich habe selbst beschlossen, nächstes Jahr umzuziehen.“",
+            model: "来年、引っ越すことにしました。", required: ["ことにし"]
+          }
+        },
+        "naku-naru": {
+          meaning: {
+            aspect: "contrast", aspectLabel: "Kontrast · Ergebnis oder bewusste Vermeidung",
+            prompt: "Erkläre den Unterschied zwischen beiden Sätzen.",
+            shown: "① コーヒーを飲まなくなりました。\n② コーヒーを飲まないようにしています。",
+            model: "① berichtet, dass die Person keinen Kaffee mehr trinkt. ② beschreibt die bewusste Bemühung, Kaffee zu vermeiden.", selfCheck: true
+          },
+          listening: {
+            aspect: "contrast", aspectLabel: "Kontrast · eingetretenes Ergebnis erkennen",
+            audio: "薬を飲んでから、頭が痛くなくなりました。",
+            prompt: "Wird eine Absicht oder ein eingetretenes Ergebnis beschrieben?", model: "Es ist ein eingetretenes Ergebnis: Die Kopfschmerzen sind verschwunden.", selfCheck: true
+          },
+          production: {
+            aspect: "contrast", aspectLabel: "Kontrast · tatsächlich nicht mehr",
+            prompt: "Schreibe auf Japanisch: „Seit dem Umzug benutze ich den Bus nicht mehr.“",
+            model: "引っ越してから、バスを使わなくなりました。", required: ["なくな"]
+          }
+        }
+      };
+
+      function installExpandedQuestions() {
+        for (const point of POINTS) {
+          const variants = REVIEW_VARIANTS[point.id] || [];
+          const required = point.checkpoint?.required || [];
+          const contrast = CONTRAST_REVIEWS[point.id] || {};
+          point.questions = {
+            meaning: [
+              ...variants.map(item => ({
+                aspect: item.aspect,
+                aspectLabel: item.aspectLabel,
+                prompt: "Erkläre auf Deutsch, was der Satz bedeutet und welche Funktion die Grammatik hier hat.",
+                shown: item.jp,
+                model: `${item.de} (${item.aspectLabel})`,
+                selfCheck: true
+              })),
+              ...(contrast.meaning ? [contrast.meaning] : [])
+            ],
+            form: variants.map(item => ({
+              aspect: item.aspect,
+              aspectLabel: item.aspectLabel,
+              prompt: `Bilde die passende Grammatikform. Ausgangsform: ${item.base}`,
+              shown: item.cloze,
+              model: item.answer,
+              answers: [item.answer, item.answerKana]
+            })),
+            listening: [
+              ...variants.map(item => ({
+                aspect: item.aspect,
+                aspectLabel: item.aspectLabel,
+                audio: item.jp,
+                prompt: "Höre den Satz und gib seine Bedeutung sowie die grammatische Funktion auf Deutsch wieder.",
+                model: `${item.de} (${item.aspectLabel})`,
+                selfCheck: true
+              })),
+              ...(contrast.listening ? [contrast.listening] : [])
+            ],
+            production: [
+              ...variants.map(item => ({
+                aspect: item.aspect,
+                aspectLabel: item.aspectLabel,
+                prompt: `Schreibe auf Japanisch: „${item.de}“`,
+                model: item.jp,
+                answers: [item.jp],
+                required
+              })),
+              ...(contrast.production ? [contrast.production] : [])
+            ]
+          };
+        }
+      }
+
+      installExpandedQuestions();
+
       const grammarStyle = document.createElement("style");
       grammarStyle.textContent = `
         .grammar-hero { background:linear-gradient(120deg,#4f46b8,#9a58c7 55%,#e28baf); color:white; overflow:hidden; position:relative; }
@@ -986,7 +1327,15 @@
       dashboard?.appendChild(grammarDashboard);
 
       function defaultSkill() {
-        return { stage: 0, dueAt: null, correct: 0, incorrect: 0, lastReviewedAt: null };
+        return {
+          stage: 0,
+          dueAt: null,
+          correct: 0,
+          incorrect: 0,
+          lastReviewedAt: null,
+          rotationIndex: 0,
+          variantIndex: 0
+        };
       }
 
       function defaultState() {
@@ -1008,6 +1357,7 @@
       function normalizeState(value) {
         const base = defaultState();
         if (!value || typeof value !== "object") return base;
+        const previousVersion = Math.max(0, Number(value.version || 0));
         base.currentLevel = Math.max(1, Number(value.currentLevel || 1));
         base.levelCompleted = Boolean(value.levelCompleted);
         for (const point of POINTS) {
@@ -1023,8 +1373,22 @@
               dueAt: oldSkill.dueAt == null ? null : Number(oldSkill.dueAt),
               correct: Math.max(0, Number(oldSkill.correct || 0)),
               incorrect: Math.max(0, Number(oldSkill.incorrect || 0)),
-              lastReviewedAt: oldSkill.lastReviewedAt == null ? null : Number(oldSkill.lastReviewedAt)
+              lastReviewedAt: oldSkill.lastReviewedAt == null ? null : Number(oldSkill.lastReviewedAt),
+              rotationIndex: Math.max(0, Number(oldSkill.rotationIndex || 0)),
+              variantIndex: Math.max(0, Number(oldSkill.variantIndex || 0))
             };
+
+            // Version 2 stellte die allererste Review sofort bereit. Ab Version 3
+            // beginnt das echte SRS erst nach dem Apprentice-1-Intervall.
+            const migrated = base.points[point.id].skills[skill.id];
+            if (
+              previousVersion < 3 &&
+              migrated.stage === 1 &&
+              migrated.lastReviewedAt == null
+            ) {
+              const lessonTime = Number(base.points[point.id].lessonCompletedAt || Date.now());
+              migrated.dueAt = Math.max(Number(migrated.dueAt || 0), lessonTime + STAGES[1].delay);
+            }
           }
         }
         return base;
@@ -1070,6 +1434,39 @@
 
       function stageName(stage) {
         return STAGES[Math.max(0, Math.min(9, Number(stage || 0)))]?.name || "Neu";
+      }
+
+      function formatRemaining(milliseconds) {
+        const value = Math.max(0, Number(milliseconds || 0));
+        const minutes = Math.ceil(value / 60000);
+        if (minutes < 60) return `${minutes} Min.`;
+        const hours = Math.ceil(minutes / 60);
+        if (hours < 24) return `${hours} Std.`;
+        const days = Math.ceil(hours / 24);
+        return `${days} Tag${days === 1 ? "" : "e"}`;
+      }
+
+      function nextDueAt(pointId = null) {
+        const timestamps = [];
+        for (const point of POINTS) {
+          if (pointId && point.id !== pointId) continue;
+          const pointState = grammarState.points[point.id];
+          if (!pointState.lessonComplete) continue;
+          for (const skill of SKILLS) {
+            const state = pointState.skills[skill.id];
+            if (state.stage > 0 && state.stage < 9 && Number.isFinite(Number(state.dueAt))) {
+              timestamps.push(Number(state.dueAt));
+            }
+          }
+        }
+        return timestamps.length ? Math.min(...timestamps) : null;
+      }
+
+      function nextDueLabel(pointId = null) {
+        const timestamp = nextDueAt(pointId);
+        if (!timestamp) return "Keine Review geplant";
+        const remaining = timestamp - Date.now();
+        return remaining <= 0 ? "Jetzt fällig" : `Nächste Review in ${formatRemaining(remaining)}`;
       }
 
       function pointMinimumStage(pointId) {
@@ -1286,7 +1683,7 @@
               <p>Fünf eng verwandte Strukturen werden nacheinander erklärt, mit bereits bekannten Formen kontrastiert, gehört und in offenen Antworten produziert. Jede Teilfähigkeit besitzt ihren eigenen SRS-Stand.</p>
               <div class="button-row">
                 <button class="primary" id="grammarNextLesson">${nextPoint ? "Nächste Grammatik lernen" : "Alle Lektionen abgeschlossen"}</button>
-                <button class="secondary" id="grammarStartReview">${due ? `${due} Reviews starten` : "Reviews ansehen"}</button>
+                <button class="secondary" id="grammarStartReview">${due ? `${due} Reviews starten` : nextDueAt() ? nextDueLabel() : "Noch keine Reviews"}</button>
               </div>
             </article>
             <article class="card level-card">
@@ -1319,12 +1716,11 @@
           if (nextPoint) startLesson(nextPoint.id);
           else notify("Alle fünf Lektionen sind bereits abgeschlossen.");
         });
-        document.getElementById("grammarStartReview")?.addEventListener("click", () => startReviewSession(false));
+        const reviewButton = document.getElementById("grammarStartReview");
+        if (reviewButton) reviewButton.disabled = due === 0;
+        reviewButton?.addEventListener("click", () => startReviewSession(false));
         overview.querySelectorAll("[data-grammar-lesson]").forEach(button => {
           button.addEventListener("click", () => startLesson(button.dataset.grammarLesson));
-        });
-        overview.querySelectorAll("[data-grammar-practice]").forEach(button => {
-          button.addEventListener("click", () => startPointPractice(button.dataset.grammarPractice));
         });
         updateGrammarDashboard();
       }
@@ -1342,7 +1738,7 @@
           : pointDue
             ? `${pointDue} fällig`
             : pointState.lessonComplete
-              ? stageName(minStage)
+              ? `${stageName(minStage)} · ${nextDueLabel(point.id)}`
               : `Lektion ${index + 1}`;
         return `
           <article class="grammar-point ${unlocked ? "" : "grammar-lock"}">
@@ -1360,8 +1756,7 @@
               }).join("")}
             </div>
             <div class="button-row" style="margin-top:13px">
-              <button class="${pointState.lessonComplete ? "ghost" : "primary"}" data-grammar-lesson="${point.id}" ${unlocked ? "" : "disabled"}>${pointState.lessonComplete ? "Lektion wiederholen" : unlocked ? "Lektion starten" : "Noch gesperrt"}</button>
-              ${pointState.lessonComplete ? `<button class="secondary" data-grammar-practice="${point.id}">Frei üben</button>` : ""}
+              <button class="${pointState.lessonComplete ? "ghost" : "primary"}" data-grammar-lesson="${point.id}" ${unlocked ? "" : "disabled"}>${pointState.lessonComplete ? "Erklärung erneut ansehen" : unlocked ? "Lektion starten" : "Noch gesperrt"}</button>
             </div>
           </article>`;
       }
@@ -1376,8 +1771,10 @@
         detail.textContent = grammarState.levelCompleted
           ? "Grammatik-Level 1 ist abgeschlossen."
           : due
-            ? "Verstehen, Formen, Hören und Abrufen werden getrennt wiederholt."
-            : "Lerne die nächste Struktur oder übe bereits bekannte Formen frei.";
+            ? "Verstehen, alle Bildungsformen, Hören und Abrufen werden getrennt wiederholt."
+            : learned
+              ? `${nextDueLabel()} – frühes Wiederholen verändert den SRS-Stand nicht.`
+              : "Lerne die erste Struktur; die erste SRS-Review folgt nach vier Stunden.";
       }
 
       let lessonPoint = null;
@@ -1490,14 +1887,17 @@
         pointState.lessonComplete = true;
         pointState.lessonCompletedAt ||= Date.now();
         if (firstCompletion) {
+          const now = Date.now();
           for (const skill of SKILLS) {
             const skillState = pointState.skills[skill.id];
             skillState.stage = Math.max(1, skillState.stage);
-            skillState.dueAt = Date.now();
+            skillState.dueAt = now + STAGES[1].delay;
+            skillState.rotationIndex = 0;
+            skillState.variantIndex = 0;
           }
         }
         persistGrammar();
-        notify(firstCompletion ? "Lektion gelernt – vier erste Reviews sind jetzt fällig." : "Lektion erneut abgeschlossen.");
+        notify(firstCompletion ? "Lektion gelernt – die ersten SRS-Reviews sind in vier Stunden fällig." : "Die Erklärung wurde erneut angesehen; der SRS-Zeitplan bleibt unverändert.");
         openGrammarView("grammar");
       }
 
@@ -1520,8 +1920,16 @@
       function makeReviewItem(pointId, skillId, practiceOnly = false) {
         const point = POINTS.find(item => item.id === pointId);
         const pool = point?.questions?.[skillId] || [];
-        const question = pool[Math.floor(Math.random() * pool.length)];
-        return { pointId, skillId, question, practiceOnly, repeated: false };
+        const skillState = grammarState.points[pointId].skills[skillId];
+        const aspects = [...new Set(pool.map(question => question.aspect || "general"))];
+        const aspect = aspects.length
+          ? aspects[Math.max(0, Number(skillState.rotationIndex || 0)) % aspects.length]
+          : "general";
+        const candidates = pool.filter(question => (question.aspect || "general") === aspect);
+        const variant = candidates.length
+          ? candidates[Math.max(0, Number(skillState.variantIndex || 0)) % candidates.length]
+          : pool[0];
+        return { pointId, skillId, question: variant, practiceOnly, repeated: false };
       }
 
       function startReviewSession(practiceOnly = false, pointId = null) {
@@ -1561,9 +1969,8 @@
       function showNoDueReviews() {
         openGrammarView("grammarReview");
         const card = document.getElementById("grammarReviewCard");
-        card.innerHTML = `<div class="grammar-kicker">Grammar SRS</div><h2>Aktuell ist nichts fällig.</h2><p class="grammar-explanation">Das SRS wartet bis zum nächsten vorgesehenen Intervall. Du kannst trotzdem eine freiwillige Übungsrunde starten; diese verändert die SRS-Stufen nicht.</p><div class="button-row"><button class="ghost" id="grammarNoDueBack">Zur Übersicht</button><button class="primary" id="grammarEarlyPractice">Frei üben</button></div>`;
+        card.innerHTML = `<div class="grammar-kicker">Grammar SRS</div><h2>Aktuell ist nichts fällig.</h2><p class="grammar-explanation">${escapeHtml(nextDueLabel())}. Das nächste Review wird erst nach Ablauf dieses Intervalls freigeschaltet. Das erneute Öffnen einer Erklärung verändert weder Stufe noch Fälligkeit.</p><div class="button-row"><button class="primary" id="grammarNoDueBack">Zur Übersicht</button></div>`;
         document.getElementById("grammarNoDueBack")?.addEventListener("click", () => openGrammarView("grammar"));
-        document.getElementById("grammarEarlyPractice")?.addEventListener("click", () => startReviewSession(true));
       }
 
       function renderReview() {
@@ -1586,6 +1993,7 @@
           <div class="grammar-stepper"><span class="done" style="flex:${Math.max(1, progress)}"></span><span style="flex:${Math.max(1, 100 - progress)}"></span></div>
           <div class="counter">Aufgabe ${reviewIndex + 1} von ${reviewQueue.length}${reviewPracticeOnly ? " · Freies Üben" : " · SRS-Review"}</div>
           <div class="grammar-review-type">${skill.icon} ${skill.label}</div>
+          <div class="grammar-badge" style="margin-top:10px">${escapeHtml(question.aspectLabel || "Gemischte Anwendung")}</div>
           <h2>${escapeHtml(point.title)}</h2>
           <div class="grammar-review-prompt">${escapeHtml(question.prompt)}</div>
           ${isListening
@@ -1615,6 +2023,9 @@
 
       function assessAnswer(question, skillId, answer) {
         if (!String(answer || "").trim()) return { likely: false, note: "Es wurde noch keine Antwort eingegeben." };
+        if (question.selfCheck) {
+          return { likely: null, note: "Vergleiche deine inhaltliche Wiedergabe mit der Musterlösung und bewerte dich anschließend selbst." };
+        }
         if (skillId === "form") {
           const normalized = normalizeJapanese(answer);
           const likely = (question.answers || [question.model]).some(model => normalizeJapanese(model) === normalized);
@@ -1643,8 +2054,8 @@
         const assessment = assessAnswer(question, skill.id, answer);
         const feedback = document.getElementById("grammarReviewFeedback");
         feedback.innerHTML = `
-          <div class="grammar-feedback ${assessment.likely ? "good" : "warn"}">
-            <strong>${assessment.likely ? "Wahrscheinlich passend" : "Bitte genau vergleichen"}</strong>
+          <div class="grammar-feedback ${assessment.likely === true ? "good" : assessment.likely === false ? "warn" : ""}">
+            <strong>${assessment.likely === true ? "Wahrscheinlich passend" : assessment.likely === false ? "Bitte genau vergleichen" : "Mit der Musterlösung vergleichen"}</strong>
             <div style="margin-top:6px">${escapeHtml(assessment.note)}</div>
             ${skill.id === "listening" ? `<div style="margin-top:9px">Gehörter Satz: <strong>${escapeHtml(question.audio)}</strong> <button class="grammar-audio" id="grammarReplayListening" data-audio="${escapeHtml(question.audio)}">🔊</button></div>` : ""}
             <div style="margin-top:9px">Musterlösung: <strong>${escapeHtml(question.model)}</strong></div>
@@ -1671,19 +2082,23 @@
           if (grade === "good") {
             skillState.correct++;
             skillState.stage = Math.min(9, Math.max(1, skillState.stage + 1));
+            skillState.rotationIndex = Math.max(0, Number(skillState.rotationIndex || 0)) + 1;
+            skillState.variantIndex = Math.max(0, Number(skillState.variantIndex || 0)) + 1;
             skillState.dueAt = skillState.stage >= 9 ? null : now + STAGES[skillState.stage].delay;
           } else if (grade === "close") {
-            skillState.dueAt = now + 30 * 60 * 1000;
+            // Gleiche Bildungsform, aber beim nächsten Termin ein anderer Beispielsatz.
+            skillState.variantIndex = Math.max(0, Number(skillState.variantIndex || 0)) + 1;
+            skillState.dueAt = now + 60 * 60 * 1000;
           } else {
             skillState.incorrect++;
             skillState.stage = Math.max(1, skillState.stage - 1);
-            skillState.dueAt = now + 10 * 60 * 1000;
+            skillState.variantIndex = Math.max(0, Number(skillState.variantIndex || 0)) + 1;
+            skillState.dueAt = now + 30 * 60 * 1000;
           }
           persistGrammar();
         }
-        if (grade !== "good" && !reviewCurrent.repeated) {
-          reviewQueue.push({ ...makeReviewItem(reviewCurrent.pointId, reviewCurrent.skillId, reviewCurrent.practiceOnly), repeated: true });
-        }
+        // Fehler werden nicht sofort innerhalb derselben Session erneut gezeigt.
+        // Das festgelegte Intervall muss zuerst verstreichen.
         reviewIndex++;
         renderReview();
       }
@@ -1692,7 +2107,7 @@
         const card = document.getElementById("grammarReviewCard");
         card.innerHTML = `<div class="grammar-kicker">Session abgeschlossen</div><h2>${reviewPracticeOnly ? "Freie Übungsrunde beendet" : "Grammatik-Reviews gespeichert"}</h2>
           <div class="grammar-stats"><div class="grammar-stat"><strong>${reviewResults.good}</strong><span>Richtig</span></div><div class="grammar-stat"><strong>${reviewResults.close}</strong><span>Fast richtig</span></div><div class="grammar-stat"><strong>${reviewResults.bad}</strong><span>Falsch</span></div><div class="grammar-stat"><strong>${dueItems().length}</strong><span>Jetzt noch fällig</span></div></div>
-          <p class="grammar-explanation">${reviewPracticeOnly ? "Diese freiwillige Runde hat deine SRS-Stufen nicht verändert." : "Richtige Antworten wurden hochgestuft. Fast richtige und falsche Antworten werden nach einem kürzeren Intervall erneut fällig."}</p>
+          <p class="grammar-explanation">${reviewPracticeOnly ? "Diese freiwillige Runde hat deine SRS-Stufen nicht verändert." : "Richtige Antworten wurden hochgestuft. Fast richtige Antworten werden nach einer Stunde, falsche nach dreißig Minuten wieder fällig. Innerhalb derselben Session gibt es keine Sofortwiederholung."}</p>
           <div class="button-row"><button class="primary" id="grammarSummaryBack">Zur Grammar-Übersicht</button>${dueItems().length ? `<button class="secondary" id="grammarSummaryContinue">Weitere Reviews</button>` : ""}</div>`;
         document.getElementById("grammarSummaryBack")?.addEventListener("click", () => openGrammarView("grammar"));
         document.getElementById("grammarSummaryContinue")?.addEventListener("click", () => startReviewSession(false));
