@@ -394,6 +394,45 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
+    const SHELL_PASTEL_THEMES = {
+      lilac: { bg:"#faf7ff", panel:"rgba(255,255,255,.96)", text:"#3d3650", muted:"#81778f", primary:"#a68bd8", primaryDark:"#725da5", good:"#7eb99e", warning:"#d5aa69", bad:"#d991a2", border:"#e8def3", shadow:"0 12px 34px rgba(166,139,216,.16)" },
+      pink: { bg:"#fff8fb", panel:"rgba(255,255,255,.96)", text:"#503944", muted:"#8f7480", primary:"#dfa2bd", primaryDark:"#a56883", good:"#89bba4", warning:"#d7ad70", bad:"#d98f9f", border:"#f0dfe7", shadow:"0 12px 34px rgba(223,162,189,.17)" },
+      mint: { bg:"#f6fcf9", panel:"rgba(255,255,255,.96)", text:"#344b43", muted:"#71877f", primary:"#8bc7ae", primaryDark:"#568f78", good:"#73ad91", warning:"#d0aa6d", bad:"#d88f9b", border:"#dceee6", shadow:"0 12px 34px rgba(139,199,174,.18)" },
+      sky: { bg:"#f7fbff", panel:"rgba(255,255,255,.96)", text:"#354557", muted:"#738294", primary:"#94b9df", primaryDark:"#5f82ab", good:"#82b69d", warning:"#d3aa70", bad:"#d88f9e", border:"#dce9f4", shadow:"0 12px 34px rgba(148,185,223,.18)" },
+      peach: { bg:"#fffaf6", panel:"rgba(255,255,255,.96)", text:"#514239", muted:"#8e7b70", primary:"#e7ad91", primaryDark:"#a96f57", good:"#86b79e", warning:"#d4a667", bad:"#da919b", border:"#f0e2d8", shadow:"0 12px 34px rgba(231,173,145,.18)" }
+    };
+
+    function applyShellPastelTheme(theme) {
+      const palette = SHELL_PASTEL_THEMES[theme] || SHELL_PASTEL_THEMES.lilac;
+      const root = document.documentElement;
+      root.dataset.kqTheme = SHELL_PASTEL_THEMES[theme] ? theme : "lilac";
+      root.style.setProperty("--bg", palette.bg);
+      root.style.setProperty("--panel", palette.panel);
+      root.style.setProperty("--text", palette.text);
+      root.style.setProperty("--muted", palette.muted);
+      root.style.setProperty("--primary", palette.primary);
+      root.style.setProperty("--primary-dark", palette.primaryDark);
+      root.style.setProperty("--good", palette.good);
+      root.style.setProperty("--warning", palette.warning);
+      root.style.setProperty("--bad", palette.bad);
+      root.style.setProperty("--border", palette.border);
+      root.style.setProperty("--shadow", palette.shadow);
+    }
+
+    function readStoredPastelTheme() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        return SHELL_PASTEL_THEMES[parsed?.pastelTheme] ? parsed.pastelTheme : "lilac";
+      } catch {
+        return "lilac";
+      }
+    }
+
+    applyShellPastelTheme(readStoredPastelTheme());
+    window.addEventListener("message", event => {
+      if (event.data?.type === "kotoba-pastel-theme") applyShellPastelTheme(event.data.theme);
+    });
+
     function setStatus(kind, title, detail) {
       statusDot.className = `status-dot${kind ? ` ${kind}` : ""}`;
       statusTitle.textContent = title;
@@ -16792,6 +16831,31 @@
       document.getElementById("dashboardGrammarReview")?.addEventListener("click", () => startReviewSession(false));
 
       window.KotobaQuestGrammarSupportApi = {
+        getGrammarProgress: () => POINTS.map(point => {
+          const pointState = grammarState.points[point.id];
+          const level = GRAMMAR_LEVELS.find(entry => Number(entry.id) === Number(point.level));
+          return {
+            id: point.id,
+            level: point.level,
+            levelTitle: level?.title || "",
+            title: point.title || point.name || point.pattern || point.id,
+            pattern: point.pattern || point.grammar || point.title || point.id,
+            lessonComplete: Boolean(pointState?.lessonComplete),
+            lessonCompletedAt: pointState?.lessonCompletedAt || null,
+            skills: SKILLS.map(skill => ({
+              id: skill.id,
+              label: skill.label,
+              stage: Number(pointState?.skills?.[skill.id]?.stage || 0),
+              dueAt: pointState?.skills?.[skill.id]?.dueAt == null ? null : Number(pointState.skills[skill.id].dueAt),
+              correct: Number(pointState?.skills?.[skill.id]?.correct || 0),
+              incorrect: Number(pointState?.skills?.[skill.id]?.incorrect || 0),
+              lastReviewedAt: pointState?.skills?.[skill.id]?.lastReviewedAt == null ? null : Number(pointState.skills[skill.id].lastReviewedAt)
+            }))
+          };
+        }),
+        openGrammarView,
+        startReviewSession,
+        getDueItems: () => dueItems(),
         getKnownVocabularyPool: () => knownVocabularyPool,
         getSupportLexicon: () => {
           const byKey = new Map();
@@ -17656,10 +17720,1047 @@
       setTimeout(enhanceLessonSentence, 0);
     }
 
+
+    function learningHubBootstrap() {
+      if (window.__KOTOBA_LEARNING_HUB_V4__) return;
+      window.__KOTOBA_LEARNING_HUB_V4__ = true;
+
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      let archiveMode = "vocabulary";
+      let archiveSearch = "";
+      let dashboardRefreshTimer = 0;
+
+      function esc(value) {
+        try {
+          if (typeof escapeHtml === "function") return escapeHtml(value);
+        } catch {}
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function currentData() {
+        try {
+          if (typeof data !== "undefined" && data && typeof data === "object") return data;
+        } catch {}
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+        } catch {
+          return {};
+        }
+      }
+
+      function grammarApi() {
+        return window.KotobaQuestGrammarSupportApi || null;
+      }
+
+      function grammarProgress() {
+        try {
+          const progress = grammarApi()?.getGrammarProgress?.();
+          return Array.isArray(progress) ? progress : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function dateKey(value = Date.now()) {
+        const date = new Date(value);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function learningFingerprint(source) {
+        const vocabulary = Array.isArray(source?.vocabulary) ? source.vocabulary : [];
+        const activeVocabulary = vocabulary
+          .filter(item => Number(item?.stage || 0) > 0 || item?.guruPassed || Number(item?.correct || 0) > 0 || Number(item?.incorrect || 0) > 0)
+          .map(item => [
+            String(item?.id || item?.packEntryId || `${item?.word || ""}|${item?.reading || ""}`),
+            Number(item?.stage || 0),
+            Boolean(item?.guruPassed),
+            Number(item?.correct || 0),
+            Number(item?.incorrect || 0)
+          ])
+          .sort((left, right) => left[0].localeCompare(right[0]));
+
+        const placement = Object.entries(source?.placementProgress || {})
+          .map(([level, state]) => [
+            level,
+            Array.isArray(state?.processedIds) ? state.processedIds.length : 0,
+            Number(state?.passed || 0),
+            Number(state?.needsLesson || 0)
+          ])
+          .sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+
+        const grammar = Object.entries(source?.grammar?.points || {})
+          .map(([pointId, point]) => [
+            pointId,
+            Boolean(point?.lessonComplete),
+            ...Object.entries(point?.skills || {})
+              .sort(([left], [right]) => left.localeCompare(right))
+              .flatMap(([, skill]) => [
+                Number(skill?.stage || 0),
+                Number(skill?.correct || 0),
+                Number(skill?.incorrect || 0),
+                Number(skill?.lastReviewedAt || 0)
+              ])
+          ])
+          .sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+
+        return JSON.stringify([activeVocabulary, placement, grammar]);
+      }
+
+      let lastLearningFingerprint = learningFingerprint(currentData());
+      let storageWriteGuard = false;
+
+      function normalizeActivity(activity) {
+        const days = activity?.days && typeof activity.days === "object" && !Array.isArray(activity.days)
+          ? { ...activity.days }
+          : {};
+        return {
+          days,
+          totalActions: Math.max(0, Number(activity?.totalActions || 0)),
+          firstActivityAt: activity?.firstActivityAt || null,
+          lastActivityAt: activity?.lastActivityAt || null
+        };
+      }
+
+      function recordActivityIn(source) {
+        const activity = normalizeActivity(source.studyActivity);
+        const now = Date.now();
+        const key = dateKey(now);
+        activity.days[key] = Math.max(0, Number(activity.days[key] || 0)) + 1;
+        activity.totalActions += 1;
+        activity.firstActivityAt ||= now;
+        activity.lastActivityAt = now;
+        source.studyActivity = activity;
+        return activity;
+      }
+
+      try {
+        const originalSetItem = Storage.prototype.setItem;
+        if (!originalSetItem.__kqLearningHubWrapped) {
+          const wrappedSetItem = function(key, value) {
+            let nextValue = value;
+            if (!storageWriteGuard && String(key) === STORAGE_KEY) {
+              try {
+                const parsed = JSON.parse(String(value || "{}"));
+                const fingerprint = learningFingerprint(parsed);
+                if (fingerprint !== lastLearningFingerprint) {
+                  const activity = recordActivityIn(parsed);
+                  try {
+                    if (typeof data !== "undefined") data.studyActivity = activity;
+                  } catch {}
+                  nextValue = JSON.stringify(parsed);
+                  lastLearningFingerprint = fingerprint;
+                  setTimeout(refreshLearningHub, 0);
+                }
+              } catch {}
+            }
+            storageWriteGuard = true;
+            try {
+              return originalSetItem.call(this, key, nextValue);
+            } finally {
+              storageWriteGuard = false;
+            }
+          };
+          wrappedSetItem.__kqLearningHubWrapped = true;
+          wrappedSetItem.__kqOriginal = originalSetItem;
+          Storage.prototype.setItem = wrappedSetItem;
+        }
+      } catch (error) {
+        console.warn("Kotoba Quest activity tracking could not be installed", error);
+      }
+
+      function activityStats() {
+        const activity = normalizeActivity(currentData().studyActivity);
+        const daySet = new Set(Object.entries(activity.days)
+          .filter(([, count]) => Number(count || 0) > 0)
+          .map(([key]) => key));
+
+        const today = new Date();
+        const todayKey = dateKey(today);
+        const yesterday = new Date(today.getTime() - DAY_MS);
+        let cursor = daySet.has(todayKey) ? today : yesterday;
+        let current = 0;
+        while (daySet.has(dateKey(cursor))) {
+          current += 1;
+          cursor = new Date(cursor.getTime() - DAY_MS);
+        }
+
+        const sorted = [...daySet].sort();
+        let best = 0;
+        let run = 0;
+        let previous = null;
+        for (const key of sorted) {
+          const timestamp = new Date(`${key}T12:00:00`).getTime();
+          if (previous != null && Math.round((timestamp - previous) / DAY_MS) === 1) run += 1;
+          else run = 1;
+          best = Math.max(best, run);
+          previous = timestamp;
+        }
+
+        return {
+          current,
+          best,
+          todayActions: Number(activity.days[todayKey] || 0),
+          totalDays: daySet.size,
+          totalActions: activity.totalActions
+        };
+      }
+
+      function vocabularyItems(kind = null) {
+        const source = currentData();
+        const items = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        return kind ? items.filter(item => item?.sourceType === kind) : items;
+      }
+
+      function dueVocabulary(kind = "core") {
+        const now = Date.now();
+        return vocabularyItems(kind).filter(item => {
+          const stage = Number(item?.stage || 0);
+          const dueAt = Number(item?.availableAt);
+          return stage > 0 && stage < 9 && Number.isFinite(dueAt) && dueAt <= now;
+        });
+      }
+
+      function nextVocabularyDue(kind = "core") {
+        const now = Date.now();
+        const timestamps = vocabularyItems(kind)
+          .filter(item => Number(item?.stage || 0) > 0 && Number(item?.stage || 0) < 9)
+          .map(item => Number(item?.availableAt))
+          .filter(value => Number.isFinite(value) && value > now);
+        return timestamps.length ? Math.min(...timestamps) : null;
+      }
+
+      function dueGrammar() {
+        const now = Date.now();
+        return grammarProgress().flatMap(point => point.skills || []).filter(skill => {
+          const stage = Number(skill?.stage || 0);
+          const dueAt = Number(skill?.dueAt);
+          return stage > 0 && stage < 9 && Number.isFinite(dueAt) && dueAt <= now;
+        });
+      }
+
+      function nextGrammarDue() {
+        const now = Date.now();
+        const timestamps = grammarProgress().flatMap(point => point.skills || [])
+          .filter(skill => Number(skill?.stage || 0) > 0 && Number(skill?.stage || 0) < 9)
+          .map(skill => Number(skill?.dueAt))
+          .filter(value => Number.isFinite(value) && value > now);
+        return timestamps.length ? Math.min(...timestamps) : null;
+      }
+
+      function formatMoment(timestamp) {
+        if (!timestamp) return "Noch nicht geplant";
+        const diff = Number(timestamp) - Date.now();
+        if (diff <= 0) return "Jetzt fällig";
+        const minutes = Math.ceil(diff / 60000);
+        if (minutes < 60) return `in ${minutes} Min.`;
+        const hours = Math.ceil(diff / 3600000);
+        if (hours < 24) return `heute in etwa ${hours} Std.`;
+        const date = new Date(timestamp);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (dateKey(date) === dateKey(tomorrow)) {
+          return `morgen um ${new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(date)} Uhr`;
+        }
+        return new Intl.DateTimeFormat("de-DE", {
+          weekday: "short",
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(date) + " Uhr";
+      }
+
+      function vocabularyStats() {
+        const core = vocabularyItems("core");
+        const started = core.filter(item => Number(item?.stage || 0) > 0 || item?.guruPassed).length;
+        const guru = core.filter(item => Number(item?.stage || 0) >= 5 || item?.guruPassed).length;
+        const burned = core.filter(item => Number(item?.stage || 0) >= 9).length;
+        const known = Array.isArray(currentData().knownVocabulary) ? currentData().knownVocabulary.length : 0;
+        return { total: core.length, started, guru, burned, known };
+      }
+
+      function grammarStats() {
+        const points = grammarProgress();
+        const learned = points.filter(point => point.lessonComplete).length;
+        const guru = points.filter(point => (point.skills || []).length && point.skills.every(skill => Number(skill.stage || 0) >= 5)).length;
+        const skillTotal = points.reduce((sum, point) => sum + (point.skills || []).length, 0);
+        const skillGuru = points.reduce((sum, point) => sum + (point.skills || []).filter(skill => Number(skill.stage || 0) >= 5).length, 0);
+        return { total: points.length, learned, guru, skillTotal, skillGuru };
+      }
+
+      function availableCoreLessons() {
+        try {
+          return typeof getLessonItems === "function" ? getLessonItems("core").length : 0;
+        } catch {
+          return 0;
+        }
+      }
+
+      function pendingPlacement() {
+        try {
+          return typeof placementDone === "function" ? !placementDone(currentData().currentLevel || 1) : false;
+        } catch {
+          return false;
+        }
+      }
+
+      function installNavigation() {
+        const nav = document.querySelector(".nav");
+        if (!nav || nav.dataset.kqLearningHub === "1") return;
+        nav.dataset.kqLearningHub = "1";
+
+        const dashboardButton = nav.querySelector('[data-view="dashboard"]');
+        const oldVocabularyButton = nav.querySelector('[data-view="vocabulary"]');
+        const coreButton = nav.querySelector('[data-view="core"]');
+        const miningButton = nav.querySelector('[data-view="mining"]');
+        const grammarButton = nav.querySelector('[data-view="grammar"]');
+
+        oldVocabularyButton?.remove();
+        if (dashboardButton) dashboardButton.textContent = "Übersicht";
+        if (coreButton) coreButton.textContent = "Vokabeln";
+        if (grammarButton) grammarButton.textContent = "Grammatik";
+        if (miningButton) miningButton.textContent = "Mining";
+
+        let archiveButton = nav.querySelector('[data-view="archive"]');
+        if (!archiveButton) {
+          archiveButton = document.createElement("button");
+          archiveButton.type = "button";
+          archiveButton.dataset.view = "archive";
+          archiveButton.textContent = "Archiv";
+          archiveButton.addEventListener("click", () => {
+            switchView("archive");
+            renderArchive();
+          });
+        }
+
+        [dashboardButton, coreButton, grammarButton, archiveButton, miningButton]
+          .filter(Boolean)
+          .forEach(button => nav.appendChild(button));
+
+        const subtitle = document.querySelector(".brand p");
+        if (subtitle) subtitle.textContent = "Vokabeln, Grammatik und SRS";
+      }
+
+      function installDashboard() {
+        const section = document.getElementById("dashboard");
+        if (!section || section.dataset.kqLearningHub === "1") return;
+        section.dataset.kqLearningHub = "1";
+
+        const legacy = document.createElement("div");
+        legacy.className = "kq-legacy-dashboard";
+        legacy.hidden = true;
+        while (section.firstChild) legacy.appendChild(section.firstChild);
+
+        const hub = document.createElement("div");
+        hub.id = "kqLearningDashboard";
+        section.append(hub, legacy);
+      }
+
+      function installVocabularyPage() {
+        const section = document.getElementById("core");
+        if (!section || section.dataset.kqLearningHub === "1") return;
+        section.dataset.kqLearningHub = "1";
+
+        const title = section.querySelector(":scope > .section-title h2");
+        const subtitle = section.querySelector(":scope > .section-title p");
+        if (title) title.textContent = "Vokabeln";
+        if (subtitle) subtitle.textContent = "Core-Lektionen, Einstufung und alle anstehenden Vokabel-Reviews an einem Ort.";
+
+        const overview = document.createElement("div");
+        overview.id = "kqVocabularyOverview";
+        overview.className = "kq-learning-overview";
+        section.querySelector(":scope > .section-title")?.after(overview);
+      }
+
+      function installMiningWorkspace() {
+        const mining = document.getElementById("mining");
+        const oldVocabulary = document.getElementById("vocabulary");
+        if (!mining || !oldVocabulary || mining.dataset.kqWorkspace === "1") return;
+        mining.dataset.kqWorkspace = "1";
+
+        const sourceGrid = oldVocabulary.querySelector(":scope > .grid-two");
+        if (sourceGrid) {
+          const heading = document.createElement("div");
+          heading.className = "section-title kq-mining-editor-title";
+          heading.innerHTML = `<div><h2>Eigene Vokabeln</h2><p>Neue Wörter hinzufügen und deine Mining-Sammlung verwalten.</p></div>`;
+          mining.append(heading, sourceGrid);
+          const collectionHeading = sourceGrid.querySelector("article:nth-child(2) h3");
+          if (collectionHeading) collectionHeading.textContent = "Mining-Vokabeln";
+        }
+        oldVocabulary.hidden = true;
+      }
+
+      function installArchive() {
+        if (document.getElementById("archive")) return;
+        const archive = document.createElement("section");
+        archive.id = "archive";
+        archive.className = "view";
+        archive.innerHTML = `
+          <div class="section-title">
+            <div>
+              <h2>Archiv</h2>
+              <p>Gefestigte Vokabeln und Grammatik gesammelt durchsuchen.</p>
+            </div>
+          </div>
+          <article class="card kq-archive-shell">
+            <div class="kq-archive-toolbar">
+              <div class="kq-segmented" role="tablist" aria-label="Archivbereich">
+                <button type="button" class="active" data-archive-mode="vocabulary">Vokabeln</button>
+                <button type="button" data-archive-mode="grammar">Grammatik</button>
+              </div>
+              <input id="kqArchiveSearch" type="search" placeholder="Archiv durchsuchen …" autocomplete="off" />
+            </div>
+            <div id="kqArchiveSummary" class="small muted"></div>
+            <div id="kqArchiveList" class="kq-archive-list"></div>
+          </article>`;
+
+        const insertionPoint = document.getElementById("placement") || document.querySelector("main > section:last-of-type");
+        insertionPoint?.before(archive);
+
+        archive.querySelectorAll("[data-archive-mode]").forEach(button => {
+          button.addEventListener("click", () => {
+            archiveMode = button.dataset.archiveMode;
+            archive.querySelectorAll("[data-archive-mode]").forEach(candidate => candidate.classList.toggle("active", candidate === button));
+            renderArchive();
+          });
+        });
+        archive.querySelector("#kqArchiveSearch")?.addEventListener("input", event => {
+          archiveSearch = String(event.target.value || "").trim().toLocaleLowerCase("de-DE");
+          renderArchive();
+        });
+      }
+
+      function replaceVocabularyRenderer() {
+        try {
+          const customRenderVocabulary = function() {
+            const list = document.getElementById("vocabList");
+            const total = document.getElementById("vocabTotal");
+            if (!list || !total) return;
+            const items = vocabularyItems("mining").sort((left, right) => Number(right?.createdAt || 0) - Number(left?.createdAt || 0));
+            total.textContent = `${items.length} Mining-Wörter`;
+            if (!items.length) {
+              list.innerHTML = `<div class="empty">Noch keine Mining-Vokabeln.</div>`;
+              return;
+            }
+            list.innerHTML = items.map(item => `
+              <div class="vocab-row">
+                <div class="vocab-jp" data-vocab-word>${esc(item.word)}</div>
+                <div class="vocab-meta">
+                  <strong>${esc((item.meanings || []).join(", "))}</strong>
+                  <span>${esc(item.reading || "")} · ${esc(typeof formatNext === "function" ? formatNext(item) : "")}</span>
+                  ${item.collection ? `<span>Quelle: ${esc(item.collection)}</span>` : ""}
+                </div>
+                <div style="display:grid;gap:7px;justify-items:end">
+                  <span class="type-badge mining">Mining</span>
+                  <span class="badge">${esc(typeof stageName === "function" ? stageName(item.stage) : "")}</span>
+                  <button class="ghost delete-vocab" data-id="${esc(item.id)}" style="padding:7px 10px">Löschen</button>
+                </div>
+              </div>`).join("");
+          };
+          customRenderVocabulary.__kqLearningHub = true;
+          renderVocabulary = customRenderVocabulary;
+        } catch (error) {
+          console.warn("Mining list optimization could not be installed", error);
+        }
+      }
+
+      function renderDashboardHub() {
+        const root = document.getElementById("kqLearningDashboard");
+        if (!root) return;
+
+        const source = currentData();
+        const streak = activityStats();
+        const vocab = vocabularyStats();
+        const grammar = grammarStats();
+        const vocabDue = dueVocabulary("core").length;
+        const grammarDueCount = dueGrammar().length;
+        const lessons = availableCoreLessons();
+        const placement = pendingPlacement();
+        const miningDue = dueVocabulary("mining").length;
+        const miningNew = vocabularyItems("mining").filter(item => Number(item?.stage || 0) === 0).length;
+        const nextVocab = nextVocabularyDue("core");
+        const nextGrammar = nextGrammarDue();
+        const totalDue = vocabDue + grammarDueCount;
+        const currentLevel = Math.max(1, Number(source.currentLevel || 1));
+
+        root.innerHTML = `
+          <div class="kq-dashboard-hero">
+            <article class="card kq-today-card">
+              <p class="eyebrow">Dein Lernzentrum</p>
+              <h2>${totalDue ? `${totalDue} Wiederholungen warten auf dich` : "Für den Moment ist alles wiederholt"}</h2>
+              <p>${totalDue
+                ? "Vokabeln und Grammatik sind getrennt organisiert, aber hier gemeinsam im Blick."
+                : "Du kannst eine neue Lektion beginnen oder später zur nächsten Wiederholung zurückkommen."}</p>
+              <div class="button-row">
+                <button class="primary" id="kqDashboardVocabReview" ${vocabDue ? "" : "disabled"}>${vocabDue} Vokabel-Reviews</button>
+                <button class="secondary" id="kqDashboardGrammarReview" ${grammarDueCount ? "" : "disabled"}>${grammarDueCount} Grammatik-Reviews</button>
+              </div>
+            </article>
+            <article class="card kq-streak-card">
+              <span class="kq-streak-icon">🔥</span>
+              <div><span class="muted small">Aktueller Streak</span><strong>${streak.current}</strong><span>${streak.current === 1 ? "Tag" : "Tage"}</span></div>
+              <div class="kq-streak-detail"><span>Heute: ${streak.todayActions ? "erledigt" : "noch offen"}</span><span>Bester Streak: ${streak.best} Tage</span></div>
+            </article>
+          </div>
+
+          <div class="kq-review-grid">
+            <article class="card kq-review-card">
+              <div class="kq-card-heading"><span class="kq-card-icon">語</span><div><h3>Vokabeln</h3><p>Core-Level ${currentLevel}</p></div></div>
+              <div class="kq-due-number">${vocabDue}</div>
+              <strong>${vocabDue ? "jetzt fällig" : `Nächste Wiederholung ${formatMoment(nextVocab)}`}</strong>
+              <p class="muted small">${placement ? "Die Einstufung des aktuellen Levels ist noch offen." : lessons ? `${lessons} neue Core-Vokabeln sind freigeschaltet.` : `${vocab.guru} Core-Wörter sind mindestens auf Guru.`}</p>
+              <div class="button-row"><button class="primary" id="kqVocabPrimary">${vocabDue ? "Jetzt wiederholen" : placement ? "Einstufung fortsetzen" : lessons ? "Lektionen starten" : "Vokabeln öffnen"}</button><button class="ghost" id="kqVocabOpen">Übersicht</button></div>
+            </article>
+
+            <article class="card kq-review-card">
+              <div class="kq-card-heading"><span class="kq-card-icon">文</span><div><h3>Grammatik</h3><p>${grammar.learned} von ${grammar.total} Punkten gelernt</p></div></div>
+              <div class="kq-due-number">${grammarDueCount}</div>
+              <strong>${grammarDueCount ? "jetzt fällig" : `Nächste Wiederholung ${formatMoment(nextGrammar)}`}</strong>
+              <p class="muted small">${grammar.guru} Grammatikpunkte sind vollständig auf Guru, ${grammar.skillGuru} einzelne Skills gefestigt.</p>
+              <div class="button-row"><button class="primary" id="kqGrammarPrimary">${grammarDueCount ? "Jetzt wiederholen" : "Grammatik fortsetzen"}</button><button class="ghost" id="kqGrammarOpen">Übersicht</button></div>
+            </article>
+          </div>
+
+          <div class="kq-stat-grid">
+            <article class="card kq-compact-stat"><span>Core begonnen</span><strong>${vocab.started}</strong><small>von ${vocab.total || 2000}</small></article>
+            <article class="card kq-compact-stat"><span>Vokabeln auf Guru</span><strong>${vocab.guru}</strong><small>${vocab.burned} abgeschlossen</small></article>
+            <article class="card kq-compact-stat"><span>Als bekannt markiert</span><strong>${vocab.known}</strong><small>im Archiv</small></article>
+            <article class="card kq-compact-stat"><span>Aktive Lerntage</span><strong>${streak.totalDays}</strong><small>${streak.totalActions} Lernaktionen</small></article>
+          </div>
+
+          <div class="grid-two kq-lower-grid">
+            <article class="card">
+              <div class="section-title"><div><h3>Als Nächstes</h3><p>Die nächsten geplanten Wiederholungen.</p></div></div>
+              <div class="kq-schedule-row"><span class="kq-schedule-dot vocab"></span><div><strong>Vokabeln</strong><span>${vocabDue ? `${vocabDue} jetzt fällig` : formatMoment(nextVocab)}</span></div></div>
+              <div class="kq-schedule-row"><span class="kq-schedule-dot grammar"></span><div><strong>Grammatik</strong><span>${grammarDueCount ? `${grammarDueCount} jetzt fällig` : formatMoment(nextGrammar)}</span></div></div>
+              <div class="kq-schedule-row"><span class="kq-schedule-dot mining"></span><div><strong>Mining</strong><span>${miningDue ? `${miningDue} Reviews fällig` : miningNew ? `${miningNew} neue Wörter` : "Keine offenen Karten"}</span></div></div>
+            </article>
+            <article class="card">
+              <div class="section-title"><div><h3>Schnellzugriff</h3><p>Direkt in den passenden Lernbereich.</p></div></div>
+              <div class="kq-quick-grid">
+                <button class="secondary" id="kqQuickVocab">🎴 Vokabeln</button>
+                <button class="secondary" id="kqQuickGrammar">🧩 Grammatik</button>
+                <button class="secondary" id="kqQuickArchive">📚 Archiv</button>
+                <button class="secondary" id="kqQuickMining">⛏️ Mining</button>
+              </div>
+            </article>
+          </div>`;
+
+        const startVocab = () => {
+          if (vocabDue) startReviews("core");
+          else if (placement) startPlacement();
+          else if (lessons) startLessons("core");
+          else switchView("core");
+        };
+        const startGrammar = () => {
+          if (grammarDueCount) grammarApi()?.startReviewSession?.(false);
+          else grammarApi()?.openGrammarView?.("grammar");
+        };
+
+        root.querySelector("#kqDashboardVocabReview")?.addEventListener("click", () => startReviews("core"));
+        root.querySelector("#kqDashboardGrammarReview")?.addEventListener("click", () => grammarApi()?.startReviewSession?.(false));
+        root.querySelector("#kqVocabPrimary")?.addEventListener("click", startVocab);
+        root.querySelector("#kqVocabOpen")?.addEventListener("click", () => switchView("core"));
+        root.querySelector("#kqGrammarPrimary")?.addEventListener("click", startGrammar);
+        root.querySelector("#kqGrammarOpen")?.addEventListener("click", () => grammarApi()?.openGrammarView?.("grammar"));
+        root.querySelector("#kqQuickVocab")?.addEventListener("click", () => switchView("core"));
+        root.querySelector("#kqQuickGrammar")?.addEventListener("click", () => grammarApi()?.openGrammarView?.("grammar"));
+        root.querySelector("#kqQuickArchive")?.addEventListener("click", () => { switchView("archive"); renderArchive(); });
+        root.querySelector("#kqQuickMining")?.addEventListener("click", () => switchView("mining"));
+      }
+
+      function renderVocabularyOverview() {
+        const root = document.getElementById("kqVocabularyOverview");
+        if (!root) return;
+        const source = currentData();
+        const currentLevel = Math.max(1, Number(source.currentLevel || 1));
+        const due = dueVocabulary("core").length;
+        const next = nextVocabularyDue("core");
+        const lessons = availableCoreLessons();
+        const placement = pendingPlacement();
+        const stats = vocabularyStats();
+
+        root.innerHTML = `
+          <article class="card kq-overview-main">
+            <div><span class="muted small">Aktuelles Core-Level</span><strong class="kq-level-number">${currentLevel}</strong><p>${placement ? "Einstufung noch nicht abgeschlossen" : `${lessons} neue Lektionen verfügbar`}</p></div>
+            <div class="button-row"><button class="primary" id="kqVocabPageLesson">${placement ? "Einstufung fortsetzen" : lessons ? "Lektionen starten" : "Level ansehen"}</button></div>
+          </article>
+          <article class="card kq-overview-review">
+            <span class="muted small">Vokabel-Reviews</span><strong>${due}</strong><p>${due ? "Jetzt fällig" : `Nächste Wiederholung ${formatMoment(next)}`}</p>
+            <button class="secondary" id="kqVocabPageReview" ${due ? "" : "disabled"}>Reviews starten</button>
+          </article>
+          <article class="card kq-overview-review">
+            <span class="muted small">Gefestigt</span><strong>${stats.guru}</strong><p>Core-Wörter mindestens auf Guru</p>
+            <button class="ghost" id="kqVocabPageArchive">Im Archiv ansehen</button>
+          </article>`;
+
+        root.querySelector("#kqVocabPageLesson")?.addEventListener("click", () => {
+          if (placement) startPlacement();
+          else if (lessons) startLessons("core");
+        });
+        root.querySelector("#kqVocabPageReview")?.addEventListener("click", () => startReviews("core"));
+        root.querySelector("#kqVocabPageArchive")?.addEventListener("click", () => { archiveMode = "vocabulary"; switchView("archive"); renderArchive(); });
+      }
+
+      function renderArchive() {
+        const list = document.getElementById("kqArchiveList");
+        const summary = document.getElementById("kqArchiveSummary");
+        if (!list || !summary) return;
+
+        if (archiveMode === "grammar") {
+          const points = grammarProgress().filter(point => (point.skills || []).length && point.skills.every(skill => Number(skill.stage || 0) >= 5));
+          const filtered = points.filter(point => {
+            const haystack = `${point.title || ""} ${point.pattern || ""} ${point.levelTitle || ""}`.toLocaleLowerCase("de-DE");
+            return !archiveSearch || haystack.includes(archiveSearch);
+          });
+          summary.textContent = `${points.length} Grammatikpunkte vollständig auf Guru`;
+          list.innerHTML = filtered.length ? filtered.map(point => `
+            <div class="kq-archive-entry grammar-entry">
+              <div><span class="type-badge core">Grammatik · Level ${esc(point.level)}</span><strong>${esc(point.pattern || point.title)}</strong><span>${esc(point.title || point.levelTitle || "")}</span></div>
+              <span class="badge">Guru</span>
+            </div>`).join("") : `<div class="empty">${archiveSearch ? "Keine passenden Grammatikpunkte gefunden." : "Noch keine Grammatik ist vollständig auf Guru."}</div>`;
+          return;
+        }
+
+        const source = currentData();
+        const coreKnown = vocabularyItems("core").filter(item => Number(item?.stage || 0) >= 5 || item?.guruPassed);
+        const manuallyKnown = Array.isArray(source.knownVocabulary) ? source.knownVocabulary : [];
+        const merged = new Map();
+        for (const item of coreKnown) {
+          const key = `${String(item?.word || "").normalize("NFKC")}|${String(item?.reading || "").normalize("NFKC")}`;
+          merged.set(key, { ...item, archiveSource: "Core", archiveStage: typeof stageName === "function" ? stageName(item.stage) : "Guru" });
+        }
+        for (const item of manuallyKnown) {
+          const key = `${String(item?.word || item?.base || "").normalize("NFKC")}|${String(item?.reading || item?.baseReading || "").normalize("NFKC")}`;
+          if (!merged.has(key)) merged.set(key, {
+            ...item,
+            word: item?.word || item?.base || "",
+            reading: item?.reading || item?.baseReading || "",
+            meanings: item?.meanings || [item?.meaning || ""].filter(Boolean),
+            archiveSource: "Bekannt",
+            archiveStage: "Als bekannt markiert"
+          });
+        }
+        const items = [...merged.values()].sort((left, right) => String(left.word || "").localeCompare(String(right.word || ""), "ja"));
+        const filtered = items.filter(item => {
+          const haystack = `${item.word || ""} ${item.reading || ""} ${(item.meanings || []).join(" ")}`.toLocaleLowerCase("de-DE");
+          return !archiveSearch || haystack.includes(archiveSearch);
+        });
+        summary.textContent = `${coreKnown.length} Core-Wörter auf Guru · ${manuallyKnown.length} als bekannt markiert`;
+        list.innerHTML = filtered.length ? filtered.map(item => `
+          <div class="kq-archive-entry">
+            <div class="archive-word" data-vocab-word>${esc(item.word)}</div>
+            <div class="kq-archive-meaning"><strong>${esc((item.meanings || []).join(", ") || "Bedeutung nicht gespeichert")}</strong><span>${esc(item.reading || "")} · ${esc(item.archiveStage)}</span></div>
+            <span class="type-badge ${item.archiveSource === "Core" ? "core" : "mining"}">${esc(item.archiveSource)}</span>
+          </div>`).join("") : `<div class="empty">${archiveSearch ? "Keine passenden Vokabeln gefunden." : "Noch keine Vokabeln im Archiv."}</div>`;
+      }
+
+      function refreshLearningHub() {
+        installNavigation();
+        installDashboard();
+        installVocabularyPage();
+        installMiningWorkspace();
+        installArchive();
+        renderDashboardHub();
+        renderVocabularyOverview();
+        if (document.getElementById("archive")?.classList.contains("active")) renderArchive();
+      }
+
+      function wrapRenderer(name) {
+        try {
+          const original = eval(name);
+          if (typeof original !== "function" || original.__kqLearningHubWrapped) return;
+          const wrapped = function(...args) {
+            const result = original.apply(this, args);
+            requestAnimationFrame(refreshLearningHub);
+            return result;
+          };
+          wrapped.__kqLearningHubWrapped = true;
+          eval(`${name} = wrapped`);
+        } catch {}
+      }
+
+      const style = document.createElement("style");
+      style.id = "kotobaLearningHubStyles";
+      style.textContent = `
+        .topbar { flex-wrap:wrap; }
+        .nav { flex:1 1 520px; }
+        #kqLearningDashboard { display:grid; gap:18px; }
+        .kq-dashboard-hero { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr); gap:18px; }
+        .kq-today-card { padding:30px; color:var(--text); background:linear-gradient(135deg,var(--kq-a,#d8c9f2),var(--kq-b,#f2d6e5)); }
+        .kq-today-card h2 { margin:6px 0 10px; max-width:720px; font-size:clamp(1.65rem,3.5vw,2.7rem); line-height:1.08; }
+        .kq-today-card p:not(.eyebrow) { max-width:720px; line-height:1.55; }
+        .kq-streak-card { display:grid; place-content:center; text-align:center; gap:10px; min-height:245px; }
+        .kq-streak-icon { font-size:2.7rem; }
+        .kq-streak-card strong { display:inline-block; margin-right:7px; color:var(--primary); font-size:4rem; line-height:1; }
+        .kq-streak-detail { display:grid; gap:4px; color:var(--muted); font-size:.88rem; }
+        .kq-review-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+        .kq-review-card { display:grid; gap:12px; }
+        .kq-card-heading { display:flex; align-items:center; gap:12px; }
+        .kq-card-heading h3,.kq-card-heading p { margin:0; }
+        .kq-card-heading p { color:var(--muted); font-size:.86rem; margin-top:3px; }
+        .kq-card-icon { width:48px; height:48px; display:grid; place-items:center; border-radius:15px; background:var(--kq-wash,#f2edff); color:var(--primary-dark); font-weight:950; font-size:1.3rem; }
+        .kq-due-number { color:var(--primary); font-size:3.7rem; line-height:1; font-weight:950; }
+        .kq-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+        .kq-compact-stat { min-height:125px; display:grid; align-content:center; gap:3px; }
+        .kq-compact-stat span,.kq-compact-stat small { color:var(--muted); font-weight:750; }
+        .kq-compact-stat strong { color:var(--primary); font-size:2.25rem; line-height:1; }
+        .kq-schedule-row { display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--border); }
+        .kq-schedule-row:last-child { border-bottom:0; }
+        .kq-schedule-row > div { display:grid; gap:3px; }
+        .kq-schedule-row span:last-child { color:var(--muted); font-size:.88rem; }
+        .kq-schedule-dot { width:12px; height:12px; border-radius:50%; background:var(--primary); box-shadow:0 0 0 6px var(--kq-wash,#f2edff); }
+        .kq-schedule-dot.grammar { background:var(--meaning); }
+        .kq-schedule-dot.mining { background:var(--mining); }
+        .kq-quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .kq-quick-grid button { min-height:58px; }
+        .kq-learning-overview { display:grid; grid-template-columns:1.35fr .8fr .8fr; gap:14px; margin-bottom:18px; }
+        .kq-overview-main,.kq-overview-review { display:flex; flex-direction:column; justify-content:space-between; gap:10px; min-height:185px; }
+        .kq-overview-main { flex-direction:row; align-items:center; background:linear-gradient(135deg,var(--kq-wash,#f3efff),white); }
+        .kq-level-number { display:block; color:var(--primary); font-size:4rem; line-height:1; }
+        .kq-overview-review > strong { color:var(--primary); font-size:3rem; line-height:1; }
+        .kq-mining-editor-title { margin-top:24px; }
+        .kq-archive-shell { display:grid; gap:14px; }
+        .kq-archive-toolbar { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+        .kq-archive-toolbar input { max-width:360px; }
+        .kq-segmented { display:inline-flex; gap:5px; padding:5px; border-radius:14px; background:var(--kq-wash,#f2edff); }
+        .kq-segmented button { padding:9px 14px; border-radius:10px; color:var(--muted); background:transparent; font-weight:850; }
+        .kq-segmented button.active { color:white; background:var(--primary); }
+        .kq-archive-list { display:grid; gap:9px; max-height:720px; overflow:auto; padding-right:4px; }
+        .kq-archive-entry { display:grid; grid-template-columns:minmax(90px,.55fr) minmax(0,1.4fr) auto; align-items:center; gap:14px; padding:14px; border:1px solid var(--border); border-radius:15px; background:white; }
+        .kq-archive-entry.grammar-entry { grid-template-columns:1fr auto; }
+        .kq-archive-entry.grammar-entry > div { display:grid; gap:5px; }
+        .kq-archive-entry.grammar-entry strong { font-size:1.35rem; }
+        .archive-word { font-size:1.45rem; font-weight:950; }
+        .kq-archive-meaning { display:grid; gap:3px; min-width:0; }
+        .kq-archive-meaning span { color:var(--muted); font-size:.86rem; }
+        #vocabulary[hidden] { display:none !important; }
+        @media (max-width:900px) {
+          .kq-dashboard-hero,.kq-review-grid,.kq-learning-overview { grid-template-columns:1fr; }
+          .kq-stat-grid { grid-template-columns:1fr 1fr; }
+          .kq-overview-main { flex-direction:column; align-items:flex-start; }
+        }
+        @media (max-width:620px) {
+          .kq-stat-grid,.kq-quick-grid { grid-template-columns:1fr; }
+          .kq-archive-entry { grid-template-columns:1fr auto; }
+          .kq-archive-meaning { grid-column:1 / -1; }
+        }
+      `;
+      document.head.appendChild(style);
+
+      installNavigation();
+      installDashboard();
+      installVocabularyPage();
+      installMiningWorkspace();
+      installArchive();
+      replaceVocabularyRenderer();
+      try { renderVocabulary(); } catch {}
+
+      ["renderAll", "renderDashboard", "renderCore", "renderMining", "switchView"].forEach(wrapRenderer);
+      window.renderArchive = renderArchive;
+      window.KotobaQuestLearningHub = { refresh: refreshLearningHub, renderArchive };
+
+      refreshLearningHub();
+      clearInterval(dashboardRefreshTimer);
+      dashboardRefreshTimer = window.setInterval(() => {
+        if (document.getElementById("dashboard")?.classList.contains("active")) renderDashboardHub();
+        if (document.getElementById("core")?.classList.contains("active")) renderVocabularyOverview();
+      }, 60000);
+    }
+
+    function pastelFuriganaBootstrap() {
+      if (window.__kotobaPastelFuriganaInstalled) return;
+      window.__kotobaPastelFuriganaInstalled = true;
+
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const THEMES = {
+        lilac: { label: "Lavendel", icon: "💜" },
+        pink: { label: "Rosa", icon: "🌸" },
+        mint: { label: "Mint", icon: "🌿" },
+        sky: { label: "Himmelblau", icon: "☁️" },
+        peach: { label: "Pfirsich", icon: "🍑" }
+      };
+
+      function readTheme() {
+        try {
+          if (typeof data !== "undefined" && THEMES[data.pastelTheme]) return data.pastelTheme;
+        } catch {}
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+          if (THEMES[parsed?.pastelTheme]) return parsed.pastelTheme;
+        } catch {}
+        return "lilac";
+      }
+
+      function applyTheme(theme) {
+        const selected = THEMES[theme] ? theme : "lilac";
+        document.documentElement.dataset.kqTheme = selected;
+        const select = document.getElementById("kqPastelThemeSelect");
+        if (select && select.value !== selected) select.value = selected;
+        try { window.parent?.postMessage({ type: "kotoba-pastel-theme", theme: selected }, "*"); } catch {}
+      }
+
+      function persistTheme(theme) {
+        const selected = THEMES[theme] ? theme : "lilac";
+        try {
+          data.pastelTheme = selected;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch {
+          try {
+            const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+            parsed.pastelTheme = selected;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          } catch {}
+        }
+        applyTheme(selected);
+        try { window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY })); } catch {}
+      }
+
+      function installThemePicker() {
+        const nav = document.querySelector(".topbar .nav");
+        const topbar = document.querySelector(".topbar");
+        if (!topbar || document.getElementById("kqPastelThemePicker")) return;
+        const picker = document.createElement("label");
+        picker.id = "kqPastelThemePicker";
+        picker.className = "kq-theme-picker";
+        picker.innerHTML = `<span>🎨 Farben</span><select id="kqPastelThemeSelect" aria-label="Pastell-Farbschema wählen">${Object.entries(THEMES).map(([id, item]) => `<option value="${id}">${item.icon} ${item.label}</option>`).join("")}</select>`;
+        (nav || topbar).appendChild(picker);
+        const select = picker.querySelector("select");
+        select.value = readTheme();
+        select.addEventListener("change", () => persistTheme(select.value));
+      }
+
+      function esc(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function normalize(value) {
+        return String(value || "").normalize("NFKC").replace(/[\s・･]/g, "").toLowerCase();
+      }
+
+      let vocabularyIndexSignature = "";
+      let vocabularyBySurface = new Map();
+      let vocabularyById = new Map();
+
+      function vocabularyCollections() {
+        try {
+          const vocabulary = typeof data !== "undefined" && Array.isArray(data.vocabulary)
+            ? data.vocabulary
+            : [];
+          const known = typeof data !== "undefined" && Array.isArray(data.knownVocabulary)
+            ? data.knownVocabulary
+            : [];
+          return { vocabulary, known };
+        } catch {
+          return { vocabulary: [], known: [] };
+        }
+      }
+
+      function ensureVocabularyIndex() {
+        const { vocabulary, known } = vocabularyCollections();
+        const first = vocabulary[0]?.id || vocabulary[0]?.packEntryId || "";
+        const last = vocabulary[vocabulary.length - 1]?.id || vocabulary[vocabulary.length - 1]?.packEntryId || "";
+        const knownLast = known[known.length - 1]?.id || known[known.length - 1]?.word || "";
+        const signature = `${vocabulary.length}|${known.length}|${first}|${last}|${knownLast}`;
+        if (signature === vocabularyIndexSignature) return;
+
+        const surface = new Map();
+        const ids = new Map();
+        for (const item of [...vocabulary, ...known]) {
+          const key = normalize(item?.word);
+          if (key && !surface.has(key)) surface.set(key, item);
+          if (item?.id != null) ids.set(String(item.id), item);
+          if (item?.packEntryId != null) ids.set(String(item.packEntryId), item);
+        }
+        vocabularyBySurface = surface;
+        vocabularyById = ids;
+        vocabularyIndexSignature = signature;
+      }
+
+      function findVocabularyBySurface(surface) {
+        const key = normalize(surface);
+        if (!key) return null;
+        ensureVocabularyIndex();
+        return vocabularyBySurface.get(key) || null;
+      }
+
+      function findVocabularyById(id) {
+        if (id == null) return null;
+        ensureVocabularyIndex();
+        return vocabularyById.get(String(id)) || null;
+      }
+
+      function rubyMarkup(item) {
+        const word = String(item?.word || "").trim();
+        const reading = String(item?.reading || "").trim();
+        if (!word) return "";
+        if (!reading || normalize(word) === normalize(reading)) return esc(word);
+        return `<ruby>${esc(word)}<rt>${esc(reading)}</rt></ruby>`;
+      }
+
+      function applyRubyToElement(element, item) {
+        if (!element || !item?.reading) return;
+        element.innerHTML = rubyMarkup(item);
+        element.dataset.kqFurigana = "1";
+        element.classList.add("kq-vocab-ruby");
+      }
+
+      function enhanceActiveStudyWord() {
+        let item = null;
+        try {
+          if (document.getElementById("lessons")?.classList.contains("active") && lessonSession?.items?.length) {
+            item = lessonSession.items[lessonSession.index] || null;
+          } else if (document.getElementById("reviews")?.classList.contains("active") && reviewSession?.questions?.length) {
+            const question = reviewSession.questions[reviewSession.index];
+            item = findVocabularyById(question?.itemId);
+          } else if (document.getElementById("placement")?.classList.contains("active") && placementSession) {
+            if (placementSession.phase === "sort") item = placementSession.items?.[placementSession.index] || null;
+            else {
+              const question = placementSession.questions?.[placementSession.proofIndex];
+              item = findVocabularyById(question?.itemId);
+            }
+          }
+        } catch {}
+        if (item) applyRubyToElement(document.querySelector(".view.active .study-word"), item);
+      }
+
+      const lazyFuriganaObserver = "IntersectionObserver" in window
+        ? new IntersectionObserver(entries => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              lazyFuriganaObserver.unobserve(entry.target);
+              const plain = String(entry.target.textContent || "").trim();
+              const item = findVocabularyBySurface(plain);
+              if (item?.reading) applyRubyToElement(entry.target, item);
+            }
+          }, { rootMargin: "240px 0px" })
+        : null;
+
+      function enhanceFurigana(root = document) {
+        const selectors = [
+          ".study-word",
+          ".vocab-jp",
+          ".known-vocab-row strong",
+          ".archive-word",
+          ".vocab-archive-word",
+          "[data-vocab-word]"
+        ].join(",");
+        const candidates = root.matches?.(selectors)
+          ? [root]
+          : Array.from(root.querySelectorAll?.(selectors) || []);
+
+        for (const element of candidates) {
+          if (element.dataset.kqFurigana === "1" || element.dataset.kqFuriganaQueued === "1") continue;
+          if (element.classList.contains("study-word")) {
+            const plain = String(element.textContent || "").trim();
+            const item = findVocabularyBySurface(plain);
+            if (item?.reading) applyRubyToElement(element, item);
+            continue;
+          }
+          if (lazyFuriganaObserver) {
+            element.dataset.kqFuriganaQueued = "1";
+            lazyFuriganaObserver.observe(element);
+          } else {
+            const plain = String(element.textContent || "").trim();
+            const item = findVocabularyBySurface(plain);
+            if (item?.reading) applyRubyToElement(element, item);
+          }
+        }
+      }
+
+      let enhancementFrame = 0;
+      function scheduleEnhancement() {
+        if (enhancementFrame) return;
+        enhancementFrame = requestAnimationFrame(() => {
+          enhancementFrame = 0;
+          installThemePicker();
+          enhanceActiveStudyWord();
+          const activeView = document.querySelector(".view.active") || document;
+          enhanceFurigana(activeView);
+        });
+      }
+
+      const style = document.createElement("style");
+      style.id = "kotobaPastelFuriganaStyles";
+      style.textContent = `
+        :root[data-kq-theme="lilac"] { --bg:#faf7ff; --panel:rgba(255,255,255,.93); --text:#3d3650; --muted:#81778f; --primary:#a68bd8; --primary-dark:#725da5; --accent:#edbfd7; --meaning:#d992bb; --reading:#91a7dc; --mining:#e8b77e; --good:#7eb99e; --bad:#d991a2; --warning:#d5aa69; --border:#e8def3; --kq-a:#cdbdeb; --kq-b:#f2d2e1; --kq-wash:#f5effc; --kq-glow:rgba(166,139,216,.16); }
+        :root[data-kq-theme="pink"] { --bg:#fff8fb; --panel:rgba(255,255,255,.94); --text:#503944; --muted:#8f7480; --primary:#dfa2bd; --primary-dark:#a56883; --accent:#f1c9d7; --meaning:#dc96b5; --reading:#a9b7df; --mining:#edbd87; --good:#89bba4; --bad:#d98f9f; --warning:#d7ad70; --border:#f0dfe7; --kq-a:#efb9cf; --kq-b:#f7dce7; --kq-wash:#fff0f6; --kq-glow:rgba(223,162,189,.17); }
+        :root[data-kq-theme="mint"] { --bg:#f6fcf9; --panel:rgba(255,255,255,.94); --text:#344b43; --muted:#71877f; --primary:#8bc7ae; --primary-dark:#568f78; --accent:#c6e4d6; --meaning:#d7a5be; --reading:#9db8dc; --mining:#e7bc83; --good:#73ad91; --bad:#d88f9b; --warning:#d0aa6d; --border:#dceee6; --kq-a:#acd9c6; --kq-b:#d9eee5; --kq-wash:#eaf8f1; --kq-glow:rgba(139,199,174,.18); }
+        :root[data-kq-theme="sky"] { --bg:#f7fbff; --panel:rgba(255,255,255,.94); --text:#354557; --muted:#738294; --primary:#94b9df; --primary-dark:#5f82ab; --accent:#c9dcf0; --meaning:#d9a4bd; --reading:#88aedd; --mining:#e8bb83; --good:#82b69d; --bad:#d88f9e; --warning:#d3aa70; --border:#dce9f4; --kq-a:#b7d2ec; --kq-b:#dceaf6; --kq-wash:#edf6fd; --kq-glow:rgba(148,185,223,.18); }
+        :root[data-kq-theme="peach"] { --bg:#fffaf6; --panel:rgba(255,255,255,.94); --text:#514239; --muted:#8e7b70; --primary:#e7ad91; --primary-dark:#a96f57; --accent:#f3d2bf; --meaning:#dda0b8; --reading:#a5b6dc; --mining:#e6b478; --good:#86b79e; --bad:#da919b; --warning:#d4a667; --border:#f0e2d8; --kq-a:#efc2aa; --kq-b:#f8dfd0; --kq-wash:#fff1e8; --kq-glow:rgba(231,173,145,.18); }
+
+        body { background:radial-gradient(circle at 8% 0,var(--kq-b),transparent 31rem),radial-gradient(circle at 96% 4%,var(--kq-a),transparent 34rem),var(--bg) !important; }
+        .topbar { background:rgba(255,255,255,.82) !important; border:1px solid var(--border) !important; box-shadow:0 12px 34px var(--kq-glow) !important; }
+        .card { border-color:var(--border) !important; box-shadow:0 14px 38px var(--kq-glow) !important; }
+        .welcome { color:var(--text) !important; background:linear-gradient(135deg,var(--kq-a),var(--kq-b)) !important; }
+        .welcome p,.welcome .eyebrow { color:var(--text) !important; opacity:.78 !important; }
+        .welcome .primary { color:var(--primary-dark) !important; background:rgba(255,255,255,.88) !important; }
+        .primary,.nav button.active { background:var(--primary) !important; box-shadow:0 8px 20px var(--kq-glow) !important; }
+        .secondary { color:var(--primary-dark) !important; background:var(--kq-wash) !important; }
+        .status-box,.level-detail,.pack-metric,.section-card,.choice-card { background:color-mix(in srgb,var(--kq-wash) 72%,white) !important; border-color:var(--border) !important; }
+        .progress-fill { background:linear-gradient(90deg,var(--primary),var(--accent)) !important; }
+        .logo { background:linear-gradient(135deg,var(--primary),var(--accent)) !important; box-shadow:0 8px 22px var(--kq-glow) !important; }
+
+        .kq-theme-picker { display:flex; align-items:center; gap:7px; margin-left:5px; padding:5px 7px 5px 10px; border:1px solid var(--border); border-radius:13px; background:rgba(255,255,255,.76); color:var(--muted); font-size:.78rem; font-weight:900; white-space:nowrap; }
+        .kq-theme-picker select { width:auto; min-width:112px; padding:7px 28px 7px 9px; border-radius:9px; border-color:var(--border); color:var(--primary-dark); background:white; font-size:.8rem; font-weight:850; }
+        .kq-vocab-ruby ruby { ruby-align:center; }
+        .kq-vocab-ruby rt { color:var(--primary-dark); font-size:.38em; font-weight:850; letter-spacing:.02em; }
+        .vocab-jp.kq-vocab-ruby rt,.known-vocab-row .kq-vocab-ruby rt { font-size:.52em; }
+        @media (max-width:820px) { .kq-theme-picker span { display:none; } .kq-theme-picker { padding:4px; margin-left:0; } .kq-theme-picker select { min-width:104px; } }
+      `;
+      document.head.appendChild(style);
+
+      ["renderAll", "renderDashboard", "renderCore", "renderMining", "renderVocabulary", "renderPlacement", "renderLesson", "renderReview", "renderArchive", "switchView"].forEach(name => {
+        try {
+          const original = eval(name);
+          if (typeof original !== "function" || original.__kqPastelWrapped) return;
+          const wrapped = function(...args) {
+            const result = original.apply(this, args);
+            scheduleEnhancement();
+            return result;
+          };
+          wrapped.__kqPastelWrapped = true;
+          eval(`${name} = wrapped`);
+        } catch {}
+      });
+
+      try {
+        const originalQuestionCard = renderQuestionCard;
+        if (typeof originalQuestionCard === "function" && !originalQuestionCard.__kqPastelWrapped) {
+          renderQuestionCard = function(...args) {
+            const result = originalQuestionCard.apply(this, args);
+            scheduleEnhancement();
+            return result;
+          };
+          renderQuestionCard.__kqPastelWrapped = true;
+        }
+      } catch {}
+
+      installThemePicker();
+      applyTheme(readTheme());
+      scheduleEnhancement();
+    }
+
     function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyScript}`;
+      const learningHubScript = "<script>(" + learningHubBootstrap.toString() + ")();<" + "/script>";
+      const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
+      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${pastelFuriganaScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
