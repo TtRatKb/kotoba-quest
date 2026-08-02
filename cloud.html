@@ -435,6 +435,16 @@
       return `${compatibilityBlock}${html}`;
     }
 
+    function enableAutomaticBrowserAudioFallback(html) {
+      return html
+        // Alte und neue Spielstände verwenden die Browserstimme automatisch,
+        // sobald keine native Aufnahme erfolgreich abgespielt werden konnte.
+        .replace(/browserTtsFallback\s*:\s*false/g, "browserTtsFallback:true")
+        // Zusätzliche Absicherung, falls eine spätere index.html den Schalter
+        // zwar noch enthält, ihn aber an anderer Stelle wieder deaktiviert.
+        .replace(/if\s*\(\s*!data\.browserTtsFallback\s*\)\s*\{/g, "if(false) {");
+    }
+
     async function loadAppDocument({ force = false } = {}) {
       if (appLoadPromise && !force) return appLoadPromise;
 
@@ -450,7 +460,9 @@
         }
 
         const originalHtml = await response.text();
-        appDocumentHtml = injectLegacySettingFields(originalHtml);
+        appDocumentHtml = enableAutomaticBrowserAudioFallback(
+          injectLegacySettingFields(originalHtml)
+        );
         appFrame.removeAttribute("src");
         appFrame.srcdoc = appDocumentHtml;
       })()
