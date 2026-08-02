@@ -288,7 +288,7 @@
     <iframe
       class="app-frame"
       id="appFrame"
-      src="./index.html"
+      src="about:blank"
       title="Kotoba Quest"
       allow="autoplay"
     ></iframe>
@@ -351,6 +351,13 @@
     const META_KEY = "kotobaQuestCloudMetaV1";
     const SAVE_DELAY_MS = 800;
     const MAX_PAYLOAD_LENGTH = 900000;
+    const APP_URL = "./index.html";
+    const LEGACY_SETTING_IDS = [
+      "demoMode",
+      "audioAutoplay",
+      "nativeAudioEnabled",
+      "onlineHumanAudio"
+    ];
 
     const statusDot = document.getElementById("statusDot");
     const statusTitle = document.getElementById("statusTitle");
@@ -378,6 +385,8 @@
     let reconciliationInFlight = false;
     let pendingConflict = null;
     let toastTimer = null;
+    let appDocumentHtml = null;
+    let appLoadPromise = null;
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -403,6 +412,90 @@
         minute: "2-digit"
       }).format(new Date(timestamp));
     }
+
+    function injectLegacySettingFields(html) {
+      const missingIds = LEGACY_SETTING_IDS.filter(id => {
+        const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return !new RegExp(`id=["']${escapedId}["']`, "i").test(html);
+      });
+
+      if (!missingIds.length) return html;
+
+      const fields = missingIds
+        .map(id => `<input type="checkbox" id="${id}" />`)
+        .join("");
+
+      const compatibilityBlock =
+        `<div id="kotobaQuestCloudCompatibility" hidden aria-hidden="true">${fields}</div>`;
+
+      if (/<body(?:\s[^>]*)?>/i.test(html)) {
+        return html.replace(/<body(?:\s[^>]*)?>/i, match => `${match}\n${compatibilityBlock}`);
+      }
+
+      return `${compatibilityBlock}${html}`;
+    }
+
+    async function loadAppDocument({ force = false } = {}) {
+      if (appLoadPromise && !force) return appLoadPromise;
+
+      appLoadPromise = (async () => {
+        const separator = APP_URL.includes("?") ? "&" : "?";
+        const response = await fetch(
+          `${APP_URL}${separator}cloudCompatibility=${Date.now()}`,
+          { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Kotoba Quest konnte nicht geladen werden (HTTP ${response.status}).`);
+        }
+
+        const originalHtml = await response.text();
+        appDocumentHtml = injectLegacySettingFields(originalHtml);
+        appFrame.removeAttribute("src");
+        appFrame.srcdoc = appDocumentHtml;
+      })()
+        .catch(error => {
+          console.error("Kotoba Quest app loading failed", error);
+          appFrame.removeAttribute("srcdoc");
+          appFrame.src = APP_URL;
+          setStatus(
+            "bad",
+            "App-Kompatibilitätsmodus fehlgeschlagen",
+            "Die normale App wurde geladen. Bitte cloud.html erneut hochladen."
+          );
+        })
+        .finally(() => {
+          appLoadPromise = null;
+        });
+
+      return appLoadPromise;
+    }
+
+    function reloadAppDocument() {
+      if (appDocumentHtml) {
+        appFrame.srcdoc = "";
+        requestAnimationFrame(() => {
+          appFrame.srcdoc = appDocumentHtml;
+        });
+        return;
+      }
+
+      loadAppDocument({ force: true });
+    }
+
+    appFrame.addEventListener("load", () => {
+      const appWindow = appFrame.contentWindow;
+      if (!appWindow || appFrame.src === "about:blank") return;
+
+      // Safety net: refresh the dashboard after the embedded app has initialized.
+      setTimeout(() => {
+        try {
+          appWindow.renderAll?.();
+        } catch (error) {
+          console.warn("Kotoba Quest dashboard refresh failed", error);
+        }
+      }, 0);
+    });
 
     function readLocalRaw() {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -624,7 +717,7 @@
         lastCloudUpdatedAtMs: cloudProgress.updatedAtMs
       });
       observedLocalRaw = cloudProgress.raw;
-      appFrame.contentWindow?.location.reload();
+      reloadAppDocument();
       setStatus("good", "Cloudstand geladen", `Wiederhergestellt · ${formatTime()} Uhr`);
       toast("Dein Cloud-Spielstand wurde wiederhergestellt.");
     }
@@ -773,6 +866,8 @@
       observedLocalRaw = raw;
       scheduleCloudSave();
     }, 1500);
+
+    await loadAppDocument();
 
     try {
       await setPersistence(auth, browserLocalPersistence);
