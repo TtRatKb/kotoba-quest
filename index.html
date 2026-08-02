@@ -1,0 +1,3573 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kotoba Quest – Core Path & Mining</title>
+  <style>
+    :root {
+      --bg: #f7f3ff;
+      --panel: rgba(255,255,255,.94);
+      --text: #29243a;
+      --muted: #756f86;
+      --primary: #7957d5;
+      --primary-dark: #5e3fba;
+      --accent: #f58ab7;
+      --meaning: #d95098;
+      --reading: #496fd4;
+      --mining: #e38a37;
+      --good: #268d63;
+      --bad: #c84f67;
+      --warning: #a96d12;
+      --border: #e4dcf6;
+      --shadow: 0 18px 50px rgba(73,50,126,.12);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-rounded, "SF Pro Rounded", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(245,138,183,.24), transparent 34rem),
+        radial-gradient(circle at top right, rgba(121,87,213,.22), transparent 38rem),
+        var(--bg);
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button {
+      border: 0;
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:disabled { cursor: not-allowed; opacity: .5; transform: none; }
+
+    .app { width: min(1120px, calc(100% - 28px)); margin: 22px auto 48px; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      padding: 18px 22px;
+      border: 1px solid rgba(255,255,255,.8);
+      background: rgba(255,255,255,.74);
+      backdrop-filter: blur(18px);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+    }
+    .brand { display:flex; align-items:center; gap:12px; min-width:0; }
+    .logo {
+      width:46px; height:46px; display:grid; place-items:center; flex:0 0 auto;
+      border-radius:15px; color:white; font-weight:950; font-size:1.15rem;
+      background:linear-gradient(135deg,var(--primary),var(--accent));
+      box-shadow:0 10px 26px rgba(121,87,213,.28);
+    }
+    .brand h1 { margin:0; font-size:1.16rem; line-height:1.1; }
+    .brand p { margin:4px 0 0; color:var(--muted); font-size:.84rem; }
+    .nav { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .nav button {
+      padding:10px 14px; border-radius:12px; color:var(--muted);
+      background:transparent; font-weight:800;
+    }
+    .nav button.active { color:white; background:var(--primary); box-shadow:0 8px 22px rgba(121,87,213,.24); }
+
+    main { margin-top:24px; }
+    .view { display:none; }
+    .view.active { display:block; }
+    .card {
+      background:var(--panel);
+      border:1px solid rgba(255,255,255,.9);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:24px;
+    }
+    .hero { display:grid; grid-template-columns:1.45fr .8fr; gap:18px; margin-bottom:18px; }
+    .welcome {
+      overflow:hidden; position:relative; min-height:230px;
+      background:linear-gradient(120deg,rgba(121,87,213,.96),rgba(245,138,183,.9));
+      color:white;
+    }
+    .welcome::after {
+      content:"言葉"; position:absolute; right:24px; bottom:-24px;
+      font-size:8rem; font-weight:950; opacity:.12; transform:rotate(-6deg);
+    }
+    .eyebrow {
+      margin:0 0 8px; font-size:.78rem; text-transform:uppercase;
+      letter-spacing:.14em; font-weight:900; opacity:.82;
+    }
+    .welcome h2 { margin:0; max-width:640px; font-size:clamp(1.8rem,4vw,3rem); line-height:1.06; }
+    .welcome p { max-width:610px; margin:14px 0 20px; line-height:1.55; opacity:.93; }
+    .button-row { display:flex; flex-wrap:wrap; gap:10px; position:relative; z-index:1; }
+    .primary,.secondary,.mining-button,.danger,.ghost {
+      padding:12px 17px; border-radius:13px; font-weight:850;
+    }
+    .primary { color:white; background:var(--primary); box-shadow:0 9px 22px rgba(121,87,213,.24); }
+    .secondary { color:var(--primary-dark); background:#eee8ff; }
+    .mining-button { color:white; background:var(--mining); box-shadow:0 9px 22px rgba(227,138,55,.22); }
+    .danger { color:white; background:var(--bad); }
+    .ghost { color:var(--muted); background:transparent; border:1px solid var(--border); }
+    .welcome .primary { color:var(--primary-dark); background:white; }
+    .welcome .mining-button { color:#89521c; background:#fff0dc; }
+
+    .level-card { display:flex; flex-direction:column; justify-content:center; }
+    .level-number { font-size:3.3rem; font-weight:950; line-height:1; color:var(--primary); }
+    .progress-track { width:100%; height:12px; margin:15px 0 8px; overflow:hidden; border-radius:999px; background:#ede8f6; }
+    .progress-fill { height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,var(--primary),var(--accent)); transition:width .3s ease; }
+    .level-detail { margin-top:14px; padding:13px 14px; border-radius:14px; background:#faf8ff; border:1px solid var(--border); }
+    .level-detail strong { display:block; margin-bottom:3px; }
+    .muted { color:var(--muted); }
+    .small { font-size:.88rem; }
+
+    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+    .stat { min-height:138px; display:flex; flex-direction:column; justify-content:space-between; }
+    .stat-label { color:var(--muted); font-size:.9rem; font-weight:800; }
+    .stat-value { font-size:2.4rem; font-weight:950; color:var(--primary); }
+    .stat.mining-stat .stat-value { color:var(--mining); }
+
+    .section-title { display:flex; justify-content:space-between; gap:14px; align-items:end; margin-bottom:14px; }
+    .section-title h2,.section-title h3 { margin:0; }
+    .section-title p { margin:5px 0 0; color:var(--muted); }
+    .grid-two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .mode-card { min-height:245px; display:flex; flex-direction:column; justify-content:space-between; }
+    .mode-icon { font-size:2.2rem; margin-bottom:8px; }
+    .status-box { padding:14px; border-radius:14px; background:#faf8ff; border:1px solid var(--border); margin:15px 0; }
+    .status-box strong { display:block; margin-bottom:5px; }
+
+    .pack-header {
+      display:flex; justify-content:space-between; gap:18px; align-items:flex-start; flex-wrap:wrap;
+    }
+    .pack-version {
+      display:inline-flex; padding:7px 10px; border-radius:999px; color:var(--primary-dark);
+      background:#eee8ff; font-size:.78rem; font-weight:900;
+    }
+    .pack-metrics {
+      display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px;
+    }
+    .pack-metric {
+      padding:13px; border-radius:14px; background:#faf8ff; border:1px solid var(--border);
+    }
+    .pack-metric strong { display:block; color:var(--primary); font-size:1.4rem; }
+    .section-grid {
+      display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px;
+    }
+    .section-card {
+      padding:13px 14px; border-radius:14px; border:1px solid var(--border); background:#fff;
+    }
+    .section-card.locked { opacity:.58; background:#f5f3f7; }
+    .section-card strong,.section-card span { display:block; }
+    .section-card span { color:var(--muted); font-size:.82rem; margin-top:3px; }
+    .source-note {
+      margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
+      color:var(--muted); font-size:.8rem; line-height:1.5;
+    }
+    .source-note a { color:var(--primary-dark); }
+
+    form { display:grid; gap:13px; }
+    label { display:grid; gap:6px; color:var(--muted); font-size:.86rem; font-weight:800; }
+    input,textarea,select {
+      width:100%; padding:12px 13px; border-radius:12px; border:1px solid var(--border);
+      color:var(--text); background:white; outline:none; resize:vertical;
+    }
+    input:focus,textarea:focus,select:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(121,87,213,.11); }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .conditional-field.hidden { display:none; }
+
+    .vocab-list { display:grid; gap:10px; max-height:690px; overflow:auto; padding-right:4px; }
+    .vocab-row {
+      display:grid; grid-template-columns:minmax(80px,.6fr) 1fr auto;
+      align-items:center; gap:14px; padding:14px; border-radius:15px;
+      border:1px solid var(--border); background:#fff;
+    }
+    .vocab-jp { font-size:1.45rem; font-weight:950; }
+    .vocab-meta { min-width:0; }
+    .vocab-meta strong,.vocab-meta span { display:block; overflow-wrap:anywhere; }
+    .vocab-meta span { color:var(--muted); font-size:.87rem; margin-top:3px; }
+    .badge,.level-badge,.type-badge {
+      display:inline-flex; align-items:center; justify-content:center; padding:7px 9px;
+      border-radius:999px; font-size:.76rem; font-weight:900;
+    }
+    .badge { min-width:88px; background:#f0ebff; color:var(--primary-dark); }
+    .level-badge { color:#875213; background:#fff3d5; }
+    .type-badge.core { color:var(--primary-dark); background:#eee8ff; }
+    .type-badge.mining { color:#915415; background:#fff0dc; }
+    .locked-badge { color:#706a7e; background:#ece9f1; }
+    .empty { text-align:center; color:var(--muted); padding:35px 12px; }
+
+    .study-shell { max-width:780px; margin:0 auto; }
+    .study-card {
+      min-height:470px; display:flex; flex-direction:column; justify-content:center;
+      text-align:center; padding:34px;
+    }
+    .counter { color:var(--muted); font-size:.85rem; font-weight:850; text-transform:uppercase; letter-spacing:.08em; }
+    .study-word { margin:14px 0; font-size:clamp(3rem,9vw,6rem); line-height:1.05; font-weight:950; }
+    .study-reading { font-size:1.35rem; color:var(--primary); font-weight:900; }
+    .study-meaning { margin-top:8px; font-size:1.25rem; font-weight:900; }
+    .study-example { max-width:580px; margin:22px auto 0; padding:16px; border-radius:14px; background:#faf8ff; color:var(--muted); line-height:1.55; }
+    .review-form { max-width:560px; margin:22px auto 0; display:grid; grid-template-columns:1fr auto; gap:10px; }
+
+    .prompt-type {
+      display:inline-flex; align-self:center; align-items:center; gap:9px;
+      margin-top:18px; padding:9px 16px; border-radius:999px; color:white;
+      font-size:.92rem; font-weight:950; letter-spacing:.08em; text-transform:uppercase;
+      box-shadow:0 8px 22px rgba(41,36,58,.12);
+    }
+    .prompt-hint { margin:11px 0 0; font-size:1rem; font-weight:850; }
+    .review-meaning { border-top:9px solid var(--meaning); background:linear-gradient(180deg,rgba(217,80,152,.10),rgba(255,255,255,.95) 42%); }
+    .review-reading { border-top:9px solid var(--reading); background:linear-gradient(180deg,rgba(73,111,212,.11),rgba(255,255,255,.95) 42%); }
+    .review-meaning .prompt-type { background:var(--meaning); }
+    .review-reading .prompt-type { background:var(--reading); }
+    .review-meaning .prompt-hint { color:#a73773; }
+    .review-reading .prompt-hint { color:#3557ae; }
+    .review-meaning .review-form button,.review-meaning #nextQuestion { background:var(--meaning); }
+    .review-reading .review-form button,.review-reading #nextQuestion { background:var(--reading); }
+
+    .word-audio-row {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      margin:14px auto 6px;
+      width:fit-content;
+      max-width:100%;
+    }
+
+    .word-audio-row .study-word {
+      margin:0;
+    }
+
+    .icon-audio {
+      display:inline-grid;
+      place-items:center;
+      flex:0 0 auto;
+      width:42px;
+      height:42px;
+      padding:0;
+      border-radius:50%;
+      color:#3557ae;
+      background:#edf2ff;
+      border:1px solid #cad6f8;
+      font-size:1.15rem;
+      box-shadow:0 5px 14px rgba(73,111,212,.12);
+    }
+
+    .icon-audio:hover {
+      box-shadow:0 8px 19px rgba(73,111,212,.2);
+    }
+
+    .icon-audio.small {
+      width:34px;
+      height:34px;
+      font-size:.95rem;
+      box-shadow:none;
+    }
+
+    .sentence-audio-row {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      margin-bottom:8px;
+    }
+
+    .sentence-audio-row .context-japanese {
+      flex:1;
+      margin:0;
+    }
+
+    .sentence-source {
+      display:block;
+      margin-top:8px;
+      font-size:.76rem;
+      line-height:1.45;
+      color:var(--muted);
+    }
+
+    .sentence-source.loading {
+      font-style:italic;
+    }
+
+    .sentence-source a {
+      color:inherit;
+      text-decoration:underline;
+      text-underline-offset:2px;
+    }
+
+    .sentence-pack-progress {
+      display:none;
+      margin-top:12px;
+    }
+
+    .sentence-pack-progress.active {
+      display:block;
+    }
+
+    .sentence-pack-track {
+      height:10px;
+      overflow:hidden;
+      border-radius:999px;
+      background:#e9e5f2;
+    }
+
+    .sentence-pack-fill {
+      width:0%;
+      height:100%;
+      border-radius:inherit;
+      background:linear-gradient(90deg,#7a6de8,#4b8ed8);
+      transition:width .2s ease;
+    }
+
+    .sentence-pack-progress span {
+      display:block;
+      margin-top:7px;
+    }
+
+    .audio-pack-box {
+      margin-top:14px;
+      padding:13px 15px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#faf8ff;
+    }
+
+    .audio-pack-box strong,
+    .audio-pack-box span {
+      display:block;
+    }
+
+    .audio-pack-box span {
+      margin-top:4px;
+    }
+
+    .production-word {
+      max-width:650px;
+      margin:22px auto 10px;
+      font-size:clamp(1.65rem,5vw,3rem);
+      line-height:1.22;
+      font-weight:950;
+    }
+
+    .context-area {
+      max-width:590px;
+      width:100%;
+      margin:12px auto 0;
+    }
+
+    .context-toggle {
+      padding:9px 13px;
+      border-radius:999px;
+      color:var(--muted);
+      background:#faf8ff;
+      border:1px solid var(--border);
+      font-size:.84rem;
+      font-weight:850;
+    }
+
+    .context-toggle[aria-expanded="true"] {
+      color:var(--primary-dark);
+      background:#eee8ff;
+    }
+
+    .context-panel {
+      display:none;
+      margin-top:10px;
+      padding:14px 16px;
+      border-radius:14px;
+      background:#faf8ff;
+      border:1px solid var(--border);
+      color:var(--muted);
+      line-height:1.55;
+      text-align:left;
+    }
+
+    .context-panel.open {
+      display:block;
+    }
+
+    .context-panel strong,
+    .context-panel span {
+      display:block;
+    }
+
+    .context-panel span + span,
+    .context-panel strong + span {
+      margin-top:5px;
+    }
+
+    .context-panel .context-japanese {
+      color:var(--text);
+      font-size:1.05rem;
+      font-weight:850;
+    }
+
+    .feedback { max-width:560px; margin:15px auto 0; padding:13px 15px; border-radius:13px; font-weight:850; }
+    .feedback.good { color:var(--good); background:#eaf8f2; }
+    .feedback.bad { color:var(--bad); background:#fff0f3; }
+    .feedback.warning { color:var(--warning); background:#fff6df; border:1px solid #f0d38c; }
+
+    .placement-card { min-height:520px; }
+    .placement-label { display:inline-flex; align-self:center; padding:8px 14px; border-radius:999px; color:var(--primary-dark); background:#eee8ff; font-size:.84rem; font-weight:900; }
+    .placement-help { max-width:590px; margin:8px auto 0; color:var(--muted); line-height:1.5; }
+    .choice-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; max-width:620px; width:100%; margin:25px auto 0; }
+    .choice {
+      padding:18px; border-radius:16px; font-weight:950; font-size:1rem;
+      border:1px solid var(--border);
+    }
+    .choice.unknown { color:#9c4055; background:#fff0f3; }
+    .choice.known { color:#237b58; background:#eaf8f2; }
+    .key { display:inline-grid; place-items:center; min-width:30px; height:30px; padding:0 7px; margin-right:7px; border-radius:8px; color:var(--text); background:white; border:1px solid rgba(0,0,0,.12); box-shadow:0 2px 0 rgba(0,0,0,.08); }
+    .placement-counts { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin-top:18px; }
+    .count-chip { padding:8px 11px; border-radius:999px; background:#faf8ff; color:var(--muted); font-size:.83rem; font-weight:850; }
+
+    .settings-row { display:flex; justify-content:space-between; gap:20px; align-items:center; padding:15px 0; border-top:1px solid var(--border); }
+    .toggle { position:relative; width:52px; height:30px; flex:0 0 auto; }
+    .toggle input { display:none; }
+    .toggle span { position:absolute; inset:0; border-radius:999px; background:#dcd5e7; transition:background .2s; }
+    .toggle span::after {
+      content:""; position:absolute; width:24px; height:24px; left:3px; top:3px;
+      border-radius:50%; background:white; box-shadow:0 3px 10px rgba(0,0,0,.15); transition:transform .2s;
+    }
+    .toggle input:checked + span { background:var(--primary); }
+    .toggle input:checked + span::after { transform:translateX(22px); }
+
+    .toast {
+      position:fixed; left:50%; bottom:24px; transform:translate(-50%,20px); opacity:0;
+      pointer-events:none; z-index:50; padding:12px 18px; border-radius:13px;
+      color:white; background:#29243a; box-shadow:var(--shadow); transition:.2s ease;
+    }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+
+    @media (max-width:860px) {
+      .topbar { position:static; align-items:flex-start; }
+      .hero,.grid-two { grid-template-columns:1fr; }
+      .stats { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width:580px) {
+      .app { width:min(100% - 18px,1120px); margin-top:9px; }
+      .topbar { padding:14px; flex-direction:column; }
+      .nav { width:100%; justify-content:stretch; }
+      .nav button { flex:1; padding-inline:8px; font-size:.82rem; }
+      .card { padding:18px; }
+      .stats { gap:9px; }
+      .stat { min-height:115px; }
+      .stat-value { font-size:2rem; }
+      .form-grid,.choice-grid { grid-template-columns:1fr; }
+      .vocab-row { grid-template-columns:1fr auto; }
+      .vocab-meta { grid-column:1 / -1; grid-row:2; }
+      .review-form { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">言</div>
+        <div>
+          <h1>Kotoba Quest</h1>
+          <p>Core Path, Einstufung und Vocabulary Mining</p>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Hauptnavigation">
+        <button data-view="dashboard" class="active">Übersicht</button>
+        <button data-view="vocabulary">Vokabeln</button>
+        <button data-view="core">Core Path</button>
+        <button data-view="mining">Mining</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="dashboard" class="view active">
+        <div class="hero">
+          <article class="card welcome">
+            <p class="eyebrow">Dein persönlicher Lernpfad</p>
+            <h2>Grundwortschatz strukturiert lernen. Eigene Wörter gezielt minen.</h2>
+            <p>Jedes Core-Level beginnt mit einer schnellen Einstufung. Bekannte Wörter beweist du durch Listening und aktives Abrufen; persönliche Mining-Wörter bleiben vollständig getrennt.</p>
+            <div class="button-row">
+              <button class="primary" id="heroCore">Core Path fortsetzen</button>
+              <button class="mining-button" id="heroMining">Mining öffnen</button>
+            </div>
+          </article>
+
+          <article class="card level-card">
+            <span class="muted small">Aktuelles Core-Level</span>
+            <div class="level-number" id="levelNumber">1</div>
+            <div class="progress-track"><div class="progress-fill" id="levelProgress"></div></div>
+            <div class="small muted" id="levelProgressText">0 von 0 auf Guru</div>
+            <div class="level-detail">
+              <strong id="levelStatusTitle">Level-Einstufung</strong>
+              <span class="small muted" id="levelStatusText">Starte die Einstufung für dieses Level.</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="stats">
+          <article class="card stat">
+            <span class="stat-label">Core-Lektionen</span>
+            <strong class="stat-value" id="coreLessonCount">0</strong>
+            <span class="small muted">Freigeschaltet und neu</span>
+          </article>
+          <article class="card stat">
+            <span class="stat-label">Core-Reviews</span>
+            <strong class="stat-value" id="coreReviewCount">0</strong>
+            <span class="small muted">Jetzt fällig</span>
+          </article>
+          <article class="card stat mining-stat">
+            <span class="stat-label">Mining-Lektionen</span>
+            <strong class="stat-value" id="miningLessonCount">0</strong>
+            <span class="small muted">Eigene neue Wörter</span>
+          </article>
+          <article class="card stat mining-stat">
+            <span class="stat-label">Mining-Reviews</span>
+            <strong class="stat-value" id="miningReviewCount">0</strong>
+            <span class="small muted">Separat wiederholen</span>
+          </article>
+        </div>
+
+        <div class="grid-two">
+          <article class="card mode-card">
+            <div>
+              <div class="mode-icon">🗺️</div>
+              <h3 style="margin:0">Core Path</h3>
+              <p class="muted">Vorgegebene Level, Einstufung und 90-%-Guru-Schwelle.</p>
+              <div class="status-box">
+                <strong id="coreDashboardStatus">Level 1 wartet</strong>
+                <span class="small muted" id="coreDashboardDetail">Beginne mit der Einstufung.</span>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="primary" id="dashboardPlacement">Einstufung starten</button>
+              <button class="secondary" id="dashboardCoreLessons">Core-Lektionen</button>
+              <button class="ghost" id="dashboardCoreReviews">Core-Reviews</button>
+            </div>
+          </article>
+
+          <article class="card mode-card">
+            <div>
+              <div class="mode-icon">⛏️</div>
+              <h3 style="margin:0">Vocabulary Mining</h3>
+              <p class="muted">Eigene Karten aus Serien, Büchern oder anderen Quellen. Mining blockiert niemals deinen Core-Levelaufstieg.</p>
+              <div class="status-box">
+                <strong id="miningDashboardStatus">Noch keine Mining-Sammlung</strong>
+                <span class="small muted" id="miningDashboardDetail">Lege eigene Wörter im Bereich „Vokabeln“ an.</span>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="mining-button" id="dashboardMiningLessons">Mining-Lektionen</button>
+              <button class="ghost" id="dashboardMiningReviews">Mining-Reviews</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="grid-two" style="margin-top:18px">
+          <article class="card">
+            <div class="section-title">
+              <div>
+                <h3>SRS-Stufen</h3>
+                <p>Bewiesene Wörter starten direkt auf Guru 1.</p>
+              </div>
+            </div>
+            <div id="stageSummary" class="form-grid"></div>
+          </article>
+
+          <article class="card">
+            <div class="section-title">
+              <div>
+                <h3>Einstellungen & Sicherung</h3>
+                <p>Die Daten werden lokal in diesem Browser gespeichert.</p>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <strong>Bluetooth während Lernsession wach halten</strong>
+                <div class="small muted">Ein extrem leises Signal läuft nur in Einstufung, Lernen und Reviews. Dadurch startet das Wort ohne langen Vorlauf.</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="bluetoothKeepAlive" />
+                <span></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div>
+                <strong>Bluetooth-Vorlauf</strong>
+                <div class="small muted">Nur nach längeren Audiopausen. Während einer laufenden Review-Session wird nicht vor jedem Wort gewartet.</div>
+              </div>
+              <select id="bluetoothLeadMs" style="max-width:170px">
+                <option value="0">Aus</option>
+                <option value="120">Sehr kurz · 0,12 s</option>
+                <option value="250">Kurz · 0,25 s</option>
+                <option value="450">Sicher · 0,45 s</option>
+              </select>
+            </div>
+            <div class="audio-pack-box">
+              <strong id="corePackStatus">Core-2000-Pack wird geprüft …</strong>
+              <span class="small muted" id="corePackDetail">Bis zur einmaligen Vorbereitung bleibt das eingebaute 200-Wörter-Paket aktiv.</span>
+              <strong id="audioPackStatus" style="margin-top:12px">Human-Audio wird geprüft …</strong>
+              <span class="small muted" id="audioPackDetail">Die vorbereiteten 2.000 Karten enthalten jeweils eine verifizierte Tofugu/WaniKani-MP3-URL.</span>
+              <span class="small muted" id="humanAudioCredit">
+                Wortaufnahmen: Tofugu &amp; WaniKani, CC BY-SA 4.0. Die neuen Karten verwenden deutsche Bedeutungen aus dem bisherigen Pack, ansonsten die öffentliche englische Kurzdefinition der Quellliste.
+              </span>
+            </div>
+            <div class="button-row" style="margin-top:12px">
+              <button class="ghost" id="audioTestBtn">🔊 Human-Audio testen</button>
+              <button class="ghost" id="corePackReloadBtn">Core-2000-Pack neu einlesen</button>
+            </div>
+            <div class="button-row" style="margin-top:16px">
+              <button class="secondary" id="exportBtn">Sicherung exportieren</button>
+              <button class="ghost" id="importBtn">Sicherung importieren</button>
+              <input id="importFile" type="file" accept=".json" hidden />
+            </div>
+            <div class="button-row" style="margin-top:10px">
+              <button class="danger" id="resetBtn">Alles zurücksetzen</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="vocabulary" class="view">
+        <div class="section-title">
+          <div>
+            <h2>Vokabelkarten</h2>
+            <p>Neue Karten sind standardmäßig Mining-Wörter. Core-Karten kannst du bewusst einem Level zuordnen.</p>
+          </div>
+        </div>
+
+        <div class="grid-two">
+          <article class="card">
+            <h3 style="margin-top:0">Neue Vokabel</h3>
+            <form id="vocabForm">
+              <label>
+                Kartentyp *
+                <select id="cardTypeInput">
+                  <option value="mining">Mining – persönliche Zusatzvokabel</option>
+                  <option value="core">Core Path – verbindliches Levelwort</option>
+                </select>
+              </label>
+
+              <div class="form-grid">
+                <label>
+                  Japanisches Wort *
+                  <input id="wordInput" required placeholder="例: 猫" />
+                </label>
+                <label>
+                  Lesung *
+                  <input id="readingInput" required placeholder="例: ねこ" />
+                </label>
+              </div>
+
+              <label>
+                Bedeutung(en) *
+                <input id="meaningInput" required placeholder="Katze, Kater" />
+              </label>
+
+              <div id="coreFields" class="conditional-field hidden">
+                <label>
+                  Core-Level *
+                  <input id="vocabLevelInput" type="number" min="1" max="60" value="1" />
+                </label>
+                <div class="small muted">Liegt das Level noch in der Zukunft, bleibt die Karte bis dahin gesperrt.</div>
+              </div>
+
+              <div id="miningFields" class="conditional-field">
+                <label>
+                  Quelle oder Sammlung
+                  <input id="collectionInput" placeholder="z. B. Frieren – Folge 3" />
+                </label>
+              </div>
+
+              <label>
+                Beispielsatz
+                <textarea id="exampleInput" rows="2" placeholder="猫が好きです。"></textarea>
+              </label>
+
+              <label>
+                Übersetzung des Beispiels
+                <textarea id="exampleTranslationInput" rows="2" placeholder="Ich mag Katzen."></textarea>
+              </label>
+
+              <button class="primary" type="submit">Vokabel hinzufügen</button>
+            </form>
+          </article>
+
+          <article class="card">
+            <div class="section-title">
+              <div>
+                <h3>Deine Sammlung</h3>
+                <p id="vocabTotal">0 Wörter</p>
+              </div>
+            </div>
+            <div class="vocab-list" id="vocabList"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="core" class="view">
+        <div class="section-title">
+          <div>
+            <h2>Core Path</h2>
+            <p>Jedes neue Level beginnt mit Einschätzen, anschließend beweist du die als bekannt markierten Wörter.</p>
+          </div>
+        </div>
+        <div class="grid-two">
+          <article class="card mode-card">
+            <div>
+              <div class="mode-icon">🎯</div>
+              <h3 style="margin:0" id="coreLevelHeading">Level 1</h3>
+              <div class="status-box">
+                <strong id="coreStatusTitle">Einstufung offen</strong>
+                <span class="small muted" id="coreStatusDetail">Sortiere die Wörter mit den Pfeiltasten.</span>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="primary" id="corePlacementBtn">Einstufung starten</button>
+              <button class="secondary" id="coreLessonsBtn">Lektionen starten</button>
+              <button class="ghost" id="coreReviewsBtn">Reviews starten</button>
+            </div>
+          </article>
+          <article class="card">
+            <h3 style="margin-top:0">So funktioniert ein Level</h3>
+            <p class="muted">1. Alle Wörter schnell als bekannt oder unbekannt markieren.</p>
+            <p class="muted">2. Hörverstehen und aktives Abrufen der bekannten Wörter beweisen.</p>
+            <p class="muted">3. Listening und aktives Abrufen richtig: direkt Guru 1.</p>
+            <p class="muted">4. Unbekannt oder falsch eingeschätzt: reguläre Lektion und Apprentice 1.</p>
+            <p class="muted">5. Fast richtige Antworten werden erklärt und später erneut gefragt, ohne als Fehler zu zählen.</p>
+            <p class="muted">6. Echte Fehler kommen ebenfalls zurück in den aktuellen Review-Pool und beeinflussen erst danach die SRS-Wertung.</p>
+            <p class="muted">7. Sobald 90 % erstmals Guru erreicht haben, wird das nächste Level geöffnet.</p>
+          </article>
+        </div>
+
+        <div class="grid-two" style="margin-top:18px">
+          <article class="card">
+            <div class="pack-header">
+              <div>
+                <h3 style="margin:0" id="packName">Kotoba Core 2000</h3>
+                <p class="muted" style="margin:5px 0 0">Kuratierter Grundwortschatz mit stabilen Karten-IDs für spätere Updates.</p>
+              </div>
+              <span class="pack-version" id="packVersion">Version 0.1.0</span>
+            </div>
+            <div class="pack-metrics">
+              <div class="pack-metric"><strong id="packIncludedWords">200</strong><span class="small muted">von 2.000 Wörtern enthalten</span></div>
+              <div class="pack-metric"><strong id="packIncludedLevels">10</strong><span class="small muted">von 100 Leveln enthalten</span></div>
+              <div class="pack-metric"><strong id="packLearnedWords">0</strong><span class="small muted">Wörter begonnen</span></div>
+            </div>
+            <div class="source-note">
+              Auswahl orientiert sich an häufigem, breit einsetzbarem Alltagswortschatz. Für spätere Datenabgleiche sind <a href="https://clrd.ninjal.ac.jp/bccwj/en/freq-list.html" target="_blank" rel="noopener">NINJAL-Frequenzlisten</a> und <a href="https://www.edrdg.org/jmdict/j_jmdict.html" target="_blank" rel="noopener">JMdict</a> als Quellen vorgesehen. Die deutschen Bedeutungen und Beispielsätze dieses Beta-Packs wurden für Kotoba Quest redaktionell formuliert.
+            </div>
+          </article>
+          <article class="card">
+            <h3 style="margin-top:0">Abschnitte</h3>
+            <div class="section-grid" id="coreSectionGrid"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="mining" class="view">
+        <div class="section-title">
+          <div>
+            <h2>Vocabulary Mining</h2>
+            <p>Eigene Sammlungen werden unabhängig vom Core Path gelernt und wiederholt.</p>
+          </div>
+        </div>
+        <div class="grid-two">
+          <article class="card mode-card">
+            <div>
+              <div class="mode-icon">⛏️</div>
+              <h3 style="margin:0">Mining-Queue</h3>
+              <div class="status-box">
+                <strong id="miningStatusTitle">0 neue Wörter</strong>
+                <span class="small muted" id="miningStatusDetail">0 Reviews sind fällig.</span>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="mining-button" id="miningLessonsBtn">Mining-Lektionen</button>
+              <button class="ghost" id="miningReviewsBtn">Mining-Reviews</button>
+            </div>
+          </article>
+          <article class="card">
+            <h3 style="margin-top:0">Sammlungen</h3>
+            <div id="collectionSummary"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="placement" class="view">
+        <div class="study-shell">
+          <article class="card study-card placement-card" id="placementCard"></article>
+        </div>
+      </section>
+
+      <section id="lessons" class="view">
+        <div class="study-shell">
+          <article class="card study-card" id="lessonCard"></article>
+        </div>
+      </section>
+
+      <section id="reviews" class="view">
+        <div class="study-shell">
+          <article class="card study-card" id="reviewCard"></article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="content-packs/core-2000/core-pack.js"></script>
+  <script src="audio/human-audio-ready.js?v=0.3.0"></script>
+  <script src="audio/audio-manifest.js?v=0.5.0"></script>
+  <script src="audio/audio-ready.js?v=0.5.0"></script>
+  <script>
+    const STORAGE_KEY = "kotobaQuestDataV3";
+
+    const STAGES = [
+      { name:"Neu", real:0, demo:0 },
+      { name:"Apprentice 1", real:4*60*60*1000, demo:10*1000 },
+      { name:"Apprentice 2", real:8*60*60*1000, demo:20*1000 },
+      { name:"Apprentice 3", real:24*60*60*1000, demo:40*1000 },
+      { name:"Apprentice 4", real:2*24*60*60*1000, demo:60*1000 },
+      { name:"Guru 1", real:7*24*60*60*1000, demo:90*1000 },
+      { name:"Guru 2", real:14*24*60*60*1000, demo:2*60*1000 },
+      { name:"Master", real:30*24*60*60*1000, demo:3*60*1000 },
+      { name:"Enlightened", real:120*24*60*60*1000, demo:5*60*1000 },
+      { name:"Burned", real:Infinity, demo:Infinity }
+    ];
+
+    const EMBEDDED_CORE_PACK = {"id":"kotoba-core-2000","name":"Kotoba Core 2000","version":"0.2.9-fallback","targetWords":2000,"includedWords":200,"includedLevels":10,"wordsPerLevel":20,"entries":[{"packEntryId":"kc2k-0001","level":1,"word":"する","reading":"する","meanings":["machen","tun"],"productionCue":"machen; tun","example":"今日は何をしますか。","exampleTranslation":"Was machst du heute?","pos":"unregelmäßiges Verb"},{"packEntryId":"kc2k-0002","level":1,"word":"ある","reading":"ある","meanings":["es gibt","vorhanden sein","sich befinden"],"productionCue":"vorhanden sein – für Dinge","example":"机の上に本があります。","exampleTranslation":"Auf dem Tisch liegt ein Buch.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0003","level":1,"word":"いる","reading":"いる","meanings":["es gibt","da sein","sich befinden"],"productionCue":"da sein – für Menschen und Tiere","example":"部屋に人がいます。","exampleTranslation":"Im Zimmer ist jemand.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0004","level":1,"word":"行く","reading":"いく","meanings":["gehen","fahren"],"productionCue":"an einen Ort gehen oder fahren","example":"明日、学校に行きます。","exampleTranslation":"Morgen gehe ich zur Schule.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0005","level":1,"word":"来る","reading":"くる","meanings":["kommen"],"productionCue":"kommen","example":"友達が家に来ます。","exampleTranslation":"Ein Freund kommt zu mir nach Hause.","pos":"unregelmäßiges Verb"},{"packEntryId":"kc2k-0006","level":1,"word":"見る","reading":"みる","meanings":["sehen","anschauen","ansehen"],"productionCue":"etwas sehen oder anschauen","example":"この映画を見たいです。","exampleTranslation":"Ich möchte diesen Film sehen.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0007","level":1,"word":"聞く","reading":"きく","meanings":["hören","zuhören"],"productionCue":"hören; zuhören","example":"毎日、音楽を聞きます。","exampleTranslation":"Ich höre jeden Tag Musik.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0008","level":1,"word":"言う","reading":"いう","meanings":["sagen"],"productionCue":"etwas sagen","example":"もう一度言ってください。","exampleTranslation":"Bitte sag es noch einmal.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0009","level":1,"word":"話す","reading":"はなす","meanings":["sprechen","reden"],"productionCue":"mit jemandem sprechen","example":"日本語で話しましょう。","exampleTranslation":"Lass uns Japanisch sprechen.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0010","level":1,"word":"分かる","reading":"わかる","meanings":["verstehen","begreifen"],"productionCue":"etwas verstehen","example":"この言葉の意味が分かります。","exampleTranslation":"Ich verstehe die Bedeutung dieses Wortes.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0011","level":1,"word":"思う","reading":"おもう","meanings":["denken","glauben","meinen"],"productionCue":"denken; der Meinung sein","example":"それはいいと思います。","exampleTranslation":"Ich denke, das ist gut.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0012","level":1,"word":"知る","reading":"しる","meanings":["wissen","kennen","erfahren"],"productionCue":"etwas wissen oder jemanden kennen","example":"その人を知っています。","exampleTranslation":"Ich kenne diese Person.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0013","level":1,"word":"食べる","reading":"たべる","meanings":["essen"],"productionCue":"etwas essen","example":"朝ご飯を食べます。","exampleTranslation":"Ich esse Frühstück.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0014","level":1,"word":"飲む","reading":"のむ","meanings":["trinken"],"productionCue":"etwas trinken","example":"水を飲んでください。","exampleTranslation":"Bitte trink Wasser.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0015","level":1,"word":"買う","reading":"かう","meanings":["kaufen"],"productionCue":"etwas kaufen","example":"駅で切符を買いました。","exampleTranslation":"Ich habe am Bahnhof eine Fahrkarte gekauft.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0016","level":1,"word":"使う","reading":"つかう","meanings":["benutzen","verwenden"],"productionCue":"etwas benutzen oder verwenden","example":"このアプリを毎日使います。","exampleTranslation":"Ich benutze diese App jeden Tag.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0017","level":1,"word":"作る","reading":"つくる","meanings":["machen","herstellen","zubereiten"],"productionCue":"etwas herstellen oder zubereiten","example":"晩ご飯を作ります。","exampleTranslation":"Ich bereite das Abendessen zu.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0018","level":1,"word":"持つ","reading":"もつ","meanings":["haben","halten","mitnehmen"],"productionCue":"etwas besitzen, halten oder mitnehmen","example":"傘を持っていますか。","exampleTranslation":"Hast du einen Regenschirm dabei?","pos":"Godan-Verb"},{"packEntryId":"kc2k-0019","level":1,"word":"待つ","reading":"まつ","meanings":["warten"],"productionCue":"auf jemanden oder etwas warten","example":"ここで少し待ってください。","exampleTranslation":"Bitte warte hier kurz.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0020","level":1,"word":"帰る","reading":"かえる","meanings":["zurückkehren","nach Hause gehen","heimgehen"],"productionCue":"nach Hause oder an den Ausgangsort zurückkehren","example":"今日は早く家に帰ります。","exampleTranslation":"Heute gehe ich früh nach Hause.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0021","level":2,"word":"起きる","reading":"おきる","meanings":["aufstehen","aufwachen"],"productionCue":"aufstehen; aufwachen","example":"毎朝七時に起きます。","exampleTranslation":"Ich stehe jeden Morgen um sieben Uhr auf.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0022","level":2,"word":"寝る","reading":"ねる","meanings":["schlafen","ins Bett gehen"],"productionCue":"schlafen; ins Bett gehen","example":"昨日は早く寝ました。","exampleTranslation":"Gestern bin ich früh schlafen gegangen.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0023","level":2,"word":"開ける","reading":"あける","meanings":["öffnen","aufmachen"],"productionCue":"etwas wie eine Tür oder ein Fenster öffnen","example":"窓を開けてください。","exampleTranslation":"Bitte öffne das Fenster.","pos":"Ichidan-Verb, transitiv"},{"packEntryId":"kc2k-0024","level":2,"word":"閉める","reading":"しめる","meanings":["schließen","zumachen"],"productionCue":"etwas wie eine Tür oder ein Fenster schließen","example":"ドアを閉めてもいいですか。","exampleTranslation":"Darf ich die Tür schließen?","pos":"Ichidan-Verb, transitiv"},{"packEntryId":"kc2k-0025","level":2,"word":"入る","reading":"はいる","meanings":["hineingehen","eintreten","betreten"],"productionCue":"in einen Ort hineingehen","example":"部屋に入ってください。","exampleTranslation":"Bitte komm in das Zimmer.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0026","level":2,"word":"出る","reading":"でる","meanings":["hinausgehen","verlassen","herauskommen"],"productionCue":"einen Ort verlassen oder herauskommen","example":"八時に家を出ます。","exampleTranslation":"Ich verlasse das Haus um acht Uhr.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0027","level":2,"word":"立つ","reading":"たつ","meanings":["stehen","aufstehen"],"productionCue":"stehen oder sich hinstellen","example":"ここに立ってください。","exampleTranslation":"Bitte stell dich hierhin.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0028","level":2,"word":"座る","reading":"すわる","meanings":["sitzen","sich setzen"],"productionCue":"sitzen; sich setzen","example":"どうぞ座ってください。","exampleTranslation":"Bitte setz dich.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0029","level":2,"word":"歩く","reading":"あるく","meanings":["gehen","laufen","zu Fuß gehen"],"productionCue":"zu Fuß gehen","example":"駅まで歩きます。","exampleTranslation":"Ich gehe zu Fuß bis zum Bahnhof.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0030","level":2,"word":"走る","reading":"はしる","meanings":["rennen","laufen"],"productionCue":"schnell laufen oder rennen","example":"公園で走っています。","exampleTranslation":"Ich laufe im Park.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0031","level":2,"word":"働く","reading":"はたらく","meanings":["arbeiten"],"productionCue":"arbeiten","example":"東京の会社で働いています。","exampleTranslation":"Ich arbeite bei einer Firma in Tokio.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0032","level":2,"word":"休む","reading":"やすむ","meanings":["sich ausruhen","frei nehmen","fehlen"],"productionCue":"sich ausruhen oder von Arbeit und Schule fernbleiben","example":"今日は仕事を休みます。","exampleTranslation":"Heute nehme ich mir von der Arbeit frei.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0033","level":2,"word":"読む","reading":"よむ","meanings":["lesen"],"productionCue":"etwas lesen","example":"電車で本を読みます。","exampleTranslation":"Ich lese im Zug ein Buch.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0034","level":2,"word":"書く","reading":"かく","meanings":["schreiben"],"productionCue":"etwas schreiben","example":"名前をここに書いてください。","exampleTranslation":"Bitte schreib deinen Namen hierhin.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0035","level":2,"word":"教える","reading":"おしえる","meanings":["beibringen","erklären","mitteilen"],"productionCue":"jemandem etwas beibringen oder mitteilen","example":"先生が日本語を教えます。","exampleTranslation":"Die Lehrkraft unterrichtet Japanisch.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0036","level":2,"word":"習う","reading":"ならう","meanings":["lernen","Unterricht nehmen"],"productionCue":"etwas von einer Person lernen","example":"週に一回、料理を習っています。","exampleTranslation":"Ich nehme einmal pro Woche Kochunterricht.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0037","level":2,"word":"会う","reading":"あう","meanings":["treffen","begegnen"],"productionCue":"jemanden treffen","example":"明日、友達に会います。","exampleTranslation":"Morgen treffe ich einen Freund.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0038","level":2,"word":"遊ぶ","reading":"あそぶ","meanings":["spielen","Zeit verbringen"],"productionCue":"spielen oder in der Freizeit etwas unternehmen","example":"子供たちが外で遊んでいます。","exampleTranslation":"Die Kinder spielen draußen.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0039","level":2,"word":"始める","reading":"はじめる","meanings":["beginnen","anfangen"],"productionCue":"etwas beginnen","example":"そろそろ会議を始めましょう。","exampleTranslation":"Lass uns langsam mit der Besprechung anfangen.","pos":"Ichidan-Verb, transitiv"},{"packEntryId":"kc2k-0040","level":2,"word":"終わる","reading":"おわる","meanings":["enden","fertig sein"],"productionCue":"enden; abgeschlossen sein","example":"仕事は六時に終わります。","exampleTranslation":"Die Arbeit endet um sechs Uhr.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0041","level":3,"word":"大きい","reading":"おおきい","meanings":["groß"],"productionCue":"groß","example":"大きい犬がいます。","exampleTranslation":"Da ist ein großer Hund.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0042","level":3,"word":"小さい","reading":"ちいさい","meanings":["klein"],"productionCue":"klein","example":"小さいかばんを買いました。","exampleTranslation":"Ich habe eine kleine Tasche gekauft.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0043","level":3,"word":"新しい","reading":"あたらしい","meanings":["neu"],"productionCue":"neu","example":"新しい仕事を始めました。","exampleTranslation":"Ich habe eine neue Arbeit begonnen.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0044","level":3,"word":"古い","reading":"ふるい","meanings":["alt"],"productionCue":"alt – für Dinge","example":"この建物はとても古いです。","exampleTranslation":"Dieses Gebäude ist sehr alt.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0045","level":3,"word":"良い","reading":"いい","meanings":["gut"],"productionCue":"gut","example":"今日は天気がいいです。","exampleTranslation":"Heute ist das Wetter gut.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0046","level":3,"word":"悪い","reading":"わるい","meanings":["schlecht"],"productionCue":"schlecht","example":"気分が悪いです。","exampleTranslation":"Mir ist schlecht.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0047","level":3,"word":"高い","reading":"たかい","meanings":["teuer","hoch"],"productionCue":"teuer oder hoch","example":"この店は少し高いです。","exampleTranslation":"Dieser Laden ist etwas teuer.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0048","level":3,"word":"安い","reading":"やすい","meanings":["billig","günstig"],"productionCue":"preiswert oder günstig","example":"このシャツは安かったです。","exampleTranslation":"Dieses Hemd war günstig.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0049","level":3,"word":"長い","reading":"ながい","meanings":["lang"],"productionCue":"lang","example":"長い映画でした。","exampleTranslation":"Es war ein langer Film.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0050","level":3,"word":"短い","reading":"みじかい","meanings":["kurz"],"productionCue":"kurz","example":"休みは短かったです。","exampleTranslation":"Die Pause war kurz.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0051","level":3,"word":"多い","reading":"おおい","meanings":["viel","zahlreich"],"productionCue":"in großer Zahl vorhanden","example":"この町は人が多いです。","exampleTranslation":"In dieser Stadt sind viele Menschen.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0052","level":3,"word":"少ない","reading":"すくない","meanings":["wenig"],"productionCue":"in kleiner Zahl vorhanden","example":"今日は客が少ないです。","exampleTranslation":"Heute sind wenige Gäste da.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0053","level":3,"word":"早い","reading":"はやい","meanings":["früh"],"productionCue":"früh","example":"今日は早いですね。","exampleTranslation":"Du bist heute früh dran.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0054","level":3,"word":"遅い","reading":"おそい","meanings":["spät","langsam"],"productionCue":"spät oder langsam","example":"電車が遅いです。","exampleTranslation":"Der Zug ist langsam beziehungsweise verspätet.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0055","level":3,"word":"難しい","reading":"むずかしい","meanings":["schwierig"],"productionCue":"schwierig","example":"この質問は難しいです。","exampleTranslation":"Diese Frage ist schwierig.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0056","level":3,"word":"簡単","reading":"かんたん","meanings":["einfach","leicht"],"productionCue":"nicht schwierig; einfach","example":"この料理は簡単です。","exampleTranslation":"Dieses Gericht ist einfach zuzubereiten.","pos":"na-Adjektiv"},{"packEntryId":"kc2k-0057","level":3,"word":"忙しい","reading":"いそがしい","meanings":["beschäftigt","viel zu tun haben"],"productionCue":"viel zu tun haben","example":"今週はとても忙しいです。","exampleTranslation":"Diese Woche bin ich sehr beschäftigt.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0058","level":3,"word":"楽しい","reading":"たのしい","meanings":["spaßig","schön","unterhaltsam"],"productionCue":"Freude machen; Spaß bringen","example":"旅行はとても楽しかったです。","exampleTranslation":"Die Reise hat sehr viel Spaß gemacht.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0059","level":3,"word":"面白い","reading":"おもしろい","meanings":["interessant","lustig","unterhaltsam"],"productionCue":"interessant oder unterhaltsam","example":"この本は面白いです。","exampleTranslation":"Dieses Buch ist interessant.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0060","level":3,"word":"美味しい","reading":"おいしい","meanings":["lecker","köstlich"],"productionCue":"gut schmecken","example":"このスープは美味しいです。","exampleTranslation":"Diese Suppe ist lecker.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0061","level":4,"word":"今日","reading":"きょう","meanings":["heute"],"productionCue":"heute","example":"今日は家にいます。","exampleTranslation":"Heute bin ich zu Hause.","pos":"Nomen/Adverb"},{"packEntryId":"kc2k-0062","level":4,"word":"明日","reading":"あした","meanings":["morgen"],"productionCue":"morgen","example":"明日は休みです。","exampleTranslation":"Morgen habe ich frei.","pos":"Nomen/Adverb"},{"packEntryId":"kc2k-0063","level":4,"word":"昨日","reading":"きのう","meanings":["gestern"],"productionCue":"gestern","example":"昨日、友達に会いました。","exampleTranslation":"Gestern habe ich einen Freund getroffen.","pos":"Nomen/Adverb"},{"packEntryId":"kc2k-0064","level":4,"word":"今","reading":"いま","meanings":["jetzt","nun"],"productionCue":"jetzt","example":"今、何をしていますか。","exampleTranslation":"Was machst du gerade?","pos":"Nomen/Adverb"},{"packEntryId":"kc2k-0065","level":4,"word":"朝","reading":"あさ","meanings":["Morgen","morgens"],"productionCue":"die Zeit am Morgen","example":"朝はコーヒーを飲みます。","exampleTranslation":"Morgens trinke ich Kaffee.","pos":"Nomen"},{"packEntryId":"kc2k-0066","level":4,"word":"昼","reading":"ひる","meanings":["Mittag","tagsüber"],"productionCue":"Mittag oder Tageszeit","example":"昼に一緒に食べましょう。","exampleTranslation":"Lass uns mittags zusammen essen.","pos":"Nomen"},{"packEntryId":"kc2k-0067","level":4,"word":"夜","reading":"よる","meanings":["Abend","Nacht"],"productionCue":"Abend oder Nacht","example":"夜は静かです。","exampleTranslation":"Nachts ist es ruhig.","pos":"Nomen"},{"packEntryId":"kc2k-0068","level":4,"word":"時間","reading":"じかん","meanings":["Zeit","Stunde"],"productionCue":"Zeit oder Zeitdauer","example":"時間がありません。","exampleTranslation":"Ich habe keine Zeit.","pos":"Nomen"},{"packEntryId":"kc2k-0069","level":4,"word":"毎日","reading":"まいにち","meanings":["jeden Tag","täglich"],"productionCue":"jeden Tag","example":"毎日、日本語を勉強します。","exampleTranslation":"Ich lerne jeden Tag Japanisch.","pos":"Nomen/Adverb"},{"packEntryId":"kc2k-0070","level":4,"word":"今週","reading":"こんしゅう","meanings":["diese Woche"],"productionCue":"die aktuelle Woche","example":"今週は予定が多いです。","exampleTranslation":"Diese Woche habe ich viele Termine.","pos":"Nomen"},{"packEntryId":"kc2k-0071","level":4,"word":"今月","reading":"こんげつ","meanings":["diesen Monat"],"productionCue":"der aktuelle Monat","example":"今月はお金を使いすぎました。","exampleTranslation":"Diesen Monat habe ich zu viel Geld ausgegeben.","pos":"Nomen"},{"packEntryId":"kc2k-0072","level":4,"word":"今年","reading":"ことし","meanings":["dieses Jahr"],"productionCue":"das aktuelle Jahr","example":"今年、日本へ行きたいです。","exampleTranslation":"Dieses Jahr möchte ich nach Japan reisen.","pos":"Nomen"},{"packEntryId":"kc2k-0073","level":4,"word":"家","reading":"いえ","meanings":["Haus","Zuhause"],"productionCue":"Haus; Zuhause","example":"家で映画を見ます。","exampleTranslation":"Ich schaue zu Hause einen Film.","pos":"Nomen"},{"packEntryId":"kc2k-0074","level":4,"word":"部屋","reading":"へや","meanings":["Zimmer","Raum"],"productionCue":"Zimmer oder Raum","example":"部屋をきれいにしました。","exampleTranslation":"Ich habe das Zimmer aufgeräumt.","pos":"Nomen"},{"packEntryId":"kc2k-0075","level":4,"word":"学校","reading":"がっこう","meanings":["Schule"],"productionCue":"Schule","example":"学校は駅の近くです。","exampleTranslation":"Die Schule ist in der Nähe des Bahnhofs.","pos":"Nomen"},{"packEntryId":"kc2k-0076","level":4,"word":"会社","reading":"かいしゃ","meanings":["Firma","Unternehmen"],"productionCue":"Firma oder Unternehmen","example":"会社に電話しました。","exampleTranslation":"Ich habe bei der Firma angerufen.","pos":"Nomen"},{"packEntryId":"kc2k-0077","level":4,"word":"店","reading":"みせ","meanings":["Laden","Geschäft","Restaurant"],"productionCue":"Geschäft oder Lokal","example":"あの店は人気があります。","exampleTranslation":"Dieser Laden ist beliebt.","pos":"Nomen"},{"packEntryId":"kc2k-0078","level":4,"word":"駅","reading":"えき","meanings":["Bahnhof","Station"],"productionCue":"Bahn- oder Zugstation","example":"駅で友達を待っています。","exampleTranslation":"Ich warte am Bahnhof auf einen Freund.","pos":"Nomen"},{"packEntryId":"kc2k-0079","level":4,"word":"場所","reading":"ばしょ","meanings":["Ort","Platz","Stelle"],"productionCue":"Ort oder Stelle","example":"静かな場所を探しています。","exampleTranslation":"Ich suche einen ruhigen Ort.","pos":"Nomen"},{"packEntryId":"kc2k-0080","level":4,"word":"外","reading":"そと","meanings":["draußen","außen"],"productionCue":"außerhalb; draußen","example":"外は寒いです。","exampleTranslation":"Draußen ist es kalt.","pos":"Nomen"},{"packEntryId":"kc2k-0081","level":5,"word":"人","reading":"ひと","meanings":["Mensch","Person"],"productionCue":"Mensch oder Person","example":"あの人は誰ですか。","exampleTranslation":"Wer ist diese Person?","pos":"Nomen"},{"packEntryId":"kc2k-0082","level":5,"word":"私","reading":"わたし","meanings":["ich","mich"],"productionCue":"neutrales Pronomen für die eigene Person","example":"私はドイツから来ました。","exampleTranslation":"Ich komme aus Deutschland.","pos":"Pronomen"},{"packEntryId":"kc2k-0083","level":5,"word":"自分","reading":"じぶん","meanings":["selbst","man selbst"],"productionCue":"die eigene Person; selbst","example":"自分で決めてください。","exampleTranslation":"Bitte entscheide selbst.","pos":"Nomen/Pronomen"},{"packEntryId":"kc2k-0084","level":5,"word":"友達","reading":"ともだち","meanings":["Freund","Freundin"],"productionCue":"befreundete Person","example":"友達と旅行に行きます。","exampleTranslation":"Ich verreise mit einem Freund.","pos":"Nomen"},{"packEntryId":"kc2k-0085","level":5,"word":"家族","reading":"かぞく","meanings":["Familie"],"productionCue":"Familie","example":"家族は元気です。","exampleTranslation":"Meiner Familie geht es gut.","pos":"Nomen"},{"packEntryId":"kc2k-0086","level":5,"word":"子供","reading":"こども","meanings":["Kind","Kinder"],"productionCue":"Kind","example":"子供が公園で遊んでいます。","exampleTranslation":"Ein Kind spielt im Park.","pos":"Nomen"},{"packEntryId":"kc2k-0087","level":5,"word":"大人","reading":"おとな","meanings":["Erwachsener","Erwachsene"],"productionCue":"erwachsene Person","example":"大人も楽しめる映画です。","exampleTranslation":"Es ist ein Film, den auch Erwachsene genießen können.","pos":"Nomen"},{"packEntryId":"kc2k-0088","level":5,"word":"男","reading":"おとこ","meanings":["Mann","männliche Person"],"productionCue":"Mann oder männliche Person","example":"男の人が立っています。","exampleTranslation":"Dort steht ein Mann.","pos":"Nomen"},{"packEntryId":"kc2k-0089","level":5,"word":"女","reading":"おんな","meanings":["Frau","weibliche Person"],"productionCue":"Frau oder weibliche Person","example":"女の人が話しています。","exampleTranslation":"Eine Frau spricht.","pos":"Nomen"},{"packEntryId":"kc2k-0090","level":5,"word":"先生","reading":"せんせい","meanings":["Lehrer","Lehrerin","Doktor"],"productionCue":"Lehrkraft oder respektvoll angesprochene Fachperson","example":"先生に質問しました。","exampleTranslation":"Ich habe die Lehrkraft etwas gefragt.","pos":"Nomen"},{"packEntryId":"kc2k-0091","level":5,"word":"学生","reading":"がくせい","meanings":["Schüler","Student","Studentin"],"productionCue":"lernende Person an Schule oder Hochschule","example":"私は大学の学生です。","exampleTranslation":"Ich bin Student an einer Universität.","pos":"Nomen"},{"packEntryId":"kc2k-0092","level":5,"word":"父","reading":"ちち","meanings":["Vater"],"productionCue":"der eigene Vater","example":"父は料理が好きです。","exampleTranslation":"Mein Vater kocht gern.","pos":"Nomen"},{"packEntryId":"kc2k-0093","level":5,"word":"母","reading":"はは","meanings":["Mutter"],"productionCue":"die eigene Mutter","example":"母に電話しました。","exampleTranslation":"Ich habe meine Mutter angerufen.","pos":"Nomen"},{"packEntryId":"kc2k-0094","level":5,"word":"兄","reading":"あに","meanings":["älterer Bruder"],"productionCue":"der eigene ältere Bruder","example":"兄は東京に住んでいます。","exampleTranslation":"Mein älterer Bruder lebt in Tokio.","pos":"Nomen"},{"packEntryId":"kc2k-0095","level":5,"word":"姉","reading":"あね","meanings":["ältere Schwester"],"productionCue":"die eigene ältere Schwester","example":"姉と買い物に行きました。","exampleTranslation":"Ich war mit meiner älteren Schwester einkaufen.","pos":"Nomen"},{"packEntryId":"kc2k-0096","level":5,"word":"弟","reading":"おとうと","meanings":["jüngerer Bruder"],"productionCue":"der eigene jüngere Bruder","example":"弟は高校生です。","exampleTranslation":"Mein jüngerer Bruder ist Oberschüler.","pos":"Nomen"},{"packEntryId":"kc2k-0097","level":5,"word":"妹","reading":"いもうと","meanings":["jüngere Schwester"],"productionCue":"die eigene jüngere Schwester","example":"妹は音楽を勉強しています。","exampleTranslation":"Meine jüngere Schwester studiert Musik.","pos":"Nomen"},{"packEntryId":"kc2k-0098","level":5,"word":"名前","reading":"なまえ","meanings":["Name"],"productionCue":"Name","example":"名前を教えてください。","exampleTranslation":"Bitte sag mir deinen Namen.","pos":"Nomen"},{"packEntryId":"kc2k-0099","level":5,"word":"みんな","reading":"みんな","meanings":["alle","jeder"],"productionCue":"alle Personen in einer Gruppe","example":"みんなで写真を撮りました。","exampleTranslation":"Wir haben alle zusammen ein Foto gemacht.","pos":"Pronomen/Nomen"},{"packEntryId":"kc2k-0100","level":5,"word":"相手","reading":"あいて","meanings":["Gegenüber","Partner","andere Person"],"productionCue":"die andere beteiligte Person","example":"相手の話をよく聞いてください。","exampleTranslation":"Hör deinem Gegenüber gut zu.","pos":"Nomen"},{"packEntryId":"kc2k-0101","level":6,"word":"物","reading":"もの","meanings":["Ding","Gegenstand","Sache"],"productionCue":"konkretes Ding oder Gegenstand","example":"大切な物をなくしました。","exampleTranslation":"Ich habe einen wichtigen Gegenstand verloren.","pos":"Nomen"},{"packEntryId":"kc2k-0102","level":6,"word":"お金","reading":"おかね","meanings":["Geld"],"productionCue":"Geld","example":"お金が足りません。","exampleTranslation":"Ich habe nicht genug Geld.","pos":"Nomen"},{"packEntryId":"kc2k-0103","level":6,"word":"水","reading":"みず","meanings":["Wasser"],"productionCue":"Wasser","example":"水をもう一杯ください。","exampleTranslation":"Bitte noch ein Glas Wasser.","pos":"Nomen"},{"packEntryId":"kc2k-0104","level":6,"word":"食べ物","reading":"たべもの","meanings":["Essen","Lebensmittel","Nahrung"],"productionCue":"etwas Essbares","example":"好きな食べ物は何ですか。","exampleTranslation":"Was ist dein Lieblingsessen?","pos":"Nomen"},{"packEntryId":"kc2k-0105","level":6,"word":"ご飯","reading":"ごはん","meanings":["Reis","Mahlzeit","Essen"],"productionCue":"gekochter Reis oder eine Mahlzeit","example":"ご飯はもう食べましたか。","exampleTranslation":"Hast du schon gegessen?","pos":"Nomen"},{"packEntryId":"kc2k-0106","level":6,"word":"パン","reading":"ぱん","meanings":["Brot"],"productionCue":"Brot","example":"朝、パンを食べました。","exampleTranslation":"Am Morgen habe ich Brot gegessen.","pos":"Nomen"},{"packEntryId":"kc2k-0107","level":6,"word":"肉","reading":"にく","meanings":["Fleisch"],"productionCue":"Fleisch","example":"私は肉をあまり食べません。","exampleTranslation":"Ich esse nicht viel Fleisch.","pos":"Nomen"},{"packEntryId":"kc2k-0108","level":6,"word":"魚","reading":"さかな","meanings":["Fisch"],"productionCue":"Fisch","example":"この魚は新鮮です。","exampleTranslation":"Dieser Fisch ist frisch.","pos":"Nomen"},{"packEntryId":"kc2k-0109","level":6,"word":"野菜","reading":"やさい","meanings":["Gemüse"],"productionCue":"Gemüse","example":"もっと野菜を食べたほうがいいです。","exampleTranslation":"Du solltest mehr Gemüse essen.","pos":"Nomen"},{"packEntryId":"kc2k-0110","level":6,"word":"果物","reading":"くだもの","meanings":["Obst","Früchte"],"productionCue":"Obst","example":"毎朝、果物を食べます。","exampleTranslation":"Ich esse jeden Morgen Obst.","pos":"Nomen"},{"packEntryId":"kc2k-0111","level":6,"word":"お茶","reading":"おちゃ","meanings":["Tee"],"productionCue":"Tee","example":"温かいお茶はいかがですか。","exampleTranslation":"Möchtest du warmen Tee?","pos":"Nomen"},{"packEntryId":"kc2k-0112","level":6,"word":"コーヒー","reading":"こーひー","meanings":["Kaffee"],"productionCue":"Kaffee","example":"コーヒーを一つお願いします。","exampleTranslation":"Einen Kaffee, bitte.","pos":"Nomen"},{"packEntryId":"kc2k-0113","level":6,"word":"本","reading":"ほん","meanings":["Buch"],"productionCue":"Buch","example":"面白い本を読みました。","exampleTranslation":"Ich habe ein interessantes Buch gelesen.","pos":"Nomen"},{"packEntryId":"kc2k-0114","level":6,"word":"電話","reading":"でんわ","meanings":["Telefon","Anruf"],"productionCue":"Telefon oder Telefonat","example":"あとで電話します。","exampleTranslation":"Ich rufe später an.","pos":"Nomen/する-Verb"},{"packEntryId":"kc2k-0115","level":6,"word":"服","reading":"ふく","meanings":["Kleidung","Kleidungsstück"],"productionCue":"Kleidung","example":"新しい服が欲しいです。","exampleTranslation":"Ich möchte neue Kleidung.","pos":"Nomen"},{"packEntryId":"kc2k-0116","level":6,"word":"靴","reading":"くつ","meanings":["Schuhe","Schuh"],"productionCue":"Schuhwerk","example":"この靴は歩きやすいです。","exampleTranslation":"In diesen Schuhen kann man gut laufen.","pos":"Nomen"},{"packEntryId":"kc2k-0117","level":6,"word":"車","reading":"くるま","meanings":["Auto","Wagen"],"productionCue":"Auto","example":"車で駅まで行きます。","exampleTranslation":"Ich fahre mit dem Auto zum Bahnhof.","pos":"Nomen"},{"packEntryId":"kc2k-0118","level":6,"word":"電車","reading":"でんしゃ","meanings":["Zug","Bahn"],"productionCue":"elektrischer Zug oder Bahn","example":"電車が混んでいます。","exampleTranslation":"Der Zug ist voll.","pos":"Nomen"},{"packEntryId":"kc2k-0119","level":6,"word":"かばん","reading":"かばん","meanings":["Tasche","Rucksack"],"productionCue":"Tasche oder tragbares Gepäckstück","example":"かばんに鍵を入れました。","exampleTranslation":"Ich habe den Schlüssel in die Tasche gelegt.","pos":"Nomen"},{"packEntryId":"kc2k-0120","level":6,"word":"鍵","reading":"かぎ","meanings":["Schlüssel"],"productionCue":"Schlüssel","example":"家の鍵が見つかりません。","exampleTranslation":"Ich finde meinen Hausschlüssel nicht.","pos":"Nomen"},{"packEntryId":"kc2k-0121","level":7,"word":"好き","reading":"すき","meanings":["mögen","gern haben","Lieblings-"],"productionCue":"etwas oder jemanden mögen","example":"私は猫が好きです。","exampleTranslation":"Ich mag Katzen.","pos":"na-Adjektiv/Nomen"},{"packEntryId":"kc2k-0122","level":7,"word":"嫌い","reading":"きらい","meanings":["nicht mögen","hassen"],"productionCue":"etwas oder jemanden nicht mögen","example":"納豆が嫌いです。","exampleTranslation":"Ich mag Natto nicht.","pos":"na-Adjektiv/Nomen"},{"packEntryId":"kc2k-0123","level":7,"word":"欲しい","reading":"ほしい","meanings":["wollen","haben wollen"],"productionCue":"einen Gegenstand haben wollen","example":"新しいパソコンが欲しいです。","exampleTranslation":"Ich möchte einen neuen Computer.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0124","level":7,"word":"必要","reading":"ひつよう","meanings":["notwendig","nötig","brauchen"],"productionCue":"notwendig oder erforderlich","example":"予約が必要です。","exampleTranslation":"Eine Reservierung ist notwendig.","pos":"na-Adjektiv/Nomen"},{"packEntryId":"kc2k-0125","level":7,"word":"大丈夫","reading":"だいじょうぶ","meanings":["in Ordnung","okay","kein Problem"],"productionCue":"in Ordnung; kein Problem","example":"一人でも大丈夫です。","exampleTranslation":"Allein ist es auch in Ordnung.","pos":"na-Adjektiv"},{"packEntryId":"kc2k-0126","level":7,"word":"元気","reading":"げんき","meanings":["gesund","fit","munter"],"productionCue":"gesund und voller Energie","example":"最近、元気ですか。","exampleTranslation":"Geht es dir in letzter Zeit gut?","pos":"na-Adjektiv/Nomen"},{"packEntryId":"kc2k-0127","level":7,"word":"疲れる","reading":"つかれる","meanings":["müde werden","erschöpft sein"],"productionCue":"körperlich oder geistig müde werden","example":"今日はとても疲れました。","exampleTranslation":"Heute bin ich sehr müde geworden.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0128","level":7,"word":"痛い","reading":"いたい","meanings":["weh tun","schmerzhaft"],"productionCue":"körperlich schmerzen","example":"頭が痛いです。","exampleTranslation":"Ich habe Kopfschmerzen.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0129","level":7,"word":"怖い","reading":"こわい","meanings":["ängstlich","unheimlich","Angst machen"],"productionCue":"Angst auslösen oder unheimlich sein","example":"この話は少し怖いです。","exampleTranslation":"Diese Geschichte ist etwas unheimlich.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0130","level":7,"word":"嬉しい","reading":"うれしい","meanings":["glücklich","froh"],"productionCue":"sich über etwas freuen","example":"会えて嬉しいです。","exampleTranslation":"Ich freue mich, dich zu sehen.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0131","level":7,"word":"悲しい","reading":"かなしい","meanings":["traurig"],"productionCue":"traurig","example":"そのニュースを聞いて悲しくなりました。","exampleTranslation":"Als ich die Nachricht hörte, wurde ich traurig.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0132","level":7,"word":"寂しい","reading":"さびしい","meanings":["einsam","vermissen","öde"],"productionCue":"einsam oder verlassen fühlen","example":"一人だと寂しいです。","exampleTranslation":"Allein fühle ich mich einsam.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0133","level":7,"word":"心配","reading":"しんぱい","meanings":["Sorge","besorgt sein"],"productionCue":"sich Sorgen machen","example":"遅いので心配しています。","exampleTranslation":"Ich mache mir Sorgen, weil es spät ist.","pos":"Nomen/する-Verb"},{"packEntryId":"kc2k-0134","level":7,"word":"安心","reading":"あんしん","meanings":["Erleichterung","beruhigt sein"],"productionCue":"sich sicher oder erleichtert fühlen","example":"無事だと聞いて安心しました。","exampleTranslation":"Ich war erleichtert zu hören, dass alles in Ordnung ist.","pos":"Nomen/する-Verb"},{"packEntryId":"kc2k-0135","level":7,"word":"怒る","reading":"おこる","meanings":["wütend werden","sich ärgern"],"productionCue":"wütend werden","example":"そんなに怒らないでください。","exampleTranslation":"Bitte werd nicht so wütend.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0136","level":7,"word":"笑う","reading":"わらう","meanings":["lachen","lächeln"],"productionCue":"lachen oder lächeln","example":"みんなが笑っています。","exampleTranslation":"Alle lachen.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0137","level":7,"word":"泣く","reading":"なく","meanings":["weinen"],"productionCue":"weinen","example":"映画を見て泣きました。","exampleTranslation":"Ich habe beim Film geweint.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0138","level":7,"word":"困る","reading":"こまる","meanings":["ein Problem haben","nicht weiterwissen"],"productionCue":"in Schwierigkeiten sein","example":"お金がなくて困っています。","exampleTranslation":"Ich habe ein Problem, weil ich kein Geld habe.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0139","level":7,"word":"驚く","reading":"おどろく","meanings":["überrascht sein","sich erschrecken"],"productionCue":"überrascht oder erschrocken reagieren","example":"値段を見て驚きました。","exampleTranslation":"Ich war vom Preis überrascht.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0140","level":7,"word":"忘れる","reading":"わすれる","meanings":["vergessen"],"productionCue":"etwas vergessen","example":"約束を忘れないでください。","exampleTranslation":"Bitte vergiss unser Versprechen nicht.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0141","level":8,"word":"質問","reading":"しつもん","meanings":["Frage"],"productionCue":"Frage","example":"質問があります。","exampleTranslation":"Ich habe eine Frage.","pos":"Nomen/する-Verb"},{"packEntryId":"kc2k-0142","level":8,"word":"答え","reading":"こたえ","meanings":["Antwort","Lösung"],"productionCue":"Antwort auf eine Frage","example":"答えが分かりません。","exampleTranslation":"Ich weiß die Antwort nicht.","pos":"Nomen"},{"packEntryId":"kc2k-0143","level":8,"word":"意味","reading":"いみ","meanings":["Bedeutung","Sinn"],"productionCue":"Bedeutung oder Sinn","example":"この言葉はどういう意味ですか。","exampleTranslation":"Was bedeutet dieses Wort?","pos":"Nomen"},{"packEntryId":"kc2k-0144","level":8,"word":"理由","reading":"りゆう","meanings":["Grund","Begründung"],"productionCue":"Grund oder Ursache","example":"遅れた理由を説明してください。","exampleTranslation":"Bitte erkläre den Grund für die Verspätung.","pos":"Nomen"},{"packEntryId":"kc2k-0145","level":8,"word":"話","reading":"はなし","meanings":["Geschichte","Gespräch","Thema"],"productionCue":"Gespräch, Erzählung oder Thema","example":"面白い話を聞きました。","exampleTranslation":"Ich habe eine interessante Geschichte gehört.","pos":"Nomen"},{"packEntryId":"kc2k-0146","level":8,"word":"言葉","reading":"ことば","meanings":["Wort","Sprache","Ausdruck"],"productionCue":"Wort oder sprachlicher Ausdruck","example":"その言葉を覚えたいです。","exampleTranslation":"Ich möchte mir dieses Wort merken.","pos":"Nomen"},{"packEntryId":"kc2k-0147","level":8,"word":"声","reading":"こえ","meanings":["Stimme"],"productionCue":"menschliche Stimme","example":"大きな声で話してください。","exampleTranslation":"Bitte sprich mit lauter Stimme.","pos":"Nomen"},{"packEntryId":"kc2k-0148","level":8,"word":"音","reading":"おと","meanings":["Geräusch","Ton","Klang"],"productionCue":"hörbares Geräusch oder Ton","example":"変な音が聞こえます。","exampleTranslation":"Ich höre ein seltsames Geräusch.","pos":"Nomen"},{"packEntryId":"kc2k-0149","level":8,"word":"連絡","reading":"れんらく","meanings":["Kontakt","Nachricht","Bescheid"],"productionCue":"jemandem Nachricht geben oder Kontakt aufnehmen","example":"着いたら連絡してください。","exampleTranslation":"Gib mir Bescheid, wenn du angekommen bist.","pos":"Nomen/する-Verb"},{"packEntryId":"kc2k-0150","level":8,"word":"約束","reading":"やくそく","meanings":["Versprechen","Verabredung"],"productionCue":"Versprechen oder vereinbarter Termin","example":"明日の約束を覚えていますか。","exampleTranslation":"Erinnerst du dich an unsere Verabredung morgen?","pos":"Nomen/する-Verb"},{"packEntryId":"kc2k-0151","level":8,"word":"お願い","reading":"おねがい","meanings":["Bitte","Wunsch","Gefallen"],"productionCue":"Bitte oder Wunsch an jemanden","example":"一つお願いがあります。","exampleTranslation":"Ich habe eine Bitte.","pos":"Nomen"},{"packEntryId":"kc2k-0152","level":8,"word":"ありがとう","reading":"ありがとう","meanings":["danke","vielen Dank"],"productionCue":"Dank ausdrücken","example":"手伝ってくれてありがとう。","exampleTranslation":"Danke, dass du mir geholfen hast.","pos":"Ausdruck"},{"packEntryId":"kc2k-0153","level":8,"word":"ごめん","reading":"ごめん","meanings":["Entschuldigung","tut mir leid"],"productionCue":"informelle Entschuldigung","example":"遅れてごめん。","exampleTranslation":"Entschuldige, dass ich zu spät bin.","pos":"Ausdruck"},{"packEntryId":"kc2k-0154","level":8,"word":"すみません","reading":"すみません","meanings":["Entschuldigung","Verzeihung","danke"],"productionCue":"höflich entschuldigen oder Aufmerksamkeit erbitten","example":"すみません、駅はどこですか。","exampleTranslation":"Entschuldigung, wo ist der Bahnhof?","pos":"Ausdruck"},{"packEntryId":"kc2k-0155","level":8,"word":"こんにちは","reading":"こんにちは","meanings":["guten Tag","hallo"],"productionCue":"Begrüßung am Tag","example":"こんにちは、お元気ですか。","exampleTranslation":"Guten Tag, wie geht es Ihnen?","pos":"Ausdruck"},{"packEntryId":"kc2k-0156","level":8,"word":"一緒","reading":"いっしょ","meanings":["zusammen","gemeinsam"],"productionCue":"gemeinsam mit jemandem","example":"一緒に帰りませんか。","exampleTranslation":"Wollen wir zusammen nach Hause gehen?","pos":"Nomen/Adverb"},{"packEntryId":"kc2k-0157","level":8,"word":"本当","reading":"ほんとう","meanings":["wahr","wirklich","Wahrheit"],"productionCue":"wahr oder wirklich","example":"それは本当ですか。","exampleTranslation":"Ist das wirklich wahr?","pos":"Nomen/na-Adjektiv"},{"packEntryId":"kc2k-0158","level":8,"word":"たぶん","reading":"たぶん","meanings":["wahrscheinlich","vielleicht"],"productionCue":"mit hoher Wahrscheinlichkeit","example":"たぶん明日は雨です。","exampleTranslation":"Wahrscheinlich regnet es morgen.","pos":"Adverb"},{"packEntryId":"kc2k-0159","level":8,"word":"もちろん","reading":"もちろん","meanings":["natürlich","selbstverständlich"],"productionCue":"selbstverständlich","example":"もちろん手伝います。","exampleTranslation":"Natürlich helfe ich.","pos":"Adverb"},{"packEntryId":"kc2k-0160","level":8,"word":"まだ","reading":"まだ","meanings":["noch","noch nicht"],"productionCue":"ein Zustand dauert noch an oder ist noch nicht erreicht","example":"宿題はまだ終わっていません。","exampleTranslation":"Die Hausaufgaben sind noch nicht fertig.","pos":"Adverb"},{"packEntryId":"kc2k-0161","level":9,"word":"上","reading":"うえ","meanings":["oben","auf","über"],"productionCue":"oberhalb oder auf etwas","example":"机の上にあります。","exampleTranslation":"Es liegt auf dem Tisch.","pos":"Nomen"},{"packEntryId":"kc2k-0162","level":9,"word":"下","reading":"した","meanings":["unten","unter"],"productionCue":"unterhalb von etwas","example":"いすの下を見てください。","exampleTranslation":"Schau bitte unter den Stuhl.","pos":"Nomen"},{"packEntryId":"kc2k-0163","level":9,"word":"中","reading":"なか","meanings":["innen","in","Mitte"],"productionCue":"innerhalb von etwas","example":"かばんの中にあります。","exampleTranslation":"Es ist in der Tasche.","pos":"Nomen"},{"packEntryId":"kc2k-0164","level":9,"word":"前","reading":"まえ","meanings":["vorne","vor"],"productionCue":"vor etwas oder zeitlich vorher","example":"駅の前で待っています。","exampleTranslation":"Ich warte vor dem Bahnhof.","pos":"Nomen"},{"packEntryId":"kc2k-0165","level":9,"word":"後ろ","reading":"うしろ","meanings":["hinten","hinter"],"productionCue":"hinter etwas","example":"後ろを見てください。","exampleTranslation":"Schau bitte nach hinten.","pos":"Nomen"},{"packEntryId":"kc2k-0166","level":9,"word":"右","reading":"みぎ","meanings":["rechts"],"productionCue":"rechte Seite","example":"次の角を右に曲がってください。","exampleTranslation":"Bieg an der nächsten Ecke rechts ab.","pos":"Nomen"},{"packEntryId":"kc2k-0167","level":9,"word":"左","reading":"ひだり","meanings":["links"],"productionCue":"linke Seite","example":"銀行は左にあります。","exampleTranslation":"Die Bank ist auf der linken Seite.","pos":"Nomen"},{"packEntryId":"kc2k-0168","level":9,"word":"近い","reading":"ちかい","meanings":["nah","in der Nähe"],"productionCue":"räumlich oder zeitlich nah","example":"駅はここから近いです。","exampleTranslation":"Der Bahnhof ist von hier aus nah.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0169","level":9,"word":"遠い","reading":"とおい","meanings":["weit","entfernt"],"productionCue":"räumlich oder zeitlich weit entfernt","example":"学校は家から遠いです。","exampleTranslation":"Die Schule ist weit von meinem Zuhause entfernt.","pos":"i-Adjektiv"},{"packEntryId":"kc2k-0170","level":9,"word":"ここ","reading":"ここ","meanings":["hier"],"productionCue":"dieser Ort hier","example":"ここに座ってください。","exampleTranslation":"Bitte setz dich hierhin.","pos":"Pronomen"},{"packEntryId":"kc2k-0171","level":9,"word":"そこ","reading":"そこ","meanings":["dort","da"],"productionCue":"Ort in der Nähe des Gegenübers","example":"そこに置いてください。","exampleTranslation":"Bitte leg es dort hin.","pos":"Pronomen"},{"packEntryId":"kc2k-0172","level":9,"word":"あそこ","reading":"あそこ","meanings":["dort drüben"],"productionCue":"entfernter Ort","example":"あそこに店があります。","exampleTranslation":"Dort drüben ist ein Laden.","pos":"Pronomen"},{"packEntryId":"kc2k-0173","level":9,"word":"どこ","reading":"どこ","meanings":["wo"],"productionCue":"Frage nach einem Ort","example":"トイレはどこですか。","exampleTranslation":"Wo ist die Toilette?","pos":"Fragepronomen"},{"packEntryId":"kc2k-0174","level":9,"word":"道","reading":"みち","meanings":["Weg","Straße"],"productionCue":"Weg oder Straße","example":"この道をまっすぐ行ってください。","exampleTranslation":"Geh diese Straße geradeaus.","pos":"Nomen"},{"packEntryId":"kc2k-0175","level":9,"word":"入口","reading":"いりぐち","meanings":["Eingang"],"productionCue":"Stelle zum Hineingehen","example":"入口はあちらです。","exampleTranslation":"Der Eingang ist dort.","pos":"Nomen"},{"packEntryId":"kc2k-0176","level":9,"word":"出口","reading":"でぐち","meanings":["Ausgang"],"productionCue":"Stelle zum Hinausgehen","example":"出口が見つかりません。","exampleTranslation":"Ich finde den Ausgang nicht.","pos":"Nomen"},{"packEntryId":"kc2k-0177","level":9,"word":"階段","reading":"かいだん","meanings":["Treppe"],"productionCue":"Treppe","example":"階段を使ってください。","exampleTranslation":"Bitte benutze die Treppe.","pos":"Nomen"},{"packEntryId":"kc2k-0178","level":9,"word":"乗る","reading":"のる","meanings":["einsteigen","fahren","reiten"],"productionCue":"in ein Verkehrsmittel einsteigen oder damit fahren","example":"次の駅で電車に乗ります。","exampleTranslation":"Am nächsten Bahnhof steige ich in den Zug.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0179","level":9,"word":"降りる","reading":"おりる","meanings":["aussteigen","hinuntergehen"],"productionCue":"aus einem Verkehrsmittel aussteigen","example":"東京駅で降ります。","exampleTranslation":"Ich steige am Bahnhof Tokio aus.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0180","level":9,"word":"着く","reading":"つく","meanings":["ankommen","erreichen"],"productionCue":"an einem Ziel ankommen","example":"九時にホテルに着きました。","exampleTranslation":"Ich bin um neun Uhr im Hotel angekommen.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0181","level":10,"word":"できる","reading":"できる","meanings":["können","möglich sein","fertig werden"],"productionCue":"fähig oder möglich sein","example":"日本語で簡単な会話ができます。","exampleTranslation":"Ich kann ein einfaches Gespräch auf Japanisch führen.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0182","level":10,"word":"変わる","reading":"かわる","meanings":["sich ändern","sich verändern"],"productionCue":"selbst anders werden","example":"予定が変わりました。","exampleTranslation":"Der Plan hat sich geändert.","pos":"Godan-Verb, intransitiv"},{"packEntryId":"kc2k-0183","level":10,"word":"変える","reading":"かえる","meanings":["ändern","verändern"],"productionCue":"etwas aktiv ändern","example":"予約の時間を変えたいです。","exampleTranslation":"Ich möchte die Uhrzeit der Reservierung ändern.","pos":"Ichidan-Verb, transitiv"},{"packEntryId":"kc2k-0184","level":10,"word":"決める","reading":"きめる","meanings":["entscheiden","festlegen"],"productionCue":"etwas entscheiden oder festlegen","example":"行く日を決めましょう。","exampleTranslation":"Lass uns den Tag festlegen, an dem wir gehen.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0185","level":10,"word":"選ぶ","reading":"えらぶ","meanings":["auswählen","wählen"],"productionCue":"aus mehreren Möglichkeiten wählen","example":"好きな色を選んでください。","exampleTranslation":"Bitte wähle deine Lieblingsfarbe.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0186","level":10,"word":"考える","reading":"かんがえる","meanings":["nachdenken","überlegen","denken"],"productionCue":"über etwas nachdenken","example":"もう少し考えます。","exampleTranslation":"Ich denke noch etwas darüber nach.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0187","level":10,"word":"覚える","reading":"おぼえる","meanings":["sich merken","lernen","erinnern"],"productionCue":"Information im Gedächtnis speichern","example":"新しい言葉を十個覚えました。","exampleTranslation":"Ich habe mir zehn neue Wörter gemerkt.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0188","level":10,"word":"調べる","reading":"しらべる","meanings":["nachschlagen","untersuchen","recherchieren"],"productionCue":"Information gezielt nachschlagen oder prüfen","example":"意味を辞書で調べました。","exampleTranslation":"Ich habe die Bedeutung im Wörterbuch nachgeschlagen.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0189","level":10,"word":"探す","reading":"さがす","meanings":["suchen"],"productionCue":"nach etwas suchen","example":"新しい仕事を探しています。","exampleTranslation":"Ich suche eine neue Arbeit.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0190","level":10,"word":"見つける","reading":"みつける","meanings":["finden","entdecken"],"productionCue":"etwas Gesuchtes entdecken","example":"いい店を見つけました。","exampleTranslation":"Ich habe einen guten Laden gefunden.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0191","level":10,"word":"手伝う","reading":"てつだう","meanings":["helfen","mithelfen"],"productionCue":"jemandem bei einer Aufgabe helfen","example":"料理を手伝ってください。","exampleTranslation":"Bitte hilf beim Kochen.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0192","level":10,"word":"直す","reading":"なおす","meanings":["reparieren","korrigieren","verbessern"],"productionCue":"etwas reparieren oder korrigieren","example":"間違いを直してください。","exampleTranslation":"Bitte korrigiere den Fehler.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0193","level":10,"word":"取る","reading":"とる","meanings":["nehmen","holen","greifen"],"productionCue":"etwas nehmen oder holen","example":"テーブルの上の本を取ってください。","exampleTranslation":"Bitte nimm das Buch vom Tisch.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0194","level":10,"word":"置く","reading":"おく","meanings":["hinlegen","hinstellen","platzieren"],"productionCue":"etwas an einen Ort legen oder stellen","example":"荷物をここに置いてください。","exampleTranslation":"Bitte stell das Gepäck hier ab.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0195","level":10,"word":"送る","reading":"おくる","meanings":["schicken","senden"],"productionCue":"etwas oder jemanden schicken","example":"あとで写真を送ります。","exampleTranslation":"Ich schicke dir später das Foto.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0196","level":10,"word":"もらう","reading":"もらう","meanings":["bekommen","erhalten"],"productionCue":"etwas von jemandem bekommen","example":"友達からプレゼントをもらいました。","exampleTranslation":"Ich habe von einem Freund ein Geschenk bekommen.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0197","level":10,"word":"あげる","reading":"あげる","meanings":["geben","schenken"],"productionCue":"jemand anderem etwas geben","example":"妹に本をあげました。","exampleTranslation":"Ich habe meiner jüngeren Schwester ein Buch geschenkt.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0198","level":10,"word":"貸す","reading":"かす","meanings":["leihen","verleihen"],"productionCue":"jemandem etwas vorübergehend geben","example":"友達に傘を貸しました。","exampleTranslation":"Ich habe einem Freund einen Regenschirm geliehen.","pos":"Godan-Verb"},{"packEntryId":"kc2k-0199","level":10,"word":"借りる","reading":"かりる","meanings":["ausleihen","borgen"],"productionCue":"etwas vorübergehend von jemandem nehmen","example":"図書館で本を借りました。","exampleTranslation":"Ich habe in der Bibliothek ein Buch ausgeliehen.","pos":"Ichidan-Verb"},{"packEntryId":"kc2k-0200","level":10,"word":"準備する","reading":"じゅんびする","meanings":["vorbereiten","Vorbereitungen treffen"],"productionCue":"etwas vorbereiten","example":"旅行の準備をしています。","exampleTranslation":"Ich bereite mich auf die Reise vor.","pos":"する-Verb"}]};
+    const CORE_PACK = (window.KOTOBA_EXTERNAL_CORE_PACK?.entries?.length===2000)
+      ? window.KOTOBA_EXTERNAL_CORE_PACK
+      : EMBEDDED_CORE_PACK;
+
+    const ROMAJI_TO_HIRAGANA = {
+      kya:"きゃ",kyu:"きゅ",kyo:"きょ",gya:"ぎゃ",gyu:"ぎゅ",gyo:"ぎょ",
+      sha:"しゃ",shu:"しゅ",sho:"しょ",sya:"しゃ",syu:"しゅ",syo:"しょ",
+      ja:"じゃ",ji:"じ",ju:"じゅ",jo:"じょ",jya:"じゃ",jyu:"じゅ",jyo:"じょ",
+      cha:"ちゃ",chu:"ちゅ",cho:"ちょ",cya:"ちゃ",cyu:"ちゅ",cyo:"ちょ",
+      nya:"にゃ",nyu:"にゅ",nyo:"にょ",hya:"ひゃ",hyu:"ひゅ",hyo:"ひょ",
+      bya:"びゃ",byu:"びゅ",byo:"びょ",pya:"ぴゃ",pyu:"ぴゅ",pyo:"ぴょ",
+      mya:"みゃ",myu:"みゅ",myo:"みょ",rya:"りゃ",ryu:"りゅ",ryo:"りょ",
+      dya:"ぢゃ",dyu:"ぢゅ",dyo:"ぢょ",tsa:"つぁ",tsi:"つぃ",tse:"つぇ",tso:"つぉ",
+      fa:"ふぁ",fi:"ふぃ",fe:"ふぇ",fo:"ふぉ",fya:"ふゃ",fyu:"ふゅ",fyo:"ふょ",
+      va:"ゔぁ",vi:"ゔぃ",vu:"ゔ",ve:"ゔぇ",vo:"ゔぉ",wi:"うぃ",we:"うぇ",wo:"を",
+      she:"しぇ",che:"ちぇ",je:"じぇ",ti:"てぃ",tu:"とぅ",di:"でぃ",du:"どぅ",
+      kwa:"くぁ",kwi:"くぃ",kwe:"くぇ",kwo:"くぉ",gwa:"ぐぁ",gwi:"ぐぃ",gwe:"ぐぇ",gwo:"ぐぉ",
+      shi:"し",chi:"ち",tsu:"つ",dzu:"づ",la:"ぁ",li:"ぃ",lu:"ぅ",le:"ぇ",lo:"ぉ",
+      xa:"ぁ",xi:"ぃ",xu:"ぅ",xe:"ぇ",xo:"ぉ",lya:"ゃ",lyu:"ゅ",lyo:"ょ",
+      xya:"ゃ",xyu:"ゅ",xyo:"ょ",ltsu:"っ",xtsu:"っ",
+      ka:"か",ki:"き",ku:"く",ke:"け",ko:"こ",ga:"が",gi:"ぎ",gu:"ぐ",ge:"げ",go:"ご",
+      sa:"さ",si:"し",su:"す",se:"せ",so:"そ",za:"ざ",zi:"じ",zu:"ず",ze:"ぜ",zo:"ぞ",
+      ta:"た",te:"て",to:"と",da:"だ",de:"で",do:"ど",na:"な",ni:"に",nu:"ぬ",ne:"ね",no:"の",
+      ha:"は",hi:"ひ",hu:"ふ",fu:"ふ",he:"へ",ho:"ほ",ba:"ば",bi:"び",bu:"ぶ",be:"べ",bo:"ぼ",
+      pa:"ぱ",pi:"ぴ",pu:"ぷ",pe:"ぺ",po:"ぽ",ma:"ま",mi:"み",mu:"む",me:"め",mo:"も",
+      ya:"や",yu:"ゆ",yo:"よ",ra:"ら",ri:"り",ru:"る",re:"れ",ro:"ろ",wa:"わ",
+      a:"あ",i:"い",u:"う",e:"え",o:"お"
+    };
+
+    let data = loadData();
+    let placementSession = null;
+    let lessonSession = null;
+    let reviewSession = null;
+
+    function makeId() {
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function makeVocabulary(item) {
+      return {
+        id:item.id || item.packEntryId || makeId(),
+        word:String(item.word || "").trim(),
+        reading:String(item.reading || "").trim(),
+        meanings:Array.isArray(item.meanings)
+          ? item.meanings.map(String).map(v => v.trim()).filter(Boolean)
+          : String(item.meanings || "").split(",").map(v => v.trim()).filter(Boolean),
+        closeMeanings:Array.isArray(item.closeMeanings)
+          ? item.closeMeanings.map(String).map(v => v.trim()).filter(Boolean)
+          : String(item.closeMeanings || "").split(",").map(v => v.trim()).filter(Boolean),
+        acceptedReadings:Array.isArray(item.acceptedReadings)
+          ? item.acceptedReadings.map(String).map(v => v.trim()).filter(Boolean)
+          : String(item.acceptedReadings || "").split(",").map(v => v.trim()).filter(Boolean),
+        closeReadings:Array.isArray(item.closeReadings)
+          ? item.closeReadings.map(String).map(v => v.trim()).filter(Boolean)
+          : String(item.closeReadings || "").split(",").map(v => v.trim()).filter(Boolean),
+        productionCue:String(item.productionCue || "").trim(),
+        pos:String(item.pos || "").trim(),
+        sourceType:item.sourceType === "mining" ? "mining" : "core",
+        level:Math.max(1,Number(item.level || 1)),
+        collection:String(item.collection || "").trim(),
+        example:String(item.example || "").trim(),
+        exampleTranslation:String(item.exampleTranslation || "").trim(),
+        audioWord:String(item.audioWord || "").trim(),
+        audioSource:String(item.audioSource || "").trim(),
+        audioLicense:String(item.audioLicense || "").trim(),
+        audioAttribution:String(item.audioAttribution || "").trim(),
+        audioSentence:String(item.audioSentence || "").trim(),
+        packId:String(item.packId || "").trim(),
+        packEntryId:String(item.packEntryId || "").trim(),
+        packVersion:String(item.packVersion || "").trim(),
+        stage:Math.max(0,Math.min(9,Number(item.stage || 0))),
+        availableAt:item.availableAt == null ? null : Number(item.availableAt),
+        createdAt:Number(item.createdAt || Date.now()),
+        correct:Number(item.correct || 0),
+        incorrect:Number(item.incorrect || 0),
+        guruPassed:Boolean(item.guruPassed || Number(item.stage) >= 5)
+      };
+    }
+
+    function corePackVocabulary() {
+      return CORE_PACK.entries.map(entry => makeVocabulary({
+        ...entry,
+        id:entry.packEntryId,
+        sourceType:"core",
+        packId:CORE_PACK.id,
+        packVersion:CORE_PACK.version,
+        stage:0,
+        availableAt:null,
+        correct:0,
+        incorrect:0,
+        guruPassed:false
+      }));
+    }
+
+    function syncCorePack(existingVocabulary=[]) {
+      const normalized=existingVocabulary.map(makeVocabulary);
+      const byPackId=new Map(
+        normalized.filter(item => item.packEntryId).map(item => [item.packEntryId,item])
+      );
+      const coreByWord=new Map(
+        normalized
+          .filter(item => item.sourceType==="core")
+          .map(item => [`${item.word}|${item.reading}`,item])
+      );
+      const packKeys=new Set(CORE_PACK.entries.map(entry => `${entry.word}|${entry.reading}`));
+
+      const synced=CORE_PACK.entries.map(entry => {
+        const previous=byPackId.get(entry.packEntryId) || coreByWord.get(`${entry.word}|${entry.reading}`);
+        return makeVocabulary({
+          ...entry,
+          id:entry.packEntryId,
+          sourceType:"core",
+          packId:CORE_PACK.id,
+          packVersion:CORE_PACK.version,
+          stage:previous?.stage || 0,
+          availableAt:previous?.availableAt ?? null,
+          createdAt:previous?.createdAt || Date.now(),
+          correct:previous?.correct || 0,
+          incorrect:previous?.incorrect || 0,
+          guruPassed:Boolean(previous?.guruPassed || Number(previous?.stage) >= 5)
+        });
+      });
+
+      const custom=normalized.filter(item => {
+        if(item.packEntryId) return false;
+        if(item.sourceType==="core" && packKeys.has(`${item.word}|${item.reading}`)) return false;
+        return true;
+      });
+
+      return [...synced,...custom];
+    }
+
+    function defaultData() {
+      return {
+        vocabulary:corePackVocabulary(),
+        currentLevel:1,
+        placementCompletedLevels:[],
+        placementProgress:{},
+        xp:0,
+        demoMode:false,
+        audioAutoplay:true,
+        nativeAudioEnabled:true,
+        onlineHumanAudio:true,
+        browserTtsFallback:false,
+        nativeSentenceExamples:false,
+        sentenceAutoplayOnToggle:false,
+        sentenceCacheRevision:3,
+        sentenceCache:{},
+        bluetoothKeepAlive:false,
+        bluetoothMode:true,
+        bluetoothLeadMs:120,
+        corePackVersion:CORE_PACK.version
+      };
+    }
+
+    function deriveCompletedLevels(vocabulary,currentLevel) {
+      const levels = new Set();
+      for (let level=1; level<=currentLevel; level++) {
+        const items = vocabulary.filter(v => v.sourceType === "core" && v.level === level);
+        if (items.some(v => v.stage > 0 || v.guruPassed)) levels.add(level);
+      }
+      return [...levels];
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+          || localStorage.getItem("kotobaQuestDataV2")
+          || localStorage.getItem("kotobaQuestDataV1");
+        if (!raw) return defaultData();
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.vocabulary)) return defaultData();
+        const vocabulary=syncCorePack(parsed.vocabulary.map(item => makeVocabulary({
+          ...item,
+          sourceType:item.sourceType || "core"
+        })));
+        const currentLevel = Math.max(1,Number(parsed.currentLevel || 1));
+        const completed = Array.isArray(parsed.placementCompletedLevels)
+          ? parsed.placementCompletedLevels.map(Number).filter(Number.isFinite)
+          : deriveCompletedLevels(vocabulary,currentLevel);
+        return {
+          vocabulary,
+          currentLevel,
+          placementCompletedLevels:[...new Set(completed)],
+          placementProgress:parsed.placementProgress &&
+            typeof parsed.placementProgress==="object"
+              ? parsed.placementProgress
+              : {},
+          xp:Number(parsed.xp || 0),
+          demoMode:false,
+          audioAutoplay:parsed.audioAutoplay !== false,
+          nativeAudioEnabled:parsed.nativeAudioEnabled !== false,
+          onlineHumanAudio:parsed.onlineHumanAudio !== false,
+          browserTtsFallback:false,
+          nativeSentenceExamples:false,
+          sentenceAutoplayOnToggle:false,
+          sentenceCacheRevision:3,
+          sentenceCache:Number(parsed.sentenceCacheRevision)===3 &&
+            parsed.sentenceCache &&
+            typeof parsed.sentenceCache==="object"
+              ? parsed.sentenceCache
+              : {},
+          bluetoothKeepAlive:parsed.bluetoothKeepAlive !== false,
+          bluetoothMode:Boolean(parsed.bluetoothMode),
+          bluetoothLeadMs:Number.isFinite(Number(parsed.bluetoothLeadMs))
+            ? Number(parsed.bluetoothLeadMs)
+            : 0,
+          corePackVersion:CORE_PACK.version
+        };
+      } catch {
+        return defaultData();
+      }
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+    }
+
+    function saveData() {
+      persist();
+      renderAll();
+    }
+
+    const HUMAN_AUDIO=window.KOTOBA_HUMAN_AUDIO || {
+      version:"none",
+      source:"none",
+      license:"none",
+      words:{},
+      sentences:{}
+    };
+    const AUDIO_MANIFEST=window.KOTOBA_AUDIO_MANIFEST || {
+      version:"none",words:{},sentences:{},grammar:{},system:{}
+    };
+    const AUDIO_READY=window.KOTOBA_AUDIO_READY || {
+      version:"none",words:0,sentences:0,grammar:0,generated:false
+    };
+    const FILE_SENTENCE_PACK=window.KOTOBA_FILE_SENTENCE_PACK || {
+      version:"none",
+      source:"none",
+      generatedAt:null,
+      entries:{}
+    };
+
+    let audioRequestToken=0;
+    let currentNativeAudio=null;
+    let bluetoothKeepAliveAudio=null;
+    let cachedJapaneseVoice=null;
+    let lastAudioActivityAt=0;
+    const missingNativeAudio=new Set();
+
+    function findJapaneseVoice() {
+      if(!("speechSynthesis" in window)) return null;
+      const voices=window.speechSynthesis.getVoices();
+      const japaneseVoice=voices.find(voice =>
+        String(voice.lang || "").toLowerCase().startsWith("ja")
+      ) || null;
+      if(japaneseVoice) cachedJapaneseVoice=japaneseVoice;
+      return japaneseVoice || cachedJapaneseVoice;
+    }
+
+    function waitForJapaneseVoice() {
+      const existing=findJapaneseVoice();
+      if(existing || !("speechSynthesis" in window)) {
+        return Promise.resolve(existing);
+      }
+
+      return new Promise(resolve => {
+        let finished=false;
+        const finish=() => {
+          if(finished) return;
+          finished=true;
+          window.speechSynthesis.removeEventListener?.("voiceschanged",finish);
+          resolve(findJapaneseVoice());
+        };
+        window.speechSynthesis.addEventListener?.("voiceschanged",finish,{once:true});
+        setTimeout(finish,500);
+      });
+    }
+
+    function stopAudioPlayback() {
+      audioRequestToken++;
+      if(currentNativeAudio) {
+        currentNativeAudio.pause();
+        currentNativeAudio.currentTime=0;
+        currentNativeAudio=null;
+      }
+      if("speechSynthesis" in window) window.speechSynthesis.cancel();
+    }
+
+    function remoteHumanWordUrl(item) {
+      if(!item?.word || !item?.reading) return "";
+      const filename=`${item.word}【${item.reading}】.mp3`;
+      return `https://raw.githubusercontent.com/tofugu/japanese-vocabulary-pronunciation-audio/master/lib/mp3/${encodeURIComponent(filename)}`;
+    }
+
+    function audioCandidates(item,kind="word") {
+      const key=item?.packEntryId || item?.id;
+      const candidates=[];
+
+      if(kind==="sentence") {
+        if(item?.audioSentence) {
+          candidates.push({source:"custom",url:item.audioSentence});
+        }
+        if(HUMAN_AUDIO.sentences?.[key]) {
+          candidates.push({source:"human",url:HUMAN_AUDIO.sentences[key]});
+        }
+        if(AUDIO_MANIFEST.sentences?.[key]) {
+          candidates.push({source:"generated",url:AUDIO_MANIFEST.sentences[key]});
+        }
+      } else {
+        if(item?.audioWord) {
+          candidates.push({source:item.audioSource==="tofugu-wanikani" ? "human-online" : "custom",url:item.audioWord});
+        }
+        if(HUMAN_AUDIO.words?.[key]) {
+          candidates.push({source:"human",url:HUMAN_AUDIO.words[key]});
+        }
+        if(item?.sourceType==="core" && key) {
+          candidates.push({source:"human",url:`audio/human/words/${key}.mp3`});
+        }
+        if(data.onlineHumanAudio && item?.sourceType==="core") {
+          candidates.push({source:"human-online",url:remoteHumanWordUrl(item)});
+        }
+        if(AUDIO_MANIFEST.words?.[key]) {
+          candidates.push({source:"generated",url:AUDIO_MANIFEST.words[key]});
+        }
+      }
+
+      const seen=new Set();
+      return candidates.filter(candidate => {
+        if(!candidate.url || seen.has(candidate.url)) return false;
+        seen.add(candidate.url);
+        return true;
+      });
+    }
+
+    function playFile(url,token,volume=1) {
+      return new Promise((resolve,reject) => {
+        if(!url || missingNativeAudio.has(url)) {
+          reject(new Error("missing"));
+          return;
+        }
+
+        const audio=new Audio(url);
+        currentNativeAudio=audio;
+        audio.preload="auto";
+        audio.volume=volume;
+        lastAudioActivityAt=Date.now();
+
+        const cleanup=() => {
+          audio.onended=null;
+          audio.onerror=null;
+        };
+
+        audio.onended=() => {
+          cleanup();
+          lastAudioActivityAt=Date.now();
+          if(token===audioRequestToken) currentNativeAudio=null;
+          resolve(true);
+        };
+        audio.onerror=() => {
+          cleanup();
+          missingNativeAudio.add(url);
+          if(token===audioRequestToken) currentNativeAudio=null;
+          reject(new Error("load"));
+        };
+
+        audio.play().catch(error => {
+          cleanup();
+          if(token===audioRequestToken) currentNativeAudio=null;
+          reject(error);
+        });
+      });
+    }
+
+    function stopBluetoothKeepAlive() {
+      if(!bluetoothKeepAliveAudio) return;
+      bluetoothKeepAliveAudio.pause();
+      bluetoothKeepAliveAudio.currentTime=0;
+      bluetoothKeepAliveAudio=null;
+    }
+
+    function startBluetoothKeepAlive() {
+      if(!data.bluetoothKeepAlive || bluetoothKeepAliveAudio) return;
+
+      const audio=new Audio("audio/system/bluetooth-keepalive.wav");
+      audio.loop=true;
+      audio.preload="auto";
+      audio.volume=1;
+      bluetoothKeepAliveAudio=audio;
+
+      audio.play().then(() => {
+        lastAudioActivityAt=Date.now();
+      }).catch(() => {
+        bluetoothKeepAliveAudio=null;
+      });
+    }
+
+    function syncBluetoothKeepAlive(viewName) {
+      const studyViews=new Set(["placement","lessons","reviews"]);
+      if(studyViews.has(viewName) && data.bluetoothKeepAlive) {
+        startBluetoothKeepAlive();
+      } else {
+        stopBluetoothKeepAlive();
+      }
+    }
+
+    async function playBluetoothWarmup(token) {
+      const leadMs=Math.max(0,Number(data.bluetoothLeadMs || 0));
+      if(!leadMs || token!==audioRequestToken) return;
+
+      if(Date.now()-lastAudioActivityAt<4000) return;
+
+      const available=[120,250,450];
+      const selected=available.reduce(
+        (best,value) => Math.abs(value-leadMs)<Math.abs(best-leadMs) ? value : best,
+        available[0]
+      );
+      const url=`audio/system/bluetooth-wakeup-${selected}.wav`;
+
+      try {
+        await playFile(url,token,1);
+      } catch {
+        await new Promise(resolve => setTimeout(resolve,selected));
+      }
+    }
+
+    async function speakJapaneseFallback(text,token) {
+      if(!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance==="undefined") {
+        toast("Für dieses Element ist noch keine Audiodatei vorhanden.");
+        return false;
+      }
+
+      const spokenText=String(text || "").trim();
+      if(!spokenText || token!==audioRequestToken) return false;
+
+      await playBluetoothWarmup(token);
+      if(token!==audioRequestToken) return false;
+
+      const japaneseVoice=await waitForJapaneseVoice();
+      if(token!==audioRequestToken) return false;
+
+      const utterance=new SpeechSynthesisUtterance(spokenText);
+      utterance.lang="ja-JP";
+      utterance.rate=.84;
+      utterance.pitch=1;
+      if(japaneseVoice) utterance.voice=japaneseVoice;
+      window.speechSynthesis.speak(utterance);
+      return true;
+    }
+
+    async function playItemAudio(item,kind="word") {
+      stopAudioPlayback();
+      const token=audioRequestToken;
+      const text=kind==="sentence" ? item?.example : item?.reading;
+
+      if(data.nativeAudioEnabled) {
+        for(const candidate of audioCandidates(item,kind)) {
+          try {
+            if(data.bluetoothMode) {
+              await playBluetoothWarmup(token);
+              if(token!==audioRequestToken) return "cancelled";
+            }
+            await playFile(candidate.url,token,1);
+            return candidate.source;
+          } catch {
+            // Die nächste kostenlose/lokale Quelle wird versucht.
+          }
+        }
+      }
+
+      if(!data.browserTtsFallback) {
+        if(kind==="word") {
+          toast("Die menschliche Aufnahme konnte gerade nicht geladen werden.");
+        }
+        return "unavailable";
+      }
+
+      const fallbackPlayed=await speakJapaneseFallback(text,token);
+      return fallbackPlayed ? "browser" : "unavailable";
+    }
+
+    function preloadItemAudio(item,kind="word") {
+      if(!data.nativeAudioEnabled) return;
+      const candidate=audioCandidates(item,kind)[0];
+      if(!candidate?.url || missingNativeAudio.has(candidate.url)) return;
+      const audio=new Audio();
+      audio.preload="auto";
+      audio.src=candidate.url;
+      audio.load();
+    }
+
+    function autoplayJapanese(item) {
+      if(data.audioAutoplay && item?.reading) {
+        preloadItemAudio(item,"word");
+        setTimeout(() => playItemAudio(item,"word"),160);
+      }
+    }
+
+    const REUSABLE_AUDIO_LICENSE=/cc\s*(?:by|0)|creative\s+commons|public\s+domain/i;
+    let sentencePackPreparing=false;
+    let sentencePackCancelled=false;
+    const sentenceObjectUrls=new Map();
+
+    function sentenceCacheKey(item) {
+      return item?.packEntryId || item?.id || `${item?.word || ""}|${item?.reading || ""}`;
+    }
+
+    function fileSentenceEntry(item) {
+      return FILE_SENTENCE_PACK.entries?.[sentenceCacheKey(item)] || null;
+    }
+
+    function flattenObjects(value,result=[]) {
+      if(Array.isArray(value)) {
+        value.forEach(entry => flattenObjects(entry,result));
+      } else if(value && typeof value==="object") {
+        result.push(value);
+        Object.values(value).forEach(entry => {
+          if(Array.isArray(entry)) flattenObjects(entry,result);
+        });
+      }
+      return result;
+    }
+
+    function pickGermanTranslation(sentence) {
+      const objects=flattenObjects(sentence?.translations || sentence?.trans || []);
+      const german=objects.filter(entry =>
+        String(entry.lang || entry.language || entry.language_code || "").toLowerCase()==="deu" &&
+        String(entry.text || entry.sentence || "").trim()
+      );
+
+      german.sort((a,b) =>
+        Number(Boolean(b.is_direct ?? b.direct)) - Number(Boolean(a.is_direct ?? a.direct))
+      );
+
+      const chosen=german[0];
+      return chosen ? {
+        text:String(chosen.text || chosen.sentence).trim(),
+        author:String(
+          chosen.owner?.username ||
+          chosen.user?.username ||
+          chosen.username ||
+          chosen.owner ||
+          ""
+        ).trim()
+      } : null;
+    }
+
+    function reusableAudioFromSentence(sentence) {
+      const audios=flattenObjects(sentence?.audios || sentence?.audio || [])
+        .filter(entry => entry && (
+          entry.id != null ||
+          entry.audio_id != null
+        ));
+
+      const reusable=audios.filter(entry => {
+        const license=String(
+          entry.licence ||
+          entry.license ||
+          entry.audio_licence ||
+          entry.audio_license ||
+          ""
+        ).trim();
+        return license && REUSABLE_AUDIO_LICENSE.test(license);
+      });
+
+      reusable.sort((a,b) => {
+        const aLicense=String(a.license || a.audio_license || "");
+        const bLicense=String(b.license || b.audio_license || "");
+        const permissive=value => /cc\s*0|cc\s*by(?!-nc)/i.test(value) ? 1 : 0;
+        return permissive(bLicense)-permissive(aLicense);
+      });
+
+      const chosen=reusable[0];
+      if(!chosen) return null;
+
+      const id=chosen.id ?? chosen.audio_id;
+      return {
+        id:String(id),
+        url:"",
+        author:String(
+          chosen.author ||
+          chosen.username ||
+          chosen.user?.username ||
+          chosen.owner?.username ||
+          ""
+        ).trim(),
+        license:String(chosen.license || chosen.audio_license || "").trim(),
+        attributionUrl:String(
+          chosen.attribution_url ||
+          chosen.attributionUrl ||
+          ""
+        ).trim()
+      };
+    }
+
+    function sentenceOwner(sentence) {
+      return String(
+        sentence?.owner?.username ||
+        sentence?.user?.username ||
+        sentence?.username ||
+        sentence?.owner ||
+        ""
+      ).trim();
+    }
+
+    function sentenceText(sentence) {
+      return String(sentence?.text || sentence?.sentence || "").trim();
+    }
+
+    function sentenceId(sentence) {
+      return String(sentence?.id ?? sentence?.sentence_id ?? "").trim();
+    }
+
+    function sentenceSearchUrls(item,query) {
+      const v1=new URL("https://api.tatoeba.org/v1/sentences");
+      v1.searchParams.set("lang","jpn");
+      v1.searchParams.set("q",query);
+      v1.searchParams.set("is_native","yes");
+      v1.searchParams.set("has_audio","yes");
+      v1.searchParams.set("trans:lang","deu");
+      v1.searchParams.set("showtrans:lang","deu");
+      v1.searchParams.set("include","audios");
+      v1.searchParams.set("sort","words");
+
+      const v0=new URL("https://tatoeba.org/eng/api_v0/search");
+      v0.searchParams.set("from","jpn");
+      v0.searchParams.set("query",query);
+      v0.searchParams.set("native","yes");
+      v0.searchParams.set("has_audio","yes");
+      v0.searchParams.set("to","deu");
+      v0.searchParams.set("trans_filter","limit");
+      v0.searchParams.set("trans_to","deu");
+      v0.searchParams.set("sort","words");
+
+      return [v1.toString(),v0.toString()];
+    }
+
+    async function fetchJsonWithTimeout(url,timeoutMs=9000) {
+      const controller=new AbortController();
+      const timer=setTimeout(() => controller.abort(),timeoutMs);
+      try {
+        const response=await fetch(url,{
+          signal:controller.signal,
+          headers:{Accept:"application/json"}
+        });
+        if(!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function resultsFromPayload(payload) {
+      if(Array.isArray(payload)) return payload;
+      for(const key of ["data","results","sentences","items"]) {
+        if(Array.isArray(payload?.[key])) return payload[key];
+      }
+      return [];
+    }
+
+    function isKanaOnly(value) {
+      return /^[\u3040-\u309f\u30a0-\u30ffー]+$/.test(String(value || "").trim());
+    }
+
+    function japaneseTargetForms(item) {
+      const word=String(item?.word || "").trim();
+      const reading=String(item?.reading || "").trim();
+      const forms=new Map();
+
+      const add=(form,type,priority) => {
+        const normalized=String(form || "").trim();
+        if(!normalized || normalized.length<2) return;
+        const previous=forms.get(normalized);
+        if(!previous || priority>previous.priority) {
+          forms.set(normalized,{form:normalized,type,priority});
+        }
+      };
+
+      add(word,"exact",220);
+
+      // Kana-written vocabulary may legitimately be matched through the reading.
+      if(isKanaOnly(word) && reading) add(reading,"exact",220);
+
+      // Irregular verbs.
+      if(word==="する" || word.endsWith("する")) {
+        const stem=word.slice(0,-2);
+        [
+          ["する","exact",220],
+          ["します","polite",180],
+          ["しました","past",175],
+          ["して","te-form",175],
+          ["した","past",175],
+          ["しない","negative",170],
+          ["しなかった","negative-past",165],
+          ["すれば","conditional",155],
+          ["しよう","volitional",150]
+        ].forEach(([ending,type,priority]) => add(stem+ending,type,priority));
+      } else if(word==="来る" || reading==="くる") {
+        [
+          ["来る","exact",220],
+          ["来ます","polite",180],
+          ["来ました","past",175],
+          ["来て","te-form",175],
+          ["来た","past",175],
+          ["来ない","negative",170],
+          ["来なかった","negative-past",165],
+          ["来れば","conditional",155],
+          ["来よう","volitional",150]
+        ].forEach(([form,type,priority]) => add(form,type,priority));
+      }
+
+      const last=word.slice(-1);
+      const stem=word.slice(0,-1);
+
+      // Common godan forms. Keeping the written stem prevents homophone matches.
+      const godan={
+        "う":[["います","polite"],["いました","past"],["って","te-form"],["った","past"],["わない","negative"],["わなかった","negative-past"],["えば","conditional"]],
+        "く":[["きます","polite"],["きました","past"],["いて","te-form"],["いた","past"],["かない","negative"],["かなかった","negative-past"],["けば","conditional"]],
+        "ぐ":[["ぎます","polite"],["ぎました","past"],["いで","te-form"],["いだ","past"],["がない","negative"],["がなかった","negative-past"],["げば","conditional"]],
+        "す":[["します","polite"],["しました","past"],["して","te-form"],["した","past"],["さない","negative"],["さなかった","negative-past"],["せば","conditional"]],
+        "つ":[["ちます","polite"],["ちました","past"],["って","te-form"],["った","past"],["たない","negative"],["たなかった","negative-past"],["てば","conditional"]],
+        "ぬ":[["にます","polite"],["にました","past"],["んで","te-form"],["んだ","past"],["なない","negative"],["ななかった","negative-past"],["ねば","conditional"]],
+        "ぶ":[["びます","polite"],["びました","past"],["んで","te-form"],["んだ","past"],["ばない","negative"],["ばなかった","negative-past"],["べば","conditional"]],
+        "む":[["みます","polite"],["みました","past"],["んで","te-form"],["んだ","past"],["まない","negative"],["まなかった","negative-past"],["めば","conditional"]],
+        "る":[["ります","polite"],["りました","past"],["って","te-form"],["った","past"],["らない","negative"],["らなかった","negative-past"],["れば","conditional"]]
+      };
+
+      (godan[last] || []).forEach(([ending,type],index) => {
+        add(stem+ending,type,170-index);
+      });
+
+      // Common ichidan forms. These are added alongside godan forms for る-verbs;
+      // the visible kanji/kana stem still has to match.
+      if(last==="る") {
+        [
+          ["ます","polite",185],
+          ["ました","past",180],
+          ["て","te-form",180],
+          ["た","past",180],
+          ["ない","negative",175],
+          ["なかった","negative-past",170],
+          ["れば","conditional",160],
+          ["よう","volitional",155]
+        ].forEach(([ending,type,priority]) => add(stem+ending,type,priority));
+      }
+
+      // Common い-adjective forms.
+      if(last==="い") {
+        [
+          ["く","adverbial",165],
+          ["くて","te-form",175],
+          ["かった","past",180],
+          ["くない","negative",175],
+          ["くなかった","negative-past",170],
+          ["ければ","conditional",160]
+        ].forEach(([ending,type,priority]) => add(stem+ending,type,priority));
+      }
+
+      return [...forms.values()].sort((a,b) =>
+        b.form.length-a.form.length || b.priority-a.priority
+      );
+    }
+
+    function matchSentenceToVocabulary(text,item) {
+      const sentence=String(text || "").normalize("NFKC");
+      const matches=japaneseTargetForms(item)
+        .filter(entry => sentence.includes(entry.form.normalize("NFKC")));
+
+      if(!matches.length) {
+        return {
+          matched:false,
+          exact:false,
+          form:"",
+          type:""
+        };
+      }
+
+      matches.sort((a,b) =>
+        b.priority-a.priority || b.form.length-a.form.length
+      );
+      const best=matches[0];
+
+      return {
+        matched:true,
+        exact:best.type==="exact",
+        form:best.form,
+        type:best.type,
+        priority:best.priority
+      };
+    }
+
+    function sentenceSearchQueries(item) {
+      const forms=japaneseTargetForms(item);
+      const selected=[];
+      const seen=new Set();
+
+      for(const entry of forms) {
+        if(seen.has(entry.form)) continue;
+        seen.add(entry.form);
+        selected.push(entry.form);
+        if(selected.length>=6) break;
+      }
+
+      return selected;
+    }
+
+    function scoreSentenceCandidate(candidate,item) {
+      const text=candidate.text;
+      const match=candidate.match || matchSentenceToVocabulary(text,item);
+      if(!match.matched) return -10000;
+
+      let score=match.priority*2;
+      if(match.exact) score+=120;
+
+      // Prefer one clear use of the target over repeated or list-like examples.
+      const occurrences=text.split(match.form).length-1;
+      if(occurrences===1) score+=30;
+      if(occurrences>2) score-=25*(occurrences-2);
+
+      // Prefer short but complete examples.
+      if(text.length>=7 && text.length<=28) score+=90;
+      else if(text.length<=42) score+=55;
+      else if(text.length<=60) score+=10;
+      else score-=Math.min(180,(text.length-60)*4);
+
+      if(/[。！？]$/.test(text)) score+=12;
+      if(/[「」『』【】\[\]{}<>]/.test(text)) score-=22;
+      if(/[A-Za-z0-9]{3,}/.test(text)) score-=35;
+      if(candidate.translation) score+=35;
+      if(/cc\s*0|cc\s*by(?!-nc)/i.test(candidate.audioLicense || candidate.audio?.license || "")) {
+        score+=10;
+      }
+
+      return score;
+    }
+
+    async function searchNativeSentence(item) {
+      const queries=sentenceSearchQueries(item);
+      const seen=new Set();
+      const candidates=[];
+
+      for(const query of queries) {
+        for(const url of sentenceSearchUrls(item,query)) {
+          let payload;
+          try {
+            payload=await fetchJsonWithTimeout(url);
+          } catch {
+            continue;
+          }
+
+          for(const sentence of resultsFromPayload(payload)) {
+            const id=sentenceId(sentence);
+            const text=sentenceText(sentence);
+            if(!id || !text || seen.has(id)) continue;
+            seen.add(id);
+
+            // Critical rule: the actual sentence must contain this vocabulary
+            // item or a generated common inflection of it.
+            const match=matchSentenceToVocabulary(text,item);
+            if(!match.matched) continue;
+
+            const audio=reusableAudioFromSentence(sentence);
+            const translation=pickGermanTranslation(sentence);
+            if(!audio || !translation?.text) continue;
+
+            candidates.push({
+              id,
+              text,
+              translation:translation.text,
+              sentenceAuthor:sentenceOwner(sentence),
+              translationAuthor:translation.author,
+              audioId:audio.id,
+              audioUrl:`https://audio.tatoeba.org/sentences/jpn/${encodeURIComponent(id)}.mp3`,
+              audioAuthor:audio.author,
+              audioLicense:audio.license,
+              attributionUrl:audio.attributionUrl,
+              sourceUrl:`https://tatoeba.org/en/sentences/show/${encodeURIComponent(id)}`,
+              matchedForm:match.form,
+              matchType:match.type,
+              match,
+              fetchedAt:Date.now()
+            });
+          }
+        }
+
+        // Continue through more forms until enough genuinely matching options
+        // exist; the final score decides which is most useful.
+        if(candidates.length>=8) break;
+      }
+
+      candidates.sort((a,b) =>
+        scoreSentenceCandidate(b,item)-scoreSentenceCandidate(a,item)
+      );
+      return candidates[0] || null;
+    }
+
+    const SENTENCE_AUDIO_DB="kotobaQuestSentenceAudioV1";
+    const SENTENCE_AUDIO_STORE="audio";
+
+    function openSentenceAudioDb() {
+      return new Promise((resolve,reject) => {
+        const request=indexedDB.open(SENTENCE_AUDIO_DB,1);
+        request.onupgradeneeded=() => {
+          const db=request.result;
+          if(!db.objectStoreNames.contains(SENTENCE_AUDIO_STORE)) {
+            db.createObjectStore(SENTENCE_AUDIO_STORE);
+          }
+        };
+        request.onsuccess=() => resolve(request.result);
+        request.onerror=() => reject(request.error || new Error("IndexedDB"));
+      });
+    }
+
+    async function putSentenceAudio(key,blob) {
+      const db=await openSentenceAudioDb();
+      await new Promise((resolve,reject) => {
+        const transaction=db.transaction(SENTENCE_AUDIO_STORE,"readwrite");
+        transaction.objectStore(SENTENCE_AUDIO_STORE).put(blob,key);
+        transaction.oncomplete=resolve;
+        transaction.onerror=() => reject(transaction.error);
+      });
+      db.close();
+    }
+
+    async function getSentenceAudio(key) {
+      const db=await openSentenceAudioDb();
+      const result=await new Promise((resolve,reject) => {
+        const transaction=db.transaction(SENTENCE_AUDIO_STORE,"readonly");
+        const request=transaction.objectStore(SENTENCE_AUDIO_STORE).get(key);
+        request.onsuccess=() => resolve(request.result || null);
+        request.onerror=() => reject(request.error);
+      });
+      db.close();
+      return result;
+    }
+
+    async function deleteSentenceAudioStore() {
+      sentenceObjectUrls.forEach(url => URL.revokeObjectURL(url));
+      sentenceObjectUrls.clear();
+
+      const db=await openSentenceAudioDb();
+      await new Promise((resolve,reject) => {
+        const transaction=db.transaction(SENTENCE_AUDIO_STORE,"readwrite");
+        transaction.objectStore(SENTENCE_AUDIO_STORE).clear();
+        transaction.oncomplete=resolve;
+        transaction.onerror=() => reject(transaction.error);
+      });
+      db.close();
+    }
+
+    async function sentenceAudioObjectUrl(storageKey) {
+      if(sentenceObjectUrls.has(storageKey)) {
+        return sentenceObjectUrls.get(storageKey);
+      }
+
+      const blob=await getSentenceAudio(storageKey);
+      if(!blob) return "";
+
+      const url=URL.createObjectURL(blob);
+      sentenceObjectUrls.set(storageKey,url);
+      return url;
+    }
+
+    async function downloadSentenceAudio(entry) {
+      const response=await fetch(entry.audioUrl,{cache:"no-store"});
+      if(!response.ok) throw new Error(`Audio HTTP ${response.status}`);
+
+      const blob=await response.blob();
+      if(blob.size<1000) throw new Error("Audiodatei zu klein");
+      return blob;
+    }
+
+    function sentencePackItems(scope="level") {
+      return data.vocabulary.filter(item =>
+        item.sourceType==="core" &&
+        (scope==="all" || item.level===data.currentLevel)
+      );
+    }
+
+    function preparedSentenceCount(items=data.vocabulary.filter(item => item.sourceType==="core")) {
+      return items.filter(item => {
+        const cached=data.sentenceCache?.[sentenceCacheKey(item)];
+        return cached?.status==="ready" && cached.audioStored===true;
+      }).length;
+    }
+
+    function updateSentencePackProgress(done,total,message="") {
+      const container=document.getElementById("sentencePackProgress");
+      const fill=document.getElementById("sentencePackFill");
+      const text=document.getElementById("sentencePackProgressText");
+      if(!container || !fill || !text) return;
+
+      container.classList.toggle("active",sentencePackPreparing);
+      fill.style.width=`${total ? Math.round((done/total)*100) : 0}%`;
+      text.textContent=message || `${done} von ${total}`;
+    }
+
+    async function prepareSentencePack(scope="level") {
+      if(sentencePackPreparing) return;
+
+      const items=sentencePackItems(scope);
+      sentencePackPreparing=true;
+      sentencePackCancelled=false;
+      updateSentencePackProgress(0,items.length,"Vorbereitung startet …");
+      renderDashboard();
+
+      let done=0;
+      let found=0;
+      let missing=0;
+      let failed=0;
+
+      for(const item of items) {
+        if(sentencePackCancelled) break;
+
+        const key=sentenceCacheKey(item);
+        const previous=data.sentenceCache?.[key];
+
+        if(previous?.status==="ready" && previous.audioStored===true) {
+          done++;
+          found++;
+          updateSentencePackProgress(
+            done,
+            items.length,
+            `${done}/${items.length} · bereits gespeichert: ${item.word}`
+          );
+          continue;
+        }
+
+        updateSentencePackProgress(
+          done,
+          items.length,
+          `${done}/${items.length} · suche passenden Satz für ${item.word} …`
+        );
+
+        try {
+          const result=await searchNativeSentence(item);
+          data.sentenceCache ||= {};
+
+          if(result) {
+            updateSentencePackProgress(
+              done,
+              items.length,
+              `${done}/${items.length} · speichere Audio für ${item.word} …`
+            );
+
+            const blob=await downloadSentenceAudio(result);
+            const storageKey=`sentence:${key}`;
+            await putSentenceAudio(storageKey,blob);
+
+            data.sentenceCache[key]={
+              status:"ready",
+              ...result,
+              audioStored:true,
+              audioStorageKey:storageKey,
+              preparedAt:Date.now()
+            };
+            found++;
+          } else {
+            data.sentenceCache[key]={
+              status:"missing",
+              checkedAt:Date.now(),
+              prepared:true
+            };
+            missing++;
+          }
+        } catch(error) {
+          data.sentenceCache ||= {};
+          data.sentenceCache[key]={
+            status:"failed",
+            checkedAt:Date.now(),
+            prepared:true,
+            error:String(error?.message || error)
+          };
+          failed++;
+        }
+
+        done++;
+        persist();
+        updateSentencePackProgress(
+          done,
+          items.length,
+          `${done}/${items.length} · gespeichert: ${found} · ohne Treffer: ${missing} · Fehler: ${failed}`
+        );
+
+        // A small gap avoids sending a burst of requests to the public API.
+        await new Promise(resolve => setTimeout(resolve,140));
+      }
+
+      sentencePackPreparing=false;
+      updateSentencePackProgress(done,items.length);
+      persist();
+      renderAll();
+
+      toast(
+        sentencePackCancelled
+          ? `Satzpaket pausiert: ${found} Audios gespeichert.`
+          : `Satzpaket fertig: ${found} gespeichert, ${missing} ohne passenden Treffer, ${failed} Fehler.`
+      );
+    }
+
+    async function playPreparedSentence(item) {
+      const packed=fileSentenceEntry(item);
+      if(packed?.audioPath && packed?.text) {
+        const packedItem={
+          ...item,
+          example:packed.text,
+          audioSentence:packed.audioPath
+        };
+        return playItemAudio(packedItem,"sentence");
+      }
+
+      const cached=data.sentenceCache?.[sentenceCacheKey(item)];
+      if(
+        cached?.status!=="ready" ||
+        cached.audioStored!==true ||
+        !cached.audioStorageKey
+      ) {
+        return playItemAudio(item,"sentence");
+      }
+
+      try {
+        const url=await sentenceAudioObjectUrl(cached.audioStorageKey);
+        if(!url) return playItemAudio(item,"sentence");
+
+        const preparedItem={
+          ...item,
+          example:cached.text,
+          audioSentence:url
+        };
+        return playItemAudio(preparedItem,"sentence");
+      } catch {
+        return playItemAudio(item,"sentence");
+      }
+    }
+
+    function sentenceDisplay(item) {
+      const packed=fileSentenceEntry(item);
+      if(packed?.text && packed?.audioPath) {
+        return {
+          text:packed.text,
+          translation:packed.translation || item.exampleTranslation || "",
+          credit:`Tatoeba · enthält „${packed.matchedForm || item.word}“ · Satz: ${packed.sentenceAuthor || "Community"} · Audio: ${packed.audioAuthor || "Community"} · ${packed.audioLicense || "freie Lizenz"}`,
+          sourceUrl:packed.sourceUrl || ""
+        };
+      }
+
+      const cached=data.sentenceCache?.[sentenceCacheKey(item)];
+      if(cached?.status==="ready" && cached.audioStored===true) {
+        return {
+          text:cached.text,
+          translation:cached.translation,
+          credit:`Tatoeba · enthält „${cached.matchedForm || item.word}“ · Satz: ${cached.sentenceAuthor || "Community"} · Audio: ${cached.audioAuthor || "Community"} · ${cached.audioLicense}`,
+          sourceUrl:cached.sourceUrl
+        };
+      }
+
+      return {
+        text:item.example || "",
+        translation:item.exampleTranslation || "",
+        credit:"",
+        sourceUrl:""
+      };
+    }
+
+    function updateSentenceContext(config,sentence) {
+      const text=document.getElementById(config.textId);
+      const translation=config.translationId
+        ? document.getElementById(config.translationId)
+        : null;
+      const credit=config.creditId
+        ? document.getElementById(config.creditId)
+        : null;
+
+      if(text && sentence?.text) text.textContent=sentence.text;
+      if(translation && sentence?.translation) translation.textContent=sentence.translation;
+
+      if(credit) {
+        credit.classList.remove("loading");
+        if(sentence?.credit) {
+          credit.innerHTML="";
+          const link=document.createElement("a");
+          link.href=sentence.sourceUrl;
+          link.target="_blank";
+          link.rel="noopener noreferrer";
+          link.textContent=sentence.credit;
+          credit.appendChild(link);
+        } else {
+          credit.textContent="Für diese Vokabel ist noch kein vorbereiteter Human-Satz gespeichert – vorhandener Beispielsatz als Fallback.";
+        }
+      }
+    }
+
+    async function loadAndPlaySentence(item,config,{play=true}={}) {
+      const display=sentenceDisplay(item);
+      updateSentenceContext(config,display);
+
+      if(!play) return display.credit ? "prepared-sentence" : "fallback-sentence";
+      return playPreparedSentence(item);
+    }
+
+    function bindSentenceContext(item,config) {
+      const initial=sentenceDisplay(item);
+      updateSentenceContext(config,initial);
+
+      document.getElementById(config.audioButtonId)?.addEventListener("click",() => {
+        loadAndPlaySentence(item,config,{play:true});
+      });
+
+      setupContextToggle(config.buttonId,config.panelId,() => {
+        loadAndPlaySentence(item,config,{
+          play:data.sentenceAutoplayOnToggle
+        });
+      });
+    }
+
+    function setupContextToggle(buttonId,panelId,onOpen=null) {
+      const button=document.getElementById(buttonId);
+      const panel=document.getElementById(panelId);
+      if(!button || !panel) return;
+
+      const closedLabel=button.textContent;
+      const openLabel=button.dataset.openLabel || "Hinweis ausblenden";
+
+      button.addEventListener("click",() => {
+        const open=panel.classList.toggle("open");
+        button.setAttribute("aria-expanded",String(open));
+        button.textContent=open ? openLabel : closedLabel;
+        if(open && typeof onOpen==="function") onOpen();
+      });
+    }
+
+    function toast(message) {
+      const el=document.getElementById("toast");
+      el.textContent=message;
+      el.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer=setTimeout(() => el.classList.remove("show"),2300);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function normalizeLatin(value) {
+      return value.trim().toLocaleLowerCase("de-DE").normalize("NFKC")
+        .replace(/[.!?;:()[\]{}"'`´]/g,"").replace(/\s+/g," ");
+    }
+
+    function levenshteinDistance(left,right) {
+      const a=String(left || "");
+      const b=String(right || "");
+      const row=Array.from({length:b.length+1},(_,index) => index);
+
+      for(let i=1;i<=a.length;i++) {
+        let previous=row[0];
+        row[0]=i;
+        for(let j=1;j<=b.length;j++) {
+          const saved=row[j];
+          const cost=a[i-1]===b[j-1] ? 0 : 1;
+          row[j]=Math.min(
+            row[j]+1,
+            row[j-1]+1,
+            previous+cost
+          );
+          previous=saved;
+        }
+      }
+      return row[b.length];
+    }
+
+    function isCloseLatinAnswer(answer,target) {
+      const entered=normalizeLatin(answer);
+      const expected=normalizeLatin(target);
+      if(!entered || !expected || entered===expected) return false;
+
+      const shorter=Math.min(entered.length,expected.length);
+      if(shorter>=4 && (entered.includes(expected) || expected.includes(entered))) {
+        return true;
+      }
+
+      if(shorter<4) return false;
+      const allowedDistance=Math.max(entered.length,expected.length)>=8 ? 2 : 1;
+      return levenshteinDistance(entered,expected)<=allowedDistance;
+    }
+
+    function isCloseKanaAnswer(answer,target) {
+      const entered=normalizeKana(answer);
+      const expected=normalizeKana(target);
+      if(!entered || !expected || entered===expected) return false;
+
+      const shorter=Math.min(entered.length,expected.length);
+      if(shorter<2) return false;
+      const allowedDistance=Math.max(entered.length,expected.length)>=5 ? 2 : 1;
+      return levenshteinDistance(entered,expected)<=allowedDistance;
+    }
+
+    function containsUnconvertedRomaji(value) {
+      return /[A-Za-z]/.test(String(value || ""));
+    }
+
+    function requeueQuestion(session,indexKey,question,minGap=3) {
+      const currentIndex=Number(session[indexKey] || 0);
+      const insertAt=Math.min(
+        session.questions.length,
+        currentIndex+1+Math.max(1,minGap)
+      );
+      session.questions.splice(insertAt,0,{
+        itemId:question.itemId,
+        type:question.type,
+        repeated:true
+      });
+    }
+
+    function romajiToHiragana(value,finalize=false) {
+      const source=value.normalize("NFKC").toLowerCase();
+      let result="",index=0;
+      while(index<source.length) {
+        const current=source[index];
+        if(!/[a-z'-]/.test(current)) { result+=current; index++; continue; }
+        if(current==="-") { result+="ー"; index++; continue; }
+        const next=source[index+1] || "";
+        if(next && current===next && /[bcdfghjklmpqrstvwxyz]/.test(current) && current!=="n") {
+          result+="っ"; index++; continue;
+        }
+        if(current==="n") {
+          if(next==="'") { result+="ん"; index+=2; continue; }
+          if(next==="n") { result+="ん"; index++; continue; }
+          if(next && !/[aeiouy]/.test(next)) { result+="ん"; index++; continue; }
+          if(!next && finalize) { result+="ん"; index++; continue; }
+        }
+        let matched=false;
+        for(const length of [4,3,2,1]) {
+          const part=source.slice(index,index+length);
+          if(ROMAJI_TO_HIRAGANA[part]) {
+            result+=ROMAJI_TO_HIRAGANA[part];
+            index+=length;
+            matched=true;
+            break;
+          }
+        }
+        if(!matched) { result+=current; index++; }
+      }
+      return result;
+    }
+
+    function normalizeKana(value) {
+      return romajiToHiragana(value,true).trim().normalize("NFKC")
+        .replace(/\s+/g,"")
+        .replace(/[\u30a1-\u30f6]/g,char => String.fromCharCode(char.charCodeAt(0)-0x60));
+    }
+
+    function isDue(item) {
+      return item.stage>0 && item.stage<9 && Number(item.availableAt)<=Date.now();
+    }
+
+    function stageDelay(stage) {
+      return data.demoMode ? STAGES[stage].demo : STAGES[stage].real;
+    }
+
+    function schedule(item) {
+      item.availableAt=item.stage>=9 ? null : Date.now()+stageDelay(item.stage);
+    }
+
+    function stageName(stage) {
+      return STAGES[stage]?.name || "Unbekannt";
+    }
+
+    function formatNext(item) {
+      if(item.stage===0) return "Noch nicht gelernt";
+      if(item.stage===9) return "Abgeschlossen";
+      const diff=Number(item.availableAt)-Date.now();
+      if(diff<=0) return "Jetzt fällig";
+      const min=Math.ceil(diff/60000);
+      if(min<60) return `in ${min} Min.`;
+      const hours=Math.ceil(diff/3600000);
+      if(hours<48) return `in ${hours} Std.`;
+      return `in ${Math.ceil(diff/86400000)} Tagen`;
+    }
+
+    function placementDone(level) {
+      return data.placementCompletedLevels.includes(Number(level));
+    }
+
+    function coreItemsForLevel(level) {
+      return data.vocabulary.filter(v => v.sourceType==="core" && v.level===Number(level));
+    }
+
+    function requiredGuruCount(total) {
+      return total>0 ? Math.ceil(total*.9) : 0;
+    }
+
+    function levelProgress(level=data.currentLevel) {
+      const items=coreItemsForLevel(level);
+      const passed=items.filter(v => v.guruPassed).length;
+      const required=requiredGuruCount(items.length);
+      return {
+        items,passed,required,
+        percent:items.length ? Math.round((passed/items.length)*100) : 0
+      };
+    }
+
+    function checkForLevelUps() {
+      let gained=0;
+      while(true) {
+        const progress=levelProgress(data.currentLevel);
+        if(!placementDone(data.currentLevel) || !progress.items.length || progress.passed<progress.required) break;
+        data.currentLevel++;
+        gained++;
+      }
+      return gained;
+    }
+
+    function getLessonItems(kind) {
+      if(kind==="mining") {
+        return data.vocabulary.filter(v => v.sourceType==="mining" && v.stage===0);
+      }
+      return data.vocabulary.filter(v =>
+        v.sourceType==="core" &&
+        v.stage===0 &&
+        v.level<=data.currentLevel &&
+        placementDone(v.level)
+      );
+    }
+
+    function getDueItems(kind) {
+      return data.vocabulary.filter(v => v.sourceType===kind && isDue(v));
+    }
+
+    function renderDashboard() {
+      const progress=levelProgress();
+      const pendingPlacement=!placementDone(data.currentLevel);
+      const coreLessons=getLessonItems("core").length;
+      const coreReviews=getDueItems("core").length;
+      const miningLessons=getLessonItems("mining").length;
+      const miningReviews=getDueItems("mining").length;
+      const miningTotal=data.vocabulary.filter(v => v.sourceType==="mining").length;
+
+      document.getElementById("levelNumber").textContent=data.currentLevel;
+      document.getElementById("levelProgress").style.width=`${
+        progress.required ? Math.min(100,(progress.passed/progress.required)*100) : 0
+      }%`;
+      document.getElementById("levelProgressText").textContent=progress.items.length
+        ? `${progress.passed} von ${progress.items.length} erstmals auf Guru · benötigt: ${progress.required}`
+        : "Für dieses Level sind noch keine Core-Vokabeln vorhanden";
+
+      document.getElementById("levelStatusTitle").textContent=pendingPlacement
+        ? `Level ${data.currentLevel}: Einstufung offen`
+        : `${progress.percent} % der Level-Vokabeln auf Guru`;
+      document.getElementById("levelStatusText").textContent=!progress.items.length
+        ? `Lege Core-Vokabeln für Level ${data.currentLevel} an.`
+        : pendingPlacement
+          ? "Markiere zuerst alle Wörter als bekannt oder unbekannt."
+          : progress.passed>=progress.required
+            ? "Die Aufstiegsbedingung ist erreicht."
+            : `Noch ${progress.required-progress.passed} Vokabeln müssen erstmals Guru erreichen.`;
+
+      document.getElementById("coreLessonCount").textContent=coreLessons;
+      document.getElementById("coreReviewCount").textContent=coreReviews;
+      document.getElementById("miningLessonCount").textContent=miningLessons;
+      document.getElementById("miningReviewCount").textContent=miningReviews;
+
+      document.getElementById("coreDashboardStatus").textContent=!progress.items.length
+        ? `Level ${data.currentLevel} ist leer`
+        : pendingPlacement
+          ? `Level ${data.currentLevel}: Einstufung bereit`
+          : `Level ${data.currentLevel}: ${progress.passed}/${progress.required} benötigt`;
+      document.getElementById("coreDashboardDetail").textContent=!progress.items.length
+        ? "Füge diesem Level zuerst Core-Vokabeln hinzu."
+        : pendingPlacement
+          ? `${progress.items.length} Wörter warten auf deine Selbsteinschätzung.`
+          : `${coreLessons} Lektionen und ${coreReviews} Reviews sind aktuell verfügbar.`;
+
+      document.getElementById("miningDashboardStatus").textContent=miningTotal
+        ? `${miningTotal} Mining-Vokabeln`
+        : "Noch keine Mining-Sammlung";
+      document.getElementById("miningDashboardDetail").textContent=miningTotal
+        ? `${miningLessons} neue Karten · ${miningReviews} Reviews fällig`
+        : "Lege eigene Wörter im Bereich „Vokabeln“ an.";
+
+      const placementButtons=[
+        document.getElementById("dashboardPlacement"),
+        document.getElementById("corePlacementBtn")
+      ];
+      placementButtons.forEach(btn => {
+        btn.disabled=!progress.items.length || !pendingPlacement;
+        btn.textContent=pendingPlacement ? "Einstufung starten" : "Einstufung abgeschlossen";
+      });
+
+      document.getElementById("dashboardCoreLessons").disabled=!coreLessons;
+      document.getElementById("coreLessonsBtn").disabled=!coreLessons;
+      document.getElementById("dashboardCoreReviews").disabled=!coreReviews;
+      document.getElementById("coreReviewsBtn").disabled=!coreReviews;
+      document.getElementById("dashboardMiningLessons").disabled=!miningLessons;
+      document.getElementById("miningLessonsBtn").disabled=!miningLessons;
+      document.getElementById("dashboardMiningReviews").disabled=!miningReviews;
+      document.getElementById("miningReviewsBtn").disabled=!miningReviews;
+
+      document.getElementById("demoMode").checked=data.demoMode;
+      document.getElementById("audioAutoplay").checked=data.audioAutoplay;
+      document.getElementById("nativeAudioEnabled").checked=data.nativeAudioEnabled;
+      document.getElementById("onlineHumanAudio").checked=data.onlineHumanAudio;
+      document.getElementById("bluetoothKeepAlive").checked=data.bluetoothKeepAlive;
+      document.getElementById("bluetoothLeadMs").value=String(
+        [0,120,250,450].includes(Number(data.bluetoothLeadMs))
+          ? Number(data.bluetoothLeadMs)
+          : 120
+      );
+
+      const preparedCore=CORE_PACK.entries.length===2000;
+      const verifiedAudioCount=CORE_PACK.entries.filter(item =>
+        item.audioSource==="tofugu-wanikani" && item.audioWord
+      ).length;
+
+      document.getElementById("corePackStatus").textContent=preparedCore
+        ? `Kotoba Core 2000 aktiv · Unit-Summary v28 · ${CORE_PACK.includedLevels} Level`
+        : `Fallback aktiv · ${CORE_PACK.entries.length} von 2.000 Wörtern`;
+
+      document.getElementById("corePackDetail").textContent=preparedCore
+        ? `${CORE_PACK.name} · Version ${CORE_PACK.version} · 20 Wörter pro Level · Demo-Modus aus.`
+        : "Starte einmal „Core 2000 vorbereiten.command“ und lade danach die App neu.";
+
+      document.getElementById("audioPackStatus").textContent=
+        `${verifiedAudioCount} von ${CORE_PACK.entries.length} Karten mit verifiziertem Human-Audio`;
+
+      document.getElementById("audioPackDetail").textContent=preparedCore
+        ? "Die MP3-Datei jeder Core-Karte wurde beim Erstellen gegen das Tofugu/WaniKani-Archiv abgeglichen und wird beim Lernen direkt online geladen."
+        : "Das eingebaute Übergangspaket verwendet weiterhin die bisherige Audio-Fallback-Kette.";
+
+      const stageSummary=document.getElementById("stageSummary");
+      stageSummary.innerHTML="";
+      STAGES.slice(1).forEach((stage,index) => {
+        const stageNumber=index+1;
+        const count=data.vocabulary.filter(v => v.stage===stageNumber).length;
+        const div=document.createElement("div");
+        div.className="status-box";
+        div.style.margin="0";
+        div.innerHTML=`<strong>${stage.name}</strong><span class="small muted">${count} Wörter</span>`;
+        stageSummary.appendChild(div);
+      });
+    }
+
+    function renderCore() {
+      const progress=levelProgress();
+      const pending=!placementDone(data.currentLevel);
+      document.getElementById("coreLevelHeading").textContent=`Level ${data.currentLevel}`;
+      document.getElementById("coreStatusTitle").textContent=!progress.items.length
+        ? data.currentLevel>CORE_PACK.includedLevels
+          ? "Dieser Core-Abschnitt ist noch nicht im Pack enthalten"
+          : "Dieses Level enthält noch keine Wörter"
+        : pending
+          ? "Einstufung offen"
+          : `${progress.passed} von ${progress.required} benötigten Wörtern auf Guru`;
+      document.getElementById("coreStatusDetail").textContent=!progress.items.length
+        ? data.currentLevel>CORE_PACK.includedLevels
+          ? `Aktuell sind Level 1–${CORE_PACK.includedLevels} enthalten.`
+          : "Lege Core-Karten für dieses Level an."
+        : pending
+          ? `${progress.items.length} Wörter werden zuerst mit ← und → sortiert.`
+          : `${getLessonItems("core").length} Lektionen · ${getDueItems("core").length} Reviews fällig`;
+
+      document.getElementById("packName").textContent=CORE_PACK.name;
+      document.getElementById("packVersion").textContent=`Version ${CORE_PACK.version}`;
+      document.getElementById("packIncludedWords").textContent=CORE_PACK.includedWords;
+      document.getElementById("packIncludedLevels").textContent=CORE_PACK.includedLevels;
+      document.getElementById("packLearnedWords").textContent=data.vocabulary.filter(
+        item => item.packId===CORE_PACK.id && item.stage>0
+      ).length;
+
+      const grid=document.getElementById("coreSectionGrid");
+      grid.innerHTML="";
+      for(let section=1;section<=10;section++) {
+        const firstLevel=(section-1)*10+1;
+        const lastLevel=section*10;
+        const available=firstLevel<=CORE_PACK.includedLevels;
+        const sectionItems=data.vocabulary.filter(item =>
+          item.packId===CORE_PACK.id && item.level>=firstLevel && item.level<=lastLevel
+        );
+        const guru=sectionItems.filter(item => item.guruPassed).length;
+        const begun=sectionItems.filter(item => item.stage>0).length;
+        const div=document.createElement("div");
+        div.className=`section-card ${available ? "" : "locked"}`;
+        div.innerHTML=`
+          <strong>${available ? "✓ " : "🔒 "}Core ${section*200}</strong>
+          <span>Level ${firstLevel}–${lastLevel}</span>
+          <span>${available ? `${begun}/${sectionItems.length} begonnen · ${guru} Guru` : "Noch nicht enthalten"}</span>`;
+        grid.appendChild(div);
+      }
+    }
+
+    function renderMining() {
+      const lessons=getLessonItems("mining").length;
+      const reviews=getDueItems("mining").length;
+      document.getElementById("miningStatusTitle").textContent=`${lessons} neue Mining-Wörter`;
+      document.getElementById("miningStatusDetail").textContent=`${reviews} Reviews sind fällig.`;
+
+      const collections={};
+      data.vocabulary.filter(v => v.sourceType==="mining").forEach(item => {
+        const name=item.collection || "Ohne Sammlung";
+        collections[name]=(collections[name] || 0)+1;
+      });
+      const root=document.getElementById("collectionSummary");
+      const entries=Object.entries(collections).sort((a,b) => b[1]-a[1]);
+      root.innerHTML=entries.length
+        ? entries.map(([name,count]) => `
+            <div class="status-box" style="margin:0 0 10px">
+              <strong>${escapeHtml(name)}</strong>
+              <span class="small muted">${count} Vokabeln</span>
+            </div>`).join("")
+        : `<div class="empty">Noch keine Mining-Vokabeln.</div>`;
+    }
+
+    function renderVocabulary() {
+      const list=document.getElementById("vocabList");
+      document.getElementById("vocabTotal").textContent=`${data.vocabulary.length} Wörter`;
+      list.innerHTML="";
+      if(!data.vocabulary.length) {
+        list.innerHTML=`<div class="empty">Noch keine Vokabeln vorhanden.</div>`;
+        return;
+      }
+
+      [...data.vocabulary]
+        .sort((a,b) =>
+          (a.sourceType===b.sourceType ? 0 : a.sourceType==="core" ? -1 : 1) ||
+          a.level-b.level ||
+          b.createdAt-a.createdAt
+        )
+        .forEach(item => {
+          const locked=item.sourceType==="core" && item.level>data.currentLevel;
+          const row=document.createElement("div");
+          row.className="vocab-row";
+          row.innerHTML=`
+            <div class="vocab-jp">${escapeHtml(item.word)}</div>
+            <div class="vocab-meta">
+              <strong>${escapeHtml(item.meanings.join(", "))}</strong>
+              <span>${escapeHtml(item.reading)} · ${locked ? "Noch gesperrt" : formatNext(item)}</span>
+              ${item.sourceType==="mining" && item.collection ? `<span>Quelle: ${escapeHtml(item.collection)}</span>` : ""}
+            </div>
+            <div style="display:grid;gap:7px;justify-items:end">
+              <span class="type-badge ${item.sourceType}">${item.sourceType==="core" ? "Core" : "Mining"}</span>
+              ${item.sourceType==="core"
+                ? `<span class="level-badge ${locked ? "locked-badge" : ""}">${locked ? "🔒 " : ""}Level ${item.level}</span>`
+                : ""}
+              <span class="badge">${stageName(item.stage)}</span>
+              <button class="ghost delete-vocab" data-id="${item.id}" style="padding:7px 10px">Löschen</button>
+            </div>`;
+          list.appendChild(row);
+        });
+    }
+
+    function renderAll() {
+      renderDashboard();
+      renderCore();
+      renderMining();
+      renderVocabulary();
+      if(document.getElementById("placement").classList.contains("active")) renderPlacement();
+      if(document.getElementById("lessons").classList.contains("active")) renderLesson();
+      if(document.getElementById("reviews").classList.contains("active")) renderReview();
+    }
+
+    function switchView(viewName) {
+      stopAudioPlayback();
+      syncBluetoothKeepAlive(viewName);
+      document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
+      document.querySelectorAll(".nav button").forEach(btn => btn.classList.remove("active"));
+      document.getElementById(viewName).classList.add("active");
+      document.querySelector(`.nav button[data-view="${viewName}"]`)?.classList.add("active");
+      if(viewName==="core") renderCore();
+      if(viewName==="mining") renderMining();
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+
+    function goCore() {
+      const progress=levelProgress();
+      if(progress.items.length && !placementDone(data.currentLevel)) {
+        startPlacement();
+      } else {
+        switchView("core");
+      }
+    }
+
+    function focusFirstEnabledAction(...ids) {
+      const button=ids
+        .map(id => document.getElementById(id))
+        .find(candidate => candidate && !candidate.disabled);
+
+      if(button) setTimeout(() => button.focus(),0);
+      return button || null;
+    }
+
+    function refreshProgressViewsSafely() {
+      const renderers=[
+        ["Dashboard",renderDashboard],
+        ["Core",renderCore],
+        ["Mining",renderMining],
+        ["Vokabelliste",renderVocabulary]
+      ];
+
+      renderers.forEach(([label,renderer]) => {
+        try {
+          renderer();
+        } catch(error) {
+          console.error(`Kotoba Quest: ${label} konnte nicht aktualisiert werden.`,error);
+        }
+      });
+    }
+
+    const PLACEMENT_BATCH_SIZE=5;
+
+    function placementProgressForLevel(level) {
+      const items=coreItemsForLevel(level);
+      const validIds=new Set(items.map(item => item.id));
+      data.placementProgress ||= {};
+
+      let progress=data.placementProgress[level];
+      if(!progress || typeof progress!=="object") {
+        progress={
+          order:[...items].sort(() => Math.random()-.5).map(item => item.id),
+          processedIds:[],
+          passed:0,
+          needsLesson:0
+        };
+      }
+
+      const existingOrder=Array.isArray(progress.order)
+        ? progress.order.filter(id => validIds.has(id))
+        : [];
+      const existingSet=new Set(existingOrder);
+      const missingIds=items.map(item => item.id)
+        .filter(id => !existingSet.has(id))
+        .sort(() => Math.random()-.5);
+
+      progress.order=[...existingOrder,...missingIds];
+      progress.processedIds=Array.isArray(progress.processedIds)
+        ? [...new Set(progress.processedIds.filter(id => validIds.has(id)))]
+        : [];
+      progress.passed=Math.max(0,Number(progress.passed || 0));
+      progress.needsLesson=Math.max(0,Number(progress.needsLesson || 0));
+      data.placementProgress[level]=progress;
+      return progress;
+    }
+
+    function startPlacement() {
+      const level=data.currentLevel;
+      const allItems=coreItemsForLevel(level);
+      if(!allItems.length || placementDone(level)) {
+        switchView("core");
+        return;
+      }
+
+      const progress=placementProgressForLevel(level);
+      const processed=new Set(progress.processedIds);
+      const remainingIds=progress.order.filter(id => !processed.has(id));
+      if(!remainingIds.length) {
+        if(!data.placementCompletedLevels.includes(level)) {
+          data.placementCompletedLevels.push(level);
+        }
+        delete data.placementProgress[level];
+        persist();
+        switchView("core");
+        return;
+      }
+
+      const batchIds=remainingIds.slice(0,PLACEMENT_BATCH_SIZE);
+      const batchItems=batchIds
+        .map(id => data.vocabulary.find(item => item.id===id))
+        .filter(Boolean);
+
+      placementSession={
+        level,
+        phase:"sort",
+        items:batchItems,
+        index:0,
+        knownIds:[],
+        unknownIds:[],
+        questions:[],
+        proofIndex:0,
+        results:{},
+        errors:{},
+        feedback:null,
+        locked:false,
+        completedBefore:progress.processedIds.length,
+        totalItems:progress.order.length,
+        batchNumber:Math.floor(progress.processedIds.length/PLACEMENT_BATCH_SIZE)+1
+      };
+      persist();
+      switchView("placement");
+      renderPlacement();
+    }
+
+    function choosePlacement(known) {
+      if(!placementSession || placementSession.phase!=="sort") return;
+      const item=placementSession.items[placementSession.index];
+      if(!item) return;
+      (known ? placementSession.knownIds : placementSession.unknownIds).push(item.id);
+      placementSession.index++;
+      if(placementSession.index>=placementSession.items.length) startPlacementProof();
+      else renderPlacement();
+    }
+
+    function undoPlacementChoice() {
+      if(!placementSession || placementSession.phase!=="sort" || placementSession.index<=0) return;
+      const previous=placementSession.items[placementSession.index-1];
+      placementSession.knownIds=placementSession.knownIds.filter(id => id!==previous.id);
+      placementSession.unknownIds=placementSession.unknownIds.filter(id => id!==previous.id);
+      placementSession.index--;
+      renderPlacement();
+    }
+
+    function startPlacementProof() {
+      placementSession.phase="proof";
+      placementSession.questions=[];
+      placementSession.knownIds.forEach(id => {
+        placementSession.questions.push({itemId:id,type:"listening"});
+        placementSession.questions.push({itemId:id,type:"production"});
+        placementSession.results[id]={listening:null,production:null};
+      });
+      placementSession.errors=Object.fromEntries(
+        placementSession.knownIds.map(id => [id,{listening:false,production:false}])
+      );
+      placementSession.questions.sort(() => Math.random()-.5);
+      placementSession.proofIndex=0;
+      placementSession.feedback=null;
+      placementSession.locked=false;
+      renderPlacement();
+    }
+
+    function renderPlacement() {
+      const card=document.getElementById("placementCard");
+      card.className="card study-card placement-card";
+      if(!placementSession) {
+        card.innerHTML=`<h2>Keine Einstufung aktiv</h2><button class="primary" id="placementBack">Zum Core Path</button>`;
+        document.getElementById("placementBack").onclick=() => switchView("core");
+        focusFirstEnabledAction("placementBack");
+        return;
+      }
+
+      if(placementSession.phase==="sort") {
+        const item=placementSession.items[placementSession.index];
+        const totalPosition=placementSession.completedBefore+placementSession.index+1;
+        card.innerHTML=`
+          <div class="counter">Level ${placementSession.level} · Checkpoint ${placementSession.batchNumber} · Wort ${placementSession.index+1} von ${placementSession.items.length} · insgesamt ${totalPosition} von ${placementSession.totalItems}</div>
+          <div class="placement-label">Kennst du dieses Wort?</div>
+          <div class="word-audio-row">
+            <div class="study-word">${escapeHtml(item.word)}</div>
+            <button class="icon-audio" id="placementAudio" type="button" title="Noch einmal abspielen" aria-label="Wort noch einmal abspielen">🔊</button>
+          </div>
+          ${item.example ? `<div class="context-area"><button class="context-toggle" id="placementContextToggle" type="button" aria-expanded="false" data-open-label="Japanischen Beispielsatz ausblenden">Japanischen Beispielsatz anzeigen</button><div class="context-panel" id="placementContextPanel"><div class="sentence-audio-row"><span class="context-japanese" id="placementSentenceText">${escapeHtml(sentenceDisplay(item).text)}</span><button class="icon-audio small" id="placementSentenceAudio" type="button" title="Satz anhören" aria-label="Japanischen Beispielsatz anhören">🔊</button></div><span class="sentence-source" id="placementSentenceCredit"></span></div></div>` : ""}
+          <p class="placement-help">Diese Gruppe enthält höchstens fünf Vokabeln. Nach dem Beweis wird sie dauerhaft gespeichert und du kannst aufhören.</p>
+          <div class="choice-grid"><button class="choice unknown" id="placementUnknown"><span class="key">←</span>Kenne ich nicht</button><button class="choice known" id="placementKnown"><span class="key">→</span>Kenne ich</button></div>
+          <div class="placement-counts"><span class="count-chip">Bekannt: ${placementSession.knownIds.length}</span><span class="count-chip">Unbekannt: ${placementSession.unknownIds.length}</span><button class="ghost" id="placementUndo" ${placementSession.index===0 ? "disabled" : ""} style="padding:8px 11px">Letzte Auswahl zurück</button></div>`;
+        document.getElementById("placementUnknown").onclick=() => choosePlacement(false);
+        document.getElementById("placementKnown").onclick=() => choosePlacement(true);
+        document.getElementById("placementUndo").onclick=undoPlacementChoice;
+        document.getElementById("placementAudio").onclick=() => playItemAudio(item,"word");
+        bindSentenceContext(item,{buttonId:"placementContextToggle",panelId:"placementContextPanel",textId:"placementSentenceText",creditId:"placementSentenceCredit",audioButtonId:"placementSentenceAudio"});
+        autoplayJapanese(item);
+        return;
+      }
+
+      if(placementSession.proofIndex>=placementSession.questions.length) {
+        finishPlacement();
+        return;
+      }
+      const question=placementSession.questions[placementSession.proofIndex];
+      const item=data.vocabulary.find(v => v.id===question.itemId);
+      renderQuestionCard(card,question,item,{
+        counter:`Level ${placementSession.level} · Checkpoint ${placementSession.batchNumber} · Beweis ${placementSession.proofIndex+1} von ${placementSession.questions.length}`,
+        feedback:placementSession.feedback,
+        locked:placementSession.locked,
+        submitHandler:(answer) => gradePlacementProof(question,item,answer),
+        nextHandler:() => { placementSession.proofIndex++; placementSession.feedback=null; placementSession.locked=false; renderPlacement(); }
+      });
+    }
+
+    function gradePlacementProof(question,item,answer) {
+      const result=evaluateAnswer(question,item,answer);
+      if(result.status==="wrongType" || result.status==="romajiLeftover") {
+        placementSession.feedback={kind:"warning",retry:true,correct:false,message:result.status==="romajiLeftover" ? "In deiner japanischen Antwort ist noch ein lateinischer Buchstabe übrig. Das sieht nach einem Tippfehler aus und zählt nicht als Fehler. Korrigiere die Eingabe." : question.type==="listening" ? "Das war das japanische Wort – gesucht ist beim Listening die deutsche Bedeutung. Versuche es direkt noch einmal." : "Das war die deutsche Bedeutung – gesucht ist diesmal das japanische Wort. Versuche es direkt noch einmal."};
+        renderPlacement(); return;
+      }
+      if(result.status==="correct") {
+        placementSession.results[item.id][question.type]=true;
+        placementSession.proofIndex++;
+        placementSession.feedback=null;
+        placementSession.locked=false;
+
+        if(placementSession.proofIndex>=placementSession.questions.length) {
+          finishPlacement();
+        } else {
+          renderPlacement();
+        }
+        return;
+      }
+      requeueQuestion(placementSession,"proofIndex",question);
+      if(result.status==="close") {
+        placementSession.locked=true;
+        placementSession.feedback={kind:"warning",retry:false,correct:false,message:`Fast richtig – das zählt nicht als Fehler. Genauer gesucht war: ${result.expected}. Die Frage kommt später noch einmal.`};
+        renderPlacement(); return;
+      }
+      placementSession.errors[item.id][question.type]=true;
+      placementSession.locked=true;
+      placementSession.feedback={kind:"bad",retry:false,correct:false,message:`Leider falsch. Gesucht war: ${result.expected}. Die Frage kommt später noch einmal.`};
+      renderPlacement();
+    }
+
+    function finishPlacement() {
+      const level=placementSession.level;
+      const batchIds=placementSession.items.map(item => item.id);
+      const progress=placementProgressForLevel(level);
+      let batchPassed=0,batchNeedsLesson=0;
+
+      placementSession.knownIds.forEach(id => {
+        const item=data.vocabulary.find(v => v.id===id);
+        const result=placementSession.results[id];
+        const errors=placementSession.errors[id] || {listening:false,production:false};
+        const hadGenuineError=errors.listening || errors.production;
+        if(result?.listening===true && result?.production===true && !hadGenuineError) {
+          item.stage=5; item.guruPassed=true; item.correct++; schedule(item); batchPassed++;
+        } else {
+          item.stage=0; item.availableAt=null; batchNeedsLesson++;
+        }
+      });
+      placementSession.unknownIds.forEach(id => {
+        const item=data.vocabulary.find(v => v.id===id);
+        item.stage=0; item.availableAt=null; batchNeedsLesson++;
+      });
+
+      progress.processedIds=[...new Set([...progress.processedIds,...batchIds])];
+      progress.passed+=batchPassed;
+      progress.needsLesson+=batchNeedsLesson;
+      data.placementProgress[level]=progress;
+      const processed=progress.processedIds.length;
+      const remaining=Math.max(0,progress.order.length-processed);
+      const totalPassed=progress.passed,totalNeedsLesson=progress.needsLesson;
+      persist();
+
+      const card=document.getElementById("placementCard");
+      card.className="card study-card placement-card";
+      if(remaining>0) {
+        placementSession=null;
+        card.innerHTML=`
+          <div class="counter">Level ${level} · Einheit abgeschlossen</div>
+          <div class="study-word" style="font-size:4rem">🎉</div>
+          <h2>
+            ${batchPassed===1
+              ? "1 Wort wurde auf Guru 1 gesetzt"
+              : `${batchPassed} Wörter wurden auf Guru 1 gesetzt`}
+          </h2>
+          <p class="muted">
+            ${batchNeedsLesson===1
+              ? "1 Wort kommt in die regulären Lektionen."
+              : `${batchNeedsLesson} Wörter kommen in die regulären Lektionen.`}
+            Insgesamt sind ${processed} von ${progress.order.length} Wörtern
+            dieses Levels eingestuft.
+          </p>
+          <div class="button-row" style="justify-content:center;margin-top:18px">
+            <button class="primary" id="placementContinue">
+              Nächste ${Math.min(PLACEMENT_BATCH_SIZE,remaining)} Wörter
+            </button>
+            <button class="secondary" id="placementPause">
+              Zurück zum Dashboard
+            </button>
+          </div>
+          <p class="small muted" style="margin-top:14px">
+            Enter startet direkt die nächste Einheit.
+          </p>`;
+        document.getElementById("placementContinue").onclick=startPlacement;
+        document.getElementById("placementPause").onclick=() => switchView("dashboard");
+        focusFirstEnabledAction("placementContinue","placementPause");
+        refreshProgressViewsSafely();
+        return;
+      }
+
+      if(!data.placementCompletedLevels.includes(level)) data.placementCompletedLevels.push(level);
+      delete data.placementProgress[level];
+      const levelsGained=checkForLevelUps();
+      persist();
+      card.innerHTML=`
+        <div class="counter">Level ${level} · Einstufung abgeschlossen</div>
+        <div class="study-word" style="font-size:4rem">${levelsGained ? "🚀" : "🎯"}</div>
+        <h2>
+          ${levelsGained
+            ? `Level ${data.currentLevel} freigeschaltet!`
+            : totalPassed===1
+              ? "1 Wort wurde auf Guru 1 gesetzt"
+              : `${totalPassed} Wörter wurden auf Guru 1 gesetzt`}
+        </h2>
+        <p class="muted">
+          ${totalNeedsLesson===1
+            ? "1 Wort kommt in die regulären Core-Lektionen."
+            : `${totalNeedsLesson} Wörter kommen in die regulären Core-Lektionen.`}
+          Alle vier Einheiten wurden gespeichert.
+        </p>
+        <div class="button-row" style="justify-content:center;margin-top:18px">
+          <button class="primary" id="placementLessons" ${totalNeedsLesson ? "" : "disabled"}>
+            Core-Lektionen starten
+          </button>
+          <button class="secondary" id="placementDashboard">
+            Zurück zum Dashboard
+          </button>
+        </div>`;
+      document.getElementById("placementLessons").onclick=() => startLessons("core");
+      document.getElementById("placementDashboard").onclick=() => switchView("dashboard");
+      focusFirstEnabledAction("placementLessons","placementDashboard");
+      placementSession=null;
+      refreshProgressViewsSafely();
+    }
+
+    function startLessons(kind) {
+      const items=getLessonItems(kind).sort((a,b) =>
+        (kind==="core" ? a.level-b.level : 0) || a.createdAt-b.createdAt
+      ).slice(0,5);
+      lessonSession={kind,items,index:0,revealed:false};
+      switchView("lessons");
+      renderLesson();
+    }
+
+    function renderLesson() {
+      const card=document.getElementById("lessonCard");
+      card.className="card study-card";
+      if(!lessonSession || !lessonSession.items.length) {
+        card.innerHTML=`
+          <div class="counter">Lektionen</div>
+          <div class="study-word" style="font-size:4rem">✨</div>
+          <h2>Keine neuen Lektionen</h2>
+          <p class="muted">Für diesen Bereich ist momentan nichts Neues freigeschaltet.</p>
+          <button class="primary" id="lessonBack">Zur Übersicht</button>`;
+        document.getElementById("lessonBack").onclick=() => switchView("dashboard");
+        focusFirstEnabledAction("lessonBack");
+        return;
+      }
+
+      if(lessonSession.index>=lessonSession.items.length) {
+        const kind=lessonSession.kind;
+        const label=kind==="core" ? "Core" : "Mining";
+        const remaining=getLessonItems(kind).length;
+        card.innerHTML=`
+          <div class="counter">${label}-Lektion · Checkpoint gespeichert</div>
+          <div class="study-word" style="font-size:4rem">💾</div>
+          <h2>${lessonSession.items.length} Wörter gelernt und gespeichert</h2>
+          <p class="muted">Das erste Review erscheint ${data.demoMode ? "in etwa 10 Sekunden" : "in 4 Stunden"}. ${remaining ? `Es warten noch ${remaining} neue Vokabeln.` : "Für diesen Bereich ist der aktuelle Lernblock erledigt."}</p>
+          <div class="button-row" style="justify-content:center;margin-top:18px">${remaining ? `<button class="primary" id="lessonMore">Weitere ${Math.min(5,remaining)} lernen</button>` : ""}<button class="secondary" id="lessonDone">Für jetzt beenden</button></div>`;
+        document.getElementById("lessonMore")?.addEventListener("click",() => startLessons(kind));
+        document.getElementById("lessonDone").onclick=() => switchView("dashboard");
+        focusFirstEnabledAction("lessonMore","lessonDone");
+        return;
+      }
+
+      const item=lessonSession.items[lessonSession.index];
+      const label=lessonSession.kind==="core" ? `Core · Level ${item.level}` : `Mining · ${item.collection || "Eigene Sammlung"}`;
+      card.innerHTML=`
+        <div class="counter">${label} · Lektion ${lessonSession.index+1} von ${lessonSession.items.length}</div>
+        <div class="word-audio-row">
+          <div class="study-word">${escapeHtml(item.word)}</div>
+          <button class="icon-audio" id="lessonAudio" type="button" title="Noch einmal abspielen" aria-label="Wort noch einmal abspielen">🔊</button>
+        </div>
+        ${lessonSession.revealed
+          ? `<div class="study-reading">${escapeHtml(item.reading)}</div>
+             <div class="study-meaning">${escapeHtml(item.meanings.join(", "))}</div>
+             ${item.pos ? `<div class="small muted" style="margin-top:7px">${escapeHtml(item.pos)}</div>` : ""}
+             ${(item.example || item.exampleTranslation)
+               ? `<div class="context-area">
+                    <button class="context-toggle" id="lessonContextToggle" type="button" aria-expanded="false" data-open-label="Beispiel / Kontext ausblenden">Beispiel / Kontext anzeigen</button>
+                    <div class="context-panel" id="lessonContextPanel">
+                      ${item.example
+                        ? `<div class="sentence-audio-row">
+                             <span class="context-japanese" id="lessonSentenceText">${escapeHtml(sentenceDisplay(item).text)}</span>
+                             <button class="icon-audio small" id="lessonSentenceAudio" type="button" title="Satz anhören" aria-label="Japanischen Beispielsatz anhören">🔊</button>
+                           </div>`
+                        : ""}
+                      ${(item.exampleTranslation || sentenceDisplay(item).translation)
+                        ? `<span id="lessonSentenceTranslation">${escapeHtml(sentenceDisplay(item).translation)}</span>`
+                        : ""}
+                      <span class="sentence-source" id="lessonSentenceCredit"></span>
+                    </div>
+                  </div>`
+               : ""}
+             <div class="button-row" style="justify-content:center;margin-top:22px">
+               <button class="primary" id="lessonNext">${lessonSession.index===lessonSession.items.length-1 ? "Lektion abschließen" : "Nächstes Wort"}</button>
+             </div>`
+          : `<p class="muted">Sieh dir das Wort kurz an und decke anschließend die Informationen auf.</p>
+             <button class="primary" id="lessonReveal">Antwort zeigen</button>`
+        }`;
+
+      document.getElementById("lessonReveal")?.addEventListener("click",() => {
+        lessonSession.revealed=true;
+        renderLesson();
+      });
+      document.getElementById("lessonAudio")?.addEventListener("click",() => playItemAudio(item,"word"));
+      if(document.getElementById("lessonContextToggle")) {
+        bindSentenceContext(item,{
+          buttonId:"lessonContextToggle",
+          panelId:"lessonContextPanel",
+          textId:"lessonSentenceText",
+          translationId:"lessonSentenceTranslation",
+          creditId:"lessonSentenceCredit",
+          audioButtonId:"lessonSentenceAudio"
+        });
+      }
+      if(lessonSession.revealed && data.audioAutoplay) autoplayJapanese(item);
+
+      const lessonPrimaryButton=
+        document.getElementById("lessonReveal") ||
+        document.getElementById("lessonNext");
+      setTimeout(() => lessonPrimaryButton?.focus(),0);
+
+      document.getElementById("lessonNext")?.addEventListener("click",() => {
+        const target=data.vocabulary.find(v => v.id===item.id);
+        target.stage=1;
+        schedule(target);
+        data.xp+=5;
+        lessonSession.index++;
+        lessonSession.revealed=false;
+        saveData();
+      });
+    }
+
+    function startReviews(kind) {
+      const due=getDueItems(kind);
+      if(!due.length) {
+        reviewSession={kind,questions:[],index:0,results:{},errors:{},finalized:{},stats:{correctQuestions:0,totalQuestions:0,completedItems:0,totalItems:0,levelsGained:0},feedback:null,locked:false,empty:true};
+      } else {
+        const questions=[];
+        [...due].sort(() => Math.random()-.5).forEach(item => {
+          const pair=[{itemId:item.id,type:"listening"},{itemId:item.id,type:"production"}].sort(() => Math.random()-.5);
+          questions.push(...pair);
+        });
+        reviewSession={kind,questions,index:0,results:Object.fromEntries(due.map(item => [item.id,{listening:null,production:null}])),errors:Object.fromEntries(due.map(item => [item.id,{listening:false,production:false}])),finalized:{},stats:{correctQuestions:0,totalQuestions:due.length*2,completedItems:0,totalItems:due.length,levelsGained:0},feedback:null,locked:false,empty:false};
+      }
+      switchView("reviews"); renderReview();
+    }
+
+    function pauseReviewSession() {
+      const completed=reviewSession?.stats?.completedItems || 0;
+      reviewSession=null;
+      switchView("dashboard");
+      renderDashboard(); renderCore(); renderMining(); renderVocabulary();
+      toast(completed ? `${completed} vollständig bearbeitete Vokabeln wurden gespeichert.` : "Noch keine vollständige Vokabel gespeichert. Angefangene Fragen erscheinen später erneut.");
+    }
+
+    function finalizeReviewItemIfReady(itemId) {
+      if(!reviewSession || reviewSession.finalized[itemId]) return false;
+      const result=reviewSession.results[itemId];
+      if(result?.listening!==true || result?.production!==true) return false;
+      const item=data.vocabulary.find(v => v.id===itemId);
+      if(!item) return false;
+      const errors=reviewSession.errors[itemId] || {listening:false,production:false};
+      const hadGenuineError=errors.listening || errors.production;
+      const correctCount=Number(!errors.listening)+Number(!errors.production);
+      reviewSession.stats.correctQuestions+=correctCount;
+      reviewSession.stats.completedItems++;
+      reviewSession.finalized[itemId]=true;
+      if(!hadGenuineError) { item.stage=Math.min(9,item.stage+1); item.correct++; data.xp+=10; }
+      else { item.stage=Math.max(1,item.stage-1); item.incorrect++; data.xp+=correctCount*2; }
+      if(item.stage>=5) item.guruPassed=true;
+      schedule(item);
+      if(reviewSession.kind==="core") reviewSession.stats.levelsGained+=checkForLevelUps();
+      persist(); renderDashboard(); renderCore(); renderMining(); renderVocabulary();
+      return true;
+    }
+
+    function renderReview() {
+      const card=document.getElementById("reviewCard");
+      card.className="card study-card";
+      if(!reviewSession || reviewSession.empty) {
+        const kind=reviewSession?.kind || "core";
+        const next=data.vocabulary.filter(v => v.sourceType===kind && v.stage>0 && v.stage<9 && v.availableAt).sort((a,b) => a.availableAt-b.availableAt)[0];
+        card.innerHTML=`<div class="counter">${kind==="core" ? "Core" : "Mining"}-Reviews</div><div class="study-word" style="font-size:4rem">🌙</div><h2>Gerade ist nichts fällig</h2><p class="muted">${next ? `Das nächste Review ist ${formatNext(next)}.` : "Lerne zuerst ein paar neue Wörter."}</p><button class="primary" id="reviewBack">Zur Übersicht</button>`;
+        document.getElementById("reviewBack").onclick=() => switchView("dashboard");
+        focusFirstEnabledAction("reviewBack");
+        return;
+      }
+      if(reviewSession.index>=reviewSession.questions.length) { finishReviewSession(); return; }
+      const question=reviewSession.questions[reviewSession.index];
+      const item=data.vocabulary.find(v => v.id===question.itemId);
+      const saved=reviewSession.stats.completedItems,total=reviewSession.stats.totalItems;
+      renderQuestionCard(card,question,item,{counter:`${reviewSession.kind==="core" ? "Core" : "Mining"} · ${saved} von ${total} Vokabeln gespeichert · Frage ${reviewSession.index+1} von ${reviewSession.questions.length}`,feedback:reviewSession.feedback,locked:reviewSession.locked,submitHandler:(answer) => gradeReview(question,item,answer),nextHandler:() => { reviewSession.index++; reviewSession.feedback=null; reviewSession.locked=false; renderReview(); }});
+      const pauseRow=document.createElement("div");
+      pauseRow.className="button-row"; pauseRow.style.justifyContent="center"; pauseRow.style.marginTop="16px";
+      pauseRow.innerHTML=`<button class="secondary" id="reviewPause" type="button">Review unterbrechen</button><span class="small muted" style="align-self:center">Vollständige Vokabeln werden sofort gespeichert.</span>`;
+      card.appendChild(pauseRow);
+      document.getElementById("reviewPause").onclick=pauseReviewSession;
+    }
+
+    function renderQuestionCard(card,question,item,options) {
+      const isListening=question.type==="listening";
+      const prompt=isListening ? "Listening" : "Aktiv abrufen";
+      const promptIcon=isListening ? "🔊" : "言";
+      const promptHint=isListening
+        ? "Was bedeutet dieses Wort?"
+        : "Welches japanische Wort passt zu dieser Bedeutung?";
+      const placeholder=isListening
+        ? "Deutsche Bedeutung eingeben"
+        : "Japanisches Wort in Romaji oder Kana eingeben";
+
+      let contextMarkup="";
+      if(isListening && item.example) {
+        contextMarkup=`
+          <div class="context-area">
+            <button
+              class="context-toggle"
+              id="questionContextToggle"
+              type="button"
+              aria-expanded="false"
+              data-open-label="Japanischen Beispielsatz ausblenden"
+            >Japanischen Beispielsatz anzeigen</button>
+            <div class="context-panel" id="questionContextPanel">
+              <div class="sentence-audio-row">
+                <span class="context-japanese" id="questionSentenceText">${escapeHtml(sentenceDisplay(item).text)}</span>
+                <button class="icon-audio small" id="questionSentenceAudio" type="button" title="Satz anhören" aria-label="Japanischen Beispielsatz anhören">🔊</button>
+              </div>
+              <span class="sentence-source" id="questionSentenceCredit"></span>
+            </div>
+          </div>`;
+      } else if(!isListening && item.exampleTranslation) {
+        contextMarkup=`
+          <div class="context-area">
+            <button
+              class="context-toggle"
+              id="questionContextToggle"
+              type="button"
+              aria-expanded="false"
+              data-open-label="Deutschen Kontext ausblenden"
+            >Deutschen Kontext anzeigen</button>
+            <div class="context-panel" id="questionContextPanel">
+              <span>${escapeHtml(item.exampleTranslation)}</span>
+            </div>
+          </div>`;
+      }
+
+      const displayedPrompt=isListening
+        ? `<div class="word-audio-row">
+             <div class="study-word">${escapeHtml(item.word)}</div>
+             <button class="icon-audio" id="questionAudio" type="button" title="Noch einmal abspielen" aria-label="Wort noch einmal abspielen">🔊</button>
+           </div>
+           ${contextMarkup}`
+        : `<div class="production-word">${escapeHtml(item.productionCue || item.meanings.join(" / "))}</div>
+           ${contextMarkup}`;
+
+      card.className=`card study-card ${isListening ? "review-reading" : "review-meaning"}`;
+      const feedback=options.feedback;
+      card.innerHTML=`
+        <div class="counter">${options.counter}</div>
+        <div class="prompt-type"><span>${promptIcon}</span>${prompt}</div>
+        <div class="prompt-hint">${promptHint}</div>
+        ${displayedPrompt}
+        <form class="review-form" id="answerForm">
+          <input id="answerInput" autocomplete="off" placeholder="${placeholder}" ${options.locked ? "disabled" : ""} />
+          <button class="primary" type="submit" ${options.locked ? "disabled" : ""}>Prüfen</button>
+        </form>
+        ${feedback ? `
+          <div class="feedback ${feedback.kind==="warning" ? "warning" : feedback.correct ? "good" : "bad"}">
+            ${escapeHtml(feedback.message)}
+          </div>
+          ${feedback.retry ? "" : `
+            <div class="button-row" style="justify-content:center;margin-top:14px">
+              <button class="primary" id="nextQuestion">Weiter</button>
+            </div>`}
+        ` : ""}`;
+
+      document.getElementById("questionAudio")?.addEventListener("click",() => playItemAudio(item,"word"));
+      if(isListening && document.getElementById("questionContextToggle")) {
+        bindSentenceContext(item,{
+          buttonId:"questionContextToggle",
+          panelId:"questionContextPanel",
+          textId:"questionSentenceText",
+          creditId:"questionSentenceCredit",
+          audioButtonId:"questionSentenceAudio"
+        });
+      } else {
+        setupContextToggle("questionContextToggle","questionContextPanel");
+      }
+
+      const input=document.getElementById("answerInput");
+      if(question.type==="production" && !options.locked) {
+        input.setAttribute("inputmode","latin");
+        input.setAttribute("autocapitalize","none");
+        input.setAttribute("spellcheck","false");
+        input.addEventListener("input",() => {
+          const converted=romajiToHiragana(input.value);
+          if(converted!==input.value) {
+            input.value=converted;
+            input.setSelectionRange(input.value.length,input.value.length);
+          }
+        });
+      }
+
+      if(isListening && !options.feedback && !options.locked) autoplayJapanese(item);
+
+      const nextButton=document.getElementById("nextQuestion");
+      nextButton?.addEventListener("click",options.nextHandler);
+
+      if(nextButton) {
+        setTimeout(() => nextButton.focus(),0);
+      } else if(!options.locked) {
+        setTimeout(() => input.focus(),0);
+      }
+
+      const answerForm=document.getElementById("answerForm");
+
+      answerForm.addEventListener("submit",event => {
+        event.preventDefault();
+        if(options.locked || !input.value.trim()) return;
+
+        if(question.type==="production") {
+          const finalized=romajiToHiragana(input.value,true);
+          if(finalized!==input.value) {
+            input.value=finalized;
+            input.setSelectionRange(input.value.length,input.value.length);
+          }
+        }
+
+        options.submitHandler(input.value);
+      });
+
+      input.addEventListener("keydown",event => {
+        if(
+          event.key!=="Enter" ||
+          event.repeat ||
+          event.isComposing ||
+          options.locked
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        answerForm.requestSubmit();
+      });
+    }
+
+    function evaluateAnswer(question,item,answer) {
+      if(question.type==="listening") {
+        const exactTargets=[...item.meanings];
+        const closeTargets=[...(item.closeMeanings || [])];
+        const correct=exactTargets.some(
+          meaning => normalizeLatin(meaning)===normalizeLatin(answer)
+        );
+        const wrongType=!correct &&
+          normalizeKana(answer)===normalizeKana(item.reading);
+        const close=!correct && !wrongType && (
+          closeTargets.some(
+            meaning => normalizeLatin(meaning)===normalizeLatin(answer)
+          ) ||
+          exactTargets.some(meaning => isCloseLatinAnswer(answer,meaning))
+        );
+
+        return {
+          status:correct ? "correct" : wrongType ? "wrongType" : close ? "close" : "incorrect",
+          correct,
+          wrongType,
+          close,
+          expected:item.meanings.join(" / ")
+        };
+      }
+
+      const exactReadings=[item.reading,...(item.acceptedReadings || [])];
+      const closeReadings=[...(item.closeReadings || [])];
+
+      if(containsUnconvertedRomaji(answer)) {
+        return {
+          status:"romajiLeftover",
+          correct:false,
+          wrongType:false,
+          close:false,
+          expected:`${item.reading} (${item.word})`
+        };
+      }
+
+      const enteredKana=normalizeKana(answer);
+      const correct=
+        exactReadings.some(reading => normalizeKana(reading)===enteredKana) ||
+        String(answer || "").trim().normalize("NFKC")===String(item.word || "").trim().normalize("NFKC");
+      const wrongType=!correct && item.meanings.some(meaning =>
+        normalizeLatin(meaning)===normalizeLatin(answer) ||
+        normalizeKana(romajiToHiragana(meaning,true))===enteredKana
+      );
+      const close=!correct && !wrongType && (
+        closeReadings.some(reading => normalizeKana(reading)===enteredKana) ||
+        exactReadings.some(reading => isCloseKanaAnswer(answer,reading))
+      );
+
+      return {
+        status:correct ? "correct" : wrongType ? "wrongType" : close ? "close" : "incorrect",
+        correct,
+        wrongType,
+        close,
+        expected:`${item.reading} (${item.word})`
+      };
+    }
+
+    function gradeReview(question,item,answer) {
+      const result=evaluateAnswer(question,item,answer);
+      if(result.status==="wrongType" || result.status==="romajiLeftover") {
+        reviewSession.feedback={kind:"warning",retry:true,correct:false,message:result.status==="romajiLeftover" ? "In deiner japanischen Antwort ist noch ein lateinischer Buchstabe übrig. Das sieht nach einem Tippfehler aus und zählt nicht als Fehler. Korrigiere die Eingabe." : question.type==="listening" ? "Das war das japanische Wort – gesucht ist beim Listening die deutsche Bedeutung. Versuche es direkt noch einmal." : "Das war die deutsche Bedeutung – gesucht ist diesmal das japanische Wort. Versuche es direkt noch einmal."};
+        renderReview(); return;
+      }
+      if(result.status==="correct") {
+        reviewSession.results[item.id][question.type]=true;
+        finalizeReviewItemIfReady(item.id);
+        reviewSession.index++;
+        reviewSession.feedback=null; reviewSession.locked=false; renderReview(); return;
+      }
+      requeueQuestion(reviewSession,"index",question);
+      if(result.status==="close") {
+        reviewSession.locked=true;
+        reviewSession.feedback={kind:"warning",retry:false,correct:false,message:`Fast richtig – das zählt nicht als Fehler. Genauer gesucht war: ${result.expected}. Die Frage kommt später noch einmal.`};
+        renderReview(); return;
+      }
+      reviewSession.errors[item.id][question.type]=true;
+      reviewSession.locked=true;
+      reviewSession.feedback={kind:"bad",retry:false,correct:false,message:`Leider falsch. Gesucht war: ${result.expected}. Die Frage kommt später noch einmal.`};
+      renderReview();
+    }
+
+    function finishReviewSession() {
+      const correctQuestions=reviewSession.stats.correctQuestions;
+      const total=reviewSession.stats.totalQuestions;
+      const completedItems=reviewSession.stats.completedItems;
+      const levelsGained=reviewSession.stats.levelsGained;
+      const percentage=total ? Math.round((correctQuestions/total)*100) : 0;
+      const kind=reviewSession.kind;
+      persist(); renderDashboard(); renderCore(); renderMining(); renderVocabulary();
+      const card=document.getElementById("reviewCard");
+      card.className="card study-card";
+      card.innerHTML=`<div class="counter">${kind==="core" ? "Core" : "Mining"}-Review abgeschlossen</div><div class="study-word" style="font-size:4rem">${levelsGained ? "🚀" : percentage>=80 ? "🌟" : "🌱"}</div><h2>${levelsGained ? `Level ${data.currentLevel} freigeschaltet!` : `${percentage}% richtig`}</h2><p class="muted">${completedItems} Vokabeln wurden einzeln gespeichert. ${correctQuestions} von ${total} Antworten waren ohne echten Fehler korrekt.${levelsGained ? " Die nächste Core-Einstufung ist jetzt verfügbar." : ""}</p><button class="primary" id="reviewDone">Zur Übersicht</button>`;
+      document.getElementById("reviewDone").onclick=() => switchView("dashboard");
+      focusFirstEnabledAction("reviewDone");
+      reviewSession=null;
+    }
+
+    document.querySelectorAll(".nav button").forEach(button => {
+      button.addEventListener("click",() => switchView(button.dataset.view));
+    });
+
+    document.getElementById("heroCore").onclick=goCore;
+    document.getElementById("heroMining").onclick=() => switchView("mining");
+    document.getElementById("dashboardPlacement").onclick=startPlacement;
+    document.getElementById("corePlacementBtn").onclick=startPlacement;
+    document.getElementById("dashboardCoreLessons").onclick=() => startLessons("core");
+    document.getElementById("coreLessonsBtn").onclick=() => startLessons("core");
+    document.getElementById("dashboardCoreReviews").onclick=() => startReviews("core");
+    document.getElementById("coreReviewsBtn").onclick=() => startReviews("core");
+    document.getElementById("dashboardMiningLessons").onclick=() => startLessons("mining");
+    document.getElementById("miningLessonsBtn").onclick=() => startLessons("mining");
+    document.getElementById("dashboardMiningReviews").onclick=() => startReviews("mining");
+    document.getElementById("miningReviewsBtn").onclick=() => startReviews("mining");
+
+    document.addEventListener("keydown",event => {
+      if(!document.getElementById("placement").classList.contains("active")) return;
+      if(!placementSession || placementSession.phase!=="sort") return;
+      if(event.key==="ArrowLeft") {
+        event.preventDefault();
+        choosePlacement(false);
+      } else if(event.key==="ArrowRight") {
+        event.preventDefault();
+        choosePlacement(true);
+      }
+    });
+
+    document.addEventListener("keydown",event => {
+      if(event.key!=="Enter" || event.repeat || event.isComposing) return;
+      if(!document.getElementById("placement")?.classList.contains("active")) return;
+
+      // During a normal answer, the form remains responsible for Enter.
+      const answerInput=document.getElementById("answerInput");
+      if(answerInput && !answerInput.disabled) return;
+
+      const actionButton=
+        document.getElementById("nextQuestion") ||
+        document.getElementById("placementContinue") ||
+        document.getElementById("placementLessons") ||
+        document.getElementById("placementDashboard") ||
+        document.getElementById("placementPause") ||
+        document.getElementById("placementBack");
+
+      if(!actionButton || actionButton.disabled) return;
+      event.preventDefault();
+      actionButton.click();
+    });
+
+    document.addEventListener("keydown",event => {
+      if(event.key!=="Enter" || event.repeat || event.isComposing) return;
+      if(!document.getElementById("reviews")?.classList.contains("active")) return;
+
+      const answerInput=document.getElementById("answerInput");
+      if(answerInput && !answerInput.disabled) return;
+
+      const actionButton=
+        document.getElementById("nextQuestion") ||
+        document.getElementById("reviewDone") ||
+        document.getElementById("reviewBack");
+
+      if(!actionButton || actionButton.disabled) return;
+      event.preventDefault();
+      actionButton.click();
+    });
+
+    function updateCardTypeFields() {
+      const type=document.getElementById("cardTypeInput").value;
+      document.getElementById("coreFields").classList.toggle("hidden",type!=="core");
+      document.getElementById("miningFields").classList.toggle("hidden",type!=="mining");
+      if(type==="core") document.getElementById("vocabLevelInput").value=data.currentLevel;
+    }
+    document.getElementById("cardTypeInput").addEventListener("change",updateCardTypeFields);
+
+    document.getElementById("vocabForm").addEventListener("submit",event => {
+      event.preventDefault();
+      const sourceType=document.getElementById("cardTypeInput").value;
+      const word=document.getElementById("wordInput").value.trim();
+      const reading=document.getElementById("readingInput").value.trim();
+      const meanings=document.getElementById("meaningInput").value.split(",").map(v => v.trim()).filter(Boolean);
+      if(!word || !reading || !meanings.length) return;
+
+      data.vocabulary.push(makeVocabulary({
+        word,reading,meanings,sourceType,
+        level:sourceType==="core"
+          ? Math.max(1,Number(document.getElementById("vocabLevelInput").value || data.currentLevel))
+          : 1,
+        collection:sourceType==="mining" ? document.getElementById("collectionInput").value.trim() : "",
+        example:document.getElementById("exampleInput").value.trim(),
+        exampleTranslation:document.getElementById("exampleTranslationInput").value.trim(),
+        stage:0
+      }));
+
+      event.target.reset();
+      document.getElementById("cardTypeInput").value="mining";
+      updateCardTypeFields();
+      saveData();
+      toast(sourceType==="core" ? "Core-Vokabel hinzugefügt." : "Mining-Vokabel hinzugefügt.");
+    });
+
+    document.getElementById("vocabList").addEventListener("click",event => {
+      const button=event.target.closest(".delete-vocab");
+      if(!button) return;
+      const item=data.vocabulary.find(v => v.id===button.dataset.id);
+      if(!item || !confirm(`„${item.word}“ wirklich löschen?`)) return;
+      data.vocabulary=data.vocabulary.filter(v => v.id!==item.id);
+      saveData();
+      toast("Vokabel gelöscht.");
+    });
+
+
+    document.addEventListener("keydown",event => {
+      if(event.key!=="Enter" || event.repeat) return;
+      const lessonView=document.getElementById("lessons");
+      if(!lessonView?.classList.contains("active")) return;
+
+      const actionButton=
+        document.getElementById("lessonReveal") ||
+        document.getElementById("lessonNext") ||
+        document.getElementById("lessonMore") ||
+        document.getElementById("lessonDone") ||
+        document.getElementById("lessonBack");
+
+      if(!actionButton || actionButton.disabled) return;
+      event.preventDefault();
+      actionButton.click();
+    });
+
+    document.getElementById("demoMode").addEventListener("change",event => {
+      data.demoMode=event.target.checked;
+      saveData();
+      toast(data.demoMode ? "Demo-Modus aktiviert." : "Echte SRS-Zeiten aktiviert.");
+    });
+
+    document.getElementById("audioAutoplay").addEventListener("change",event => {
+      data.audioAutoplay=event.target.checked;
+      if(!data.audioAutoplay) stopAudioPlayback();
+      saveData();
+      toast(data.audioAutoplay ? "Listening wird automatisch abgespielt." : "Automatische Audioausgabe ausgeschaltet.");
+    });
+
+    document.getElementById("nativeAudioEnabled").addEventListener("change",event => {
+      data.nativeAudioEnabled=event.target.checked;
+      stopAudioPlayback();
+      saveData();
+      toast(data.nativeAudioEnabled ? "Native Audio-Packs aktiviert." : "Browserstimme als Audioquelle aktiviert.");
+    });
+
+    document.getElementById("onlineHumanAudio").addEventListener("change",event => {
+      data.onlineHumanAudio=event.target.checked;
+      missingNativeAudio.clear();
+      stopAudioPlayback();
+      saveData();
+      toast(
+        data.onlineHumanAudio
+          ? "Kostenlose Human-Audios werden bei Bedarf direkt online geladen."
+          : "Online-Human-Audios ausgeschaltet."
+      );
+    });
+
+    document.getElementById("bluetoothKeepAlive").addEventListener("change",event => {
+      data.bluetoothKeepAlive=event.target.checked;
+      saveData();
+
+      const activeView=document.querySelector(".view.active")?.id || "";
+      syncBluetoothKeepAlive(activeView);
+
+      toast(
+        data.bluetoothKeepAlive
+          ? "Bluetooth wird während Lernsessionen ohne zusätzlichen Wort-Vorlauf wach gehalten."
+          : "Bluetooth-Keepalive ausgeschaltet."
+      );
+    });
+
+    document.getElementById("bluetoothLeadMs").addEventListener("change",event => {
+      data.bluetoothLeadMs=Number(event.target.value || 0);
+      data.bluetoothMode=data.bluetoothLeadMs>0;
+      stopAudioPlayback();
+      saveData();
+      toast(
+        data.bluetoothLeadMs
+          ? `Bluetooth-Vorlauf: ${data.bluetoothLeadMs/1000} Sekunden – nur nach Audiopausen.`
+          : "Bluetooth-Vorlauf ausgeschaltet."
+      );
+    });
+
+    document.getElementById("audioTestBtn").addEventListener("click",async () => {
+      const testItem=
+        data.vocabulary.find(item => item.packEntryId==="kc2k-0004") ||
+        data.vocabulary.find(item => item.level===1 && item.sourceType==="core") ||
+        data.vocabulary[0];
+
+      if(!testItem) return;
+      const source=await playItemAudio(testItem,"word");
+
+      if(source==="human") {
+        toast("Audioquelle: lokal gespeicherte kostenlose Muttersprachler-Aufnahme.");
+      } else if(source==="human-online") {
+        toast("Audioquelle: kostenlose Muttersprachler-Aufnahme direkt aus dem Tofugu/WaniKani-Archiv.");
+      } else if(source==="custom") {
+        toast("Audioquelle: eigene Audiodatei dieser Karte.");
+      } else if(source==="generated") {
+        toast("Audioquelle: lokal erzeugte WAV-TTS. Das Human-Audio für 行く wurde nicht geladen.");
+      } else if(source==="browser") {
+        toast("Audioquelle: Browser-/macOS-Stimme. Prüfe, ob audio/human/words/kc2k-0004.mp3 vorhanden ist.");
+      } else if(source!=="cancelled") {
+        toast("Audio konnte nicht abgespielt werden.");
+      }
+    });
+
+    document.getElementById("corePackReloadBtn").addEventListener("click",() => {
+      location.reload();
+    });
+
+    document.getElementById("exportBtn").addEventListener("click",() => {
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement("a");
+      link.href=url;
+      link.download=`kotoba-quest-sicherung-${new Date().toISOString().slice(0,10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast("Sicherung wurde erstellt.");
+    });
+
+    document.getElementById("importBtn").onclick=() => document.getElementById("importFile").click();
+    document.getElementById("importFile").addEventListener("change",async event => {
+      const file=event.target.files?.[0];
+      if(!file) return;
+      try {
+        const imported=JSON.parse(await file.text());
+        if(!imported || !Array.isArray(imported.vocabulary)) throw new Error("Ungültige Datei");
+        const vocabulary=syncCorePack(imported.vocabulary.map(item => makeVocabulary({
+          ...item,
+          sourceType:item.sourceType || "core"
+        })));
+        const currentLevel=Math.max(1,Number(imported.currentLevel || 1));
+        data={
+          vocabulary,
+          currentLevel,
+          placementCompletedLevels:Array.isArray(imported.placementCompletedLevels)
+            ? [...new Set(imported.placementCompletedLevels.map(Number))]
+            : deriveCompletedLevels(vocabulary,currentLevel),
+          placementProgress:imported.placementProgress &&
+            typeof imported.placementProgress==="object"
+              ? imported.placementProgress
+              : {},
+          xp:Number(imported.xp || 0),
+          demoMode:false,
+          audioAutoplay:imported.audioAutoplay !== false,
+          nativeAudioEnabled:imported.nativeAudioEnabled !== false,
+          onlineHumanAudio:imported.onlineHumanAudio !== false,
+          browserTtsFallback:false,
+          nativeSentenceExamples:false,
+          sentenceAutoplayOnToggle:false,
+          sentenceCacheRevision:3,
+          sentenceCache:Number(imported.sentenceCacheRevision)===3 &&
+            imported.sentenceCache &&
+            typeof imported.sentenceCache==="object"
+              ? imported.sentenceCache
+              : {},
+          bluetoothKeepAlive:imported.bluetoothKeepAlive !== false,
+          bluetoothMode:Boolean(imported.bluetoothMode),
+          bluetoothLeadMs:Number.isFinite(Number(imported.bluetoothLeadMs))
+            ? Number(imported.bluetoothLeadMs)
+            : 0,
+          corePackVersion:CORE_PACK.version
+        };
+        checkForLevelUps();
+        saveData();
+        toast("Sicherung importiert.");
+      } catch {
+        alert("Diese Datei konnte nicht importiert werden.");
+      } finally {
+        event.target.value="";
+      }
+    });
+
+    document.getElementById("resetBtn").addEventListener("click",() => {
+      if(!confirm("Wirklich alle Fortschritte und Vokabeln löschen?")) return;
+      data=defaultData();
+      placementSession=null;
+      lessonSession=null;
+      reviewSession=null;
+      saveData();
+      updateCardTypeFields();
+      toast("App wurde zurückgesetzt.");
+    });
+
+    if("speechSynthesis" in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.addEventListener?.("voiceschanged",findJapaneseVoice,{once:true});
+    }
+
+    updateCardTypeFields();
+    renderAll();
+  </script>
+</body>
+</html>
