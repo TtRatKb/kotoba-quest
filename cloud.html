@@ -1317,6 +1317,62 @@
         }
       }
 
+      function normalizeKnownVocabularyEntry(item) {
+        return {
+          id: String(item?.id || `known-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+          word: String(item?.word || "").trim(),
+          reading: String(item?.reading || "").trim(),
+          meaning: String(item?.meaning || "").trim(),
+          source: String(item?.source || "Manuell als bekannt markiert").trim(),
+          example: String(item?.example || "").trim(),
+          exampleTranslation: String(item?.exampleTranslation || "").trim(),
+          createdAt: Number(item?.createdAt || Date.now())
+        };
+      }
+
+      function readKnownVocabularyPool() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+          return Array.isArray(parsed?.knownVocabulary)
+            ? parsed.knownVocabulary.map(normalizeKnownVocabularyEntry).filter(item => item.word)
+            : [];
+        } catch {
+          return [];
+        }
+      }
+
+      let knownVocabularyPool = readKnownVocabularyPool();
+      try {
+        if (typeof data !== "undefined") data.knownVocabulary = knownVocabularyPool;
+      } catch {}
+
+      function persistKnownVocabularyPool() {
+        try {
+          if (typeof data !== "undefined") {
+            data.knownVocabulary = knownVocabularyPool;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            return;
+          }
+        } catch {}
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+          parsed.knownVocabulary = knownVocabularyPool;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        } catch (error) {
+          console.error("Known vocabulary pool could not be saved", error);
+        }
+      }
+
+      function findKnownVocabularyEntry(word) {
+        const base = normalizeVocabKey(word?.base || word?.word);
+        const reading = normalizeVocabKey(word?.baseReading || word?.reading);
+        return knownVocabularyPool.find(item => {
+          if (normalizeVocabKey(item.word) !== base) return false;
+          const itemReading = normalizeVocabKey(item.reading);
+          return !reading || !itemReading || itemReading === reading;
+        }) || null;
+      }
+
       function findVocabularyEntry(word) {
         const base = normalizeVocabKey(word?.base);
         const reading = normalizeVocabKey(word?.baseReading);
@@ -1325,6 +1381,28 @@
           const itemReading = normalizeVocabKey(item?.reading);
           return !reading || !itemReading || itemReading === reading;
         }) || null;
+      }
+
+      function findPlannedCoreEntry(word) {
+        const base = normalizeVocabKey(word?.base || word?.word);
+        const reading = normalizeVocabKey(word?.baseReading || word?.reading);
+        try {
+          const entries = typeof CORE_PACK !== "undefined" && Array.isArray(CORE_PACK?.entries)
+            ? CORE_PACK.entries
+            : [];
+          const planned = entries.find(item => {
+            if (normalizeVocabKey(item?.word) !== base) return false;
+            const itemReading = normalizeVocabKey(item?.reading);
+            return !reading || !itemReading || itemReading === reading;
+          });
+          return planned ? { ...planned, sourceType: "core", stage: 0, guruPassed: false } : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function vocabularyPathEntry(word) {
+        return findVocabularyEntry(word) || findPlannedCoreEntry(word);
       }
 
       function vocabularyIsGuru(entry) {
@@ -1360,7 +1438,9 @@
           };
         }
 
-        const visibleWords = words.filter(word => !vocabularyIsGuru(findVocabularyEntry(word)));
+        const visibleWords = words.filter(word =>
+          !vocabularyIsGuru(findVocabularyEntry(word)) && !findKnownVocabularyEntry(word)
+        );
         const noteNumberByWord = new Map(visibleWords.map((word, index) => [word, index + 1]));
         const highlight = String(example?.highlight || "");
         const highlightStart = highlight ? sentence.indexOf(highlight) : -1;
@@ -1391,15 +1471,34 @@
         return { sentenceHtml, notesHtml };
       }
 
+      function vocabularyPathStatus(entry) {
+        if (!entry) return "Nicht in deinen Lernpfaden";
+        const stage = VOCAB_STAGE_NAMES[Math.max(0, Math.min(9, Number(entry.stage || 0)))];
+        if (entry.sourceType === "core") {
+          return Number(entry.stage || 0) > 0
+            ? `Core-Lektion ${Number(entry.level || 1)} · ${stage}`
+            : `Wird in Core-Lektion ${Number(entry.level || 1)} behandelt`;
+        }
+        if (entry.sourceType === "mining") return `Bereits im Mining · ${stage}`;
+        return stage;
+      }
+
       function renderVocabularyFootnote(word, number, sentence, translation) {
-        const entry = findVocabularyEntry(word);
-        const stage = entry ? VOCAB_STAGE_NAMES[Math.max(0, Math.min(9, Number(entry.stage || 0)))] : "Nicht in deiner Sammlung";
+        const entry = vocabularyPathEntry(word);
+        const status = vocabularyPathStatus(entry);
         const hasAnalysis = Boolean(word.formLabel || word.formation || word.contextMeaning || word.grammarRole);
         const encodedSentence = encodeURIComponent(sentence);
+        const encodedTranslation = encodeURIComponent(translation);
+        const actions = entry
+          ? `<div class="grammar-vocab-path-note">${escapeHtml(status)}</div>`
+          : `<div class="grammar-vocab-actions">
+              <button class="grammar-add-vocab" data-grammar-add-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-translation="${escapeHtml(encodedTranslation)}">Zum Mining hinzufügen</button>
+              <button class="grammar-known-vocab" data-grammar-known-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-translation="${escapeHtml(encodedTranslation)}">Zu bekannten Vokabeln hinzufügen</button>
+            </div>`;
         return `<div class="grammar-vocab-footnote">
           <span class="grammar-vocab-number">${number}</span>
           <div class="grammar-vocab-content">
-            <div class="grammar-vocab-base"><strong>${rubyHtml(word.base, word.baseReading)}</strong><span>– ${escapeHtml(word.meaning)}</span><em>${escapeHtml(stage)}</em></div>
+            <div class="grammar-vocab-base"><strong>${rubyHtml(word.base, word.baseReading)}</strong><span>– ${escapeHtml(word.meaning)}</span><em>${escapeHtml(status)}</em></div>
             ${hasAnalysis ? `<details class="grammar-vocab-analysis"><summary>Verwendete Form auflösen</summary><div class="grammar-vocab-analysis-grid">
               <div><span>Im Satz</span><strong>${rubyHtml(word.surface, word.reading)}</strong></div>
               ${word.formLabel ? `<div><span>Form</span><strong>${escapeHtml(word.formLabel)}</strong></div>` : ""}
@@ -1407,17 +1506,24 @@
               ${word.contextMeaning ? `<div class="wide"><span>Bedeutung hier</span><strong>${escapeHtml(word.contextMeaning)}</strong></div>` : ""}
               ${word.grammarRole ? `<div class="wide grammar-vocab-role">${escapeHtml(word.grammarRole)}</div>` : ""}
             </div></details>` : ""}
-            ${entry ? "" : `<button class="grammar-add-vocab" data-grammar-add-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-translation="${escapeHtml(encodeURIComponent(translation))}">Zum Mining hinzufügen</button>`}
+            ${actions}
           </div>
         </div>`;
       }
 
+      function currentVisibleSupportWords(sentence) {
+        return (GRAMMAR_SENTENCE_SUPPORT[sentence] || []).filter(word =>
+          !vocabularyIsGuru(findVocabularyEntry(word)) && !findKnownVocabularyEntry(word)
+        );
+      }
+
       function addGrammarWordToMining(sentence, visibleIndex, translation) {
-        const visibleWords = (GRAMMAR_SENTENCE_SUPPORT[sentence] || []).filter(word => !vocabularyIsGuru(findVocabularyEntry(word)));
+        const visibleWords = currentVisibleSupportWords(sentence);
         const word = visibleWords[visibleIndex];
         if (!word) return;
-        if (findVocabularyEntry(word)) {
-          notify("Diese Grundform ist bereits in deiner Vokabelsammlung.");
+        const plannedEntry = vocabularyPathEntry(word);
+        if (plannedEntry) {
+          notify(vocabularyPathStatus(plannedEntry));
           renderLesson();
           return;
         }
@@ -1461,12 +1567,87 @@
         }
       }
 
+      function addGrammarWordToKnown(sentence, visibleIndex, translation) {
+        const visibleWords = currentVisibleSupportWords(sentence);
+        const word = visibleWords[visibleIndex];
+        if (!word) return;
+        const planned = vocabularyPathEntry(word);
+        if (planned) {
+          notify(vocabularyPathStatus(planned));
+          renderLesson();
+          return;
+        }
+        if (findKnownVocabularyEntry(word)) {
+          notify("Diese Grundform ist bereits als bekannt gespeichert.");
+          renderLesson();
+          return;
+        }
+        knownVocabularyPool.push(normalizeKnownVocabularyEntry({
+          word: word.base,
+          reading: word.baseReading,
+          meaning: word.meaning,
+          source: `Grammar Path · Level 1${lessonPoint?.title ? ` · ${lessonPoint.title}` : ""}`,
+          example: sentence,
+          exampleTranslation: translation,
+          createdAt: Date.now()
+        }));
+        persistKnownVocabularyPool();
+        notify(`${word.base} wurde zu den bekannten Vokabeln hinzugefügt.`);
+        renderKnownVocabularyPool();
+        renderLesson();
+      }
+
+      function removeKnownVocabulary(id) {
+        const before = knownVocabularyPool.length;
+        knownVocabularyPool = knownVocabularyPool.filter(item => item.id !== id);
+        if (knownVocabularyPool.length === before) return;
+        persistKnownVocabularyPool();
+        renderKnownVocabularyPool();
+        try { renderLesson(); } catch {}
+        notify("Die Vokabel wurde aus dem bekannten Pool entfernt.");
+      }
+
+      function installKnownVocabularyPanel() {
+        const vocabularySection = document.getElementById("vocabulary");
+        const grid = vocabularySection?.querySelector(".grid-two");
+        if (!grid || document.getElementById("knownVocabularyPanel")) return;
+        const panel = document.createElement("article");
+        panel.id = "knownVocabularyPanel";
+        panel.className = "card known-vocabulary-panel";
+        panel.innerHTML = `<div class="section-title"><div><h3>Bekannte Vokabeln</h3><p>Wörter außerhalb von Core Path und Mining, die du bereits sicher kennst.</p></div><span class="known-vocab-count" id="knownVocabularyCount">0</span></div><div id="knownVocabularyList"></div>`;
+        grid.appendChild(panel);
+        renderKnownVocabularyPool();
+      }
+
+      function renderKnownVocabularyPool() {
+        const count = document.getElementById("knownVocabularyCount");
+        const list = document.getElementById("knownVocabularyList");
+        if (!count || !list) return;
+        count.textContent = String(knownVocabularyPool.length);
+        if (!knownVocabularyPool.length) {
+          list.innerHTML = `<div class="empty">Noch keine zusätzlichen bekannten Vokabeln. In Grammatiklektionen kannst du passende Wörter direkt als bekannt markieren.</div>`;
+          return;
+        }
+        const sorted = [...knownVocabularyPool].sort((a, b) => b.createdAt - a.createdAt);
+        list.innerHTML = `<div class="known-vocab-list">${sorted.map(item => `<div class="known-vocab-row"><div><strong>${rubyHtml(item.word, item.reading)}</strong><span>${escapeHtml(item.meaning)}</span><small>${escapeHtml(item.source)}</small></div><button class="ghost known-vocab-remove" data-known-remove="${escapeHtml(item.id)}">Entfernen</button></div>`).join("")}</div>`;
+        list.querySelectorAll("[data-known-remove]").forEach(button => {
+          button.addEventListener("click", () => removeKnownVocabulary(button.dataset.knownRemove || ""));
+        });
+      }
+
       function attachGrammarSupportActions(container) {
         container?.querySelectorAll("[data-grammar-add-vocab]").forEach(button => {
           button.addEventListener("click", () => {
             const sentence = decodeURIComponent(button.dataset.sentence || "");
             const translation = decodeURIComponent(button.dataset.translation || "");
             addGrammarWordToMining(sentence, Number(button.dataset.wordIndex || 0), translation);
+          });
+        });
+        container?.querySelectorAll("[data-grammar-known-vocab]").forEach(button => {
+          button.addEventListener("click", () => {
+            const sentence = decodeURIComponent(button.dataset.sentence || "");
+            const translation = decodeURIComponent(button.dataset.translation || "");
+            addGrammarWordToKnown(sentence, Number(button.dataset.wordIndex || 0), translation);
           });
         });
       }
@@ -1545,8 +1726,22 @@
         .grammar-vocab-analysis-grid strong { font-size:.83rem; line-height:1.45; }
         .grammar-vocab-analysis-grid .wide { grid-column:1 / -1; }
         .grammar-vocab-analysis-grid .grammar-vocab-role { color:#4d4267; background:#f2edff; font-size:.82rem; line-height:1.55; }
-        .grammar-add-vocab { margin-top:8px; padding:7px 10px; border-radius:9px; color:#865011; background:#ffe8c1; font-size:.76rem; font-weight:900; }
-        @media (max-width:580px) { .grammar-vocab-analysis-grid { grid-template-columns:1fr; } .grammar-vocab-analysis-grid .wide { grid-column:auto; } .grammar-vocab-base em { margin-left:0; } }
+        .grammar-vocab-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:8px; }
+        .grammar-add-vocab,.grammar-known-vocab { padding:7px 10px; border-radius:9px; font-size:.76rem; font-weight:900; }
+        .grammar-add-vocab { color:#865011; background:#ffe8c1; }
+        .grammar-known-vocab { color:#286b57; background:#e5f7ef; }
+        .grammar-vocab-path-note { margin-top:8px; padding:7px 9px; border-radius:9px; color:#5f5475; background:#f1edfa; font-size:.76rem; font-weight:850; }
+        .known-vocabulary-panel { grid-column:1 / -1; }
+        .known-vocab-count { display:inline-grid; place-items:center; min-width:42px; height:42px; padding:0 10px; border-radius:14px; color:var(--primary-dark); background:#eee8ff; font-weight:950; }
+        .known-vocab-list { display:grid; gap:9px; }
+        .known-vocab-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 13px; border:1px solid var(--border); border-radius:13px; background:#faf8ff; }
+        .known-vocab-row strong,.known-vocab-row span,.known-vocab-row small { display:block; }
+        .known-vocab-row strong { font-size:1.04rem; }
+        .known-vocab-row span { margin-top:2px; color:var(--muted); font-size:.86rem; }
+        .known-vocab-row small { margin-top:3px; color:#91899e; }
+        .known-vocab-row rt { color:#756f86; font-size:.58em; }
+        .known-vocab-remove { flex:0 0 auto; padding:8px 10px; }
+        @media (max-width:580px) { .grammar-vocab-analysis-grid { grid-template-columns:1fr; } .grammar-vocab-analysis-grid .wide { grid-column:auto; } .grammar-vocab-base em { margin-left:0; } .known-vocab-row { align-items:flex-start; flex-direction:column; } }
         .grammar-contrast { padding:16px; border-left:5px solid var(--primary); border-radius:15px; background:#f5f1ff; line-height:1.55; }
         .grammar-contrast h3 { margin:0 0 6px; }
         .grammar-contrast-intro { color:var(--muted); margin-bottom:14px; }
@@ -2428,8 +2623,11 @@
       document.getElementById("dashboardGrammarOpen")?.addEventListener("click", () => openGrammarView("grammar"));
       document.getElementById("dashboardGrammarReview")?.addEventListener("click", () => startReviewSession(false));
 
+      installKnownVocabularyPanel();
+      persistKnownVocabularyPool();
       persistGrammar();
       renderGrammarOverview();
+      renderKnownVocabularyPool();
       updateGrammarDashboard();
     }
 
