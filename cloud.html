@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>Kotoba Quest – Cloud</title>
+  <style>
+    :root {
+      --bg: #f7f3ff;
+      --panel: rgba(255, 255, 255, 0.96);
+      --text: #29243a;
+      --muted: #756f86;
+      --primary: #7957d5;
+      --primary-dark: #5e3fba;
+      --good: #268d63;
+      --warning: #a96d12;
+      --bad: #c84f67;
+      --border: #e4dcf6;
+      --shadow: 0 12px 34px rgba(73, 50, 126, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      background: var(--bg);
+      font-family: Inter, ui-rounded, "SF Pro Rounded", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .shell {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      width: 100%;
+      height: 100%;
+    }
+
+    .cloud-bar {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 70px;
+      padding: 11px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .status-wrap,
+    .account-wrap {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--warning);
+      box-shadow: 0 0 0 5px rgba(169, 109, 18, 0.12);
+    }
+
+    .status-dot.good {
+      background: var(--good);
+      box-shadow: 0 0 0 5px rgba(38, 141, 99, 0.12);
+    }
+
+    .status-dot.bad {
+      background: var(--bad);
+      box-shadow: 0 0 0 5px rgba(200, 79, 103, 0.12);
+    }
+
+    .status-dot.busy {
+      background: var(--primary);
+      box-shadow: 0 0 0 5px rgba(121, 87, 213, 0.12);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.55; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    .status-copy,
+    .account-copy {
+      min-width: 0;
+    }
+
+    .status-copy strong,
+    .status-copy span,
+    .account-copy strong,
+    .account-copy span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-copy strong,
+    .account-copy strong {
+      font-size: 0.92rem;
+    }
+
+    .status-copy span,
+    .account-copy span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .account-copy {
+      max-width: 240px;
+      text-align: right;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .button {
+      min-height: 40px;
+      padding: 9px 13px;
+      border: 0;
+      border-radius: 12px;
+      cursor: pointer;
+      color: white;
+      background: var(--primary);
+      font-weight: 850;
+      transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 7px 18px rgba(121, 87, 213, 0.22);
+    }
+
+    .button:hover { transform: translateY(-1px); }
+    .button:active { transform: translateY(0); }
+    .button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+
+    .button.secondary {
+      color: var(--primary-dark);
+      background: #eee8ff;
+      box-shadow: none;
+    }
+
+    .button.ghost {
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+
+    .app-frame {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: var(--bg);
+    }
+
+    dialog {
+      width: min(560px, calc(100% - 28px));
+      padding: 0;
+      border: 0;
+      border-radius: 22px;
+      color: var(--text);
+      background: white;
+      box-shadow: 0 28px 80px rgba(41, 36, 58, 0.28);
+    }
+
+    dialog::backdrop {
+      background: rgba(41, 36, 58, 0.44);
+      backdrop-filter: blur(4px);
+    }
+
+    .dialog-content { padding: 25px; }
+    .dialog-content h2 { margin: 0 0 8px; }
+    .dialog-content > p { margin: 0; color: var(--muted); line-height: 1.55; }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .choice-card {
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: #faf8ff;
+    }
+
+    .choice-card strong,
+    .choice-card span { display: block; }
+    .choice-card span { margin-top: 5px; color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+
+    .dialog-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 9px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      z-index: 100;
+      max-width: calc(100% - 30px);
+      padding: 11px 16px;
+      border-radius: 12px;
+      color: white;
+      background: #29243a;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 16px);
+      transition: 0.2s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    [hidden] { display: none !important; }
+
+    @media (max-width: 760px) {
+      .cloud-bar {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 9px;
+        padding: 10px 12px;
+      }
+
+      .account-wrap { justify-content: space-between; }
+      .account-copy { max-width: 48vw; text-align: left; }
+      .actions { margin-left: auto; }
+      .button { min-height: 37px; padding: 8px 10px; font-size: 0.82rem; }
+    }
+
+    @media (max-width: 520px) {
+      .choice-grid { grid-template-columns: 1fr; }
+      .account-copy { display: none; }
+      .actions { width: 100%; }
+      .actions .button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="cloud-bar">
+      <div class="status-wrap" aria-live="polite">
+        <span class="status-dot" id="statusDot"></span>
+        <div class="status-copy">
+          <strong id="statusTitle">Lokaler Speicher aktiv</strong>
+          <span id="statusDetail">Melde dich an, damit dein Fortschritt zusätzlich in der Cloud liegt.</span>
+        </div>
+      </div>
+
+      <div class="account-wrap">
+        <div class="account-copy" id="accountCopy" hidden>
+          <strong id="accountName">Angemeldet</strong>
+          <span id="accountEmail"></span>
+        </div>
+        <div class="actions">
+          <button class="button" id="loginButton">Mit Google anmelden</button>
+          <button class="button secondary" id="syncButton" hidden>Jetzt sichern</button>
+          <button class="button ghost" id="logoutButton" hidden>Abmelden</button>
+        </div>
+      </div>
+    </header>
+
+    <iframe
+      class="app-frame"
+      id="appFrame"
+      src="./index.html"
+      title="Kotoba Quest"
+      allow="autoplay"
+    ></iframe>
+  </div>
+
+  <dialog id="conflictDialog">
+    <div class="dialog-content">
+      <h2>Zwei unterschiedliche Spielstände gefunden</h2>
+      <p>Damit nichts versehentlich überschrieben wird, wähle einmal aus, welchen Stand du behalten möchtest.</p>
+
+      <div class="choice-grid">
+        <div class="choice-card">
+          <strong>Dieser Browser</strong>
+          <span id="localSummary">Lokaler Fortschritt</span>
+        </div>
+        <div class="choice-card">
+          <strong>Cloud-Sicherung</strong>
+          <span id="cloudSummary">Gesicherter Fortschritt</span>
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="button ghost" id="conflictLaterButton">Später entscheiden</button>
+        <button class="button secondary" id="useCloudButton">Cloudstand laden</button>
+        <button class="button" id="useLocalButton">Diesen Browser behalten</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+    import {
+      browserLocalPersistence,
+      getAuth,
+      GoogleAuthProvider,
+      onAuthStateChanged,
+      setPersistence,
+      signInWithPopup,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+    import {
+      doc,
+      getDoc,
+      getFirestore,
+      setDoc
+    } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBONS67dSKsL-Bgi46tu2ZDCWLV3YJkqpY",
+      authDomain: "kotoba-quest-3b4d6.firebaseapp.com",
+      projectId: "kotoba-quest-3b4d6",
+      storageBucket: "kotoba-quest-3b4d6.firebasestorage.app",
+      messagingSenderId: "24934936038",
+      appId: "1:24934936038:web:2d3fd7aae6e54b47e97a27"
+    };
+
+    const STORAGE_KEY = "kotobaQuestDataV3";
+    const META_KEY = "kotobaQuestCloudMetaV1";
+    const SAVE_DELAY_MS = 800;
+    const MAX_PAYLOAD_LENGTH = 900000;
+
+    const statusDot = document.getElementById("statusDot");
+    const statusTitle = document.getElementById("statusTitle");
+    const statusDetail = document.getElementById("statusDetail");
+    const accountCopy = document.getElementById("accountCopy");
+    const accountName = document.getElementById("accountName");
+    const accountEmail = document.getElementById("accountEmail");
+    const loginButton = document.getElementById("loginButton");
+    const syncButton = document.getElementById("syncButton");
+    const logoutButton = document.getElementById("logoutButton");
+    const appFrame = document.getElementById("appFrame");
+    const conflictDialog = document.getElementById("conflictDialog");
+    const localSummary = document.getElementById("localSummary");
+    const cloudSummary = document.getElementById("cloudSummary");
+    const useLocalButton = document.getElementById("useLocalButton");
+    const useCloudButton = document.getElementById("useCloudButton");
+    const conflictLaterButton = document.getElementById("conflictLaterButton");
+    const toastElement = document.getElementById("toast");
+
+    let currentUser = null;
+    let observedLocalRaw = localStorage.getItem(STORAGE_KEY);
+    let saveTimer = null;
+    let saveInFlight = false;
+    let saveQueued = false;
+    let reconciliationInFlight = false;
+    let pendingConflict = null;
+    let toastTimer = null;
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    function setStatus(kind, title, detail) {
+      statusDot.className = `status-dot${kind ? ` ${kind}` : ""}`;
+      statusTitle.textContent = title;
+      statusDetail.textContent = detail;
+    }
+
+    function toast(message) {
+      toastElement.textContent = message;
+      toastElement.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastElement.classList.remove("show"), 2600);
+    }
+
+    function formatTime(timestamp = Date.now()) {
+      return new Intl.DateTimeFormat("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date(timestamp));
+    }
+
+    function readLocalRaw() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return isValidProgress(raw) ? raw : null;
+    }
+
+    function isValidProgress(raw) {
+      if (!raw) return false;
+      try {
+        const parsed = JSON.parse(raw);
+        return Boolean(parsed && Array.isArray(parsed.vocabulary));
+      } catch {
+        return false;
+      }
+    }
+
+    function readMeta() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(META_KEY) || "null");
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function writeMeta(meta) {
+      localStorage.setItem(META_KEY, JSON.stringify(meta));
+    }
+
+    function summarizeProgress(raw, updatedAtMs = null) {
+      try {
+        const parsed = JSON.parse(raw);
+        const vocabulary = Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [];
+        const startedWords = vocabulary.filter(item => Number(item?.stage || 0) > 0 || item?.guruPassed).length;
+        const level = Math.max(1, Number(parsed.currentLevel || 1));
+        const xp = Math.max(0, Number(parsed.xp || 0));
+        const datePart = updatedAtMs
+          ? ` · gespeichert ${new Intl.DateTimeFormat("de-DE", {
+              dateStyle: "short",
+              timeStyle: "short"
+            }).format(new Date(updatedAtMs))}`
+          : "";
+        return `Level ${level} · ${startedWords} Wörter begonnen · ${xp} XP${datePart}`;
+      } catch {
+        return "Spielstand konnte nicht zusammengefasst werden.";
+      }
+    }
+
+    async function hashText(text) {
+      if (crypto?.subtle) {
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+      }
+
+      let hash = 2166136261;
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return `fallback-${(hash >>> 0).toString(16)}`;
+    }
+
+    function bytesToBase64(bytes) {
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+      }
+      return btoa(binary);
+    }
+
+    function base64ToBytes(value) {
+      const binary = atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+      return bytes;
+    }
+
+    async function encodePayload(raw) {
+      if ("CompressionStream" in window) {
+        const stream = new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip"));
+        const buffer = await new Response(stream).arrayBuffer();
+        return {
+          encoding: "gzip-base64",
+          payload: bytesToBase64(new Uint8Array(buffer))
+        };
+      }
+
+      return { encoding: "plain", payload: raw };
+    }
+
+    async function decodePayload(payload, encoding) {
+      if (encoding === "gzip-base64") {
+        if (!("DecompressionStream" in window)) {
+          throw new Error("Dieser Browser kann die komprimierte Sicherung nicht öffnen.");
+        }
+        const bytes = base64ToBytes(payload);
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        return await new Response(stream).text();
+      }
+      return String(payload || "");
+    }
+
+    function userDocumentReference(user = currentUser) {
+      if (!user) throw new Error("Keine Anmeldung vorhanden.");
+      return doc(db, "users", user.uid);
+    }
+
+    async function readCloudProgress(user = currentUser) {
+      if (!user) return null;
+      const snapshot = await getDoc(userDocumentReference(user));
+      if (!snapshot.exists()) return null;
+
+      const cloudDocument = snapshot.data() || {};
+      const raw = await decodePayload(cloudDocument.payload, cloudDocument.encoding);
+      if (!isValidProgress(raw)) {
+        throw new Error("Die Cloud-Sicherung enthält keinen gültigen Kotoba-Quest-Spielstand.");
+      }
+
+      return {
+        raw,
+        hash: cloudDocument.hash || await hashText(raw),
+        updatedAtMs: Number(cloudDocument.updatedAtMs || 0)
+      };
+    }
+
+    async function saveLocalProgressToCloud({ force = false, reason = "automatic" } = {}) {
+      if (!currentUser || reconciliationInFlight) return;
+      const raw = readLocalRaw();
+      if (!raw) {
+        setStatus("good", "Cloud verbunden", "Noch kein veränderter Spielstand vorhanden.");
+        return;
+      }
+
+      if (saveInFlight) {
+        saveQueued = true;
+        return;
+      }
+
+      saveInFlight = true;
+      syncButton.disabled = true;
+      setStatus("busy", "Cloud-Sicherung läuft …", "Dein lokaler Fortschritt bleibt währenddessen erhalten.");
+
+      try {
+        const hash = await hashText(raw);
+        const meta = readMeta();
+        if (!force && meta?.uid === currentUser.uid && meta.lastSyncedHash === hash) {
+          setStatus("good", "Cloud gespeichert", `Letzte Sicherung ${formatTime(meta.lastCloudUpdatedAtMs || Date.now())} Uhr`);
+          return;
+        }
+
+        const encoded = await encodePayload(raw);
+        if (encoded.payload.length > MAX_PAYLOAD_LENGTH) {
+          throw new Error("Der Spielstand ist für eine einzelne Cloud-Sicherung zu groß.");
+        }
+
+        const updatedAtMs = Date.now();
+        await setDoc(userDocumentReference(), {
+          payload: encoded.payload,
+          encoding: encoded.encoding,
+          hash,
+          updatedAtMs,
+          storageKey: STORAGE_KEY,
+          schemaVersion: 1
+        });
+
+        writeMeta({
+          uid: currentUser.uid,
+          lastSyncedHash: hash,
+          lastCloudUpdatedAtMs: updatedAtMs
+        });
+        observedLocalRaw = raw;
+        setStatus("good", "Cloud gespeichert", `Automatisch gesichert · ${formatTime(updatedAtMs)} Uhr`);
+        if (reason === "manual") toast("Fortschritt wurde in der Cloud gesichert.");
+      } catch (error) {
+        console.error("Cloud save failed", error);
+        const offline = !navigator.onLine;
+        setStatus(
+          "bad",
+          offline ? "Offline – lokal gespeichert" : "Cloud-Sicherung fehlgeschlagen",
+          offline
+            ? "Sobald du wieder online bist, wird erneut synchronisiert."
+            : readableError(error)
+        );
+      } finally {
+        saveInFlight = false;
+        syncButton.disabled = false;
+        if (saveQueued) {
+          saveQueued = false;
+          scheduleCloudSave(250);
+        }
+      }
+    }
+
+    function readableError(error) {
+      const code = String(error?.code || "");
+      if (code.includes("permission-denied")) {
+        return "Bitte prüfe die Firestore-Regeln und melde dich erneut an.";
+      }
+      if (code.includes("unauthorized-domain")) {
+        return "ttratkb.github.io muss in Firebase als autorisierte Domain eingetragen sein.";
+      }
+      if (code.includes("popup-blocked")) {
+        return "Das Anmeldefenster wurde vom Browser blockiert.";
+      }
+      if (code.includes("popup-closed-by-user")) {
+        return "Die Anmeldung wurde abgebrochen.";
+      }
+      return String(error?.message || "Unbekannter Fehler").replace(/^Firebase:\s*/i, "");
+    }
+
+    function restoreCloudProgress(cloudProgress) {
+      localStorage.setItem(STORAGE_KEY, cloudProgress.raw);
+      writeMeta({
+        uid: currentUser.uid,
+        lastSyncedHash: cloudProgress.hash,
+        lastCloudUpdatedAtMs: cloudProgress.updatedAtMs
+      });
+      observedLocalRaw = cloudProgress.raw;
+      appFrame.contentWindow?.location.reload();
+      setStatus("good", "Cloudstand geladen", `Wiederhergestellt · ${formatTime()} Uhr`);
+      toast("Dein Cloud-Spielstand wurde wiederhergestellt.");
+    }
+
+    async function reconcileLocalAndCloud() {
+      if (!currentUser || reconciliationInFlight) return;
+      reconciliationInFlight = true;
+      setStatus("busy", "Cloud wird geprüft …", "Lokaler und gesicherter Fortschritt werden verglichen.");
+
+      try {
+        const localRaw = readLocalRaw();
+        const cloudProgress = await readCloudProgress();
+
+        if (!cloudProgress) {
+          if (localRaw) {
+            reconciliationInFlight = false;
+            await saveLocalProgressToCloud({ force: true });
+            return;
+          }
+          setStatus("good", "Cloud verbunden", "Dein erster veränderter Spielstand wird automatisch gesichert.");
+          return;
+        }
+
+        if (!localRaw) {
+          restoreCloudProgress(cloudProgress);
+          return;
+        }
+
+        const localHash = await hashText(localRaw);
+        const meta = readMeta();
+
+        if (localHash === cloudProgress.hash) {
+          writeMeta({
+            uid: currentUser.uid,
+            lastSyncedHash: cloudProgress.hash,
+            lastCloudUpdatedAtMs: cloudProgress.updatedAtMs
+          });
+          setStatus("good", "Cloud gespeichert", `Synchron · ${formatTime(cloudProgress.updatedAtMs || Date.now())} Uhr`);
+          return;
+        }
+
+        const metaBelongsToUser = meta?.uid === currentUser.uid;
+        const localMatchesLastSync = metaBelongsToUser && meta.lastSyncedHash === localHash;
+        const cloudMatchesLastSync = metaBelongsToUser && meta.lastSyncedHash === cloudProgress.hash;
+
+        if (localMatchesLastSync && cloudProgress.updatedAtMs > Number(meta.lastCloudUpdatedAtMs || 0)) {
+          restoreCloudProgress(cloudProgress);
+          return;
+        }
+
+        if (cloudMatchesLastSync) {
+          reconciliationInFlight = false;
+          await saveLocalProgressToCloud({ force: true });
+          return;
+        }
+
+        pendingConflict = { localRaw, cloudProgress };
+        localSummary.textContent = summarizeProgress(localRaw);
+        cloudSummary.textContent = summarizeProgress(cloudProgress.raw, cloudProgress.updatedAtMs);
+        setStatus("", "Auswahl erforderlich", "Es wurden zwei unterschiedliche Spielstände gefunden.");
+        conflictDialog.showModal();
+      } catch (error) {
+        console.error("Cloud reconciliation failed", error);
+        setStatus(
+          "bad",
+          !navigator.onLine ? "Offline – lokal gespeichert" : "Cloud konnte nicht geladen werden",
+          !navigator.onLine
+            ? "Du kannst normal weiterlernen. Später wird erneut synchronisiert."
+            : readableError(error)
+        );
+      } finally {
+        reconciliationInFlight = false;
+      }
+    }
+
+    function scheduleCloudSave(delay = SAVE_DELAY_MS) {
+      if (!currentUser || reconciliationInFlight) return;
+      clearTimeout(saveTimer);
+      setStatus("busy", "Änderung lokal gespeichert", "Cloud-Sicherung folgt automatisch …");
+      saveTimer = setTimeout(() => saveLocalProgressToCloud(), delay);
+    }
+
+    async function handleLogin() {
+      loginButton.disabled = true;
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        console.error("Google sign-in failed", error);
+        setStatus("bad", "Anmeldung fehlgeschlagen", readableError(error));
+      } finally {
+        loginButton.disabled = false;
+      }
+    }
+
+    loginButton.addEventListener("click", handleLogin);
+    syncButton.addEventListener("click", () => saveLocalProgressToCloud({ force: true, reason: "manual" }));
+    logoutButton.addEventListener("click", async () => {
+      clearTimeout(saveTimer);
+      try {
+        await signOut(auth);
+      } catch (error) {
+        setStatus("bad", "Abmeldung fehlgeschlagen", readableError(error));
+      }
+    });
+
+    useLocalButton.addEventListener("click", async () => {
+      if (!pendingConflict) return;
+      conflictDialog.close();
+      const localRaw = pendingConflict.localRaw;
+      pendingConflict = null;
+      observedLocalRaw = localRaw;
+      await saveLocalProgressToCloud({ force: true, reason: "manual" });
+    });
+
+    useCloudButton.addEventListener("click", () => {
+      if (!pendingConflict) return;
+      conflictDialog.close();
+      const cloudProgress = pendingConflict.cloudProgress;
+      pendingConflict = null;
+      restoreCloudProgress(cloudProgress);
+    });
+
+    conflictLaterButton.addEventListener("click", () => {
+      conflictDialog.close();
+      pendingConflict = null;
+      setStatus("", "Nur lokal gespeichert", "Die Cloud bleibt unverändert, bis du erneut synchronisierst.");
+    });
+
+    window.addEventListener("storage", event => {
+      if (event.key !== STORAGE_KEY || event.newValue === event.oldValue) return;
+      observedLocalRaw = event.newValue;
+      scheduleCloudSave();
+    });
+
+    window.addEventListener("online", () => {
+      if (currentUser) reconcileLocalAndCloud();
+    });
+
+    window.addEventListener("offline", () => {
+      setStatus("bad", "Offline – lokal gespeichert", "Dein Fortschritt bleibt auf diesem Gerät erhalten.");
+    });
+
+    setInterval(() => {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw === observedLocalRaw) return;
+      observedLocalRaw = raw;
+      scheduleCloudSave();
+    }, 1500);
+
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch (error) {
+      console.warn("Firebase auth persistence could not be set", error);
+    }
+
+    onAuthStateChanged(auth, user => {
+      currentUser = user;
+      loginButton.hidden = Boolean(user);
+      syncButton.hidden = !user;
+      logoutButton.hidden = !user;
+      accountCopy.hidden = !user;
+
+      if (user) {
+        accountName.textContent = user.displayName || "Google-Konto";
+        accountEmail.textContent = user.email || "";
+        reconcileLocalAndCloud();
+      } else {
+        accountName.textContent = "";
+        accountEmail.textContent = "";
+        setStatus(
+          "",
+          "Lokal gespeichert",
+          "Mit Google anmelden, um den Fortschritt zusätzlich in Firebase zu sichern."
+        );
+      }
+    });
+
+    if (location.protocol === "file:") {
+      setStatus(
+        "bad",
+        "Bitte über GitHub Pages öffnen",
+        "Diese Datei funktioniert erst nach dem Upload als cloud.html im Repository."
+      );
+    }
+  </script>
+</body>
+</html>
