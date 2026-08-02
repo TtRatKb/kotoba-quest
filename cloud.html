@@ -1187,7 +1187,289 @@
         }
       }
 
+
       installExpandedQuestions();
+
+      // Redaktionell annotierte Satzbausteine für Furigana und dynamische
+      // Vokabelhilfen. Die Grundform bleibt sichtbar; die konkrete Satzform
+      // und ihre Bildung werden erst auf Wunsch aufgeklappt.
+      const GRAMMAR_SENTENCE_SUPPORT = {
+        "毎朝、早く起きるようになりました。": [
+          { surface:"毎朝", reading:"まいあさ", base:"毎朝", baseReading:"まいあさ", meaning:"jeden Morgen" },
+          { surface:"早く", reading:"はやく", base:"早い", baseReading:"はやい", meaning:"früh; schnell", formLabel:"Adverbialform eines i-Adjektivs", formation:"早い → 早く", contextMeaning:"früh", grammarRole:"早く beschreibt hier, wann die Person aufsteht." },
+          { surface:"起きる", reading:"おきる", base:"起きる", baseReading:"おきる", meaning:"aufstehen; aufwachen", formLabel:"Wörterbuchform", formation:"起きる + ようになる", contextMeaning:"aufstehen", grammarRole:"Die Wörterbuchform steht vor ようになる und beschreibt das neu entstandene regelmäßige Verhalten." }
+        ],
+        "忘れ物をしないようになりました。": [
+          { surface:"忘れ物", reading:"わすれもの", base:"忘れ物", baseReading:"わすれもの", meaning:"vergessener Gegenstand; etwas, das man vergessen hat" },
+          { surface:"しない", reading:"しない", base:"する", baseReading:"する", meaning:"machen; tun", formLabel:"ない-Form", formation:"する → しない", contextMeaning:"nicht machen", grammarRole:"Die ない-Form steht vor ようになる. Zusammen mit 忘れ物を bedeutet sie hier, keine Sachen mehr zu vergessen." }
+        ],
+        "漢字が読めるようになりました。": [
+          { surface:"漢字", reading:"かんじ", base:"漢字", baseReading:"かんじ", meaning:"Kanji; chinesisches Schriftzeichen" },
+          { surface:"読める", reading:"よめる", base:"読む", baseReading:"よむ", meaning:"lesen", formLabel:"Potentialform", formation:"読む → 読める", contextMeaning:"lesen können", grammarRole:"Die Potentialform bezeichnet die Fähigkeit. ようになる zeigt, dass diese Fähigkeit neu entstanden ist." }
+        ],
+        "漢字が読めます。": [
+          { surface:"漢字", reading:"かんじ", base:"漢字", baseReading:"かんじ", meaning:"Kanji; chinesisches Schriftzeichen" },
+          { surface:"読めます", reading:"よめます", base:"読む", baseReading:"よむ", meaning:"lesen", formLabel:"höfliche Potentialform", formation:"読む → 読める → 読めます", contextMeaning:"lesen können", grammarRole:"Die Potentialform nennt nur die gegenwärtige Fähigkeit; eine Veränderung wird nicht ausdrücklich markiert." }
+        ],
+        "明日から毎日歩くようにします。": [
+          { surface:"明日", reading:"あした", base:"明日", baseReading:"あした", meaning:"morgen" },
+          { surface:"毎日", reading:"まいにち", base:"毎日", baseReading:"まいにち", meaning:"jeden Tag; täglich" },
+          { surface:"歩く", reading:"あるく", base:"歩く", baseReading:"あるく", meaning:"gehen; zu Fuß gehen", formLabel:"Wörterbuchform", formation:"歩く + ようにする", contextMeaning:"zu Fuß gehen", grammarRole:"Die Wörterbuchform steht vor ようにする und bezeichnet das Verhalten, das sich die Person bewusst vornimmt." }
+        ],
+        "夜はスマホを見ないようにします。": [
+          { surface:"夜", reading:"よる", base:"夜", baseReading:"よる", meaning:"Abend; Nacht" },
+          { surface:"スマホ", reading:"すまほ", base:"スマホ", baseReading:"すまほ", meaning:"Smartphone" },
+          { surface:"見ない", reading:"みない", base:"見る", baseReading:"みる", meaning:"sehen; anschauen", formLabel:"ない-Form", formation:"見る → 見ない", contextMeaning:"nicht anschauen", grammarRole:"Die ない-Form steht vor ようにする und bezeichnet etwas, das die Person bewusst vermeiden möchte." }
+        ],
+        "毎日、日本語を読むようにしています。": [
+          { surface:"毎日", reading:"まいにち", base:"毎日", baseReading:"まいにち", meaning:"jeden Tag; täglich" },
+          { surface:"日本語", reading:"にほんご", base:"日本語", baseReading:"にほんご", meaning:"Japanisch; japanische Sprache" },
+          { surface:"読む", reading:"よむ", base:"読む", baseReading:"よむ", meaning:"lesen", formLabel:"Wörterbuchform", formation:"読む + ようにしている", contextMeaning:"lesen", grammarRole:"ようにしている macht aus dem bewussten Vorsatz eine fortlaufende Bemühung oder Gewohnheit." }
+        ],
+        "毎朝、早く起きるようにしています。": [
+          { surface:"毎朝", reading:"まいあさ", base:"毎朝", baseReading:"まいあさ", meaning:"jeden Morgen" },
+          { surface:"早く", reading:"はやく", base:"早い", baseReading:"はやい", meaning:"früh; schnell", formLabel:"Adverbialform eines i-Adjektivs", formation:"早い → 早く", contextMeaning:"früh", grammarRole:"早く beschreibt hier den Zeitpunkt des Aufstehens." },
+          { surface:"起きる", reading:"おきる", base:"起きる", baseReading:"おきる", meaning:"aufstehen; aufwachen", formLabel:"Wörterbuchform", formation:"起きる + ようにしている", contextMeaning:"aufstehen", grammarRole:"Die Person bemüht sich fortlaufend darum, dieses Verhalten umzusetzen; der Erfolg wird nicht garantiert." }
+        ],
+        "来月、東京で働くことになりました。": [
+          { surface:"来月", reading:"らいげつ", base:"来月", baseReading:"らいげつ", meaning:"nächsten Monat" },
+          { surface:"東京", reading:"とうきょう", base:"東京", baseReading:"とうきょう", meaning:"Tokio" },
+          { surface:"働く", reading:"はたらく", base:"働く", baseReading:"はたらく", meaning:"arbeiten", formLabel:"Wörterbuchform", formation:"働く + ことになる", contextMeaning:"arbeiten", grammarRole:"Die Wörterbuchform bezeichnet den festgelegten Plan. ことになりました stellt ihn als äußere Entscheidung oder Ergebnis der Umstände dar." }
+        ],
+        "明日の会議には参加しないことになりました。": [
+          { surface:"明日", reading:"あした", base:"明日", baseReading:"あした", meaning:"morgen" },
+          { surface:"会議", reading:"かいぎ", base:"会議", baseReading:"かいぎ", meaning:"Besprechung; Sitzung" },
+          { surface:"参加しない", reading:"さんかしない", base:"参加する", baseReading:"さんかする", meaning:"teilnehmen", formLabel:"ない-Form eines する-Verbs", formation:"参加する → 参加しない", contextMeaning:"nicht teilnehmen", grammarRole:"Die negative Form steht vor ことになる und beschreibt den von außen festgelegten Plan, nicht teilzunehmen." }
+        ],
+        "この部屋では食べないことになっています。": [
+          { surface:"部屋", reading:"へや", base:"部屋", baseReading:"へや", meaning:"Zimmer; Raum" },
+          { surface:"食べない", reading:"たべない", base:"食べる", baseReading:"たべる", meaning:"essen", formLabel:"ない-Form", formation:"食べる → 食べない", contextMeaning:"nicht essen", grammarRole:"ことになっている beschreibt hier eine geltende Regel: In diesem Raum wird nicht gegessen." }
+        ],
+        "日本語が話せるようになりました。": [
+          { surface:"日本語", reading:"にほんご", base:"日本語", baseReading:"にほんご", meaning:"Japanisch; japanische Sprache" },
+          { surface:"話せる", reading:"はなせる", base:"話す", baseReading:"はなす", meaning:"sprechen; reden", formLabel:"Potentialform", formation:"話す → 話せる", contextMeaning:"sprechen können", grammarRole:"Bei einem Godan-Verb wird die letzte u-Silbe zur e-Silbe und る wird ergänzt: す → せる. ようになる zeigt die neu erworbene Fähigkeit." }
+        ],
+        "来月、日本で働くことになりました。": [
+          { surface:"来月", reading:"らいげつ", base:"来月", baseReading:"らいげつ", meaning:"nächsten Monat" },
+          { surface:"日本", reading:"にほん", base:"日本", baseReading:"にほん", meaning:"Japan" },
+          { surface:"働く", reading:"はたらく", base:"働く", baseReading:"はたらく", meaning:"arbeiten", formLabel:"Wörterbuchform", formation:"働く + ことになる", contextMeaning:"arbeiten", grammarRole:"ことになりました berichtet einen Plan, der durch eine äußere Entscheidung oder die Umstände festgelegt wurde." }
+        ],
+        "毎日三十分勉強することにします。": [
+          { surface:"毎日", reading:"まいにち", base:"毎日", baseReading:"まいにち", meaning:"jeden Tag; täglich" },
+          { surface:"三十分", reading:"さんじゅっぷん", base:"三十分", baseReading:"さんじゅっぷん", meaning:"dreißig Minuten" },
+          { surface:"勉強する", reading:"べんきょうする", base:"勉強する", baseReading:"べんきょうする", meaning:"lernen; studieren", formLabel:"Wörterbuchform eines する-Verbs", formation:"勉強する + ことにする", contextMeaning:"lernen", grammarRole:"ことにする kennzeichnet den eigenen Entschluss, dieses Verhalten künftig umzusetzen." }
+        ],
+        "今日は出かけないことにします。": [
+          { surface:"今日", reading:"きょう", base:"今日", baseReading:"きょう", meaning:"heute" },
+          { surface:"出かけない", reading:"でかけない", base:"出かける", baseReading:"でかける", meaning:"ausgehen; das Haus verlassen", formLabel:"ない-Form", formation:"出かける → 出かけない", contextMeaning:"nicht ausgehen", grammarRole:"Die negative Form steht vor ことにする und bezeichnet die selbst getroffene Entscheidung, etwas nicht zu tun." }
+        ],
+        "日曜日は仕事をしないことにしています。": [
+          { surface:"日曜日", reading:"にちようび", base:"日曜日", baseReading:"にちようび", meaning:"Sonntag" },
+          { surface:"仕事", reading:"しごと", base:"仕事", baseReading:"しごと", meaning:"Arbeit; Beruf" },
+          { surface:"しない", reading:"しない", base:"する", baseReading:"する", meaning:"machen; tun", formLabel:"ない-Form", formation:"する → しない", contextMeaning:"nicht arbeiten", grammarRole:"Mit 仕事を bildet する das Verb „arbeiten“. ことにしている zeigt eine selbst gesetzte, wiederholt geltende Regel." }
+        ],
+        "来月、東京で働くことにしました。": [
+          { surface:"来月", reading:"らいげつ", base:"来月", baseReading:"らいげつ", meaning:"nächsten Monat" },
+          { surface:"東京", reading:"とうきょう", base:"東京", baseReading:"とうきょう", meaning:"Tokio" },
+          { surface:"働く", reading:"はたらく", base:"働く", baseReading:"はたらく", meaning:"arbeiten", formLabel:"Wörterbuchform", formation:"働く + ことにする", contextMeaning:"arbeiten", grammarRole:"ことにしました stellt den Plan ausdrücklich als eigenen Entschluss des Sprechers dar." }
+        ],
+        "最近、テレビを見なくなりました。": [
+          { surface:"最近", reading:"さいきん", base:"最近", baseReading:"さいきん", meaning:"in letzter Zeit; neuerdings" },
+          { surface:"テレビ", reading:"てれび", base:"テレビ", baseReading:"てれび", meaning:"Fernseher; Fernsehen" },
+          { surface:"見なく", reading:"みなく", base:"見る", baseReading:"みる", meaning:"sehen; anschauen", formLabel:"Verbindungsform der ない-Form", formation:"見る → 見ない → 見なく", contextMeaning:"nicht mehr anschauen", grammarRole:"Bei 〜なくなる wird ない zu なく und anschließend なる angefügt. Der Satz beschreibt eine eingetretene Veränderung." }
+        ],
+        "日本語を話すのが怖くなくなりました。": [
+          { surface:"日本語", reading:"にほんご", base:"日本語", baseReading:"にほんご", meaning:"Japanisch; japanische Sprache" },
+          { surface:"話す", reading:"はなす", base:"話す", baseReading:"はなす", meaning:"sprechen; reden", formLabel:"Wörterbuchform vor の", formation:"話す → 話すの", contextMeaning:"das Sprechen", grammarRole:"の nominalisiert die Handlung: 話すの bedeutet hier „das Sprechen“ beziehungsweise „zu sprechen“." },
+          { surface:"怖くなく", reading:"こわくなく", base:"怖い", baseReading:"こわい", meaning:"beängstigend; Angst haben", formLabel:"negative Verbindungsform eines i-Adjektivs", formation:"怖い → 怖くない → 怖くなく", contextMeaning:"keine Angst mehr haben", grammarRole:"Die negative Form 怖くない verliert vor なる das abschließende い: 怖くなくなる. So wird eine eingetretene Zustandsveränderung ausgedrückt." }
+        ],
+        "この町は静かではなくなりました。": [
+          { surface:"町", reading:"まち", base:"町", baseReading:"まち", meaning:"Stadt; Ort" },
+          { surface:"静かではなく", reading:"しずかではなく", base:"静か", baseReading:"しずか", meaning:"ruhig", formLabel:"negative Verbindungsform eines na-Adjektivs", formation:"静かだ → 静かではない → 静かではなく", contextMeaning:"nicht mehr ruhig", grammarRole:"Bei na-Adjektiven wird die negative Form ではない vor なる zu ではなく. Der frühere Zustand gilt nun nicht mehr." }
+        ],
+        "最近、コーヒーを飲まなくなりました。": [
+          { surface:"最近", reading:"さいきん", base:"最近", baseReading:"さいきん", meaning:"in letzter Zeit; neuerdings" },
+          { surface:"コーヒー", reading:"こーひー", base:"コーヒー", baseReading:"こーひー", meaning:"Kaffee" },
+          { surface:"飲まなく", reading:"のまなく", base:"飲む", baseReading:"のむ", meaning:"trinken", formLabel:"Verbindungsform der ない-Form", formation:"飲む → 飲まない → 飲まなく", contextMeaning:"nicht mehr trinken", grammarRole:"なくなる berichtet das eingetretene Ergebnis: Die Person trinkt inzwischen keinen Kaffee mehr." }
+        ],
+        "夜はコーヒーを飲まないようにしています。": [
+          { surface:"夜", reading:"よる", base:"夜", baseReading:"よる", meaning:"Abend; Nacht" },
+          { surface:"コーヒー", reading:"こーひー", base:"コーヒー", baseReading:"こーひー", meaning:"Kaffee" },
+          { surface:"飲まない", reading:"のまない", base:"飲む", baseReading:"のむ", meaning:"trinken", formLabel:"ない-Form", formation:"飲む → 飲まない", contextMeaning:"nicht trinken", grammarRole:"ようにしている beschreibt die fortlaufende bewusste Bemühung, Kaffee am Abend zu vermeiden; das vollständige Aufhören wird nicht behauptet." }
+        ]
+      };
+
+      const VOCAB_STAGE_NAMES = ["Neu", "Apprentice 1", "Apprentice 2", "Apprentice 3", "Apprentice 4", "Guru 1", "Guru 2", "Master", "Erleuchtet", "Abgeschlossen"];
+
+      function normalizeVocabKey(value) {
+        return String(value || "").normalize("NFKC").replace(/[\s・･]/g, "").toLowerCase();
+      }
+
+      function currentVocabulary() {
+        try {
+          if (typeof data !== "undefined" && Array.isArray(data.vocabulary)) return data.vocabulary;
+        } catch {}
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+          return Array.isArray(parsed?.vocabulary) ? parsed.vocabulary : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function findVocabularyEntry(word) {
+        const base = normalizeVocabKey(word?.base);
+        const reading = normalizeVocabKey(word?.baseReading);
+        return currentVocabulary().find(item => {
+          if (normalizeVocabKey(item?.word) !== base) return false;
+          const itemReading = normalizeVocabKey(item?.reading);
+          return !reading || !itemReading || itemReading === reading;
+        }) || null;
+      }
+
+      function vocabularyIsGuru(entry) {
+        return Boolean(entry && (entry.guruPassed || Number(entry.stage || 0) >= 5));
+      }
+
+      function containsKanji(value) {
+        return /[\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]/.test(String(value || ""));
+      }
+
+      function rubyHtml(surface, reading) {
+        const shown = escapeHtml(surface);
+        if (!reading || !containsKanji(surface)) return shown;
+        return `<ruby>${shown}<rt>${escapeHtml(reading)}</rt></ruby>`;
+      }
+
+      function highlightedRangeHtml(text, start, highlightStart, highlightEnd, color) {
+        const source = String(text || "");
+        const end = start + source.length;
+        if (highlightStart < 0 || end <= highlightStart || start >= highlightEnd) return escapeHtml(source);
+        const localStart = Math.max(0, highlightStart - start);
+        const localEnd = Math.min(source.length, highlightEnd - start);
+        return `${escapeHtml(source.slice(0, localStart))}<mark style="background:${color}">${escapeHtml(source.slice(localStart, localEnd))}</mark>${escapeHtml(source.slice(localEnd))}`;
+      }
+
+      function renderSupportedSentence(example, color) {
+        const sentence = String(example?.jp || "");
+        const words = GRAMMAR_SENTENCE_SUPPORT[sentence] || [];
+        if (!words.length) {
+          return {
+            sentenceHtml: highlightedJapanese(sentence, example?.highlight, `${color}22`),
+            notesHtml: ""
+          };
+        }
+
+        const visibleWords = words.filter(word => !vocabularyIsGuru(findVocabularyEntry(word)));
+        const noteNumberByWord = new Map(visibleWords.map((word, index) => [word, index + 1]));
+        const highlight = String(example?.highlight || "");
+        const highlightStart = highlight ? sentence.indexOf(highlight) : -1;
+        const highlightEnd = highlightStart < 0 ? -1 : highlightStart + highlight.length;
+        const markColor = `${color}22`;
+        let cursor = 0;
+        let sentenceHtml = "";
+
+        for (const word of words) {
+          const position = sentence.indexOf(word.surface, cursor);
+          if (position < 0) continue;
+          sentenceHtml += highlightedRangeHtml(sentence.slice(cursor, position), cursor, highlightStart, highlightEnd, markColor);
+          const tokenEnd = position + word.surface.length;
+          let tokenHtml = rubyHtml(word.surface, word.reading);
+          if (highlightStart >= 0 && position < highlightEnd && tokenEnd > highlightStart) {
+            tokenHtml = `<mark style="background:${markColor}">${tokenHtml}</mark>`;
+          }
+          sentenceHtml += tokenHtml;
+          const noteNumber = noteNumberByWord.get(word);
+          if (noteNumber) sentenceHtml += `<sup class="grammar-vocab-marker">${noteNumber}</sup>`;
+          cursor = tokenEnd;
+        }
+        sentenceHtml += highlightedRangeHtml(sentence.slice(cursor), cursor, highlightStart, highlightEnd, markColor);
+
+        const notesHtml = visibleWords.length
+          ? `<div class="grammar-vocab-help"><div class="grammar-vocab-heading"><strong>Vokabelhilfen</strong><span>Wörter ab Guru 1 werden automatisch ausgeblendet.</span></div>${visibleWords.map((word, index) => renderVocabularyFootnote(word, index + 1, sentence, example?.de || "")).join("")}</div>`
+          : "";
+        return { sentenceHtml, notesHtml };
+      }
+
+      function renderVocabularyFootnote(word, number, sentence, translation) {
+        const entry = findVocabularyEntry(word);
+        const stage = entry ? VOCAB_STAGE_NAMES[Math.max(0, Math.min(9, Number(entry.stage || 0)))] : "Nicht in deiner Sammlung";
+        const hasAnalysis = Boolean(word.formLabel || word.formation || word.contextMeaning || word.grammarRole);
+        const encodedSentence = encodeURIComponent(sentence);
+        return `<div class="grammar-vocab-footnote">
+          <span class="grammar-vocab-number">${number}</span>
+          <div class="grammar-vocab-content">
+            <div class="grammar-vocab-base"><strong>${rubyHtml(word.base, word.baseReading)}</strong><span>– ${escapeHtml(word.meaning)}</span><em>${escapeHtml(stage)}</em></div>
+            ${hasAnalysis ? `<details class="grammar-vocab-analysis"><summary>Verwendete Form auflösen</summary><div class="grammar-vocab-analysis-grid">
+              <div><span>Im Satz</span><strong>${rubyHtml(word.surface, word.reading)}</strong></div>
+              ${word.formLabel ? `<div><span>Form</span><strong>${escapeHtml(word.formLabel)}</strong></div>` : ""}
+              ${word.formation ? `<div class="wide"><span>Bildung</span><strong>${escapeHtml(word.formation)}</strong></div>` : ""}
+              ${word.contextMeaning ? `<div class="wide"><span>Bedeutung hier</span><strong>${escapeHtml(word.contextMeaning)}</strong></div>` : ""}
+              ${word.grammarRole ? `<div class="wide grammar-vocab-role">${escapeHtml(word.grammarRole)}</div>` : ""}
+            </div></details>` : ""}
+            ${entry ? "" : `<button class="grammar-add-vocab" data-grammar-add-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-translation="${escapeHtml(encodeURIComponent(translation))}">Zum Mining hinzufügen</button>`}
+          </div>
+        </div>`;
+      }
+
+      function addGrammarWordToMining(sentence, visibleIndex, translation) {
+        const visibleWords = (GRAMMAR_SENTENCE_SUPPORT[sentence] || []).filter(word => !vocabularyIsGuru(findVocabularyEntry(word)));
+        const word = visibleWords[visibleIndex];
+        if (!word) return;
+        if (findVocabularyEntry(word)) {
+          notify("Diese Grundform ist bereits in deiner Vokabelsammlung.");
+          renderLesson();
+          return;
+        }
+        const raw = {
+          word: word.base,
+          reading: word.baseReading,
+          meanings: [word.meaning],
+          productionCue: word.meaning,
+          sourceType: "mining",
+          collection: `Grammar Path · Level 1${lessonPoint?.title ? ` · ${lessonPoint.title}` : ""}`,
+          example: sentence,
+          exampleTranslation: translation,
+          stage: 0,
+          availableAt: null,
+          correct: 0,
+          incorrect: 0,
+          guruPassed: false,
+          createdAt: Date.now()
+        };
+        let created = raw;
+        try {
+          if (typeof makeVocabulary === "function") created = makeVocabulary(raw);
+        } catch {}
+        try {
+          if (typeof data !== "undefined" && Array.isArray(data.vocabulary)) {
+            data.vocabulary.push(created);
+            if (typeof saveData === "function") saveData();
+            else persistGrammar();
+          } else {
+            const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+            parsed.vocabulary = Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [];
+            parsed.vocabulary.push(created);
+            parsed.grammar = grammarState;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          }
+          notify(`${word.base} wurde zum Mining hinzugefügt.`);
+          renderLesson();
+        } catch (error) {
+          console.error("Grammar mining add failed", error);
+          notify("Die Vokabel konnte nicht hinzugefügt werden.");
+        }
+      }
+
+      function attachGrammarSupportActions(container) {
+        container?.querySelectorAll("[data-grammar-add-vocab]").forEach(button => {
+          button.addEventListener("click", () => {
+            const sentence = decodeURIComponent(button.dataset.sentence || "");
+            const translation = decodeURIComponent(button.dataset.translation || "");
+            addGrammarWordToMining(sentence, Number(button.dataset.wordIndex || 0), translation);
+          });
+        });
+      }
 
       const grammarStyle = document.createElement("style");
       grammarStyle.textContent = `
@@ -1239,6 +1521,32 @@
         .grammar-example-jp { font-size:1.08rem; font-weight:900; line-height:1.65; }
         .grammar-example-jp mark { padding:2px 5px; border-radius:7px; color:inherit; font-weight:950; }
         .grammar-example-de { color:var(--muted); margin-top:4px; font-size:.9rem; line-height:1.5; }
+        .grammar-example-jp ruby { ruby-align:center; }
+        .grammar-example-jp rt { color:#655e78; font-size:.58em; font-weight:750; }
+        .grammar-vocab-marker { margin-left:2px; color:#d46d24; font-size:.67em; font-weight:950; vertical-align:super; }
+        .grammar-vocab-help { display:grid; gap:9px; margin-top:13px; padding-top:12px; border-top:1px dashed var(--border); }
+        .grammar-vocab-heading { display:flex; flex-wrap:wrap; justify-content:space-between; gap:5px 12px; color:#80511e; }
+        .grammar-vocab-heading strong { font-size:.84rem; }
+        .grammar-vocab-heading span { color:var(--muted); font-size:.75rem; }
+        .grammar-vocab-footnote { display:grid; grid-template-columns:27px minmax(0,1fr); gap:9px; padding:10px; border-radius:12px; background:#fff9ef; border:1px solid #f1d7ad; }
+        .grammar-vocab-number { display:grid; place-items:center; width:25px; height:25px; border-radius:8px; color:white; background:#dc8337; font-size:.75rem; font-weight:950; }
+        .grammar-vocab-content { min-width:0; }
+        .grammar-vocab-base { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 7px; line-height:1.55; }
+        .grammar-vocab-base strong { color:#493f68; }
+        .grammar-vocab-base em { margin-left:auto; padding:3px 7px; border-radius:999px; color:#80511e; background:#ffedce; font-size:.68rem; font-style:normal; font-weight:900; }
+        .grammar-vocab-base rt,.grammar-vocab-analysis rt { color:#756f86; font-size:.58em; }
+        .grammar-vocab-analysis { margin-top:7px; border-radius:10px; background:white; border:1px solid #eadfcf; overflow:hidden; }
+        .grammar-vocab-analysis summary { padding:8px 10px; color:#66509a; cursor:pointer; font-size:.8rem; font-weight:900; }
+        .grammar-vocab-analysis[open] summary { border-bottom:1px solid #eee5d7; background:#faf7ff; }
+        .grammar-vocab-analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; padding:10px; }
+        .grammar-vocab-analysis-grid > div { padding:8px 9px; border-radius:9px; background:#faf8ff; }
+        .grammar-vocab-analysis-grid span,.grammar-vocab-analysis-grid strong { display:block; }
+        .grammar-vocab-analysis-grid span { margin-bottom:3px; color:var(--muted); font-size:.69rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+        .grammar-vocab-analysis-grid strong { font-size:.83rem; line-height:1.45; }
+        .grammar-vocab-analysis-grid .wide { grid-column:1 / -1; }
+        .grammar-vocab-analysis-grid .grammar-vocab-role { color:#4d4267; background:#f2edff; font-size:.82rem; line-height:1.55; }
+        .grammar-add-vocab { margin-top:8px; padding:7px 10px; border-radius:9px; color:#865011; background:#ffe8c1; font-size:.76rem; font-weight:900; }
+        @media (max-width:580px) { .grammar-vocab-analysis-grid { grid-template-columns:1fr; } .grammar-vocab-analysis-grid .wide { grid-column:auto; } .grammar-vocab-base em { margin-left:0; } }
         .grammar-contrast { padding:16px; border-left:5px solid var(--primary); border-radius:15px; background:#f5f1ff; line-height:1.55; }
         .grammar-contrast h3 { margin:0 0 6px; }
         .grammar-contrast-intro { color:var(--muted); margin-bottom:14px; }
@@ -1841,13 +2149,15 @@
         }
 
         card.querySelectorAll(".grammar-audio").forEach(button => button.addEventListener("click", () => speakJapanese(button.dataset.audio)));
+        attachGrammarSupportActions(card);
         document.getElementById("grammarLessonBackOverview")?.addEventListener("click", () => openGrammarView("grammar"));
         document.getElementById("grammarLessonPrev")?.addEventListener("click", () => { lessonStep = Math.max(0, lessonStep - 1); lessonChecked = false; renderLesson(); });
         document.getElementById("grammarLessonNext")?.addEventListener("click", () => { lessonStep = Math.min(3, lessonStep + 1); renderLesson(); });
       }
 
       function renderExample(example, color = "#6c63d9") {
-        return `<div class="grammar-example"><button class="grammar-audio" data-audio="${escapeHtml(example.jp)}" title="Satz anhören">🔊</button><div><div class="grammar-example-jp">${highlightedJapanese(example.jp, example.highlight, `${color}22`)}</div><div class="grammar-example-de">${escapeHtml(example.de)}</div>${example.note ? `<div class="grammar-form-note">${escapeHtml(example.note)}</div>` : ""}</div></div>`;
+        const supported = renderSupportedSentence(example, color);
+        return `<div class="grammar-example"><button class="grammar-audio" data-audio="${escapeHtml(example.jp)}" title="Satz anhören">🔊</button><div><div class="grammar-example-jp">${supported.sentenceHtml}</div><div class="grammar-example-de">${escapeHtml(example.de)}</div>${example.note ? `<div class="grammar-form-note">${escapeHtml(example.note)}</div>` : ""}${supported.notesHtml}</div></div>`;
       }
 
       function renderFormation(item, index, color) {
