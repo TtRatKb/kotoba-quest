@@ -445,6 +445,917 @@
         .replace(/if\s*\(\s*!data\.browserTtsFallback\s*\)\s*\{/g, "if(false) {");
     }
 
+    function grammarPathBootstrap() {
+      if (document.getElementById("grammar")) return;
+
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const GRAMMAR_VERSION = 1;
+      const SKILLS = [
+        { id: "meaning", label: "Verstehen", icon: "💡" },
+        { id: "form", label: "Form bilden", icon: "🧩" },
+        { id: "listening", label: "Hören", icon: "🎧" },
+        { id: "production", label: "Abrufen", icon: "✍️" }
+      ];
+      const STAGES = [
+        { name: "Neu", delay: 0 },
+        { name: "Apprentice 1", delay: 4 * 60 * 60 * 1000 },
+        { name: "Apprentice 2", delay: 8 * 60 * 60 * 1000 },
+        { name: "Apprentice 3", delay: 24 * 60 * 60 * 1000 },
+        { name: "Apprentice 4", delay: 2 * 24 * 60 * 60 * 1000 },
+        { name: "Guru 1", delay: 7 * 24 * 60 * 60 * 1000 },
+        { name: "Guru 2", delay: 14 * 24 * 60 * 60 * 1000 },
+        { name: "Master", delay: 30 * 24 * 60 * 60 * 1000 },
+        { name: "Erleuchtet", delay: 120 * 24 * 60 * 60 * 1000 },
+        { name: "Abgeschlossen", delay: Infinity }
+      ];
+
+      const POINTS = [
+        {
+          id: "you-ni-naru",
+          title: "〜ようになる",
+          subtitle: "Eine Fähigkeit oder ein Zustand verändert sich",
+          color: "#6c63d9",
+          summary: "Etwas ist mit der Zeit möglich oder zur Gewohnheit geworden – ohne dass der Satz die bewusste Anstrengung in den Mittelpunkt stellt.",
+          formation: [
+            "Verb in Wörterbuchform + ようになる",
+            "Verb in ない-Form + ようになる",
+            "Potentialform + ようになる ist besonders häufig"
+          ],
+          contrast: "ようになる beschreibt das Ergebnis einer Veränderung. ようにする beschreibt dagegen eine bewusste Bemühung oder Gewohnheit.",
+          examples: [
+            { jp: "日本語のニュースが分かるようになりました。", de: "Ich kann inzwischen japanische Nachrichten verstehen." },
+            { jp: "毎朝、早く起きるようになりました。", de: "Ich stehe inzwischen jeden Morgen früh auf." },
+            { jp: "コーヒーを飲まないようになりました。", de: "Ich trinke inzwischen keinen Kaffee mehr." }
+          ],
+          checkpoint: {
+            cue: "Schreibe auf Japanisch: „Ich kann inzwischen ein wenig Japanisch sprechen.“",
+            models: ["少し日本語が話せるようになりました。", "日本語が少し話せるようになりました。"],
+            required: ["ようにな"]
+          },
+          questions: {
+            meaning: [
+              { prompt: "Was drückt die Grammatik in diesem Satz aus?", shown: "漢字が読めるようになりました。", model: "Die Fähigkeit hat sich verändert: Die Person kann inzwischen Kanji lesen.", keywords: [["inzwischen", "jetzt"], ["kanji"], ["lesen", "kann"]] },
+              { prompt: "Erkläre die Veränderung auf Deutsch.", shown: "最近、野菜を食べるようになりました。", model: "Die Person isst seit Kurzem beziehungsweise inzwischen regelmäßig Gemüse.", keywords: [["gemüse"], ["inzwischen", "seit kurzem", "neuerdings"], ["essen"]] }
+            ],
+            form: [
+              { prompt: "Setze die passende Form ein. Grundform: 話せる", shown: "日本語が＿＿＿＿なりました。", model: "話せるように", answers: ["話せるように"] },
+              { prompt: "Setze die passende Form ein. Grundform: 忘れない", shown: "約束を＿＿＿＿なりました。", model: "忘れないように", answers: ["忘れないように"] }
+            ],
+            listening: [
+              { audio: "前より速く読めるようになりました。", prompt: "Höre den Satz und schreibe seine Kernaussage auf Deutsch.", model: "Ich kann inzwischen schneller lesen als früher.", keywords: [["schneller"], ["lesen"], ["inzwischen", "jetzt", "kann"]] },
+              { audio: "最近、テレビを見なくなりました。", prompt: "Was hat sich verändert?", model: "Die Person schaut in letzter Zeit kein Fernsehen mehr.", keywords: [["fernsehen", "tv"], ["nicht mehr"], ["schauen", "sehen"]] }
+            ],
+            production: [
+              { prompt: "Schreibe auf Japanisch: „Ich kann inzwischen ohne Untertitel Anime verstehen.“", model: "字幕なしでアニメが分かるようになりました。", answers: ["字幕なしでアニメが分かるようになりました", "字幕がなくてもアニメが分かるようになりました"], required: ["ようにな"] },
+              { prompt: "Schreibe auf Japanisch: „Ich stehe inzwischen jeden Tag um sieben Uhr auf.“", model: "毎日七時に起きるようになりました。", answers: ["毎日七時に起きるようになりました", "毎日7時に起きるようになりました"], required: ["ようにな"] }
+            ]
+          }
+        },
+        {
+          id: "you-ni-suru",
+          title: "〜ようにする",
+          subtitle: "Bewusste Bemühung oder selbst gewählte Gewohnheit",
+          color: "#bf5ea8",
+          summary: "Die Person bemüht sich bewusst darum, etwas zu tun oder zu vermeiden. In der Form ようにしている wird daraus eine fortlaufende Gewohnheit.",
+          formation: [
+            "Verb in Wörterbuchform + ようにする",
+            "Verb in ない-Form + ようにする",
+            "Für eine laufende Gewohnheit: ようにしている"
+          ],
+          contrast: "ようにする betont deine Absicht und dein Handeln. ようになる betont die eingetretene Veränderung.",
+          examples: [
+            { jp: "毎日、日本語を読むようにしています。", de: "Ich versuche, jeden Tag etwas auf Japanisch zu lesen." },
+            { jp: "夜はコーヒーを飲まないようにしています。", de: "Ich achte darauf, abends keinen Kaffee zu trinken." },
+            { jp: "忘れないようにしてください。", de: "Bitte achte darauf, es nicht zu vergessen." }
+          ],
+          checkpoint: {
+            cue: "Schreibe auf Japanisch: „Ich versuche, jeden Tag früh ins Bett zu gehen.“",
+            models: ["毎日早く寝るようにしています。"],
+            required: ["ようにして"]
+          },
+          questions: {
+            meaning: [
+              { prompt: "Was wird hier betont?", shown: "できるだけ日本語で話すようにしています。", model: "Die Person bemüht sich bewusst, möglichst auf Japanisch zu sprechen.", keywords: [["bemüh", "versuch", "achte"], ["japanisch"], ["sprechen"]] },
+              { prompt: "Erkläre den Unterschied zur bloßen Veränderung.", shown: "甘い物を食べないようにしています。", model: "Die Person entscheidet beziehungsweise bemüht sich bewusst, keine Süßigkeiten zu essen.", keywords: [["bewusst", "bemüh", "versuch", "achte"], ["süß", "süßigkeiten"], ["nicht"]] }
+            ],
+            form: [
+              { prompt: "Setze die passende Form ein. Grundform: 遅れない", shown: "約束に＿＿＿＿しています。", model: "遅れないように", answers: ["遅れないように"] },
+              { prompt: "Setze die passende Form ein. Grundform: 運動する", shown: "毎日＿＿＿＿しています。", model: "運動するように", answers: ["運動するように"] }
+            ],
+            listening: [
+              { audio: "寝る前にスマホを見ないようにしています。", prompt: "Welche bewusste Gewohnheit hörst du?", model: "Die Person achtet darauf, vor dem Schlafengehen nicht aufs Smartphone zu schauen.", keywords: [["smartphone", "handy"], ["vor dem schlafen", "schlafengehen", "bett"], ["nicht"]] },
+              { audio: "毎日、新しい言葉を三つ覚えるようにしています。", prompt: "Was versucht die Person täglich zu tun?", model: "Sie versucht, jeden Tag drei neue Wörter zu lernen.", keywords: [["drei", "3"], ["wörter", "vokabel"], ["lernen", "merken"]] }
+            ],
+            production: [
+              { prompt: "Schreibe auf Japanisch: „Ich versuche, nicht zu spät zu kommen.“", model: "遅れないようにしています。", answers: ["遅れないようにしています", "遅くならないようにしています"], required: ["ようにして"] },
+              { prompt: "Schreibe auf Japanisch: „Ich achte darauf, jeden Tag Wasser zu trinken.“", model: "毎日水を飲むようにしています。", answers: ["毎日水を飲むようにしています"], required: ["ようにして"] }
+            ]
+          }
+        },
+        {
+          id: "koto-ni-naru",
+          title: "〜ことになる",
+          subtitle: "Eine Entscheidung oder Regel entsteht außerhalb des Sprechers",
+          color: "#3f8abf",
+          summary: "Etwas wurde entschieden, ergibt sich aus den Umständen oder gilt als Regel. Der Sprecher stellt es nicht als eigene freie Entscheidung dar.",
+          formation: [
+            "Verb in Wörterbuchform + ことになる",
+            "Verb in ない-Form + ことになる",
+            "Vergangenheit: ことになった"
+          ],
+          contrast: "ことになる: Es wurde entschieden oder ergibt sich. ことにする: Ich entscheide es selbst.",
+          examples: [
+            { jp: "来月、日本へ出張することになりました。", de: "Es wurde entschieden, dass ich nächsten Monat dienstlich nach Japan reise." },
+            { jp: "この部屋では食べないことになっています。", de: "Es gilt die Regel, dass in diesem Raum nicht gegessen wird." },
+            { jp: "会議は中止することになりました。", de: "Es wurde beschlossen, die Besprechung abzusagen." }
+          ],
+          checkpoint: {
+            cue: "Schreibe auf Japanisch: „Es wurde entschieden, dass ich ab April in Tokio arbeite.“",
+            models: ["四月から東京で働くことになりました。", "4月から東京で働くことになりました。"],
+            required: ["ことにな"]
+          },
+          questions: {
+            meaning: [
+              { prompt: "Wer wird hier als Entscheider dargestellt?", shown: "来年から大阪で働くことになりました。", model: "Die Entscheidung kam von außen oder aus den Umständen; der Sprecher berichtet das Ergebnis.", keywords: [["außen", "umstände", "firma", "nicht selbst"], ["entschieden", "entscheidung"]] },
+              { prompt: "Welche Funktion hat die Form?", shown: "図書館では電話を使わないことになっています。", model: "Sie beschreibt eine geltende Regel: In der Bibliothek benutzt man kein Telefon.", keywords: [["regel"], ["bibliothek"], ["telefon", "handy"], ["nicht"]] }
+            ],
+            form: [
+              { prompt: "Setze die passende Form ein. Grundform: 参加する", shown: "私も会議に＿＿＿＿なりました。", model: "参加することに", answers: ["参加することに"] },
+              { prompt: "Setze die passende Form ein. Grundform: 入らない", shown: "ここには＿＿＿＿なっています。", model: "入らないことに", answers: ["入らないことに"] }
+            ],
+            listening: [
+              { audio: "来週の授業はオンラインですることになりました。", prompt: "Was wurde entschieden?", model: "Der Unterricht nächste Woche findet online statt.", keywords: [["unterricht"], ["nächste woche"], ["online"]] },
+              { audio: "この会社では日本語だけで話すことになっています。", prompt: "Welche Regel hörst du?", model: "In dieser Firma soll beziehungsweise darf nur Japanisch gesprochen werden.", keywords: [["firma"], ["nur"], ["japanisch"], ["sprechen"]] }
+            ],
+            production: [
+              { prompt: "Schreibe auf Japanisch: „Es wurde entschieden, dass die Reise abgesagt wird.“", model: "旅行は中止することになりました。", answers: ["旅行は中止することになりました", "旅行を中止することになりました"], required: ["ことにな"] },
+              { prompt: "Schreibe auf Japanisch: „In dieser Schule gilt die Regel, dass man Uniform trägt.“", model: "この学校では制服を着ることになっています。", answers: ["この学校では制服を着ることになっています"], required: ["ことにな"] }
+            ]
+          }
+        },
+        {
+          id: "koto-ni-suru",
+          title: "〜ことにする",
+          subtitle: "Der Sprecher trifft selbst eine Entscheidung",
+          color: "#2b9a78",
+          summary: "Du entscheidest bewusst, etwas zu tun oder nicht zu tun. Mit ことにしている beschreibst du eine selbst gesetzte Regel oder Gewohnheit.",
+          formation: [
+            "Verb in Wörterbuchform + ことにする",
+            "Verb in ない-Form + ことにする",
+            "Selbst gesetzte Gewohnheit: ことにしている"
+          ],
+          contrast: "ことにする ist deine Entscheidung. ことになる klingt, als sei die Entscheidung außerhalb deiner Kontrolle gefallen.",
+          examples: [
+            { jp: "今年、日本へ行くことにしました。", de: "Ich habe beschlossen, dieses Jahr nach Japan zu reisen." },
+            { jp: "今日は出かけないことにします。", de: "Ich entscheide mich, heute nicht auszugehen." },
+            { jp: "日曜日は仕事をしないことにしています。", de: "Ich habe für mich festgelegt, sonntags nicht zu arbeiten." }
+          ],
+          checkpoint: {
+            cue: "Schreibe auf Japanisch: „Ich habe beschlossen, jeden Tag dreißig Minuten zu lernen.“",
+            models: ["毎日三十分勉強することにしました。", "毎日30分勉強することにしました。"],
+            required: ["ことにし"]
+          },
+          questions: {
+            meaning: [
+              { prompt: "Was drückt der Satz aus?", shown: "新しいパソコンを買うことにしました。", model: "Der Sprecher hat selbst beschlossen, einen neuen Computer zu kaufen.", keywords: [["selbst", "sprecher", "ich"], ["beschlossen", "entschieden"], ["computer", "pc"]] },
+              { prompt: "Ist das eine fremde Regel oder eine eigene Entscheidung? Erkläre.", shown: "夜は十一時までに寝ることにしています。", model: "Es ist eine selbst gesetzte Gewohnheit beziehungsweise Regel, bis elf Uhr ins Bett zu gehen.", keywords: [["eigene", "selbst"], ["regel", "gewohnheit"], ["elf", "11"], ["schlafen", "bett"]] }
+            ],
+            form: [
+              { prompt: "Setze die passende Form ein. Grundform: 買わない", shown: "今月は何も＿＿＿＿しました。", model: "買わないことに", answers: ["買わないことに"] },
+              { prompt: "Setze die passende Form ein. Grundform: 勉強する", shown: "毎朝＿＿＿＿しています。", model: "勉強することに", answers: ["勉強することに"] }
+            ],
+            listening: [
+              { audio: "今日は家でゆっくり休むことにしました。", prompt: "Welche Entscheidung hat die Person getroffen?", model: "Sie hat beschlossen, sich heute zu Hause in Ruhe auszuruhen.", keywords: [["heute"], ["zu hause"], ["ausruhen", "erholen"]] },
+              { audio: "お金を使いすぎないことにしています。", prompt: "Welche selbst gesetzte Regel hörst du?", model: "Die Person achtet darauf beziehungsweise hat festgelegt, nicht zu viel Geld auszugeben.", keywords: [["geld"], ["nicht zu viel"], ["ausgeben"]] }
+            ],
+            production: [
+              { prompt: "Schreibe auf Japanisch: „Ich habe beschlossen, heute nicht zu lernen.“", model: "今日は勉強しないことにしました。", answers: ["今日は勉強しないことにしました"], required: ["ことにし"] },
+              { prompt: "Schreibe auf Japanisch: „Ich habe für mich festgelegt, sonntags zu kochen.“", model: "日曜日は料理することにしています。", answers: ["日曜日は料理することにしています", "日曜日に料理することにしています"], required: ["ことにして"] }
+            ]
+          }
+        },
+        {
+          id: "naku-naru",
+          title: "〜なくなる",
+          subtitle: "Etwas geschieht nicht mehr oder ein Zustand verschwindet",
+          color: "#df8237",
+          summary: "Die ない-Form wird zu なく und verbindet sich mit なる. Damit beschreibst du, dass eine Handlung oder ein negativer Zustand nicht mehr besteht.",
+          formation: [
+            "Verb: ない → なくなる, z. B. 行かない → 行かなくなる",
+            "i-Adjektiv: い → くなる, z. B. 寒い → 寒くなる",
+            "na-Adjektiv/Nomen: ではない → ではなくなる"
+          ],
+          contrast: "なくなる beschreibt das Verschwinden oder Aufhören. Bei einer bewusst vermiedenen Handlung passt häufig ようにする besser.",
+          examples: [
+            { jp: "最近、テレビを見なくなりました。", de: "In letzter Zeit schaue ich kein Fernsehen mehr." },
+            { jp: "前ほど緊張しなくなりました。", de: "Ich bin nicht mehr so nervös wie früher." },
+            { jp: "冬になると、暖かくなります。", de: "Wenn der Winter kommt, wird es wärmer." }
+          ],
+          checkpoint: {
+            cue: "Schreibe auf Japanisch: „Ich esse inzwischen kein Fleisch mehr.“",
+            models: ["肉を食べなくなりました。"],
+            required: ["なくな"]
+          },
+          questions: {
+            meaning: [
+              { prompt: "Was hat aufgehört oder ist verschwunden?", shown: "最近、あまりゲームをしなくなりました。", model: "Die Person spielt in letzter Zeit nicht mehr viel beziehungsweise kaum noch.", keywords: [["spiel", "gaming"], ["nicht mehr", "kaum noch"], ["viel"]] },
+              { prompt: "Erkläre die Veränderung.", shown: "日本語を話すのが怖くなくなりました。", model: "Die Person hat keine Angst mehr davor, Japanisch zu sprechen.", keywords: [["keine angst mehr", "nicht mehr angst"], ["japanisch"], ["sprechen"]] }
+            ],
+            form: [
+              { prompt: "Bilde die richtige Form aus 飲まない.", shown: "コーヒーを＿＿＿＿ました。", model: "飲まなくなり", answers: ["飲まなくなり"] },
+              { prompt: "Bilde die richtige Form aus 忙しい.", shown: "仕事が＿＿＿＿ました。", model: "忙しくなり", answers: ["忙しくなり"] }
+            ],
+            listening: [
+              { audio: "前ほど漢字を忘れなくなりました。", prompt: "Was hat sich verbessert?", model: "Die Person vergisst Kanji nicht mehr so häufig wie früher.", keywords: [["kanji"], ["vergessen"], ["nicht mehr so", "seltener"]] },
+              { audio: "この薬を飲んで、頭が痛くなくなりました。", prompt: "Welche Veränderung hörst du?", model: "Nach der Medizin hat die Person keine Kopfschmerzen mehr.", keywords: [["kopf", "kopfschmerz"], ["nicht mehr", "weg"], ["medizin", "medikament"]] }
+            ],
+            production: [
+              { prompt: "Schreibe auf Japanisch: „Ich trinke keinen Alkohol mehr.“", model: "お酒を飲まなくなりました。", answers: ["お酒を飲まなくなりました", "アルコールを飲まなくなりました"], required: ["なくな"] },
+              { prompt: "Schreibe auf Japanisch: „Ich bin nicht mehr so beschäftigt wie früher.“", model: "前ほど忙しくなくなりました。", answers: ["前ほど忙しくなくなりました"], required: ["なくな"] }
+            ]
+          }
+        }
+      ];
+
+      const grammarStyle = document.createElement("style");
+      grammarStyle.textContent = `
+        .grammar-hero { background:linear-gradient(120deg,#4f46b8,#9a58c7 55%,#e28baf); color:white; overflow:hidden; position:relative; }
+        .grammar-hero::after { content:"文法"; position:absolute; right:20px; bottom:-30px; font-size:7rem; font-weight:950; opacity:.11; transform:rotate(-5deg); }
+        .grammar-hero h2 { margin:0; font-size:clamp(1.65rem,4vw,2.7rem); line-height:1.08; max-width:670px; }
+        .grammar-hero p { max-width:690px; line-height:1.55; opacity:.94; position:relative; z-index:1; }
+        .grammar-overview-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; margin-bottom:18px; }
+        .grammar-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:16px 0 20px; }
+        .grammar-stat { padding:16px; border-radius:16px; background:#faf8ff; border:1px solid var(--border); }
+        .grammar-stat strong { display:block; color:var(--primary); font-size:1.75rem; }
+        .grammar-stat span { color:var(--muted); font-size:.82rem; font-weight:750; }
+        .grammar-point-list { display:grid; gap:12px; }
+        .grammar-point { padding:17px; border-radius:17px; border:1px solid var(--border); background:white; }
+        .grammar-point-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+        .grammar-point-title { display:flex; align-items:center; gap:10px; }
+        .grammar-color { width:11px; height:38px; border-radius:999px; flex:0 0 auto; }
+        .grammar-point h3 { margin:0; font-size:1.23rem; }
+        .grammar-point p { margin:4px 0 0; color:var(--muted); font-size:.88rem; }
+        .grammar-skill-row { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-top:13px; }
+        .grammar-skill { padding:9px 8px; text-align:center; border-radius:12px; background:#faf8ff; border:1px solid var(--border); }
+        .grammar-skill strong,.grammar-skill span { display:block; }
+        .grammar-skill strong { font-size:.77rem; }
+        .grammar-skill span { margin-top:3px; color:var(--muted); font-size:.7rem; }
+        .grammar-progress { height:10px; border-radius:999px; overflow:hidden; background:#ece8f4; }
+        .grammar-progress > span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#5c4dcc,#dc7dad); transition:width .25s ease; }
+        .grammar-lock { opacity:.62; }
+        .grammar-badge { display:inline-flex; align-items:center; padding:6px 9px; border-radius:999px; background:#eee8ff; color:var(--primary-dark); font-size:.75rem; font-weight:900; }
+        .grammar-badge.ready { background:#e7f7f0; color:#237b58; }
+        .grammar-badge.due { background:#fff0dc; color:#925411; }
+        .grammar-study-shell { max-width:850px; margin:0 auto; }
+        .grammar-study-card { min-height:520px; }
+        .grammar-stepper { display:flex; gap:7px; margin-bottom:22px; }
+        .grammar-stepper span { height:7px; flex:1; border-radius:999px; background:#e9e4f2; }
+        .grammar-stepper span.done { background:var(--primary); }
+        .grammar-kicker { color:var(--primary); text-transform:uppercase; letter-spacing:.1em; font-size:.76rem; font-weight:950; }
+        .grammar-study-card h2 { margin:8px 0 9px; font-size:clamp(1.55rem,4vw,2.35rem); }
+        .grammar-explanation { color:var(--muted); line-height:1.65; font-size:1.02rem; }
+        .grammar-form-list { display:grid; gap:8px; margin:18px 0; }
+        .grammar-form-item { padding:12px 14px; border-radius:13px; background:#faf8ff; border:1px solid var(--border); font-weight:800; }
+        .grammar-example-list { display:grid; gap:10px; margin:18px 0; }
+        .grammar-example { display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:start; padding:13px; border-radius:14px; border:1px solid var(--border); background:white; }
+        .grammar-audio { width:38px; height:38px; border-radius:50%; background:#edf2ff; color:#3557ae; border:1px solid #cad6f8; font-weight:900; }
+        .grammar-example-jp { font-size:1.08rem; font-weight:900; }
+        .grammar-example-de { color:var(--muted); margin-top:4px; font-size:.9rem; }
+        .grammar-contrast { padding:15px; border-left:5px solid var(--primary); border-radius:13px; background:#f5f1ff; line-height:1.55; }
+        .grammar-input { width:100%; min-height:55px; margin-top:12px; padding:13px; border:1px solid var(--border); border-radius:13px; font:inherit; resize:vertical; }
+        .grammar-input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 4px rgba(121,87,213,.11); }
+        .grammar-feedback { margin-top:14px; padding:15px; border-radius:14px; background:#faf8ff; border:1px solid var(--border); line-height:1.55; }
+        .grammar-feedback.good { background:#eaf8f2; border-color:#bce7d5; }
+        .grammar-feedback.warn { background:#fff6e8; border-color:#f1d2a4; }
+        .grammar-review-type { display:inline-flex; align-items:center; gap:7px; padding:8px 12px; border-radius:999px; color:white; background:var(--primary); font-size:.78rem; font-weight:950; text-transform:uppercase; letter-spacing:.07em; }
+        .grammar-review-prompt { margin:18px 0 8px; color:var(--muted); font-weight:800; }
+        .grammar-review-sentence { padding:18px; border-radius:15px; background:#faf8ff; border:1px solid var(--border); font-size:1.35rem; font-weight:900; line-height:1.5; }
+        .grammar-listening-box { text-align:center; padding:24px; border-radius:17px; background:linear-gradient(180deg,#edf2ff,#fff); border:1px solid #cad6f8; }
+        .grammar-listening-box button { width:64px; height:64px; border-radius:50%; color:white; background:#496fd4; font-size:1.45rem; box-shadow:0 10px 26px rgba(73,111,212,.25); }
+        .grammar-grade-row { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px; }
+        .grammar-grade-row button { padding:12px; border-radius:12px; font-weight:900; }
+        .grammar-grade-good { color:white; background:#268d63; }
+        .grammar-grade-close { color:#875213; background:#fff0ce; }
+        .grammar-grade-bad { color:white; background:#c84f67; }
+        .grammar-level-complete { padding:15px; border-radius:14px; background:#eaf8f2; border:1px solid #bce7d5; }
+        @media (max-width:860px) { .grammar-overview-grid { grid-template-columns:1fr; } .grammar-stats { grid-template-columns:repeat(2,1fr); } }
+        @media (max-width:580px) { .grammar-skill-row { grid-template-columns:repeat(2,1fr); } .grammar-grade-row { grid-template-columns:1fr; } }
+      `;
+      document.head.appendChild(grammarStyle);
+
+      const nav = document.querySelector(".nav");
+      const grammarNav = document.createElement("button");
+      grammarNav.dataset.view = "grammar";
+      grammarNav.textContent = "Grammatik";
+      nav?.appendChild(grammarNav);
+
+      const main = document.querySelector("main");
+      const grammarSection = document.createElement("section");
+      grammarSection.id = "grammar";
+      grammarSection.className = "view";
+      grammarSection.innerHTML = `<div id="grammarOverviewContent"></div>`;
+
+      const grammarLessonSection = document.createElement("section");
+      grammarLessonSection.id = "grammarLesson";
+      grammarLessonSection.className = "view";
+      grammarLessonSection.innerHTML = `<div class="grammar-study-shell"><article class="card grammar-study-card" id="grammarLessonCard"></article></div>`;
+
+      const grammarReviewSection = document.createElement("section");
+      grammarReviewSection.id = "grammarReview";
+      grammarReviewSection.className = "view";
+      grammarReviewSection.innerHTML = `<div class="grammar-study-shell"><article class="card grammar-study-card" id="grammarReviewCard"></article></div>`;
+
+      const placementSection = document.getElementById("placement");
+      if (main && placementSection) {
+        main.insertBefore(grammarSection, placementSection);
+        main.insertBefore(grammarLessonSection, placementSection);
+        main.insertBefore(grammarReviewSection, placementSection);
+      } else {
+        main?.append(grammarSection, grammarLessonSection, grammarReviewSection);
+      }
+
+      const dashboard = document.getElementById("dashboard");
+      const grammarDashboard = document.createElement("div");
+      grammarDashboard.style.marginTop = "18px";
+      grammarDashboard.innerHTML = `
+        <article class="card mode-card" id="grammarDashboardCard">
+          <div>
+            <div class="mode-icon">📚</div>
+            <h3 style="margin:0">Grammar Path</h3>
+            <p class="muted">Eigene Grammatik-Level mit Erklärungen, offenen Aufgaben, Hörtraining und getrenntem SRS.</p>
+            <div class="status-box">
+              <strong id="grammarDashboardStatus">Test-Level bereit</strong>
+              <span class="small muted" id="grammarDashboardDetail">Fünf Strukturen zu Veränderungen und Entscheidungen.</span>
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="primary" id="dashboardGrammarOpen">Grammar Path öffnen</button>
+            <button class="ghost" id="dashboardGrammarReview">Grammatik-Reviews</button>
+          </div>
+        </article>`;
+      dashboard?.appendChild(grammarDashboard);
+
+      function defaultSkill() {
+        return { stage: 0, dueAt: null, correct: 0, incorrect: 0, lastReviewedAt: null };
+      }
+
+      function defaultState() {
+        return {
+          version: GRAMMAR_VERSION,
+          currentLevel: 1,
+          levelCompleted: false,
+          points: Object.fromEntries(POINTS.map(point => [
+            point.id,
+            {
+              lessonComplete: false,
+              lessonCompletedAt: null,
+              skills: Object.fromEntries(SKILLS.map(skill => [skill.id, defaultSkill()]))
+            }
+          ]))
+        };
+      }
+
+      function normalizeState(value) {
+        const base = defaultState();
+        if (!value || typeof value !== "object") return base;
+        base.currentLevel = Math.max(1, Number(value.currentLevel || 1));
+        base.levelCompleted = Boolean(value.levelCompleted);
+        for (const point of POINTS) {
+          const oldPoint = value.points?.[point.id];
+          if (!oldPoint) continue;
+          base.points[point.id].lessonComplete = Boolean(oldPoint.lessonComplete);
+          base.points[point.id].lessonCompletedAt = oldPoint.lessonCompletedAt || null;
+          for (const skill of SKILLS) {
+            const oldSkill = oldPoint.skills?.[skill.id];
+            if (!oldSkill) continue;
+            base.points[point.id].skills[skill.id] = {
+              stage: Math.max(0, Math.min(9, Number(oldSkill.stage || 0))),
+              dueAt: oldSkill.dueAt == null ? null : Number(oldSkill.dueAt),
+              correct: Math.max(0, Number(oldSkill.correct || 0)),
+              incorrect: Math.max(0, Number(oldSkill.incorrect || 0)),
+              lastReviewedAt: oldSkill.lastReviewedAt == null ? null : Number(oldSkill.lastReviewedAt)
+            };
+          }
+        }
+        return base;
+      }
+
+      function readStoredGrammar() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+          return parsed?.grammar || null;
+        } catch {
+          return null;
+        }
+      }
+
+      let grammarState = normalizeState(readStoredGrammar());
+      try {
+        if (typeof data !== "undefined") data.grammar = grammarState;
+      } catch {}
+
+      function persistGrammar() {
+        updateLevelCompletion();
+        try {
+          if (typeof data !== "undefined") {
+            data.grammar = grammarState;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            return;
+          }
+        } catch {}
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+          parsed.grammar = grammarState;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        } catch (error) {
+          console.error("Grammar progress could not be saved", error);
+        }
+      }
+
+      function updateLevelCompletion() {
+        grammarState.levelCompleted = POINTS.every(point =>
+          SKILLS.every(skill => grammarState.points[point.id].skills[skill.id].stage >= 5)
+        );
+      }
+
+      function stageName(stage) {
+        return STAGES[Math.max(0, Math.min(9, Number(stage || 0)))]?.name || "Neu";
+      }
+
+      function pointMinimumStage(pointId) {
+        return Math.min(...SKILLS.map(skill => grammarState.points[pointId].skills[skill.id].stage));
+      }
+
+      function learnedPoints() {
+        return POINTS.filter(point => grammarState.points[point.id].lessonComplete);
+      }
+
+      function dueItems() {
+        const now = Date.now();
+        const items = [];
+        for (const point of POINTS) {
+          const pointState = grammarState.points[point.id];
+          if (!pointState.lessonComplete) continue;
+          for (const skill of SKILLS) {
+            const skillState = pointState.skills[skill.id];
+            if (skillState.stage > 0 && skillState.stage < 9 && Number(skillState.dueAt || 0) <= now) {
+              items.push({ pointId: point.id, skillId: skill.id });
+            }
+          }
+        }
+        return items;
+      }
+
+      function guruSkillCount() {
+        let count = 0;
+        for (const point of POINTS) {
+          for (const skill of SKILLS) {
+            if (grammarState.points[point.id].skills[skill.id].stage >= 5) count++;
+          }
+        }
+        return count;
+      }
+
+      function openGrammarView(viewId) {
+        try { stopAudioPlayback?.(); } catch {}
+        document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
+        document.querySelectorAll(".nav button").forEach(button => button.classList.remove("active"));
+        document.getElementById(viewId)?.classList.add("active");
+        grammarNav.classList.add("active");
+        if (viewId === "grammar") renderGrammarOverview();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function notify(message) {
+        try { toast(message); } catch { console.log(message); }
+      }
+
+      let activeUtterance = null;
+      function speakJapanese(text) {
+        const spoken = String(text || "").trim();
+        if (!spoken || !("speechSynthesis" in window)) {
+          notify("Die Browserstimme ist auf diesem Gerät nicht verfügbar.");
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(spoken);
+        utterance.lang = "ja-JP";
+        utterance.rate = 0.84;
+        const voices = window.speechSynthesis.getVoices();
+        utterance.voice = voices.find(voice => String(voice.lang || "").toLowerCase().startsWith("ja")) || null;
+        activeUtterance = utterance;
+        utterance.onend = () => { if (activeUtterance === utterance) activeUtterance = null; };
+        window.speechSynthesis.speak(utterance);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function renderGrammarOverview() {
+        const learned = learnedPoints().length;
+        const due = dueItems().length;
+        const guru = guruSkillCount();
+        const totalSkills = POINTS.length * SKILLS.length;
+        const progress = Math.round((guru / totalSkills) * 100);
+        const nextPoint = POINTS.find(point => !grammarState.points[point.id].lessonComplete);
+        const overview = document.getElementById("grammarOverviewContent");
+        if (!overview) return;
+
+        overview.innerHTML = `
+          <div class="grammar-overview-grid">
+            <article class="card grammar-hero">
+              <p class="eyebrow">Grammar Path · Test-Level 1</p>
+              <h2>Veränderungen und Entscheidungen wirklich abrufen.</h2>
+              <p>Fünf eng verwandte Strukturen werden erklärt, kontrastiert, gehört und in offenen Antworten produziert. Jede Teilfähigkeit besitzt ihren eigenen SRS-Stand.</p>
+              <div class="button-row">
+                <button class="primary" id="grammarNextLesson">${nextPoint ? "Nächste Grammatik lernen" : "Alle Lektionen abgeschlossen"}</button>
+                <button class="secondary" id="grammarStartReview">${due ? `${due} Reviews starten` : "Reviews ansehen"}</button>
+              </div>
+            </article>
+            <article class="card level-card">
+              <span class="muted small">Aktuelles Grammatik-Level</span>
+              <div class="level-number">1</div>
+              <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
+              <div class="small muted">${guru} von ${totalSkills} Teilfähigkeiten auf Guru 1</div>
+              <div class="level-detail">
+                <strong>${grammarState.levelCompleted ? "Level abgeschlossen" : `${learned} von ${POINTS.length} Lektionen gelernt`}</strong>
+                <span class="small muted">${grammarState.levelCompleted ? "Alle vier Fähigkeiten jeder Struktur sind mindestens Guru 1." : "Das Level gilt erst als abgeschlossen, wenn Verstehen, Formen, Hören und Abrufen gefestigt sind."}</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="grammar-stats">
+            <div class="grammar-stat"><strong>${POINTS.length - learned}</strong><span>Neue Lektionen</span></div>
+            <div class="grammar-stat"><strong>${due}</strong><span>Fällige Reviews</span></div>
+            <div class="grammar-stat"><strong>${guru}</strong><span>Guru-Teilfähigkeiten</span></div>
+            <div class="grammar-stat"><strong>${progress}%</strong><span>Level-Fortschritt</span></div>
+          </div>
+
+          ${grammarState.levelCompleted ? `<div class="grammar-level-complete" style="margin-bottom:18px"><strong>🎉 Grammatik-Level 1 abgeschlossen</strong><div class="small muted" style="margin-top:4px">Das Test-Level ist vollständig gefestigt. Ein späteres Level 2 kann auf demselben System aufbauen.</div></div>` : ""}
+
+          <div class="section-title"><div><h2>Level 1 · Veränderungen & Entscheidungen</h2><p>Ähnliche Formen werden bewusst gemeinsam gelernt, damit du sie im Kontext auswählen kannst.</p></div></div>
+          <div class="grammar-point-list">
+            ${POINTS.map((point, index) => renderPointCard(point, index)).join("")}
+          </div>`;
+
+        document.getElementById("grammarNextLesson")?.addEventListener("click", () => {
+          if (nextPoint) startLesson(nextPoint.id);
+          else notify("Alle fünf Lektionen sind bereits abgeschlossen.");
+        });
+        document.getElementById("grammarStartReview")?.addEventListener("click", () => startReviewSession(false));
+        overview.querySelectorAll("[data-grammar-lesson]").forEach(button => {
+          button.addEventListener("click", () => startLesson(button.dataset.grammarLesson));
+        });
+        overview.querySelectorAll("[data-grammar-practice]").forEach(button => {
+          button.addEventListener("click", () => startPointPractice(button.dataset.grammarPractice));
+        });
+        updateGrammarDashboard();
+      }
+
+      function renderPointCard(point, index) {
+        const pointState = grammarState.points[point.id];
+        const minStage = pointMinimumStage(point.id);
+        const pointDue = SKILLS.filter(skill => {
+          const skillState = pointState.skills[skill.id];
+          return pointState.lessonComplete && skillState.stage > 0 && skillState.stage < 9 && Number(skillState.dueAt || 0) <= Date.now();
+        }).length;
+        return `
+          <article class="grammar-point ${pointState.lessonComplete ? "" : "grammar-lock"}">
+            <div class="grammar-point-head">
+              <div class="grammar-point-title">
+                <span class="grammar-color" style="background:${point.color}"></span>
+                <div><h3>${escapeHtml(point.title)}</h3><p>${escapeHtml(point.subtitle)}</p></div>
+              </div>
+              <span class="grammar-badge ${pointDue ? "due" : pointState.lessonComplete ? "ready" : ""}">${pointDue ? `${pointDue} fällig` : pointState.lessonComplete ? stageName(minStage) : `Lektion ${index + 1}`}</span>
+            </div>
+            <div class="grammar-skill-row">
+              ${SKILLS.map(skill => {
+                const stage = pointState.skills[skill.id].stage;
+                return `<div class="grammar-skill"><strong>${skill.icon} ${skill.label}</strong><span>${stageName(stage)}</span></div>`;
+              }).join("")}
+            </div>
+            <div class="button-row" style="margin-top:13px">
+              <button class="${pointState.lessonComplete ? "ghost" : "primary"}" data-grammar-lesson="${point.id}">${pointState.lessonComplete ? "Lektion wiederholen" : "Lektion starten"}</button>
+              ${pointState.lessonComplete ? `<button class="secondary" data-grammar-practice="${point.id}">Frei üben</button>` : ""}
+            </div>
+          </article>`;
+      }
+
+      function updateGrammarDashboard() {
+        const status = document.getElementById("grammarDashboardStatus");
+        const detail = document.getElementById("grammarDashboardDetail");
+        if (!status || !detail) return;
+        const learned = learnedPoints().length;
+        const due = dueItems().length;
+        status.textContent = due ? `${due} Grammatik-Reviews fällig` : `${learned} von ${POINTS.length} Lektionen gelernt`;
+        detail.textContent = grammarState.levelCompleted
+          ? "Grammatik-Level 1 ist abgeschlossen."
+          : due
+            ? "Verstehen, Formen, Hören und Abrufen werden getrennt wiederholt."
+            : "Lerne die nächste Struktur oder übe bereits bekannte Formen frei.";
+      }
+
+      let lessonPoint = null;
+      let lessonStep = 0;
+      let lessonChecked = false;
+
+      function startLesson(pointId) {
+        lessonPoint = POINTS.find(point => point.id === pointId) || POINTS[0];
+        lessonStep = 0;
+        lessonChecked = false;
+        openGrammarView("grammarLesson");
+        renderLesson();
+      }
+
+      function renderLesson() {
+        const card = document.getElementById("grammarLessonCard");
+        if (!card || !lessonPoint) return;
+        const steps = 4;
+        const stepper = `<div class="grammar-stepper">${Array.from({ length: steps }, (_, index) => `<span class="${index <= lessonStep ? "done" : ""}"></span>`).join("")}</div>`;
+        const commonHead = `${stepper}<div class="grammar-kicker">Grammatik-Level 1 · ${escapeHtml(lessonPoint.title)}</div>`;
+
+        if (lessonStep === 0) {
+          card.innerHTML = `${commonHead}<h2>${escapeHtml(lessonPoint.subtitle)}</h2><p class="grammar-explanation">${escapeHtml(lessonPoint.summary)}</p>
+            <div class="grammar-example-list">${lessonPoint.examples.slice(0, 1).map(renderExample).join("")}</div>
+            <div class="button-row"><button class="ghost" id="grammarLessonBackOverview">Zur Übersicht</button><button class="primary" id="grammarLessonNext">Bildung ansehen</button></div>`;
+        } else if (lessonStep === 1) {
+          card.innerHTML = `${commonHead}<h2>So wird die Form gebildet</h2><div class="grammar-form-list">${lessonPoint.formation.map(item => `<div class="grammar-form-item">${escapeHtml(item)}</div>`).join("")}</div>
+            <div class="grammar-example-list">${lessonPoint.examples.map(renderExample).join("")}</div>
+            <div class="button-row"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Unterschied verstehen</button></div>`;
+        } else if (lessonStep === 2) {
+          card.innerHTML = `${commonHead}<h2>Nicht mit der ähnlichen Form verwechseln</h2><div class="grammar-contrast">${escapeHtml(lessonPoint.contrast)}</div>
+            <div class="grammar-example-list">${lessonPoint.examples.slice(1).map(renderExample).join("")}</div>
+            <div class="button-row"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Selbst abrufen</button></div>`;
+        } else {
+          const model = lessonPoint.checkpoint.models[0];
+          card.innerHTML = `${commonHead}<h2>Aktiver Abruf</h2><p class="grammar-explanation">Formuliere den Satz selbst. Erst danach erscheint eine Musterlösung.</p>
+            <div class="grammar-review-prompt">${escapeHtml(lessonPoint.checkpoint.cue)}</div>
+            <textarea class="grammar-input" id="grammarLessonAnswer" rows="3" placeholder="日本語で書いてください…"></textarea>
+            <div id="grammarLessonFeedback"></div>
+            <div class="button-row" style="margin-top:15px">
+              <button class="ghost" id="grammarLessonPrev">Zurück</button>
+              <button class="primary" id="grammarLessonCheck">Antwort prüfen</button>
+              <button class="primary" id="grammarLessonComplete" hidden>Lektion abschließen</button>
+            </div>`;
+          document.getElementById("grammarLessonCheck")?.addEventListener("click", () => {
+            const answer = document.getElementById("grammarLessonAnswer")?.value || "";
+            if (!answer.trim()) { notify("Schreibe zuerst einen eigenen Satz."); return; }
+            const likely = lessonPoint.checkpoint.required.every(part => normalizeJapanese(answer).includes(normalizeJapanese(part)));
+            const feedback = document.getElementById("grammarLessonFeedback");
+            feedback.innerHTML = `<div class="grammar-feedback ${likely ? "good" : "warn"}"><strong>${likely ? "Die Zielstruktur wurde erkannt." : "Die Zielstruktur wurde noch nicht eindeutig erkannt."}</strong><div style="margin-top:7px">Musterlösung: <strong>${escapeHtml(model)}</strong></div><div class="small muted" style="margin-top:5px">Vergleiche besonders die Form direkt vor ${escapeHtml(lessonPoint.title)}.</div></div>`;
+            lessonChecked = true;
+            document.getElementById("grammarLessonCheck").hidden = true;
+            document.getElementById("grammarLessonComplete").hidden = false;
+          });
+          document.getElementById("grammarLessonComplete")?.addEventListener("click", completeLesson);
+        }
+
+        card.querySelectorAll(".grammar-audio").forEach(button => button.addEventListener("click", () => speakJapanese(button.dataset.audio)));
+        document.getElementById("grammarLessonBackOverview")?.addEventListener("click", () => openGrammarView("grammar"));
+        document.getElementById("grammarLessonPrev")?.addEventListener("click", () => { lessonStep = Math.max(0, lessonStep - 1); lessonChecked = false; renderLesson(); });
+        document.getElementById("grammarLessonNext")?.addEventListener("click", () => { lessonStep = Math.min(3, lessonStep + 1); renderLesson(); });
+      }
+
+      function renderExample(example) {
+        return `<div class="grammar-example"><button class="grammar-audio" data-audio="${escapeHtml(example.jp)}" title="Satz anhören">🔊</button><div><div class="grammar-example-jp">${escapeHtml(example.jp)}</div><div class="grammar-example-de">${escapeHtml(example.de)}</div></div></div>`;
+      }
+
+      function completeLesson() {
+        if (!lessonPoint || !lessonChecked) return;
+        const pointState = grammarState.points[lessonPoint.id];
+        const firstCompletion = !pointState.lessonComplete;
+        pointState.lessonComplete = true;
+        pointState.lessonCompletedAt ||= Date.now();
+        if (firstCompletion) {
+          for (const skill of SKILLS) {
+            const skillState = pointState.skills[skill.id];
+            skillState.stage = Math.max(1, skillState.stage);
+            skillState.dueAt = Date.now();
+          }
+        }
+        persistGrammar();
+        notify(firstCompletion ? "Lektion gelernt – vier erste Reviews sind jetzt fällig." : "Lektion erneut abgeschlossen.");
+        openGrammarView("grammar");
+      }
+
+      let reviewQueue = [];
+      let reviewIndex = 0;
+      let reviewCurrent = null;
+      let reviewRevealed = false;
+      let reviewPracticeOnly = false;
+      let reviewResults = { good: 0, close: 0, bad: 0 };
+
+      function shuffle(values) {
+        const array = [...values];
+        for (let index = array.length - 1; index > 0; index--) {
+          const other = Math.floor(Math.random() * (index + 1));
+          [array[index], array[other]] = [array[other], array[index]];
+        }
+        return array;
+      }
+
+      function makeReviewItem(pointId, skillId, practiceOnly = false) {
+        const point = POINTS.find(item => item.id === pointId);
+        const pool = point?.questions?.[skillId] || [];
+        const question = pool[Math.floor(Math.random() * pool.length)];
+        return { pointId, skillId, question, practiceOnly, repeated: false };
+      }
+
+      function startReviewSession(practiceOnly = false, pointId = null) {
+        const learned = learnedPoints();
+        if (!learned.length) {
+          notify("Lerne zuerst mindestens eine Grammatikstruktur.");
+          openGrammarView("grammar");
+          return;
+        }
+        let baseItems;
+        if (pointId) {
+          baseItems = SKILLS.map(skill => ({ pointId, skillId: skill.id }));
+          practiceOnly = true;
+        } else if (practiceOnly) {
+          baseItems = shuffle(learned.flatMap(point => SKILLS.map(skill => ({ pointId: point.id, skillId: skill.id })))).slice(0, 6);
+        } else {
+          baseItems = dueItems();
+          if (!baseItems.length) {
+            showNoDueReviews();
+            return;
+          }
+        }
+        reviewPracticeOnly = practiceOnly;
+        reviewQueue = shuffle(baseItems).slice(0, 20).map(item => makeReviewItem(item.pointId, item.skillId, practiceOnly));
+        reviewIndex = 0;
+        reviewCurrent = null;
+        reviewRevealed = false;
+        reviewResults = { good: 0, close: 0, bad: 0 };
+        openGrammarView("grammarReview");
+        renderReview();
+      }
+
+      function startPointPractice(pointId) {
+        startReviewSession(true, pointId);
+      }
+
+      function showNoDueReviews() {
+        openGrammarView("grammarReview");
+        const card = document.getElementById("grammarReviewCard");
+        card.innerHTML = `<div class="grammar-kicker">Grammar SRS</div><h2>Aktuell ist nichts fällig.</h2><p class="grammar-explanation">Das SRS wartet bis zum nächsten vorgesehenen Intervall. Du kannst trotzdem eine freiwillige Übungsrunde starten; diese verändert die SRS-Stufen nicht.</p><div class="button-row"><button class="ghost" id="grammarNoDueBack">Zur Übersicht</button><button class="primary" id="grammarEarlyPractice">Frei üben</button></div>`;
+        document.getElementById("grammarNoDueBack")?.addEventListener("click", () => openGrammarView("grammar"));
+        document.getElementById("grammarEarlyPractice")?.addEventListener("click", () => startReviewSession(true));
+      }
+
+      function renderReview() {
+        const card = document.getElementById("grammarReviewCard");
+        if (!card) return;
+        if (reviewIndex >= reviewQueue.length) {
+          renderReviewSummary();
+          return;
+        }
+        reviewCurrent = reviewQueue[reviewIndex];
+        reviewRevealed = false;
+        const point = POINTS.find(item => item.id === reviewCurrent.pointId);
+        const skill = SKILLS.find(item => item.id === reviewCurrent.skillId);
+        const question = reviewCurrent.question;
+        const progress = Math.round((reviewIndex / reviewQueue.length) * 100);
+        const isListening = skill.id === "listening";
+        const shown = question.shown || "";
+
+        card.innerHTML = `
+          <div class="grammar-stepper"><span class="done" style="flex:${Math.max(1, progress)}"></span><span style="flex:${Math.max(1, 100 - progress)}"></span></div>
+          <div class="counter">Aufgabe ${reviewIndex + 1} von ${reviewQueue.length}${reviewPracticeOnly ? " · Freies Üben" : " · SRS-Review"}</div>
+          <div class="grammar-review-type">${skill.icon} ${skill.label}</div>
+          <h2>${escapeHtml(point.title)}</h2>
+          <div class="grammar-review-prompt">${escapeHtml(question.prompt)}</div>
+          ${isListening
+            ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz bleibt bis zur Auswertung verborgen.</div></div>`
+            : `<div class="grammar-review-sentence">${escapeHtml(shown)}</div>`}
+          <textarea class="grammar-input" id="grammarReviewAnswer" rows="3" placeholder="Deine Antwort…" autocomplete="off"></textarea>
+          <div id="grammarReviewFeedback"></div>
+          <div class="button-row" style="margin-top:15px"><button class="ghost" id="grammarReviewExit">Session verlassen</button><button class="primary" id="grammarReviewCheck">Antwort prüfen</button></div>`;
+
+        document.getElementById("grammarPlayListening")?.addEventListener("click", () => speakJapanese(question.audio));
+        if (isListening) setTimeout(() => speakJapanese(question.audio), 180);
+        document.getElementById("grammarReviewExit")?.addEventListener("click", () => openGrammarView("grammar"));
+        document.getElementById("grammarReviewCheck")?.addEventListener("click", revealReviewAnswer);
+        document.getElementById("grammarReviewAnswer")?.focus();
+      }
+
+      function normalizeJapanese(value) {
+        return String(value || "").normalize("NFKC").toLowerCase().replace(/[\s。、！？!?.,・「」『』（）()]/g, "");
+      }
+
+      function normalizeText(value) {
+        return String(value || "").normalize("NFKD").toLowerCase().replace(/[ä]/g, "a").replace(/[ö]/g, "o").replace(/[ü]/g, "u").replace(/[ß]/g, "ss").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+      }
+
+      function assessAnswer(question, skillId, answer) {
+        if (!String(answer || "").trim()) return { likely: false, note: "Es wurde noch keine Antwort eingegeben." };
+        if (skillId === "form") {
+          const normalized = normalizeJapanese(answer);
+          const likely = (question.answers || [question.model]).some(model => normalizeJapanese(model) === normalized);
+          return { likely, note: likely ? "Die Form stimmt mit der Musterlösung überein." : "Die eingegebene Form stimmt nicht exakt mit der erwarteten Form überein." };
+        }
+        if (skillId === "production") {
+          const normalized = normalizeJapanese(answer);
+          const exact = (question.answers || [question.model]).some(model => normalizeJapanese(model) === normalized);
+          const structure = (question.required || []).every(part => normalized.includes(normalizeJapanese(part)));
+          return { likely: exact || structure, note: exact ? "Dein Satz entspricht einer hinterlegten Lösung." : structure ? "Die Zielstruktur wurde erkannt. Prüfe Inhalt und Partikel anhand der Musterlösung." : "Die Zielstruktur wurde noch nicht eindeutig erkannt." };
+        }
+        const normalized = normalizeText(answer);
+        const groups = question.keywords || [];
+        const matches = groups.filter(group => group.some(keyword => normalized.includes(normalizeText(keyword)))).length;
+        const likely = groups.length ? matches >= Math.max(1, Math.ceil(groups.length * 0.6)) : false;
+        return { likely, note: likely ? "Die wichtigsten Bedeutungselemente wurden erkannt." : "Mehrere Kernelemente der Bedeutung fehlen oder wurden anders formuliert." };
+      }
+
+      function revealReviewAnswer() {
+        if (reviewRevealed || !reviewCurrent) return;
+        const answer = document.getElementById("grammarReviewAnswer")?.value || "";
+        if (!answer.trim()) { notify("Schreibe zuerst eine Antwort."); return; }
+        const point = POINTS.find(item => item.id === reviewCurrent.pointId);
+        const skill = SKILLS.find(item => item.id === reviewCurrent.skillId);
+        const question = reviewCurrent.question;
+        const assessment = assessAnswer(question, skill.id, answer);
+        const feedback = document.getElementById("grammarReviewFeedback");
+        feedback.innerHTML = `
+          <div class="grammar-feedback ${assessment.likely ? "good" : "warn"}">
+            <strong>${assessment.likely ? "Wahrscheinlich passend" : "Bitte genau vergleichen"}</strong>
+            <div style="margin-top:6px">${escapeHtml(assessment.note)}</div>
+            ${skill.id === "listening" ? `<div style="margin-top:9px">Gehörter Satz: <strong>${escapeHtml(question.audio)}</strong> <button class="grammar-audio" id="grammarReplayListening" data-audio="${escapeHtml(question.audio)}">🔊</button></div>` : ""}
+            <div style="margin-top:9px">Musterlösung: <strong>${escapeHtml(question.model)}</strong></div>
+            <div class="small muted" style="margin-top:6px">Bewerte dich danach selbst. „Fast richtig“ hält die SRS-Stufe und fragt die Aufgabe später erneut.</div>
+          </div>
+          <div class="grammar-grade-row">
+            <button class="grammar-grade-bad" data-grade="bad">Falsch</button>
+            <button class="grammar-grade-close" data-grade="close">Fast richtig</button>
+            <button class="grammar-grade-good" data-grade="good">Richtig</button>
+          </div>`;
+        reviewRevealed = true;
+        document.getElementById("grammarReviewCheck").hidden = true;
+        document.getElementById("grammarReplayListening")?.addEventListener("click", () => speakJapanese(question.audio));
+        feedback.querySelectorAll("[data-grade]").forEach(button => button.addEventListener("click", () => gradeReview(button.dataset.grade)));
+      }
+
+      function gradeReview(grade) {
+        if (!reviewCurrent || !reviewRevealed) return;
+        reviewResults[grade]++;
+        if (!reviewCurrent.practiceOnly) {
+          const skillState = grammarState.points[reviewCurrent.pointId].skills[reviewCurrent.skillId];
+          const now = Date.now();
+          skillState.lastReviewedAt = now;
+          if (grade === "good") {
+            skillState.correct++;
+            skillState.stage = Math.min(9, Math.max(1, skillState.stage + 1));
+            skillState.dueAt = skillState.stage >= 9 ? null : now + STAGES[skillState.stage].delay;
+          } else if (grade === "close") {
+            skillState.dueAt = now + 30 * 60 * 1000;
+          } else {
+            skillState.incorrect++;
+            skillState.stage = Math.max(1, skillState.stage - 1);
+            skillState.dueAt = now + 10 * 60 * 1000;
+          }
+          persistGrammar();
+        }
+        if (grade !== "good" && !reviewCurrent.repeated) {
+          reviewQueue.push({ ...makeReviewItem(reviewCurrent.pointId, reviewCurrent.skillId, reviewCurrent.practiceOnly), repeated: true });
+        }
+        reviewIndex++;
+        renderReview();
+      }
+
+      function renderReviewSummary() {
+        const card = document.getElementById("grammarReviewCard");
+        card.innerHTML = `<div class="grammar-kicker">Session abgeschlossen</div><h2>${reviewPracticeOnly ? "Freie Übungsrunde beendet" : "Grammatik-Reviews gespeichert"}</h2>
+          <div class="grammar-stats"><div class="grammar-stat"><strong>${reviewResults.good}</strong><span>Richtig</span></div><div class="grammar-stat"><strong>${reviewResults.close}</strong><span>Fast richtig</span></div><div class="grammar-stat"><strong>${reviewResults.bad}</strong><span>Falsch</span></div><div class="grammar-stat"><strong>${dueItems().length}</strong><span>Jetzt noch fällig</span></div></div>
+          <p class="grammar-explanation">${reviewPracticeOnly ? "Diese freiwillige Runde hat deine SRS-Stufen nicht verändert." : "Richtige Antworten wurden hochgestuft. Fast richtige und falsche Antworten werden nach einem kürzeren Intervall erneut fällig."}</p>
+          <div class="button-row"><button class="primary" id="grammarSummaryBack">Zur Grammar-Übersicht</button>${dueItems().length ? `<button class="secondary" id="grammarSummaryContinue">Weitere Reviews</button>` : ""}</div>`;
+        document.getElementById("grammarSummaryBack")?.addEventListener("click", () => openGrammarView("grammar"));
+        document.getElementById("grammarSummaryContinue")?.addEventListener("click", () => startReviewSession(false));
+        updateGrammarDashboard();
+      }
+
+      grammarNav.addEventListener("click", () => openGrammarView("grammar"));
+      document.getElementById("dashboardGrammarOpen")?.addEventListener("click", () => openGrammarView("grammar"));
+      document.getElementById("dashboardGrammarReview")?.addEventListener("click", () => startReviewSession(false));
+
+      persistGrammar();
+      renderGrammarOverview();
+      updateGrammarDashboard();
+    }
+
+    function injectGrammarPath(html) {
+      const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
+      if (/<\/body>/i.test(html)) {
+        return html.replace(/<\/body>/i, `${grammarScript}\n</body>`);
+      }
+      return `${html}${grammarScript}`;
+    }
+
     async function loadAppDocument({ force = false } = {}) {
       if (appLoadPromise && !force) return appLoadPromise;
 
@@ -460,8 +1371,10 @@
         }
 
         const originalHtml = await response.text();
-        appDocumentHtml = enableAutomaticBrowserAudioFallback(
-          injectLegacySettingFields(originalHtml)
+        appDocumentHtml = injectGrammarPath(
+          enableAutomaticBrowserAudioFallback(
+            injectLegacySettingFields(originalHtml)
+          )
         );
         appFrame.removeAttribute("src");
         appFrame.srcdoc = appDocumentHtml;
