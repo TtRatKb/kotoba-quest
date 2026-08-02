@@ -20687,90 +20687,86 @@
 
 
     function contextVocabularyPracticeBootstrap() {
-      if (window.__KOTOBA_CONTEXT_PRACTICE_V1__) return;
-      window.__KOTOBA_CONTEXT_PRACTICE_V1__ = true;
+      if (window.__KOTOBA_CONTEXT_PRACTICE_V2__) return;
+      window.__KOTOBA_CONTEXT_PRACTICE_V2__ = true;
 
       const STORAGE_KEY = "kotobaQuestDataV3";
       const MODE_META = {
-        context: { label: "Im Kontext verstehen", icon: "💬", hint: "Bedeutung des markierten Wortes aus dem Satz abrufen" },
-        listening: { label: "Listening", icon: "🎧", hint: "Satz hören und die Bedeutung des Zielwortes nennen" },
-        writing: { label: "Writing", icon: "✍️", hint: "Japanische Grundform aus Bedeutung und Kontext produzieren" },
-        form: { label: "Form im Satz", icon: "🧩", hint: "Die tatsächlich verwendete Form in eine Lücke einsetzen" },
-        translation: { label: "Satz übersetzen", icon: "🌐", hint: "Den Satz frei übersetzen und anschließend selbst vergleichen" }
+        reading: { label: "Lesen & übersetzen", icon: "📖", hint: "Einen vollständigen Satz mit Furigana verstehen" },
+        listening: { label: "Listening & übersetzen", icon: "🎧", hint: "Einen vollständigen Satz hören und ins Deutsche übertragen" },
+        form: { label: "Form im Satz", icon: "🧩", hint: "Eine bekannte Vokabel passend zum Satz konjugieren" },
+        writing: { label: "Satz auf Japanisch", icon: "✍️", hint: "Einen deutschen Satz mit bekannten Vokabeln auf Japanisch formulieren" },
+        connect: { label: "Sätze verbinden", icon: "🔗", hint: "Zwei Aussagen mit einer bekannten Grammatikstruktur verbinden" }
       };
       const DEFAULT_SETTINGS = {
         sources: { core: true, mining: true, known: true },
-        modes: { context: true, listening: true, writing: true, form: true, translation: true },
+        modes: { reading: true, listening: true, form: true, writing: true, connect: true },
         length: 10
       };
+      const BASE_GRAMMAR = new Set([
+        "te-sequence", "te-kara", "nagara", "node", "keredo", "tari-tari",
+        "koto-ga-aru", "tsumori", "hou-ga-ii", "te-mo-ii", "te-wa-ikenai",
+        "nakute-mo-ii", "to-omou", "kamoshirenai"
+      ]);
+      const GURU_TEMPLATE_IDS = new Set([
+        "you-ni-naru", "you-ni-suru", "koto-ni-naru", "koto-ni-suru",
+        "uchi-ni", "tokoro-da", "ta-bakari", "tame-ni", "okage-de",
+        "sei-de", "hazu-da", "rashii", "ni-chigainai", "tabi-ni"
+      ]);
 
       let session = null;
       let renderTimer = 0;
       let audioUtterance = null;
       let homeCatalog = null;
+      const formsCache = new WeakMap();
+      const classCache = new WeakMap();
 
       function esc(value) {
-        try {
-          if (typeof escapeHtml === "function") return escapeHtml(value);
-        } catch {}
+        try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
         return String(value ?? "")
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
+          .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
       }
 
       function normalizeKey(value) {
-        return String(value || "").normalize("NFKC").replace(/[\s・･]/g, "").toLowerCase();
+        return String(value || "").normalize("NFKC").replace(/[\s・･、。！？!?]/g, "").toLowerCase();
       }
 
       function normalizeLatin(value) {
-        try {
-          if (typeof window.normalizeLatin === "function") return window.normalizeLatin(value);
-        } catch {}
-        return String(value || "")
-          .trim()
-          .toLocaleLowerCase("de-DE")
-          .normalize("NFKC")
-          .replace(/[.!?;:()[\]{}"'`´]/g, "")
-          .replace(/\s+/g, " ");
+        try { if (typeof window.normalizeLatin === "function") return window.normalizeLatin(value); } catch {}
+        return String(value || "").trim().toLocaleLowerCase("de-DE").normalize("NFKC")
+          .replace(/[.!?;:()[\]{}"'`´]/g, "").replace(/\s+/g, " ");
       }
 
       function toHiragana(value, finalize = true) {
-        try {
-          if (typeof romajiToHiragana === "function") return romajiToHiragana(String(value || ""), finalize);
-        } catch {}
+        try { if (typeof romajiToHiragana === "function") return romajiToHiragana(String(value || ""), finalize); } catch {}
         return String(value || "");
       }
 
       function normalizeKana(value) {
-        try {
-          if (typeof window.normalizeKana === "function") return window.normalizeKana(value);
-        } catch {}
-        return toHiragana(value, true)
-          .trim()
-          .normalize("NFKC")
-          .replace(/\s+/g, "")
+        try { if (typeof window.normalizeKana === "function") return window.normalizeKana(value); } catch {}
+        return toHiragana(value, true).trim().normalize("NFKC").replace(/\s+/g, "")
           .replace(/[\u30a1-\u30f6]/g, char => String.fromCharCode(char.charCodeAt(0) - 0x60));
       }
 
       function sourceData() {
-        try {
-          if (typeof data !== "undefined" && data && typeof data === "object") return data;
-        } catch {}
-        try {
-          return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
-        } catch {
-          return {};
-        }
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
       }
 
       function settingsFor(source = sourceData()) {
         const raw = source.vocabContextPracticeSettings || {};
+        const rawModes = raw.modes || {};
+        const migratedModes = {
+          reading: rawModes.reading ?? rawModes.context ?? true,
+          listening: rawModes.listening ?? true,
+          form: rawModes.form ?? true,
+          writing: rawModes.writing ?? true,
+          connect: rawModes.connect ?? rawModes.translation ?? true
+        };
         return {
           sources: { ...DEFAULT_SETTINGS.sources, ...(raw.sources || {}) },
-          modes: { ...DEFAULT_SETTINGS.modes, ...(raw.modes || {}) },
+          modes: { ...DEFAULT_SETTINGS.modes, ...migratedModes },
           length: [10, 20, 30].includes(Number(raw.length)) ? Number(raw.length) : 10
         };
       }
@@ -20800,15 +20796,10 @@
             data.vocabContextPractice = source.vocabContextPractice;
             data.vocabContextPracticeSettings = source.vocabContextPracticeSettings;
             data.studyActivity = source.studyActivity;
-            if (Array.isArray(source.vocabulary)) data.vocabulary = source.vocabulary;
-            if (Array.isArray(source.knownVocabulary)) data.knownVocabulary = source.knownVocabulary;
           }
         } catch {}
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
-        } catch (error) {
-          console.error("Kotoba Quest context practice could not be saved", error);
-        }
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); }
+        catch (error) { console.error("Kotoba Quest context practice could not be saved", error); }
         if (refresh) setTimeout(refreshEntryPoints, 0);
       }
 
@@ -20826,40 +20817,33 @@
         source.studyActivity = activity;
       }
 
-      function ruby(word, reading) {
-        const surface = String(word || "").trim();
+      function ruby(surface, reading) {
+        const word = String(surface || "").trim();
         const kana = String(reading || "").trim();
-        if (!surface) return "";
-        if (!kana || normalizeKey(surface) === normalizeKey(kana)) return esc(surface);
-        return `<ruby>${esc(surface)}<rt>${esc(kana)}</rt></ruby>`;
+        if (!word) return "";
+        if (!kana || normalizeKey(word) === normalizeKey(kana) || !/[\u3400-\u9fff]/.test(word)) return esc(word);
+        return `<ruby>${esc(word)}<rt>${esc(kana)}</rt></ruby>`;
       }
 
-      function containsJapanese(value) {
-        return /[\u3040-\u30ff\u3400-\u9fff]/.test(String(value || ""));
+      function token(surface, reading = "", options = {}) {
+        return { surface: String(surface || ""), reading: String(reading || ""), ...options };
       }
 
-      function contextRecords(item, source) {
-        const records = [];
-        const seen = new Set();
-        const add = (sentence, translation, origin = "example", sourceLabel = "") => {
-          const jp = String(sentence || "").trim();
-          const de = String(translation || "").trim();
-          if (!jp || !containsJapanese(jp)) return;
-          const key = `${normalizeKey(jp)}|${normalizeLatin(de)}`;
-          if (seen.has(key)) return;
-          seen.add(key);
-          records.push({ sentence: jp, translation: de, origin, sourceLabel });
-        };
+      function itemToken(item, form = null, options = {}) {
+        return token(form?.surface || item.word, form?.reading || item.reading, { itemId: item.id, target: true, ...options });
+      }
 
-        add(item?.example, item?.exampleTranslation, "example", item?.collection || "");
-        (Array.isArray(item?.lrContexts) ? item.lrContexts : []).forEach(entry => {
-          add(entry?.sentence, entry?.translation, "language-reactor", entry?.source || entry?.title || item?.collection || "Language Reactor");
-        });
+      function renderTokens(tokens, { blankIndex = -1, highlight = true } = {}) {
+        return (tokens || []).map((part, index) => {
+          if (index === blankIndex) return `<span class="kq-practice-blank" aria-label="Lücke">＿＿＿＿</span>`;
+          const content = ruby(part.surface, part.reading);
+          if (part.target && highlight) return `<mark class="kq-practice-target">${content}</mark>`;
+          return `<span class="kq-practice-token">${content}</span>`;
+        }).join("");
+      }
 
-        const cacheKey = item?.packEntryId || item?.id || `${item?.word || ""}|${item?.reading || ""}`;
-        const cached = source?.sentenceCache?.[cacheKey];
-        if (cached?.status === "ready") add(cached.text, cached.translation, "prepared", "Vorbereiteter Beispielsatz");
-        return records;
+      function plainSentence(tokens) {
+        return (tokens || []).map(part => part.surface).join("");
       }
 
       function mergeMeanings(target, values) {
@@ -20867,10 +20851,7 @@
         for (const value of values || []) {
           const clean = String(value || "").trim();
           const key = normalizeLatin(clean);
-          if (clean && key && !known.has(key)) {
-            target.push(clean);
-            known.add(key);
-          }
+          if (clean && key && !known.has(key)) { target.push(clean); known.add(key); }
         }
       }
 
@@ -20879,17 +20860,8 @@
           id: item?.id || `known-${index}-${normalizeKey(item?.word || item?.base)}`,
           word: item?.word || item?.base || "",
           reading: item?.reading || item?.baseReading || "",
-          meanings: Array.isArray(item?.meanings)
-            ? item.meanings.filter(Boolean)
-            : [item?.meaning].filter(Boolean),
-          sourceType: "known",
-          stage: 5,
-          guruPassed: true,
-          example: item?.example || "",
-          exampleTranslation: item?.exampleTranslation || "",
-          lrContexts: Array.isArray(item?.lrContexts) ? item.lrContexts : [],
-          pos: item?.pos || "",
-          sourceRefs: [{ type: "known", item }]
+          meanings: Array.isArray(item?.meanings) ? item.meanings.filter(Boolean) : [item?.meaning].filter(Boolean),
+          sourceType: "known", stage: 5, guruPassed: true, pos: item?.pos || ""
         };
       }
 
@@ -20900,338 +20872,550 @@
         const known = Array.isArray(source.knownVocabulary) ? source.knownVocabulary : [];
         const merged = new Map();
 
-        function add(item, type, ref) {
+        function add(item, type) {
           const word = String(item?.word || item?.base || "").trim();
           const reading = String(item?.reading || item?.baseReading || "").trim();
-          if (!word || !reading) return;
-          const meanings = Array.isArray(item?.meanings)
-            ? item.meanings.filter(Boolean)
-            : [item?.meaning].filter(Boolean);
-          if (!meanings.length) return;
+          const meanings = Array.isArray(item?.meanings) ? item.meanings.filter(Boolean) : [item?.meaning].filter(Boolean);
+          if (!word || !reading || !meanings.length) return;
           const key = `${normalizeKey(word)}|${normalizeKey(reading)}`;
-          const contexts = contextRecords(item, source);
           if (!merged.has(key)) {
             merged.set(key, {
               id: item?.id || item?.packEntryId || key,
-              word,
-              reading,
-              meanings: [...meanings],
+              word, reading, meanings: [...meanings],
               acceptedReadings: [...(item?.acceptedReadings || [])],
-              pos: item?.pos || "",
-              sourceTypes: new Set([type]),
-              sourceRefs: [ref],
-              contexts,
+              pos: item?.pos || "", sourceTypes: new Set([type]),
               stage: Number(item?.stage || (type === "known" ? 5 : 0)),
-              level: Number(item?.level || 0),
-              collection: item?.collection || ""
+              level: Number(item?.level || 0), collection: item?.collection || ""
             });
           } else {
             const target = merged.get(key);
             mergeMeanings(target.meanings, meanings);
             mergeMeanings(target.acceptedReadings, item?.acceptedReadings || []);
             target.sourceTypes.add(type);
-            target.sourceRefs.push(ref);
-            const contextKeys = new Set(target.contexts.map(entry => `${normalizeKey(entry.sentence)}|${normalizeLatin(entry.translation)}`));
-            for (const context of contexts) {
-              const contextKey = `${normalizeKey(context.sentence)}|${normalizeLatin(context.translation)}`;
-              if (!contextKeys.has(contextKey)) {
-                target.contexts.push(context);
-                contextKeys.add(contextKey);
-              }
-            }
           }
         }
 
         vocabulary.forEach(item => {
           if (item?.sourceType === "core") {
             const unlocked = Number(item?.level || 0) <= currentLevel || Number(item?.stage || 0) > 0 || Boolean(item?.guruPassed);
-            if (settings.sources.core && unlocked) add(item, "core", { type: "vocabulary", item });
-          } else if (item?.sourceType === "mining" && settings.sources.mining) {
-            add(item, "mining", { type: "vocabulary", item });
-          }
+            if (settings.sources.core && unlocked) add(item, "core");
+          } else if (item?.sourceType === "mining" && settings.sources.mining) add(item, "mining");
         });
-        if (settings.sources.known) known.forEach((item, index) => add(normalizedKnown(item, index), "known", { type: "known", item }));
-
+        if (settings.sources.known) known.forEach((item, index) => add(normalizedKnown(item, index), "known"));
         return [...merged.values()].map(item => ({ ...item, sourceTypes: [...item.sourceTypes] }));
       }
 
       function appendForms(result, item, surfaceStem, readingStem, forms) {
-        for (const [surfaceSuffix, readingSuffix, label] of forms) {
-          result.push({
-            surface: surfaceStem + surfaceSuffix,
-            reading: readingStem + readingSuffix,
-            label,
-            base: item.word,
-            baseReading: item.reading
-          });
+        for (const [surfaceSuffix, readingSuffix, label, key] of forms) {
+          result.push({ surface: surfaceStem + surfaceSuffix, reading: readingStem + readingSuffix, label, key: key || label, base: item.word, baseReading: item.reading });
         }
       }
 
       function generateForms(item) {
+        if (item && typeof item === "object" && formsCache.has(item)) return formsCache.get(item);
         const word = String(item?.word || "").trim();
         const reading = String(item?.reading || "").trim();
         const pos = String(item?.pos || "").toLowerCase();
-        const result = [{ surface: word, reading, label: "Grundform", base: word, baseReading: reading }];
+        const result = [{ surface: word, reading, label: "Grundform", key: "dictionary", base: word, baseReading: reading }];
         if (!word) return result;
 
         if (word.endsWith("する")) {
-          const stem = word.slice(0, -2);
-          const readingStem = reading.endsWith("する") ? reading.slice(0, -2) : reading;
+          const stem = word.slice(0, -2), readingStem = reading.endsWith("する") ? reading.slice(0, -2) : reading;
           appendForms(result, item, stem, readingStem, [
-            ["します", "します", "höfliche Form"], ["しました", "しました", "höfliche Vergangenheit"],
-            ["して", "して", "て-Form"], ["した", "した", "Vergangenheit"],
-            ["している", "している", "Verlaufsform"], ["しています", "しています", "höfliche Verlaufsform"],
-            ["していた", "していた", "vergangene Verlaufsform"], ["しない", "しない", "negative Form"],
-            ["しなかった", "しなかった", "negative Vergangenheit"], ["したい", "したい", "Wunschform"],
-            ["すれば", "すれば", "Bedingungsform"], ["しよう", "しよう", "Volitionalform"]
+            ["します", "します", "höfliche Form", "masu"], ["しました", "しました", "höfliche Vergangenheit", "mashita"],
+            ["して", "して", "て-Form", "te"], ["した", "した", "Vergangenheit", "past"],
+            ["している", "している", "Verlaufsform", "teiru"], ["しています", "しています", "höfliche Verlaufsform", "teimasu"],
+            ["しない", "しない", "negative Form", "nai"], ["しなかった", "しなかった", "negative Vergangenheit", "nakatta"],
+            ["したい", "したい", "Wunschform", "tai"], ["すれば", "すれば", "Bedingungsform", "ba"]
           ]);
         } else if (word === "来る" || reading === "くる") {
-          [
-            ["来ます", "きます", "höfliche Form"], ["来ました", "きました", "höfliche Vergangenheit"],
-            ["来て", "きて", "て-Form"], ["来た", "きた", "Vergangenheit"],
-            ["来ない", "こない", "negative Form"], ["来なかった", "こなかった", "negative Vergangenheit"],
-            ["来られる", "こられる", "Potentialform"], ["来よう", "こよう", "Volitionalform"]
-          ].forEach(([surface, kana, label]) => result.push({ surface, reading: kana, label, base: word, baseReading: reading }));
+          [["来ます","きます","höfliche Form","masu"],["来ました","きました","höfliche Vergangenheit","mashita"],["来て","きて","て-Form","te"],["来た","きた","Vergangenheit","past"],["来ない","こない","negative Form","nai"],["来なかった","こなかった","negative Vergangenheit","nakatta"],["来られる","こられる","Potentialform","potential"]]
+            .forEach(([surface,kana,label,key]) => result.push({ surface, reading:kana, label, key, base:word, baseReading:reading }));
         } else {
           const verbish = /verb|動詞|ichidan|godan|一段|五段/.test(pos) || /[うくぐすつぬぶむる]$/.test(word);
           const likelyIchidan = /ichidan|一段/.test(pos) || (!/godan|五段/.test(pos) && /[えけげせぜてでねへべめれいきぎしじちにひびみり]る$/.test(reading));
           if (verbish && word.endsWith("る") && likelyIchidan) {
-            appendForms(result, item, word.slice(0, -1), reading.slice(0, -1), [
-              ["ます", "ます", "höfliche Form"], ["ました", "ました", "höfliche Vergangenheit"],
-              ["て", "て", "て-Form"], ["た", "た", "Vergangenheit"],
-              ["ている", "ている", "Verlaufsform"], ["ています", "ています", "höfliche Verlaufsform"],
-              ["ない", "ない", "negative Form"], ["なかった", "なかった", "negative Vergangenheit"],
-              ["たい", "たい", "Wunschform"], ["られる", "られる", "Potentialform"],
-              ["させる", "させる", "Kausativform"], ["れば", "れば", "Bedingungsform"], ["よう", "よう", "Volitionalform"]
+            appendForms(result, item, word.slice(0,-1), reading.slice(0,-1), [
+              ["ます","ます","höfliche Form","masu"],["ました","ました","höfliche Vergangenheit","mashita"],
+              ["て","て","て-Form","te"],["た","た","Vergangenheit","past"],["ている","ている","Verlaufsform","teiru"],
+              ["ない","ない","negative Form","nai"],["なかった","なかった","negative Vergangenheit","nakatta"],
+              ["たい","たい","Wunschform","tai"],["られる","られる","Potentialform","potential"],["れば","れば","Bedingungsform","ba"]
             ]);
           } else if (verbish) {
-            const ending = word.slice(-1);
-            const readingEnding = reading.slice(-1);
-            const stem = word.slice(0, -1);
-            const readingStem = reading.slice(0, -1);
+            const ending = word.slice(-1), stem = word.slice(0,-1), readingStem = reading.slice(0,-1);
             const map = {
-              "う": { i: "い", a: "わ", e: "え", o: "お", te: "って", ta: "った" },
-              "く": { i: "き", a: "か", e: "け", o: "こ", te: "いて", ta: "いた" },
-              "ぐ": { i: "ぎ", a: "が", e: "げ", o: "ご", te: "いで", ta: "いだ" },
-              "す": { i: "し", a: "さ", e: "せ", o: "そ", te: "して", ta: "した" },
-              "つ": { i: "ち", a: "た", e: "て", o: "と", te: "って", ta: "った" },
-              "ぬ": { i: "に", a: "な", e: "ね", o: "の", te: "んで", ta: "んだ" },
-              "ぶ": { i: "び", a: "ば", e: "べ", o: "ぼ", te: "んで", ta: "んだ" },
-              "む": { i: "み", a: "ま", e: "め", o: "も", te: "んで", ta: "んだ" },
-              "る": { i: "り", a: "ら", e: "れ", o: "ろ", te: "って", ta: "った" }
+              "う":{i:"い",a:"わ",e:"え",te:"って",ta:"った"},"く":{i:"き",a:"か",e:"け",te:"いて",ta:"いた"},
+              "ぐ":{i:"ぎ",a:"が",e:"げ",te:"いで",ta:"いだ"},"す":{i:"し",a:"さ",e:"せ",te:"して",ta:"した"},
+              "つ":{i:"ち",a:"た",e:"て",te:"って",ta:"った"},"ぬ":{i:"に",a:"な",e:"ね",te:"んで",ta:"んだ"},
+              "ぶ":{i:"び",a:"ば",e:"べ",te:"んで",ta:"んだ"},"む":{i:"み",a:"ま",e:"め",te:"んで",ta:"んだ"},
+              "る":{i:"り",a:"ら",e:"れ",te:"って",ta:"った"}
             };
-            const rule = map[ending] || map[readingEnding];
+            const rule = map[ending];
             if (rule) {
-              let te = rule.te;
-              let ta = rule.ta;
-              if (word === "行く" || reading === "いく") { te = "って"; ta = "った"; }
+              const te = (word === "行く" || reading === "いく") ? "って" : rule.te;
+              const ta = (word === "行く" || reading === "いく") ? "った" : rule.ta;
               appendForms(result, item, stem, readingStem, [
-                [rule.i + "ます", rule.i + "ます", "höfliche Form"],
-                [rule.i + "ました", rule.i + "ました", "höfliche Vergangenheit"],
-                [te, te, "て-Form"], [ta, ta, "Vergangenheit"],
-                [te + "いる", te + "いる", "Verlaufsform"], [te + "います", te + "います", "höfliche Verlaufsform"],
-                [rule.a + "ない", rule.a + "ない", "negative Form"], [rule.a + "なかった", rule.a + "なかった", "negative Vergangenheit"],
-                [rule.i + "たい", rule.i + "たい", "Wunschform"], [rule.e + "る", rule.e + "る", "Potentialform"],
-                [rule.e + "ば", rule.e + "ば", "Bedingungsform"], [rule.o + "う", rule.o + "う", "Volitionalform"]
+                [rule.i+"ます",rule.i+"ます","höfliche Form","masu"],[rule.i+"ました",rule.i+"ました","höfliche Vergangenheit","mashita"],
+                [te,te,"て-Form","te"],[ta,ta,"Vergangenheit","past"],[te+"いる",te+"いる","Verlaufsform","teiru"],
+                [rule.a+"ない",rule.a+"ない","negative Form","nai"],[rule.a+"なかった",rule.a+"なかった","negative Vergangenheit","nakatta"],
+                [rule.i+"たい",rule.i+"たい","Wunschform","tai"],[rule.e+"る",rule.e+"る","Potentialform","potential"],[rule.e+"ば",rule.e+"ば","Bedingungsform","ba"]
               ]);
             }
           }
         }
 
-        if (word.endsWith("い") && (/i-adj|i-adjective|い-adjekt|形容詞/.test(pos) || !/[うくぐすつぬぶむる]$/.test(word))) {
-          appendForms(result, item, word.slice(0, -1), reading.slice(0, -1), [
-            ["く", "く", "Adverbialform"], ["かった", "かった", "Vergangenheit"],
-            ["くない", "くない", "negative Form"], ["くなかった", "くなかった", "negative Vergangenheit"],
-            ["くて", "くて", "verbindende Form"], ["ければ", "ければ", "Bedingungsform"], ["そう", "そう", "Eindrucksform"]
+        if (word.endsWith("い") && (/i-adj|i-adjective|い-adjekt|形容詞/.test(pos) || (!/[うくぐすつぬぶむる]$/.test(word) && !/verb|動詞/.test(pos)))) {
+          appendForms(result, item, word.slice(0,-1), reading.slice(0,-1), [
+            ["かった","かった","Vergangenheit","adj-past"],["くない","くない","negative Form","adj-nai"],
+            ["くなかった","くなかった","negative Vergangenheit","adj-nakatta"],["くて","くて","verbindende Form","adj-te"]
           ]);
         }
-
-        if (/na-adj|na-adjective|な-adjekt|形容動詞/.test(pos)) {
-          appendForms(result, item, word, reading, [
-            ["な", "な", "attributive Form"], ["に", "に", "Adverbialform"], ["だ", "だ", "Aussageform"],
-            ["です", "です", "höfliche Form"], ["だった", "だった", "Vergangenheit"],
-            ["ではない", "ではない", "negative Form"], ["じゃない", "じゃない", "umgangssprachlich negativ"]
-          ]);
-        }
-
         const unique = new Map();
-        result.forEach(form => {
-          const key = `${form.surface}|${form.reading}`;
-          if (form.surface && !unique.has(key)) unique.set(key, form);
+        result.forEach(form => { const key = `${form.surface}|${form.reading}`; if (form.surface && !unique.has(key)) unique.set(key, form); });
+        const forms = [...unique.values()];
+        if (item && typeof item === "object") formsCache.set(item, forms);
+        return forms;
+      }
+
+      function formOf(item, key) {
+        return generateForms(item).find(form => form.key === key) || null;
+      }
+
+      function classify(item) {
+        if (item && typeof item === "object" && classCache.has(item)) return classCache.get(item);
+        const pos = String(item?.pos || "").toLowerCase();
+        const forms = generateForms(item);
+        let kind = "noun";
+        if (forms.some(form => form.key === "te")) kind = "verb";
+        else if (/i-adj|i-adjective|い-adjekt|形容詞/.test(pos) || forms.some(form => form.key === "adj-te")) kind = "iadj";
+        else if (/na-adj|na-adjective|な-adjekt|形容動詞/.test(pos)) kind = "naadj";
+        if (item && typeof item === "object") classCache.set(item, kind);
+        return kind;
+      }
+
+      const NOUN_GROUPS = {
+        reading: new Set(["本","新聞","雑誌","漫画","小説","手紙","メール","記事","文章","教科書","辞書","説明","メニュー","資料"]),
+        writing: new Set(["手紙","メール","名前","文章","日記","レポート","宿題","答え","メモ","作文","資料"]),
+        beverage: new Set(["水","お茶","茶","コーヒー","ジュース","牛乳","酒","お酒","ビール","ワイン","薬"]),
+        food: new Set(["ご飯","朝ご飯","昼ご飯","晩ご飯","パン","肉","魚","野菜","果物","料理","弁当","ケーキ","卵","米","お菓子","菓子"]),
+        media: new Set(["映画","テレビ","番組","写真","絵","動画","アニメ","景色","試合","ニュース","ドラマ"]),
+        audio: new Set(["音楽","ラジオ","話","声","ニュース","歌","質問","説明"]),
+        language: new Set(["日本語","英語","言葉","漢字","文法","単語","語彙","外国語","会話"]),
+        wearable: new Set(["服","シャツ","靴","帽子","コート","上着","ズボン","スカート","眼鏡"]),
+        device: new Set(["電話","携帯電話","携帯","スマホ","パソコン","コンピューター","カメラ","ペン","鉛筆","道具","機械","時計"]),
+        task: new Set(["仕事","宿題","問題","質問","予定","計画","準備","勉強","練習","予約","掃除","試験","テスト"]),
+        transport: new Set(["車","自転車","電車","バス","切符"]),
+        place: new Set(["学校","駅","店","病院","会社","部屋","家","図書館","公園","ホテル","レストラン"]),
+        person: new Set(["人","友達","先生","家族","子供","母","父","兄","姉","弟","妹"])
+      };
+
+      function nounTags(item) {
+        const tags = new Set(["thing"]);
+        const word = String(item?.word || "");
+        const meaning = firstMeaning(item).toLowerCase();
+        Object.entries(NOUN_GROUPS).forEach(([tag,set]) => { if (set.has(word)) tags.add(tag); });
+        if (/book|buch|zeitung|newspaper|magazin|roman|brief|letter|artikel|text|dictionary|wörterbuch/.test(meaning)) tags.add("reading");
+        if (/brief|letter|email|e-mail|name|text|tagebuch|bericht|report|notiz|memo|hausaufgabe/.test(meaning)) tags.add("writing");
+        if (/wasser|tee|kaffee|saft|milch|bier|wein|getränk|medicine|medizin/.test(meaning)) tags.add("beverage");
+        if (/essen|frühstück|mittagessen|abendessen|brot|fleisch|fisch|gemüse|obst|reis|kuchen|snack|food/.test(meaning)) tags.add("food");
+        if (/film|fernsehen|sendung|foto|bild|video|anime|landschaft|spiel|nachrichten/.test(meaning)) tags.add("media");
+        if (/musik|radio|stimme|lied|geschichte|nachrichten|frage/.test(meaning)) tags.add("audio");
+        if (/japanisch|englisch|sprache|wort|kanji|grammatik|vokabel|gespräch/.test(meaning)) tags.add("language");
+        if (/kleidung|hemd|schuh|hut|mantel|jacke|hose|rock|brille/.test(meaning)) tags.add("wearable");
+        if (/telefon|handy|computer|kamera|stift|bleistift|werkzeug|maschine|uhr/.test(meaning)) tags.add("device");
+        if (/arbeit|hausaufgabe|problem|frage|plan|vorbereitung|studium|übung|reservierung|prüfung|test/.test(meaning)) tags.add("task");
+        if (/auto|fahrrad|zug|bus|fahrkarte/.test(meaning)) tags.add("transport");
+        if (/schule|bahnhof|geschäft|krankenhaus|firma|zimmer|haus|bibliothek|park|hotel|restaurant/.test(meaning)) tags.add("place");
+        if (/person|freund|lehrer|familie|kind|mutter|vater|bruder|schwester/.test(meaning)) tags.add("person");
+        return tags;
+      }
+
+      function verbFrame(item) {
+        const word = String(item?.word || "");
+        const meaning = firstMeaning(item).toLowerCase();
+        const exact = {
+          "読む":"read","読書する":"read","書く":"write","記入する":"write","飲む":"drink","食べる":"eat",
+          "見る":"watch","観る":"watch","聞く":"listen","聴く":"listen","買う":"buy","購入する":"buy","売る":"buy",
+          "作る":"make","造る":"make","料理する":"make","使う":"use","利用する":"use","勉強する":"study","学ぶ":"study","習う":"study","覚える":"study",
+          "教える":"teach","説明する":"teach","送る":"send","出す":"send","開ける":"open","閉める":"open","洗う":"wash","選ぶ":"choose","決める":"choose",
+          "持つ":"carry","運ぶ":"carry","取る":"carry","置く":"carry","着る":"wear","履く":"wear","かぶる":"wear","撮る":"photo","探す":"search","調べる":"search",
+          "直す":"repair","修理する":"repair","借りる":"borrow","貸す":"borrow","返す":"borrow","話す":"speak","練習する":"practice","予約する":"reserve","掃除する":"clean","変える":"choose"
+        };
+        if (exact[word]) return exact[word];
+        if (/lesen/.test(meaning)) return "read";
+        if (/schreiben|eintragen/.test(meaning)) return "write";
+        if (/trinken/.test(meaning)) return "drink";
+        if (/essen/.test(meaning)) return "eat";
+        if (/ansehen|anschauen|sehen/.test(meaning)) return "watch";
+        if (/hören|zuhören/.test(meaning)) return "listen";
+        if (/kaufen|verkaufen/.test(meaning)) return "buy";
+        if (/machen|herstellen|zubereiten/.test(meaning)) return "make";
+        if (/benutzen|verwenden/.test(meaning)) return "use";
+        if (/lernen|studieren|üben/.test(meaning)) return "study";
+        if (/beibringen|erklären/.test(meaning)) return "teach";
+        if (/senden|schicken/.test(meaning)) return "send";
+        if (/öffnen|schließen/.test(meaning)) return "open";
+        if (/waschen/.test(meaning)) return "wash";
+        if (/auswählen|wählen|entscheiden/.test(meaning)) return "choose";
+        if (/tragen|halten|nehmen|stellen|legen/.test(meaning)) return "carry";
+        if (/anziehen|tragen/.test(meaning)) return "wear";
+        if (/fotografieren/.test(meaning)) return "photo";
+        if (/suchen|nachschlagen|untersuchen/.test(meaning)) return "search";
+        if (/reparieren|korrigieren/.test(meaning)) return "repair";
+        if (/leihen|ausleihen|zurückgeben/.test(meaning)) return "borrow";
+        if (/sprechen|reden/.test(meaning)) return "speak";
+        if (/reservieren/.test(meaning)) return "reserve";
+        if (/putzen|reinigen/.test(meaning)) return "clean";
+        return null;
+      }
+
+      const FRAME_TAGS = {
+        read:["reading"], write:["writing"], drink:["beverage"], eat:["food"], watch:["media"], listen:["audio"],
+        buy:["reading","beverage","food","media","wearable","device","transport"], make:["food","writing","task","media"],
+        use:["device","transport","language"], study:["language","task"], teach:["language","task"], send:["writing"],
+        open:["reading","device"], wash:["wearable","food"], choose:["reading","beverage","food","media","wearable","device","task","transport"],
+        carry:["reading","beverage","food","wearable","device","transport"], wear:["wearable"], photo:["media"], search:["reading","device","task","person"],
+        repair:["device","transport"], borrow:["reading","device","transport"], speak:["language"], practice:["language","task","media"], reserve:["task","place","transport"], clean:["place","device"]
+      };
+
+      function compatibleNouns(verb, nouns) {
+        const frame = verbFrame(verb);
+        if (!frame) return [];
+        const allowed = new Set(FRAME_TAGS[frame] || []);
+        return nouns.filter(noun => [...nounTags(noun)].some(tag => allowed.has(tag)));
+      }
+
+      function pickVerbNoun(pools, avoid = new Set()) {
+        const verbs = shuffled(pools.verbs.filter(item => !avoid.has(item.id)));
+        for (const verb of verbs) {
+          const nouns = compatibleNouns(verb, pools.nouns).filter(item => !avoid.has(item.id));
+          if (nouns.length) return { verb, noun: pick(nouns) };
+        }
+        return null;
+      }
+
+      function firstMeaning(item) {
+        return String(item?.meanings?.[0] || item?.word || "").replace(/^to\s+/i, "").trim();
+      }
+
+      const COMMON_GERMAN_OBJECTS = {
+        "本":"ein Buch","手紙":"einen Brief","水":"Wasser","お茶":"Tee","茶":"Tee","コーヒー":"Kaffee","牛乳":"Milch",
+        "パン":"Brot","映画":"einen Film","音楽":"Musik","日本語":"Japanisch","英語":"Englisch","電話":"das Telefon",
+        "メール":"eine E-Mail","雑誌":"eine Zeitschrift","新聞":"eine Zeitung","写真":"ein Foto","服":"Kleidung","薬":"Medizin"
+      };
+
+      function objectGloss(item) {
+        const mapped = COMMON_GERMAN_OBJECTS[String(item?.word || "")];
+        if (mapped) return mapped;
+        const value = firstMeaning(item);
+        return value || "etwas";
+      }
+
+      function verbGloss(item) {
+        const value = firstMeaning(item).replace(/^sich\s+/i, "sich ");
+        return value || "machen";
+      }
+
+      function zuVerb(item) {
+        const infinitive = verbGloss(item);
+        if (!infinitive) return "etwas zu tun";
+        const reflexive = infinitive.startsWith("sich ");
+        const core = reflexive ? infinitive.slice(5) : infinitive;
+        const inseparable = /^(be|emp|ent|er|ge|miss|ver|zer)/i.test(core) || /ieren$/i.test(core);
+        const separable = core.match(/^(ab|an|auf|aus|bei|ein|fest|fort|her|hin|los|mit|nach|statt|teil|um|vor|weg|weiter|wieder|zu|zurück|zusammen)(.+)$/i);
+        let result;
+        if (inseparable) result = `zu ${core}`;
+        else if (separable) result = `${separable[1]}zu${separable[2]}`;
+        else result = `zu ${core}`;
+        return reflexive ? `sich ${result}` : result;
+      }
+
+      function pick(values, avoid = new Set()) {
+        const filtered = values.filter(item => !avoid.has(item.id));
+        const list = filtered.length ? filtered : values;
+        return list[Math.floor(Math.random() * list.length)] || null;
+      }
+
+      function shuffled(values) {
+        const result = [...values];
+        for (let i=result.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [result[i],result[j]]=[result[j],result[i]]; }
+        return result;
+      }
+
+      function guruGrammarIds() {
+        try {
+          const progress = window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.();
+          if (!Array.isArray(progress)) return new Set();
+          return new Set(progress.filter(point => Array.isArray(point.skills) && point.skills.length && point.skills.every(skill => Number(skill.stage || 0) >= 5)).map(point => point.id));
+        } catch { return new Set(); }
+      }
+
+      function sentencePools(pool) {
+        const verbs = pool.filter(item => classify(item) === "verb" && verbFrame(item) && formOf(item,"te") && formOf(item,"masu"));
+        const nouns = pool.filter(item => classify(item) === "noun");
+        const adjectives = pool.filter(item => classify(item) === "iadj" || classify(item) === "naadj");
+        return { verbs, nouns, adjectives };
+      }
+
+      function makeSpec({ id, grammar, grammarLabel, grammarStatus = "Grundgrammatik", tokens, de, targets = [], formTarget = null, connectParts = null }) {
+        return { id, grammar, grammarLabel, grammarStatus, tokens, jp: plainSentence(tokens), de, targets, formTarget, connectParts };
+      }
+
+      function basicTemplates(pools) {
+        const { verbs, nouns } = pools;
+        const templates = [];
+        const enough = verbs.length >= 2 && nouns.length >= 2;
+        if (!enough) return templates;
+
+        templates.push({ id:"te-sequence", label:"て-Form: Handlungen verbinden", status:"Grundgrammatik · N5/N4", build:() => {
+          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
+          const f1=formOf(v1,"te"), f2=formOf(v2,"masu"); if(!v1||!v2||!n1||!n2||!f1||!f2) return null;
+          const tokens=[token("明日","あした"),token("、"),itemToken(n1),token("を"),itemToken(v1,f1),token("、それから"),itemToken(n2),token("を"),itemToken(v2,f2),token("。")];
+          return makeSpec({id:`te-${v1.id}-${v2.id}`,grammar:"te-sequence",grammarLabel:"て-Form: Reihenfolge",tokens,de:`Morgen werde ich zuerst ${objectGloss(n1)} ${verbGloss(v1)} und danach ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:4,item:v1,form:f1},connectParts:[
+            [token("明日","あした"),token("、"),itemToken(n1),token("を"),itemToken(v1,formOf(v1,"masu")),token("。")],
+            [token("それから"),itemToken(n2),token("を"),itemToken(v2,f2),token("。")]
+          ]});
+        }});
+
+        templates.push({ id:"te-kara", label:"〜てから: zuerst … dann", status:"Grundgrammatik · N5/N4", build:() => {
+          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
+          const f1=formOf(v1,"te"), f2=formOf(v2,"masu"); if(!f1||!f2||!n1||!n2) return null;
+          const tokens=[itemToken(n1),token("を"),itemToken(v1,f1),token("から、"),itemToken(n2),token("を"),itemToken(v2,f2),token("。")];
+          return makeSpec({id:`tekara-${v1.id}-${v2.id}`,grammar:"te-kara",grammarLabel:"〜てから",tokens,de:`Zuerst werde ich ${objectGloss(n1)} ${verbGloss(v1)}; danach werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:f1},connectParts:[
+            [itemToken(n1),token("を"),itemToken(v1,formOf(v1,"masu")),token("。")],
+            [itemToken(n2),token("を"),itemToken(v2,f2),token("。")]
+          ]});
+        }});
+
+        templates.push({ id:"nagara", label:"〜ながら: gleichzeitig", status:"Grundgrammatik · N4", build:() => {
+          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
+          const m1=formOf(v1,"masu"), m2=formOf(v2,"masu"); if(!m1||!m2||!n1||!n2) return null;
+          const stem={surface:m1.surface.replace(/ます$/, ""),reading:m1.reading.replace(/ます$/, ""),label:"ます-Stamm",key:"stem"};
+          const tokens=[itemToken(n1),token("を"),itemToken(v1,stem),token("ながら、"),itemToken(n2),token("を"),itemToken(v2,m2),token("。")];
+          return makeSpec({id:`nagara-${v1.id}-${v2.id}`,grammar:"nagara",grammarLabel:"〜ながら",tokens,de:`Ich werde gleichzeitig ${objectGloss(n1)} ${verbGloss(v1)} und ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:stem},connectParts:[
+            [itemToken(n1),token("を"),itemToken(v1,m1),token("。")],
+            [itemToken(n2),token("を"),itemToken(v2,m2),token("。")]
+          ]});
+        }});
+
+        templates.push({ id:"nakute-mo-ii", label:"〜なくてもいい: nicht müssen", status:"Grundgrammatik · N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, nai=formOf(v,"nai"); if(!nai||!n) return null;
+          const nakute={surface:nai.surface.replace(/ない$/, "なくて"),reading:nai.reading.replace(/ない$/, "なくて"),label:"negative て-Form",key:"nakute"};
+          const tokens=[token("今日","きょう"),token("は"),itemToken(n),token("を"),itemToken(v,nakute),token("もいいです。")];
+          return makeSpec({id:`nakutemo-${v.id}-${n.id}`,grammar:"nakute-mo-ii",grammarLabel:"〜なくてもいい",tokens,de:`Heute musst du ${objectGloss(n)} nicht ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:nakute}});
+        }});
+
+        templates.push({ id:"node", label:"〜ので: Grund angeben", status:"Grundgrammatik · N4", build:() => {
+          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
+          const tai=formOf(v1,"tai"), masu=formOf(v2,"masu"); if(!tai||!masu||!n1||!n2) return null;
+          const tokens=[itemToken(n1),token("を"),itemToken(v1,tai),token("ので、"),itemToken(n2),token("を"),itemToken(v2,masu),token("。")];
+          return makeSpec({id:`node-${v1.id}-${v2.id}`,grammar:"node",grammarLabel:"〜ので",tokens,de:`Weil ich ${objectGloss(n1)} ${verbGloss(v1)} möchte, werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:tai},connectParts:[
+            [itemToken(n1),token("を"),itemToken(v1,tai),token("。")],
+            [itemToken(n2),token("を"),itemToken(v2,masu),token("。")]
+          ]});
+        }});
+
+        templates.push({ id:"keredo", label:"〜けれど: Gegensatz", status:"Grundgrammatik · N4", build:() => {
+          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
+          const tai=formOf(v1,"tai"), nai=formOf(v2,"nai"); if(!tai||!nai||!n1||!n2) return null;
+          const tokens=[itemToken(n1),token("を"),itemToken(v1,tai),token("けれど、"),itemToken(n2),token("を"),itemToken(v2,nai),token("といけません。")];
+          return makeSpec({id:`keredo-${v1.id}-${v2.id}`,grammar:"keredo",grammarLabel:"〜けれど",tokens,de:`Ich möchte ${objectGloss(n1)} ${verbGloss(v1)}, muss aber ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:tai},connectParts:[
+            [itemToken(n1),token("を"),itemToken(v1,tai),token("。")],
+            [itemToken(n2),token("を"),itemToken(v2,nai),token("といけません。")]
+          ]});
+        }});
+
+        templates.push({ id:"tari-tari", label:"〜たり〜たりする: Beispiele aufzählen", status:"Grundgrammatik · N4", build:() => {
+          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
+          const past1=formOf(v1,"past"), past2=formOf(v2,"past"); if(!past1||!past2||!n1||!n2) return null;
+          const tokens=[token("休みの日","やすみのひ"),token("には、"),itemToken(n1),token("を"),itemToken(v1,past1),token("り、"),itemToken(n2),token("を"),itemToken(v2,past2),token("りします。")];
+          return makeSpec({id:`tari-${v1.id}-${v2.id}`,grammar:"tari-tari",grammarLabel:"〜たり〜たりする",tokens,de:`An freien Tagen mache ich zum Beispiel Folgendes: ${objectGloss(n1)} ${verbGloss(v1)} und ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:4,item:v1,form:past1}});
+        }});
+
+        templates.push({ id:"tsumori", label:"〜つもり: Absicht", status:"Grundgrammatik · N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!v||!n||!dict) return null;
+          const tokens=[token("今週末","こんしゅうまつ"),token("は"),itemToken(n),token("を"),itemToken(v,dict),token("つもりです。")];
+          return makeSpec({id:`tsumori-${v.id}-${n.id}`,grammar:"tsumori",grammarLabel:"〜つもり",tokens,de:`Dieses Wochenende habe ich vor, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+        }});
+
+        templates.push({ id:"hou-ga-ii", label:"〜たほうがいい: Empfehlung", status:"Grundgrammatik · N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const past=formOf(v,"past"); if(!past||!n) return null;
+          const tokens=[token("もっと"),itemToken(n),token("を"),itemToken(v,past),token("ほうがいいです。")];
+          return makeSpec({id:`hou-${v.id}-${n.id}`,grammar:"hou-ga-ii",grammarLabel:"〜たほうがいい",tokens,de:`Du solltest mehr ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:past}});
+        }});
+
+        templates.push({ id:"te-mo-ii", label:"〜てもいい: Erlaubnis", status:"Grundgrammatik · N5/N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const te=formOf(v,"te"); if(!te||!n) return null;
+          const tokens=[token("ここで"),itemToken(n),token("を"),itemToken(v,te),token("もいいです。")];
+          return makeSpec({id:`temoii-${v.id}-${n.id}`,grammar:"te-mo-ii",grammarLabel:"〜てもいい",tokens,de:`Du darfst hier ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:te}});
+        }});
+
+        templates.push({ id:"te-wa-ikenai", label:"〜てはいけない: Verbot", status:"Grundgrammatik · N5/N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const te=formOf(v,"te"); if(!te||!n) return null;
+          const tokens=[token("この場所","このばしょ"),token("で"),itemToken(n),token("を"),itemToken(v,te),token("はいけません。")];
+          return makeSpec({id:`tewa-${v.id}-${n.id}`,grammar:"te-wa-ikenai",grammarLabel:"〜てはいけない",tokens,de:`An diesem Ort darf man ${objectGloss(n)} nicht ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:te}});
+        }});
+
+        templates.push({ id:"koto-ga-aru", label:"〜たことがある: Erfahrung", status:"Grundgrammatik · N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const past=formOf(v,"past"); if(!past||!n) return null;
+          const tokens=[itemToken(n),token("を"),itemToken(v,past),token("ことがあります。")];
+          return makeSpec({id:`exp-${v.id}-${n.id}`,grammar:"koto-ga-aru",grammarLabel:"〜たことがある",tokens,de:`Ich habe bereits Erfahrung damit, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:past}});
+        }});
+
+        templates.push({ id:"to-omou", label:"〜と思う: Meinung/Vermutung", status:"Grundgrammatik · N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!dict||!n) return null;
+          const tokens=[token("明日","あした"),token("は"),itemToken(n),token("を"),itemToken(v,dict),token("と"),token("思います","おもいます"),token("。")];
+          return makeSpec({id:`omou-${v.id}-${n.id}`,grammar:"to-omou",grammarLabel:"〜と思う",tokens,de:`Ich glaube, dass ich morgen ${objectGloss(n)} ${verbGloss(v)} werde.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+        }});
+
+        templates.push({ id:"kamoshirenai", label:"〜かもしれない: Möglichkeit", status:"Grundgrammatik · N4", build:() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!dict||!n) return null;
+          const tokens=[token("後","あと"),token("で"),itemToken(n),token("を"),itemToken(v,dict),token("かもしれません。")];
+          return makeSpec({id:`kamo-${v.id}-${n.id}`,grammar:"kamoshirenai",grammarLabel:"〜かもしれない",tokens,de:`Vielleicht werde ich später ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+        }});
+        return templates;
+      }
+
+      function guruTemplates(pools, guruIds) {
+        const { verbs, nouns } = pools;
+        if (verbs.length < 1 || nouns.length < 1) return [];
+        const templates = [];
+        const add = (id, label, build) => { if (guruIds.has(id)) templates.push({ id, label, status:"Deine Guru-Grammatik", build }); };
+
+        add("you-ni-suru","〜ようにする",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
+          const tokens=[token("毎日","まいにち"),itemToken(n),token("を"),itemToken(v,dict),token("ようにしています。")];
+          return makeSpec({id:`yousuru-${v.id}-${n.id}`,grammar:"you-ni-suru",grammarLabel:"〜ようにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bemühe mich, jeden Tag ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:dict}});
         });
-        return [...unique.values()].sort((left, right) => right.surface.length - left.surface.length);
+        add("koto-ni-suru","〜ことにする",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
+          const tokens=[itemToken(n),token("を"),itemToken(v,dict),token("ことにしました。")];
+          return makeSpec({id:`kotosuru-${v.id}-${n.id}`,grammar:"koto-ni-suru",grammarLabel:"〜ことにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich habe beschlossen, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:dict}});
+        });
+        add("koto-ni-naru","〜ことになる",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
+          const tokens=[token("来月","らいげつ"),token("から"),itemToken(n),token("を"),itemToken(v,dict),token("ことになりました。")];
+          return makeSpec({id:`kotonaru-${v.id}-${n.id}`,grammar:"koto-ni-naru",grammarLabel:"〜ことになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Es wurde beschlossen, dass ich ab nächsten Monat ${objectGloss(n)} ${verbGloss(v)} soll.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+        });
+        add("you-ni-naru","〜ようになる",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, potential=formOf(v,"potential") || formOf(v,"dictionary"); if(!potential||!n) return null;
+          const tokens=[token("最近","さいきん"),token("、"),itemToken(n),token("を"),itemToken(v,potential),token("ようになりました。")];
+          return makeSpec({id:`younaru-${v.id}-${n.id}`,grammar:"you-ni-naru",grammarLabel:"〜ようになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`In letzter Zeit bin ich in der Lage, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
+        });
+        add("tokoro-da","〜ところだ",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
+          const tokens=[token("今","いま"),token("、"),itemToken(n),token("を"),itemToken(v,dict),token("ところです。")];
+          return makeSpec({id:`tokoro-${v.id}-${n.id}`,grammar:"tokoro-da",grammarLabel:"〜ところだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade dabei, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+        });
+        add("ta-bakari","〜たばかり",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, past=formOf(v,"past"); if(!past||!n) return null;
+          const tokens=[token("今","いま"),itemToken(n),token("を"),itemToken(v,past),token("ばかりです。")];
+          return makeSpec({id:`bakari-${v.id}-${n.id}`,grammar:"ta-bakari",grammarLabel:"〜たばかり",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade erst damit fertig geworden, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:past}});
+        });
+        add("tame-ni","〜ために",() => {
+          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
+          const d1=formOf(v1,"dictionary"), m2=formOf(v2,"masu"); if(!d1||!m2||!n1||!n2) return null;
+          const tokens=[itemToken(n1),token("を"),itemToken(v1,d1),token("ために、"),itemToken(n2),token("を"),itemToken(v2,m2),token("。")];
+          return makeSpec({id:`tame-${v1.id}-${v2.id}`,grammar:"tame-ni",grammarLabel:"〜ために",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Um ${objectGloss(n1)} ${zuVerb(v1)}, werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:d1},connectParts:[
+            [itemToken(n1),token("を"),itemToken(v1,d1),token("。")],
+            [itemToken(n2),token("を"),itemToken(v2,m2),token("。")]
+          ]});
+        });
+        add("hazu-da","〜はずだ",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, potential=formOf(v,"potential") || formOf(v,"dictionary"); if(!potential||!n) return null;
+          const tokens=[token("この方法","このほうほう"),token("なら、"),itemToken(n),token("を"),itemToken(v,potential),token("はずです。")];
+          return makeSpec({id:`hazu-${v.id}-${n.id}`,grammar:"hazu-da",grammarLabel:"〜はずだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Mit dieser Methode müsste es möglich sein, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
+        });
+        add("uchi-ni","〜うちに",() => {
+          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, tai=formOf(v,"tai"); if(!tai||!n) return null;
+          const tokens=[token("時間","じかん"),token("があるうちに、"),itemToken(n),token("を"),itemToken(v,tai),token("です。")];
+          return makeSpec({id:`uchi-${v.id}-${n.id}`,grammar:"uchi-ni",grammarLabel:"〜うちに",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Solange ich noch Zeit habe, möchte ich ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:tai}});
+        });
+        return templates;
       }
 
-      function findSurface(item, sentence) {
-        const source = String(sentence || "");
-        return generateForms(item).find(form => source.includes(form.surface)) || null;
-      }
-
-      function buildLexicon(pool) {
-        const byFirst = new Map();
+      function buildSentenceBank(pool, desired = 90) {
+        const pools = sentencePools(pool);
+        const guruIds = guruGrammarIds();
+        const templates = [...basicTemplates(pools), ...guruTemplates(pools, guruIds)];
+        const bank = [];
         const seen = new Set();
-        for (const item of pool) {
-          for (const form of generateForms(item)) {
-            if (!form.surface || form.surface.length < 1) continue;
-            const key = `${form.surface}|${form.reading}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            const first = form.surface[0];
-            if (!byFirst.has(first)) byFirst.set(first, []);
-            byFirst.get(first).push({ ...form, itemId: item.id });
-          }
+        let attempts = 0;
+        while (bank.length < desired && attempts < desired * 12 && templates.length) {
+          attempts += 1;
+          const template = templates[attempts % templates.length] || templates[Math.floor(Math.random()*templates.length)];
+          const spec = template.build();
+          if (!spec?.jp || !spec?.de || seen.has(spec.jp)) continue;
+          spec.grammar = template.id;
+          spec.grammarLabel ||= template.label;
+          spec.grammarStatus ||= template.status;
+          seen.add(spec.jp);
+          bank.push(spec);
         }
-        byFirst.forEach(list => list.sort((left, right) => right.surface.length - left.surface.length));
-        return byFirst;
+        return shuffled(bank);
       }
 
-      function sentenceMarkup(question, { blank = false, highlight = true } = {}) {
-        const sentence = String(question?.context?.sentence || "");
-        const target = question?.surface;
-        const lexicon = session?.lexicon || new Map();
-        if (!sentence) return "";
-        let html = "";
-        let index = 0;
-        while (index < sentence.length) {
-          const forms = lexicon.get(sentence[index]) || [];
-          const match = forms.find(form => sentence.startsWith(form.surface, index));
-          if (!match) {
-            html += esc(sentence[index]);
-            index += 1;
-            continue;
-          }
-          const isTarget = target && index === target.index && match.surface === target.surface;
-          if (isTarget && blank) {
-            html += `<span class="kq-practice-blank" aria-label="Lücke">＿＿＿＿</span>`;
-          } else {
-            const content = ruby(match.surface, match.reading);
-            html += isTarget && highlight
-              ? `<mark class="kq-practice-target">${content}</mark>`
-              : `<span class="kq-practice-token">${content}</span>`;
-          }
-          index += match.surface.length;
-        }
-        return html;
-      }
-
-      function questionCandidates(pool, settings) {
+      function questionCandidates(bank, settings) {
         const selectedModes = Object.keys(MODE_META).filter(mode => settings.modes[mode]);
-        const needsSurface = selectedModes.includes("form");
         const candidates = [];
-        for (const item of pool) {
-          const contexts = item.contexts.length ? item.contexts : [{ sentence: "", translation: "", origin: "none", sourceLabel: "" }];
-          const context = contexts[Math.floor(Math.random() * contexts.length)];
-          const form = needsSurface && context.sentence ? findSurface(item, context.sentence) : null;
-          const surface = form ? { ...form, index: context.sentence.indexOf(form.surface) } : null;
+        for (const spec of bank) {
           for (const mode of selectedModes) {
-            if ((mode === "context" || mode === "listening" || mode === "translation") && !context.sentence) continue;
-            if (mode === "translation" && !context.translation) continue;
-            if (mode === "form" && (!context.sentence || !surface)) continue;
-            candidates.push({
-              id: `${item.id}|${mode}|${normalizeKey(context.sentence)}|${Math.random()}`,
-              item,
-              mode,
-              context,
-              surface,
-              repeated: false
-            });
+            if (mode === "form" && !spec.formTarget) continue;
+            if (mode === "connect" && !spec.connectParts) continue;
+            candidates.push({ id:`${spec.id}|${mode}|${Math.random()}`, spec, mode, repeated:false, answered:false, pendingDecision:false, userAnswer:"" });
           }
         }
         return candidates;
       }
 
-      function shuffle(values) {
-        const result = [...values];
-        for (let index = result.length - 1; index > 0; index -= 1) {
-          const target = Math.floor(Math.random() * (index + 1));
-          [result[index], result[target]] = [result[target], result[index]];
-        }
-        return result;
-      }
-
       function chooseQuestions(pool, settings) {
-        const candidates = shuffle(questionCandidates(pool, settings));
-        const firstByItem = [];
-        const remaining = [];
-        const used = new Set();
-        for (const candidate of candidates) {
-          const key = `${normalizeKey(candidate.item.word)}|${normalizeKey(candidate.item.reading)}`;
-          if (!used.has(key)) {
-            used.add(key);
-            firstByItem.push(candidate);
-          } else {
-            remaining.push(candidate);
-          }
+        const bank = buildSentenceBank(pool, Math.max(settings.length * 5, 60));
+        const byMode = new Map();
+        Object.keys(MODE_META).filter(mode => settings.modes[mode]).forEach(mode => byMode.set(mode, shuffled(questionCandidates(bank, { ...settings, modes: Object.fromEntries(Object.keys(MODE_META).map(key => [key, key === mode])) }))));
+        const modes = shuffled([...byMode.keys()]);
+        const result = [];
+        const recentGrammar = [];
+        let guard = 0;
+        while (result.length < settings.length && guard < settings.length * 20 && modes.length) {
+          guard += 1;
+          const mode = modes[result.length % modes.length];
+          const list = byMode.get(mode) || [];
+          let index = list.findIndex(question => !recentGrammar.includes(question.spec.grammar));
+          if (index < 0) index = 0;
+          const question = list.splice(index,1)[0];
+          if (!question) continue;
+          result.push(question);
+          recentGrammar.push(question.spec.grammar);
+          if (recentGrammar.length > 2) recentGrammar.shift();
         }
-        return [...shuffle(firstByItem), ...shuffle(remaining)].slice(0, Math.min(settings.length, candidates.length));
-      }
-
-      function filterCatalog(catalog, settings) {
-        return catalog.filter(item => item.sourceTypes.some(type => settings.sources[type]));
+        return { questions:result, bank };
       }
 
       function availableCounts(settings = settingsFor(), suppliedPool = null) {
         const pool = suppliedPool || eligibleVocabulary(settings);
-        const candidates = questionCandidates(pool, settings);
+        const bank = buildSentenceBank(pool, 70);
+        const candidates = questionCandidates(bank, settings);
         const byMode = {};
-        Object.keys(MODE_META).forEach(mode => { byMode[mode] = candidates.filter(item => item.mode === mode).length; });
-        return { pool, candidates, byMode };
+        Object.keys(MODE_META).forEach(mode => { byMode[mode] = candidates.filter(question => question.mode === mode).length; });
+        return { pool, bank, candidates, byMode };
       }
 
       function modeAnswer(question) {
-        if (question.mode === "form") return question.surface?.surface || question.item.word;
-        if (question.mode === "writing") return question.item.word;
-        if (question.mode === "translation") return question.context.translation;
-        return question.item.meanings.join(" / ");
+        if (question.mode === "form") return question.spec.formTarget?.form?.surface || "";
+        return question.spec.jp;
       }
 
       function answerMatches(question, answer) {
         const entered = String(answer || "").trim();
-        if (!entered) return { kind: "empty" };
-        if (question.mode === "context" || question.mode === "listening") {
-          const normalized = normalizeLatin(entered);
-          if (question.item.meanings.some(meaning => normalizeLatin(meaning) === normalized)) return { kind: "correct" };
-          try {
-            if (question.item.meanings.some(meaning => typeof isCloseLatinAnswer === "function" && isCloseLatinAnswer(entered, meaning))) return { kind: "close" };
-          } catch {}
-          return { kind: "incorrect" };
-        }
-        if (question.mode === "writing") {
-          const exact = [question.item.word, question.item.reading, ...(question.item.acceptedReadings || [])];
-          if (exact.some(value => normalizeKey(value) === normalizeKey(entered) || normalizeKana(value) === normalizeKana(entered))) return { kind: "correct" };
-          return { kind: "incorrect" };
-        }
+        if (!entered) return { kind:"empty" };
         if (question.mode === "form") {
-          const exact = [question.surface?.surface, question.surface?.reading].filter(Boolean);
-          if (exact.some(value => normalizeKey(value) === normalizeKey(entered) || normalizeKana(value) === normalizeKana(entered))) return { kind: "correct" };
-          return { kind: "incorrect" };
+          const form = question.spec.formTarget?.form;
+          const exact = [form?.surface, form?.reading].filter(Boolean);
+          if (exact.some(value => normalizeKey(value) === normalizeKey(entered) || normalizeKana(value) === normalizeKana(entered))) return { kind:"correct" };
+          try { if (exact.some(value => typeof isCloseKanaAnswer === "function" && isCloseKanaAnswer(entered,value))) return { kind:"close" }; } catch {}
+          return { kind:"incorrect" };
         }
-        return { kind: "manual" };
-      }
-
-      function addMeaningSynonym(question, answer) {
-        const clean = String(answer || "").trim();
-        if (!clean) return false;
-        const key = normalizeLatin(clean);
-        if (!key) return false;
-        if (!question.item.meanings.some(value => normalizeLatin(value) === key)) question.item.meanings.push(clean);
-        const source = sourceData();
-        let changed = false;
-        for (const ref of question.item.sourceRefs || []) {
-          const target = ref?.item;
-          if (!target) continue;
-          if (Array.isArray(target.meanings)) {
-            if (!target.meanings.some(value => normalizeLatin(value) === key)) {
-              target.meanings.push(clean);
-              changed = true;
-            }
-          } else if (ref.type === "known") {
-            target.meanings = [target.meaning, clean].filter(Boolean);
-            changed = true;
-          }
-        }
-        if (changed) writeSource(source);
-        return changed;
+        return { kind:"manual" };
       }
 
       function recordResult(question, resultKind) {
@@ -21244,7 +21428,7 @@
         if (resultKind === "correct") stats.correct += 1;
         else if (resultKind === "close") stats.close += 1;
         else stats.incorrect += 1;
-        const modeStats = stats.byMode[question.mode] || { questions: 0, correct: 0, close: 0, incorrect: 0 };
+        const modeStats = stats.byMode[question.mode] || { questions:0, correct:0, close:0, incorrect:0 };
         modeStats.questions += 1;
         if (resultKind === "correct") modeStats.correct += 1;
         else if (resultKind === "close") modeStats.close += 1;
@@ -21253,12 +21437,11 @@
         source.vocabContextPractice = stats;
         recordStudyAction(source);
         writeSource(source);
-
         session.results[resultKind] += 1;
         if (resultKind === "incorrect" && !question.repeated) {
-          const repeated = { ...question, id: `${question.id}|repeat`, repeated: true, resultRecorded: false, answered: false, pendingDecision: false, userAnswer: "" };
-          const insertAt = Math.min(session.questions.length, session.index + 3 + Math.floor(Math.random() * 3));
-          session.questions.splice(insertAt, 0, repeated);
+          const repeated = { ...question, id:`${question.id}|repeat`, repeated:true, resultRecorded:false, answered:false, pendingDecision:false, selfRating:false, userAnswer:"" };
+          const insertAt = Math.min(session.questions.length, session.index + 3 + Math.floor(Math.random()*3));
+          session.questions.splice(insertAt,0,repeated);
           stats.repeated += 1;
           source.vocabContextPractice = stats;
           writeSource(source);
@@ -21272,9 +21455,9 @@
         const settings = readSettingsFromUi();
         source.vocabContextPracticeSettings = settings;
         const pool = eligibleVocabulary(settings);
-        const questions = chooseQuestions(pool, settings);
-        if (!questions.length) {
-          toastMessage("Für diese Auswahl sind noch keine passenden Übungen vorhanden.");
+        const built = chooseQuestions(pool, settings);
+        if (!built.questions.length) {
+          toastMessage("Für diese Auswahl fehlen noch genügend passende Verben und Nomen für Satzübungen.");
           renderHome();
           return;
         }
@@ -21283,21 +21466,11 @@
         stats.lastPracticedAt = Date.now();
         source.vocabContextPractice = stats;
         writeSource(source);
-        session = {
-          settings,
-          pool,
-          lexicon: buildLexicon(pool),
-          questions,
-          index: 0,
-          results: { correct: 0, close: 0, incorrect: 0 },
-          startedAt: Date.now()
-        };
+        session = { settings, pool, bank:built.bank, questions:built.questions, index:0, results:{correct:0,close:0,incorrect:0}, startedAt:Date.now() };
         renderPractice();
       }
 
-      function currentQuestion() {
-        return session?.questions?.[session.index] || null;
-      }
+      function currentQuestion() { return session?.questions?.[session.index] || null; }
 
       function stopAudio() {
         try { if (typeof stopAudioPlayback === "function") stopAudioPlayback(); } catch {}
@@ -21307,520 +21480,240 @@
 
       function playPracticeAudio(question) {
         stopAudio();
-        const text = String(question?.context?.sentence || question?.item?.reading || "").trim();
-        if (!text) return;
-        if (question?.context?.origin === "example") {
-          try {
-            if (typeof playPreparedSentence === "function") {
-              playPreparedSentence({
-                ...question.item,
-                example: question.context.sentence,
-                exampleTranslation: question.context.translation
-              });
-              return;
-            }
-          } catch {}
-        }
-        if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
+        const text = question?.spec?.jp || "";
+        if (!text || !("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "ja-JP";
-        utterance.rate = .84;
-        const voices = speechSynthesis.getVoices();
-        const voice = voices.find(item => /^ja(?:-|_)/i.test(item.lang || ""));
+        utterance.lang = "ja-JP"; utterance.rate = .82;
+        const voice = speechSynthesis.getVoices().find(item => /^ja(?:-|_)/i.test(item.lang || ""));
         if (voice) utterance.voice = voice;
         audioUtterance = utterance;
         speechSynthesis.speak(utterance);
       }
 
+      function grammarBadge(spec) {
+        return `<div class="kq-practice-grammar"><strong>${esc(spec.grammarLabel)}</strong><span>${esc(spec.grammarStatus)}</span></div>`;
+      }
+
+      function targetGlosses(spec) {
+        const unique = new Map();
+        (spec.targets || []).forEach(item => unique.set(item.id, item));
+        return `<div class="kq-practice-vocab-chips">${[...unique.values()].map(item => `<span>${ruby(item.word,item.reading)}<small>${esc(firstMeaning(item))}</small></span>`).join("")}</div>`;
+      }
+
       function promptMarkup(question) {
-        if (question.mode === "context") {
-          return `<p class="kq-practice-instruction">Welche Bedeutung hat das markierte Wort in diesem Satz?</p>
-            <div class="kq-practice-sentence">${sentenceMarkup(question)}</div>`;
+        const spec = question.spec;
+        if (question.mode === "reading") {
+          return `<p class="kq-practice-instruction">Übersetze den vollständigen Satz ins Deutsche.</p>${grammarBadge(spec)}
+            <div class="kq-practice-sentence">${renderTokens(spec.tokens)}</div>`;
         }
         if (question.mode === "listening") {
-          return `<p class="kq-practice-instruction">Höre den Satz. Was bedeutet das Zielwort?</p>
-            <div class="kq-practice-target-word">${ruby(question.item.word, question.item.reading)}</div>
-            <button class="icon-audio kq-practice-audio" id="kqPracticeAudio" type="button" aria-label="Satz abspielen">🔊</button>`;
-        }
-        if (question.mode === "writing") {
-          return `<p class="kq-practice-instruction">Schreibe die japanische Grundform. Romaji wird wie gewohnt in Hiragana umgewandelt.</p>
-            <div class="kq-practice-meaning">${esc(question.item.meanings.join(" / "))}</div>
-            ${question.context.translation ? `<div class="kq-practice-translation-hint">Kontext: ${esc(question.context.translation)}</div>` : ""}`;
+          return `<p class="kq-practice-instruction">Höre den vollständigen Satz und übersetze ihn ins Deutsche.</p>${grammarBadge(spec)}
+            <button class="icon-audio kq-practice-audio kq-practice-audio-large" id="kqPracticeAudio" type="button" aria-label="Satz abspielen">🔊</button>
+            <p class="muted small">Der japanische Satz wird nach deiner Antwort mit vollständigem Furigana eingeblendet.</p>`;
         }
         if (question.mode === "form") {
-          return `<p class="kq-practice-instruction">Setze das Lernwort in genau der Form ein, die in diesem Satz gebraucht wird.</p>
-            <div class="kq-practice-base">Grundform: ${ruby(question.item.word, question.item.reading)}</div>
-            <div class="kq-practice-sentence">${sentenceMarkup(question, { blank: true, highlight: false })}</div>
-            ${question.context.translation ? `<div class="kq-practice-translation-hint">${esc(question.context.translation)}</div>` : ""}`;
+          const target = spec.formTarget;
+          return `<p class="kq-practice-instruction">Setze die Grundform in die grammatisch passende Form.</p>${grammarBadge(spec)}
+            <div class="kq-practice-base">Grundform: ${ruby(target.item.word,target.item.reading)} · ${esc(firstMeaning(target.item))}</div>
+            <div class="kq-practice-sentence">${renderTokens(spec.tokens,{blankIndex:target.tokenIndex,highlight:false})}</div>
+            <div class="kq-practice-translation-hint">${esc(spec.de)}</div>`;
         }
-        return `<p class="kq-practice-instruction">Übersetze den Satz frei ins Deutsche. Vergleiche danach selbst mit der gespeicherten Übersetzung.</p>
-          <div class="kq-practice-sentence">${sentenceMarkup(question)}</div>`;
+        if (question.mode === "writing") {
+          return `<p class="kq-practice-instruction">Formuliere den ganzen Satz auf Japanisch. Mehrere natürliche Lösungen sind möglich.</p>${grammarBadge(spec)}
+            <div class="kq-practice-german-prompt">${esc(spec.de)}</div>
+            <details class="kq-practice-vocab-help"><summary>Verwendete Vokabeln als Hilfe anzeigen</summary>${targetGlosses(spec)}</details>`;
+        }
+        return `<p class="kq-practice-instruction">Verbinde die beiden Aussagen mit <strong>${esc(spec.grammarLabel)}</strong>.</p>${grammarBadge(spec)}
+          <div class="kq-practice-parts">${spec.connectParts.map(part => `<div>${renderTokens(part)}</div>`).join("<span>＋</span>")}</div>
+          <div class="kq-practice-translation-hint">Zielbedeutung: ${esc(spec.de)}</div>`;
       }
 
       function answerInputMarkup(question) {
-        const translation = question.mode === "translation";
-        if (translation) return `<textarea id="kqPracticeAnswer" rows="3" placeholder="Deine deutsche Übersetzung …" autocomplete="off"></textarea>`;
-        const japanese = question.mode === "writing" || question.mode === "form";
-        return `<input id="kqPracticeAnswer" ${japanese ? 'inputmode="latin" autocapitalize="none" spellcheck="false"' : ""} autocomplete="off" placeholder="${japanese ? "Japanische Antwort …" : "Deutsche Bedeutung …"}" />`;
+        const japanese = question.mode === "form" || question.mode === "writing" || question.mode === "connect";
+        const multiline = question.mode !== "form";
+        if (multiline) return `<textarea id="kqPracticeAnswer" rows="3" ${japanese ? 'inputmode="latin" autocapitalize="none" spellcheck="false"' : ""} autocomplete="off" placeholder="${japanese ? "Dein japanischer Satz …" : "Deine deutsche Übersetzung …"}"></textarea>`;
+        return `<input id="kqPracticeAnswer" inputmode="latin" autocapitalize="none" spellcheck="false" autocomplete="off" placeholder="Passende japanische Form …" />`;
+      }
+
+      function revealedSentence(spec) {
+        return `<div class="kq-practice-reveal-sentence"><div>${renderTokens(spec.tokens)}</div><small>${esc(spec.de)}</small>${targetGlosses(spec)}</div>`;
       }
 
       function feedbackMarkup(question) {
-        if (!question.answered && !question.pendingDecision) return "";
-        const correctAnswer = modeAnswer(question);
-        const sentence = question.context?.sentence
-          ? `<div class="kq-practice-reveal-sentence">${sentenceMarkup(question)}${question.context.translation ? `<small>${esc(question.context.translation)}</small>` : ""}</div>`
-          : "";
+        if (!question.answered && !question.pendingDecision && !question.selfRating) return "";
+        const answer = modeAnswer(question);
         if (question.pendingDecision) {
-          const germanMode = question.mode === "context" || question.mode === "listening";
-          return `<div class="feedback bad"><strong>Noch nicht als richtig erkannt.</strong><span>Erwartet: ${esc(correctAnswer)}</span></div>
-            ${sentence}
+          return `<div class="feedback bad"><strong>Noch nicht als richtig erkannt.</strong><span>Erwartete Form: ${ruby(answer,question.spec.formTarget?.form?.reading || "")}</span></div>
+            ${revealedSentence(question.spec)}
             <div class="button-row kq-practice-decision-row">
-              ${germanMode ? `<button class="secondary" id="kqPracticeSynonym" type="button">Meine Antwort ist ein Synonym</button>` : ""}
-              <button class="ghost" id="kqPracticeTypo" type="button">Nur vertippt</button>
+              <button class="secondary" id="kqPracticeTypo" type="button">Nur vertippt</button>
               <button class="danger" id="kqPracticeWrong" type="button">Als falsch werten</button>
-            </div>`;
+            </div><p class="small muted kq-keyboard-tip">Enter = als falsch werten · T = Tippfehler</p>`;
         }
-        if (question.mode === "translation" && !question.selfRated) {
-          return `<div class="feedback warning"><strong>Vergleiche deine Übersetzung:</strong><span>${esc(correctAnswer)}</span></div>
+        if (question.selfRating && !question.resultKind) {
+          return `${revealedSentence(question.spec)}
+            <div class="feedback warning"><strong>Vergleiche deine Lösung mit dem Modell.</strong><span>Andere natürliche Formulierungen können ebenfalls richtig sein.</span></div>
             <div class="button-row kq-practice-rating-row">
               <button class="primary" id="kqPracticeRateGood" type="button">Passt gut</button>
               <button class="secondary" id="kqPracticeRateClose" type="button">Teilweise</button>
               <button class="danger" id="kqPracticeRateBad" type="button">Noch nicht</button>
-            </div>`;
+            </div><p class="small muted kq-keyboard-tip">Enter/1 = passt gut · 2 = teilweise · 3 = noch nicht</p>`;
         }
         const label = question.resultKind === "correct" ? "Richtig" : question.resultKind === "close" ? "Fast richtig" : "Falsch";
         const kind = question.resultKind === "correct" ? "good" : question.resultKind === "close" ? "warning" : "bad";
-        return `<div class="feedback ${kind}"><strong>${label}</strong><span>Antwort: ${esc(correctAnswer)}</span></div>${sentence}
-          <div class="button-row" style="justify-content:center;margin-top:14px"><button class="primary" id="kqPracticeNext" type="button">${session.index >= session.questions.length - 1 ? "Auswertung" : "Weiter"}</button></div>`;
+        return `<div class="feedback ${kind}"><strong>${label}</strong>${question.mode === "form" ? `<span>Antwort: ${ruby(answer,question.spec.formTarget?.form?.reading || "")}</span>` : ""}</div>
+          ${revealedSentence(question.spec)}
+          <div class="button-row" style="justify-content:center;margin-top:14px"><button class="primary" id="kqPracticeNext" type="button">${session.index >= session.questions.length - 1 ? "Auswertung" : "Weiter"}</button></div>
+          <p class="small muted kq-keyboard-tip">Enter = weiter</p>`;
+      }
+
+      function advance() {
+        stopAudio();
+        session.index += 1;
+        renderPractice();
+      }
+
+      function rateManual(question, kind) {
+        question.selfRating = false;
+        question.answered = true;
+        question.resultKind = kind;
+        recordResult(question,kind);
+        advance();
+      }
+
+      function bindKeyboard(root, question, input) {
+        root.onkeydown = event => {
+          if (event.isComposing || event.repeat) return;
+          const key = event.key;
+          if (question.selfRating && !question.resultKind) {
+            if (key === "Enter" || key === "1") { event.preventDefault(); rateManual(question,"correct"); }
+            else if (key === "2") { event.preventDefault(); rateManual(question,"close"); }
+            else if (key === "3") { event.preventDefault(); rateManual(question,"incorrect"); }
+            return;
+          }
+          if (question.pendingDecision) {
+            if (key.toLowerCase() === "t") { event.preventDefault(); root.querySelector("#kqPracticeTypo")?.click(); }
+            else if (key === "Enter") { event.preventDefault(); root.querySelector("#kqPracticeWrong")?.click(); }
+            return;
+          }
+          if (question.resultKind && key === "Enter") { event.preventDefault(); advance(); return; }
+          if (input && document.activeElement === input && key === "Enter" && !event.shiftKey) {
+            event.preventDefault(); root.querySelector("#kqPracticeForm")?.requestSubmit();
+          }
+        };
       }
 
       function renderPractice() {
         const root = document.getElementById("kqContextPracticeRoot");
         if (!root) return;
-        if (!session) {
-          renderHome();
-          return;
-        }
-        if (session.index >= session.questions.length) {
-          renderSummary();
-          return;
-        }
-        const question = currentQuestion();
-        const meta = MODE_META[question.mode];
-        root.innerHTML = `
-          <div class="kq-practice-topline">
-            <div><span class="counter">Aufgabe ${session.index + 1} von ${session.questions.length}</span><div class="kq-practice-progress"><span style="width:${Math.round((session.index / Math.max(1, session.questions.length)) * 100)}%"></span></div></div>
-            <button class="ghost" id="kqPracticeQuit" type="button">Training beenden</button>
-          </div>
-          <article class="card kq-practice-card">
-            <div class="kq-practice-mode"><span>${meta.icon}</span><strong>${esc(meta.label)}</strong>${question.repeated ? `<em>Wiederholung</em>` : ""}</div>
+        if (!session) { renderHome(); return; }
+        if (session.index >= session.questions.length) { renderSummary(); return; }
+        const question = currentQuestion(), meta = MODE_META[question.mode];
+        root.innerHTML = `<div class="kq-practice-topline"><div><span class="counter">Aufgabe ${session.index+1} von ${session.questions.length}</span><div class="kq-practice-progress"><span style="width:${Math.round((session.index/Math.max(1,session.questions.length))*100)}%"></span></div></div><button class="ghost" id="kqPracticeQuit" type="button">Training beenden</button></div>
+          <article class="card kq-practice-card"><div class="kq-practice-mode"><span>${meta.icon}</span><strong>${esc(meta.label)}</strong>${question.repeated?`<em>Wiederholung</em>`:""}</div>
             ${promptMarkup(question)}
-            <form id="kqPracticeForm" class="kq-practice-form">
-              ${answerInputMarkup(question)}
-              <button class="primary" type="submit" ${question.answered || question.pendingDecision ? "disabled" : ""}>Prüfen</button>
-            </form>
+            <form id="kqPracticeForm" class="kq-practice-form">${answerInputMarkup(question)}<button class="primary" type="submit" ${question.answered||question.pendingDecision||question.selfRating?"disabled":""}>Prüfen</button></form>
             ${feedbackMarkup(question)}
           </article>`;
 
         const input = root.querySelector("#kqPracticeAnswer");
         if (input) {
           input.value = question.userAnswer || "";
-          input.disabled = Boolean(question.answered || question.pendingDecision);
-          if ((question.mode === "writing" || question.mode === "form") && !input.disabled) {
-            input.addEventListener("input", () => {
-              const converted = toHiragana(input.value, false);
-              if (converted !== input.value) {
-                input.value = converted;
-                try { input.setSelectionRange(input.value.length, input.value.length); } catch {}
-              }
+          input.disabled = Boolean(question.answered || question.pendingDecision || question.selfRating);
+          if ((question.mode === "form" || question.mode === "writing" || question.mode === "connect") && !input.disabled) {
+            input.addEventListener("input",() => {
+              const converted = toHiragana(input.value,false);
+              if (converted !== input.value) { input.value=converted; try{input.setSelectionRange(input.value.length,input.value.length);}catch{} }
             });
           }
-          if (!input.disabled) setTimeout(() => input.focus(), 0);
+          if (!input.disabled) setTimeout(() => input.focus(),0);
         }
 
-        root.querySelector("#kqPracticeForm")?.addEventListener("submit", event => {
+        root.querySelector("#kqPracticeForm")?.addEventListener("submit",event => {
           event.preventDefault();
-          if (question.answered || question.pendingDecision) return;
+          if (question.answered || question.pendingDecision || question.selfRating) return;
           let answer = String(input?.value || "").trim();
-          if ((question.mode === "writing" || question.mode === "form") && answer) {
-            answer = toHiragana(answer, true);
-            if (input) input.value = answer;
+          if ((question.mode === "form" || question.mode === "writing" || question.mode === "connect") && answer) {
+            answer = toHiragana(answer,true); if(input) input.value=answer;
           }
           if (!answer) return;
           question.userAnswer = answer;
-          const evaluation = answerMatches(question, answer);
-          if (evaluation.kind === "manual") {
-            question.answered = true;
-            renderPractice();
-          } else if (evaluation.kind === "correct" || evaluation.kind === "close") {
-            question.answered = true;
-            question.resultKind = evaluation.kind;
-            recordResult(question, evaluation.kind);
-            renderPractice();
-          } else {
-            question.pendingDecision = true;
-            renderPractice();
-          }
+          const evaluation = answerMatches(question,answer);
+          if (evaluation.kind === "manual") { question.selfRating=true; renderPractice(); }
+          else if (evaluation.kind === "correct" || evaluation.kind === "close") { question.answered=true; question.resultKind=evaluation.kind; recordResult(question,evaluation.kind); renderPractice(); }
+          else { question.pendingDecision=true; renderPractice(); }
         });
 
-        root.querySelector("#kqPracticeAudio")?.addEventListener("click", () => playPracticeAudio(question));
-        root.querySelector("#kqPracticeSynonym")?.addEventListener("click", () => {
-          addMeaningSynonym(question, question.userAnswer);
-          question.pendingDecision = false;
-          question.answered = true;
-          question.resultKind = "correct";
-          recordResult(question, "correct");
-          renderPractice();
-        });
-        root.querySelector("#kqPracticeTypo")?.addEventListener("click", () => {
-          question.pendingDecision = false;
-          question.answered = true;
-          question.resultKind = "correct";
-          recordResult(question, "correct");
-          renderPractice();
-        });
-        root.querySelector("#kqPracticeWrong")?.addEventListener("click", () => {
-          question.pendingDecision = false;
-          question.answered = true;
-          question.resultKind = "incorrect";
-          recordResult(question, "incorrect");
-          renderPractice();
-        });
-        root.querySelector("#kqPracticeRateGood")?.addEventListener("click", () => rateTranslation(question, "correct"));
-        root.querySelector("#kqPracticeRateClose")?.addEventListener("click", () => rateTranslation(question, "close"));
-        root.querySelector("#kqPracticeRateBad")?.addEventListener("click", () => rateTranslation(question, "incorrect"));
-        root.querySelector("#kqPracticeNext")?.addEventListener("click", nextQuestion);
-        root.querySelector("#kqPracticeQuit")?.addEventListener("click", () => {
-          stopAudio();
-          session = null;
-          renderHome();
-        });
-
-        if (question.mode === "listening" && !question.answered && !question.pendingDecision) {
-          setTimeout(() => playPracticeAudio(question), 180);
-        }
-      }
-
-      function rateTranslation(question, resultKind) {
-        question.selfRated = true;
-        question.answered = true;
-        question.resultKind = resultKind;
-        recordResult(question, resultKind);
-        renderPractice();
-      }
-
-      function nextQuestion() {
-        stopAudio();
-        session.index += 1;
-        renderPractice();
+        root.querySelector("#kqPracticeAudio")?.addEventListener("click",() => playPracticeAudio(question));
+        root.querySelector("#kqPracticeTypo")?.addEventListener("click",() => { question.pendingDecision=false; question.answered=true; question.resultKind="correct"; recordResult(question,"correct"); renderPractice(); });
+        root.querySelector("#kqPracticeWrong")?.addEventListener("click",() => { question.pendingDecision=false; question.answered=true; question.resultKind="incorrect"; recordResult(question,"incorrect"); renderPractice(); });
+        root.querySelector("#kqPracticeRateGood")?.addEventListener("click",() => rateManual(question,"correct"));
+        root.querySelector("#kqPracticeRateClose")?.addEventListener("click",() => rateManual(question,"close"));
+        root.querySelector("#kqPracticeRateBad")?.addEventListener("click",() => rateManual(question,"incorrect"));
+        root.querySelector("#kqPracticeNext")?.addEventListener("click",advance);
+        root.querySelector("#kqPracticeQuit")?.addEventListener("click",() => { stopAudio(); session=null; renderHome(); });
+        bindKeyboard(root,question,input);
+        if (question.mode === "listening" && !question.answered && !question.selfRating && !question.pendingDecision) setTimeout(() => playPracticeAudio(question),180);
       }
 
       function renderSummary() {
-        const root = document.getElementById("kqContextPracticeRoot");
-        if (!root || !session) return;
-        const total = session.results.correct + session.results.close + session.results.incorrect;
-        const percentage = total ? Math.round(((session.results.correct + session.results.close * .5) / total) * 100) : 0;
-        root.innerHTML = `<article class="card kq-practice-summary">
-          <div class="kq-practice-summary-icon">${percentage >= 85 ? "🌟" : percentage >= 60 ? "🌱" : "🧠"}</div>
-          <span class="counter">Kontexttraining abgeschlossen</span>
-          <h2>${percentage}% Trainingsscore</h2>
-          <p>Diese freie Übungsrunde verändert deine SRS-Stufen nicht. Sie zählt aber als Lernaktivität und fließt in die Übungsstatistik ein.</p>
-          <div class="kq-practice-summary-grid">
-            <div><strong>${session.results.correct}</strong><span>Richtig</span></div>
-            <div><strong>${session.results.close}</strong><span>Teilweise</span></div>
-            <div><strong>${session.results.incorrect}</strong><span>Falsch</span></div>
-          </div>
-          <div class="button-row" style="justify-content:center;margin-top:20px">
-            <button class="primary" id="kqPracticeAgain" type="button">Noch eine Runde</button>
-            <button class="secondary" id="kqPracticeHome" type="button">Zur Übungsauswahl</button>
-            <button class="ghost" id="kqPracticeDashboard" type="button">Zum Dashboard</button>
-          </div>
-        </article>`;
-        root.querySelector("#kqPracticeAgain")?.addEventListener("click", () => {
-          session = null;
-          renderHome();
-          setTimeout(() => document.getElementById("kqPracticeStart")?.click(), 0);
-        });
-        root.querySelector("#kqPracticeHome")?.addEventListener("click", () => { session = null; renderHome(); });
-        root.querySelector("#kqPracticeDashboard")?.addEventListener("click", () => { session = null; switchView("dashboard"); });
+        const root=document.getElementById("kqContextPracticeRoot"); if(!root||!session)return;
+        const total=session.results.correct+session.results.close+session.results.incorrect;
+        const score=total?Math.round(((session.results.correct+session.results.close*.5)/total)*100):0;
+        root.innerHTML=`<article class="card kq-practice-summary"><div class="kq-practice-summary-icon">${score>=85?"🌟":score>=60?"🌱":"🧠"}</div><h2>Kontextrunde abgeschlossen</h2><p>Du hast vollständige Sätze mit deinem aktuellen Wortschatz und passender Grammatik bearbeitet.</p>
+          <div class="kq-practice-summary-grid"><div><strong>${session.results.correct}</strong><span>Richtig</span></div><div><strong>${session.results.close}</strong><span>Teilweise</span></div><div><strong>${session.results.incorrect}</strong><span>Wiederholen</span></div></div>
+          <div class="button-row" style="justify-content:center;margin-top:22px"><button class="primary" id="kqPracticeAgain" type="button">Noch eine Runde</button><button class="secondary" id="kqPracticeHome" type="button">Zur Übungsauswahl</button><button class="ghost" id="kqPracticeDashboard" type="button">Zum Dashboard</button></div></article>`;
+        root.querySelector("#kqPracticeAgain")?.addEventListener("click",()=>{session=null;renderHome();setTimeout(()=>document.getElementById("kqPracticeStart")?.click(),0);});
+        root.querySelector("#kqPracticeHome")?.addEventListener("click",()=>{session=null;renderHome();});
+        root.querySelector("#kqPracticeDashboard")?.addEventListener("click",()=>{session=null;switchView("dashboard");});
       }
 
-      function sourceCountLabel(sourceType, catalog) {
-        return catalog.filter(item => item.sourceTypes.includes(sourceType)).length;
-      }
+      function sourceCountLabel(sourceType,catalog){return catalog.filter(item=>item.sourceTypes.includes(sourceType)).length;}
 
       function renderHome() {
-        const root = document.getElementById("kqContextPracticeRoot");
-        if (!root) return;
-        const settings = settingsFor();
-        const stats = statsFor();
-        homeCatalog = eligibleVocabulary({ ...settings, sources: { core: true, mining: true, known: true } });
-        const currentPool = filterCatalog(homeCatalog, settings);
-        const counts = availableCounts(settings, currentPool);
-        const accuracy = stats.questions ? Math.round(((stats.correct + stats.close * .5) / stats.questions) * 100) : 0;
-        root.innerHTML = `
-          <div class="section-title">
-            <div><h2>Vokabeltraining im Kontext</h2><p>Der Pool wird bei jedem Öffnen automatisch aus deinem aktuellen Fortschritt neu aufgebaut.</p></div>
-          </div>
-          <div class="kq-practice-home-grid">
-            <article class="card">
-              <h3>Welche Wörter dürfen vorkommen?</h3>
-              <p class="muted">Core-Wörter zählen ab ihrer Freischaltung. Mining- und bekannte Wörter werden ebenfalls automatisch ergänzt.</p>
-              <div class="kq-practice-option-list">
-                <label><input type="checkbox" data-practice-source="core" ${settings.sources.core ? "checked" : ""}><span><strong>Freigeschalteter Core Path</strong><small>${sourceCountLabel("core", homeCatalog)} Wörter</small></span></label>
-                <label><input type="checkbox" data-practice-source="mining" ${settings.sources.mining ? "checked" : ""}><span><strong>Mining-Vokabeln</strong><small>${sourceCountLabel("mining", homeCatalog)} Wörter</small></span></label>
-                <label><input type="checkbox" data-practice-source="known" ${settings.sources.known ? "checked" : ""}><span><strong>Als bekannt markiert</strong><small>${sourceCountLabel("known", homeCatalog)} Wörter</small></span></label>
-              </div>
-            </article>
-            <article class="card">
-              <h3>Übungsarten</h3>
-              <div class="kq-practice-mode-grid">
-                ${Object.entries(MODE_META).map(([id, meta]) => `<label class="kq-practice-mode-option"><input type="checkbox" data-practice-mode="${id}" ${settings.modes[id] ? "checked" : ""}><span class="kq-mode-icon">${meta.icon}</span><strong>${esc(meta.label)}</strong><small>${esc(meta.hint)}</small><em>${counts.byMode[id] || 0} möglich</em></label>`).join("")}
-              </div>
-            </article>
-          </div>
-          <div class="kq-practice-bottom-grid">
-            <article class="card kq-practice-start-card">
-              <div><span class="muted small">Aktueller dynamischer Pool</span><strong id="kqPracticePoolCount">${counts.pool.length}</strong><p id="kqPracticeCandidateCount">${counts.candidates.length} mögliche Aufgaben mit der aktuellen Auswahl</p></div>
-              <label>Rundenlänge<select id="kqPracticeLength"><option value="10" ${settings.length === 10 ? "selected" : ""}>10 Aufgaben</option><option value="20" ${settings.length === 20 ? "selected" : ""}>20 Aufgaben</option><option value="30" ${settings.length === 30 ? "selected" : ""}>30 Aufgaben</option></select></label>
-              <button class="primary" id="kqPracticeStart" type="button" ${counts.candidates.length ? "" : "disabled"}>Training starten</button>
-              <small>Freies Training: Deine SRS-Stufen werden dadurch nicht künstlich erhöht.</small>
-            </article>
-            <article class="card kq-practice-stats-card">
-              <h3>Deine Kontextübungen</h3>
-              <div><span><strong>${stats.sessions}</strong><small>Runden</small></span><span><strong>${stats.questions}</strong><small>Aufgaben</small></span><span><strong>${accuracy}%</strong><small>Score</small></span></div>
-              <p>${stats.lastPracticedAt ? `Zuletzt geübt: ${new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(stats.lastPracticedAt))} Uhr` : "Noch keine Kontextübung abgeschlossen."}</p>
-            </article>
-          </div>`;
-
-        root.querySelectorAll("[data-practice-source],[data-practice-mode]").forEach(input => input.addEventListener("change", updateHomeAvailability));
-        root.querySelector("#kqPracticeLength")?.addEventListener("change", persistCurrentSettings);
-        root.querySelector("#kqPracticeStart")?.addEventListener("click", startSession);
+        const root=document.getElementById("kqContextPracticeRoot"); if(!root)return;
+        const settings=settingsFor(),stats=statsFor();
+        homeCatalog=eligibleVocabulary({...settings,sources:{core:true,mining:true,known:true}});
+        const currentPool=homeCatalog.filter(item=>item.sourceTypes.some(type=>settings.sources[type]));
+        const counts=availableCounts(settings,currentPool);
+        const accuracy=stats.questions?Math.round(((stats.correct+stats.close*.5)/stats.questions)*100):0;
+        const guruCount=guruGrammarIds().size;
+        root.innerHTML=`<div class="section-title"><div><h2>Vokabeltraining in vollständigen Sätzen</h2><p>Der Pool wird bei jedem Öffnen automatisch aus deinem freigeschalteten Wortschatz neu aufgebaut.</p></div></div>
+          <div class="kq-practice-home-grid"><article class="card"><h3>Welche Wörter dürfen vorkommen?</h3><p class="muted">Verwendet werden nur freigeschaltete Core-, Mining- und bekannte Vokabeln.</p><div class="kq-practice-option-list">
+            <label><input type="checkbox" data-practice-source="core" ${settings.sources.core?"checked":""}><span><strong>Freigeschalteter Core Path</strong><small>${sourceCountLabel("core",homeCatalog)} Wörter</small></span></label>
+            <label><input type="checkbox" data-practice-source="mining" ${settings.sources.mining?"checked":""}><span><strong>Mining-Vokabeln</strong><small>${sourceCountLabel("mining",homeCatalog)} Wörter</small></span></label>
+            <label><input type="checkbox" data-practice-source="known" ${settings.sources.known?"checked":""}><span><strong>Als bekannt markiert</strong><small>${sourceCountLabel("known",homeCatalog)} Wörter</small></span></label></div>
+            <div class="kq-practice-grammar-info"><strong>Grammatik im Satzpool</strong><span>Grundgrammatik bis N4 ist immer aktiv. Zusätzlich werden automatisch ${guruCount} deiner gefestigten N3-Strukturen verwendet.</span></div></article>
+            <article class="card"><h3>Übungsarten</h3><div class="kq-practice-mode-grid">${Object.entries(MODE_META).map(([id,meta])=>`<label class="kq-practice-mode-option"><input type="checkbox" data-practice-mode="${id}" ${settings.modes[id]?"checked":""}><span class="kq-mode-icon">${meta.icon}</span><strong>${esc(meta.label)}</strong><small>${esc(meta.hint)}</small><em>${counts.byMode[id]||0} möglich</em></label>`).join("")}</div></article></div>
+          <div class="kq-practice-bottom-grid"><article class="card kq-practice-start-card"><div><span class="muted small">Aktueller dynamischer Pool</span><strong id="kqPracticePoolCount">${counts.pool.length}</strong><p id="kqPracticeCandidateCount">${counts.candidates.length} mögliche Satzaufgaben</p></div>
+            <label>Rundenlänge<select id="kqPracticeLength"><option value="10" ${settings.length===10?"selected":""}>10 Aufgaben</option><option value="20" ${settings.length===20?"selected":""}>20 Aufgaben</option><option value="30" ${settings.length===30?"selected":""}>30 Aufgaben</option></select></label>
+            <button class="primary" id="kqPracticeStart" type="button" ${counts.candidates.length?"":"disabled"}>Training starten</button><small>Furigana ist in allen japanischen Sätzen sichtbar. Freies Training verändert keine SRS-Stufe.</small></article>
+            <article class="card kq-practice-stats-card"><h3>Deine Satzübungen</h3><div><span><strong>${stats.sessions}</strong><small>Runden</small></span><span><strong>${stats.questions}</strong><small>Aufgaben</small></span><span><strong>${accuracy}%</strong><small>Score</small></span></div><p>${stats.lastPracticedAt?`Zuletzt geübt: ${new Intl.DateTimeFormat("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(stats.lastPracticedAt))} Uhr`:"Noch keine Satzübung abgeschlossen."}</p></article></div>`;
+        root.querySelectorAll("[data-practice-source],[data-practice-mode]").forEach(input=>input.addEventListener("change",updateHomeAvailability));
+        root.querySelector("#kqPracticeLength")?.addEventListener("change",persistCurrentSettings);
+        root.querySelector("#kqPracticeStart")?.addEventListener("click",startSession);
       }
 
-      function readSettingsFromUi() {
-        const fallback = settingsFor();
-        const next = {
-          sources: { ...fallback.sources },
-          modes: { ...fallback.modes },
-          length: Number(document.getElementById("kqPracticeLength")?.value || fallback.length)
-        };
-        document.querySelectorAll("[data-practice-source]").forEach(input => { next.sources[input.dataset.practiceSource] = input.checked; });
-        document.querySelectorAll("[data-practice-mode]").forEach(input => { next.modes[input.dataset.practiceMode] = input.checked; });
-        return next;
-      }
+      function readSettingsFromUi(){const fallback=settingsFor();const next={sources:{...fallback.sources},modes:{...fallback.modes},length:Number(document.getElementById("kqPracticeLength")?.value||fallback.length)};document.querySelectorAll("[data-practice-source]").forEach(input=>{next.sources[input.dataset.practiceSource]=input.checked;});document.querySelectorAll("[data-practice-mode]").forEach(input=>{next.modes[input.dataset.practiceMode]=input.checked;});return next;}
+      function persistCurrentSettings(){const source=sourceData();source.vocabContextPracticeSettings=readSettingsFromUi();writeSource(source);}
+      function updateHomeAvailability(){const settings=readSettingsFromUi();homeCatalog||=eligibleVocabulary({...settings,sources:{core:true,mining:true,known:true}});const pool=homeCatalog.filter(item=>item.sourceTypes.some(type=>settings.sources[type]));const counts=availableCounts(settings,pool);document.getElementById("kqPracticePoolCount").textContent=counts.pool.length;document.getElementById("kqPracticeCandidateCount").textContent=`${counts.candidates.length} mögliche Satzaufgaben`;Object.keys(MODE_META).forEach(mode=>{const counter=document.querySelector(`[data-practice-mode="${mode}"]`)?.closest("label")?.querySelector("em");if(counter)counter.textContent=`${counts.byMode[mode]||0} möglich`;});const start=document.getElementById("kqPracticeStart");if(start)start.disabled=!counts.candidates.length||!Object.values(settings.sources).some(Boolean)||!Object.values(settings.modes).some(Boolean);const source=sourceData();source.vocabContextPracticeSettings=settings;writeSource(source);}
 
-      function persistCurrentSettings() {
-        const source = sourceData();
-        source.vocabContextPracticeSettings = readSettingsFromUi();
-        writeSource(source);
-      }
+      function installNavigation(){const nav=document.querySelector(".topbar .nav");if(!nav||nav.querySelector('[data-view="vocabPractice"]'))return;const button=document.createElement("button");button.type="button";button.dataset.view="vocabPractice";button.textContent="Üben";const coreButton=nav.querySelector('[data-view="core"]');if(coreButton?.nextSibling)nav.insertBefore(button,coreButton.nextSibling);else nav.appendChild(button);button.addEventListener("click",()=>{switchView("vocabPractice");if(!session)renderHome();else renderPractice();});}
+      function installView(){const main=document.querySelector("main");if(!main||document.getElementById("vocabPractice"))return;const section=document.createElement("section");section.id="vocabPractice";section.className="view";section.innerHTML='<div id="kqContextPracticeRoot"></div>';const placement=document.getElementById("placement");if(placement)main.insertBefore(section,placement);else main.appendChild(section);}
+      function installEntryPoints(){const core=document.getElementById("core"),overview=document.getElementById("kqVocabularyOverview");if(core&&overview&&!document.getElementById("kqPracticeTeaser")){const teaser=document.createElement("article");teaser.id="kqPracticeTeaser";teaser.className="card kq-practice-teaser";teaser.innerHTML='<div><span class="mode-icon">🎧</span><div><h3>Vokabeln in vollständigen Sätzen üben</h3><p>Übersetzen, Listening, Formen, Schreiben und Satzverbindungen mit Furigana.</p></div></div><button class="secondary" type="button">Übungen öffnen</button>';overview.insertAdjacentElement("afterend",teaser);teaser.querySelector("button")?.addEventListener("click",()=>{switchView("vocabPractice");session=null;renderHome();});}const quick=document.querySelector("#kqLearningDashboard .kq-quick-grid");if(quick&&!quick.querySelector("#kqQuickPractice")){const button=document.createElement("button");button.id="kqQuickPractice";button.className="secondary";button.type="button";button.textContent="🎧 Sätze üben";button.addEventListener("click",()=>{switchView("vocabPractice");session=null;renderHome();});quick.appendChild(button);}}
+      function refreshEntryPoints(){homeCatalog=null;installNavigation();installView();installEntryPoints();if(document.getElementById("vocabPractice")?.classList.contains("active")){if(session)renderPractice();else renderHome();}}
+      function scheduleRefresh(){if(renderTimer)return;renderTimer=requestAnimationFrame(()=>{renderTimer=0;refreshEntryPoints();});}
+      function wrapRenderer(name){try{const original=eval(name);if(typeof original!=="function"||original.__kqContextPracticeWrapped)return;const wrapped=function(...args){const result=original.apply(this,args);scheduleRefresh();return result;};wrapped.__kqContextPracticeWrapped=true;eval(`${name} = wrapped`);}catch{}}
+      function toastMessage(message){try{if(typeof toast==="function"){toast(message);return;}}catch{}console.info(message);}
 
-      function updateHomeAvailability() {
-        const settings = readSettingsFromUi();
-        homeCatalog ||= eligibleVocabulary({ ...settings, sources: { core: true, mining: true, known: true } });
-        const counts = availableCounts(settings, filterCatalog(homeCatalog, settings));
-        document.getElementById("kqPracticePoolCount").textContent = counts.pool.length;
-        document.getElementById("kqPracticeCandidateCount").textContent = `${counts.candidates.length} mögliche Aufgaben mit der aktuellen Auswahl`;
-        Object.keys(MODE_META).forEach(mode => {
-          const input = document.querySelector(`[data-practice-mode="${mode}"]`);
-          const label = input?.closest("label");
-          const counter = label?.querySelector("em");
-          if (counter) counter.textContent = `${counts.byMode[mode] || 0} möglich`;
-        });
-        const start = document.getElementById("kqPracticeStart");
-        if (start) start.disabled = !counts.candidates.length || !Object.values(settings.sources).some(Boolean) || !Object.values(settings.modes).some(Boolean);
-        const source = sourceData();
-        source.vocabContextPracticeSettings = settings;
-        writeSource(source);
-      }
-
-      function installNavigation() {
-        const nav = document.querySelector(".topbar .nav");
-        if (!nav || nav.querySelector('[data-view="vocabPractice"]')) return;
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.view = "vocabPractice";
-        button.textContent = "Üben";
-        const coreButton = nav.querySelector('[data-view="core"]');
-        if (coreButton?.nextSibling) nav.insertBefore(button, coreButton.nextSibling);
-        else nav.appendChild(button);
-        button.addEventListener("click", () => {
-          switchView("vocabPractice");
-          if (!session) renderHome();
-          else renderPractice();
-        });
-      }
-
-      function installView() {
-        const main = document.querySelector("main");
-        if (!main || document.getElementById("vocabPractice")) return;
-        const section = document.createElement("section");
-        section.id = "vocabPractice";
-        section.className = "view";
-        section.innerHTML = `<div id="kqContextPracticeRoot"></div>`;
-        const placement = document.getElementById("placement");
-        if (placement) main.insertBefore(section, placement);
-        else main.appendChild(section);
-      }
-
-      function installEntryPoints() {
-        const core = document.getElementById("core");
-        const overview = document.getElementById("kqVocabularyOverview");
-        if (core && overview && !document.getElementById("kqPracticeTeaser")) {
-          const teaser = document.createElement("article");
-          teaser.id = "kqPracticeTeaser";
-          teaser.className = "card kq-practice-teaser";
-          teaser.innerHTML = `<div><span class="mode-icon">🎧</span><div><h3>Vokabeln im Kontext üben</h3><p>Listening, Writing, Formen und Übersetzung mit deinem automatisch aktualisierten Wortschatz.</p></div></div><button class="secondary" type="button">Übungen öffnen</button>`;
-          overview.insertAdjacentElement("afterend", teaser);
-          teaser.querySelector("button")?.addEventListener("click", () => { switchView("vocabPractice"); session = null; renderHome(); });
-        }
-
-        const quick = document.querySelector("#kqLearningDashboard .kq-quick-grid");
-        if (quick && !quick.querySelector("#kqQuickPractice")) {
-          const button = document.createElement("button");
-          button.id = "kqQuickPractice";
-          button.className = "secondary";
-          button.type = "button";
-          button.textContent = "🎧 Vokabeln üben";
-          button.addEventListener("click", () => { switchView("vocabPractice"); session = null; renderHome(); });
-          quick.appendChild(button);
-        }
-      }
-
-      function refreshEntryPoints() {
-        homeCatalog = null;
-        installNavigation();
-        installView();
-        installEntryPoints();
-        if (document.getElementById("vocabPractice")?.classList.contains("active")) {
-          if (session) renderPractice();
-          else renderHome();
-        }
-      }
-
-      function scheduleRefresh() {
-        if (renderTimer) return;
-        renderTimer = requestAnimationFrame(() => {
-          renderTimer = 0;
-          refreshEntryPoints();
-        });
-      }
-
-      function wrapRenderer(name) {
-        try {
-          const original = eval(name);
-          if (typeof original !== "function" || original.__kqContextPracticeWrapped) return;
-          const wrapped = function(...args) {
-            const result = original.apply(this, args);
-            scheduleRefresh();
-            return result;
-          };
-          wrapped.__kqContextPracticeWrapped = true;
-          eval(`${name} = wrapped`);
-        } catch {}
-      }
-
-      function toastMessage(message) {
-        try { if (typeof toast === "function") { toast(message); return; } } catch {}
-        console.info(message);
-      }
-
-      const style = document.createElement("style");
-      style.id = "kotobaContextPracticeStyles";
-      style.textContent = `
-        #kqContextPracticeRoot { display:grid; gap:18px; }
-        .kq-practice-home-grid { display:grid; grid-template-columns:.75fr 1.25fr; gap:18px; }
-        .kq-practice-home-grid h3,.kq-practice-bottom-grid h3 { margin-top:0; }
-        .kq-practice-option-list { display:grid; gap:9px; margin-top:16px; }
-        .kq-practice-option-list label { display:flex; grid-template-columns:none; align-items:center; gap:11px; padding:12px; border:1px solid var(--border); border-radius:13px; background:color-mix(in srgb,var(--kq-wash,#f7f3ff) 56%,white); cursor:pointer; }
-        .kq-practice-option-list input,.kq-practice-mode-option input { width:18px; height:18px; accent-color:var(--primary); }
-        .kq-practice-option-list label > span { display:grid; gap:2px; }
-        .kq-practice-option-list small,.kq-practice-mode-option small { color:var(--muted); }
-        .kq-practice-mode-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        .kq-practice-mode-option { position:relative; display:grid; grid-template-columns:auto 1fr auto; align-items:start; gap:4px 9px; padding:13px; border:1px solid var(--border); border-radius:14px; background:white; cursor:pointer; }
-        .kq-practice-mode-option input { grid-row:1 / 4; align-self:center; }
-        .kq-practice-mode-option .kq-mode-icon { font-size:1.2rem; }
-        .kq-practice-mode-option strong { align-self:center; }
-        .kq-practice-mode-option small { grid-column:2 / -1; line-height:1.35; }
-        .kq-practice-mode-option em { grid-column:2 / -1; color:var(--primary-dark); font-size:.7rem; font-style:normal; font-weight:850; }
-        .kq-practice-bottom-grid { display:grid; grid-template-columns:1.35fr .65fr; gap:18px; }
-        .kq-practice-start-card { display:grid; grid-template-columns:1fr minmax(150px,.35fr) auto; align-items:end; gap:16px; background:linear-gradient(135deg,var(--kq-wash,#f4efff),white); }
-        .kq-practice-start-card > div { display:grid; gap:4px; }
-        .kq-practice-start-card > div > strong { color:var(--primary); font-size:3.5rem; line-height:1; }
-        .kq-practice-start-card p { margin:0; color:var(--muted); }
-        .kq-practice-start-card > small { grid-column:1 / -1; color:var(--muted); }
-        .kq-practice-stats-card > div { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-        .kq-practice-stats-card > div > span { display:grid; gap:3px; padding:10px; border-radius:12px; background:var(--kq-wash,#f4efff); text-align:center; }
-        .kq-practice-stats-card > div strong { color:var(--primary); font-size:1.5rem; }
-        .kq-practice-stats-card > div small,.kq-practice-stats-card p { color:var(--muted); }
-        .kq-practice-teaser { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 18px; background:linear-gradient(120deg,var(--kq-wash,#f4efff),white); }
-        .kq-practice-teaser > div { display:flex; align-items:center; gap:14px; }
-        .kq-practice-teaser h3,.kq-practice-teaser p { margin:0; }
-        .kq-practice-teaser p { color:var(--muted); margin-top:4px; }
-        .kq-practice-topline { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-        .kq-practice-topline > div { flex:1; display:grid; gap:7px; }
-        .kq-practice-progress { height:9px; overflow:hidden; border-radius:999px; background:var(--border); }
-        .kq-practice-progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--primary),var(--accent)); transition:width .25s ease; }
-        .kq-practice-card { max-width:820px; width:100%; min-height:520px; margin:0 auto; display:flex; flex-direction:column; justify-content:center; text-align:center; }
-        .kq-practice-mode { display:inline-flex; align-self:center; align-items:center; gap:8px; padding:8px 13px; border-radius:999px; background:var(--kq-wash,#f4efff); color:var(--primary-dark); }
-        .kq-practice-mode em { padding:4px 7px; border-radius:999px; background:white; font-size:.65rem; font-style:normal; }
-        .kq-practice-instruction { margin:20px auto 14px; color:var(--muted); font-weight:800; }
-        .kq-practice-sentence { max-width:700px; margin:8px auto 18px; font-size:1.38rem; font-weight:850; line-height:2.25; }
-        .kq-practice-sentence ruby { ruby-align:center; }
-        .kq-practice-sentence rt { color:var(--primary-dark); font-size:.5em; }
-        .kq-practice-target { padding:5px 8px; border-radius:9px; color:var(--text); background:color-mix(in srgb,var(--accent) 58%,white); }
-        .kq-practice-blank { display:inline-block; min-width:120px; padding:2px 8px; border-bottom:3px solid var(--primary); color:var(--primary-dark); }
-        .kq-practice-target-word { margin:10px 0 5px; font-size:clamp(2.6rem,8vw,5rem); font-weight:950; }
-        .kq-practice-target-word rt { color:var(--primary-dark); font-size:.35em; }
-        .kq-practice-audio { margin:8px auto 12px; }
-        .kq-practice-meaning { margin:8px 0 12px; color:var(--primary-dark); font-size:2rem; font-weight:950; }
-        .kq-practice-translation-hint,.kq-practice-base { max-width:650px; margin:6px auto 14px; padding:11px 14px; border-radius:12px; background:var(--kq-wash,#f4efff); color:var(--muted); }
-        .kq-practice-form { max-width:620px; width:100%; margin:14px auto 0; display:grid; grid-template-columns:1fr auto; gap:10px; }
-        .kq-practice-form textarea { grid-column:1 / -1; }
-        .kq-practice-form textarea + button { grid-column:1 / -1; justify-self:center; }
-        .kq-practice-reveal-sentence { max-width:680px; margin:14px auto 0; display:grid; gap:5px; padding:13px; border-radius:13px; background:var(--kq-wash,#f4efff); line-height:1.8; }
-        .kq-practice-reveal-sentence small { color:var(--muted); }
-        .kq-practice-decision-row,.kq-practice-rating-row { justify-content:center; margin-top:14px; }
-        .kq-practice-summary { max-width:760px; margin:0 auto; padding:38px; text-align:center; }
-        .kq-practice-summary-icon { font-size:4rem; }
-        .kq-practice-summary h2 { margin:8px 0; }
-        .kq-practice-summary p { color:var(--muted); }
-        .kq-practice-summary-grid { max-width:480px; margin:20px auto 0; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-        .kq-practice-summary-grid div { display:grid; gap:3px; padding:14px; border-radius:13px; background:var(--kq-wash,#f4efff); }
-        .kq-practice-summary-grid strong { color:var(--primary); font-size:2rem; }
-        .kq-practice-summary-grid span { color:var(--muted); }
-        @media (max-width:900px) {
-          .kq-practice-home-grid,.kq-practice-bottom-grid { grid-template-columns:1fr; }
-          .kq-practice-start-card { grid-template-columns:1fr 1fr; }
-          .kq-practice-start-card button { align-self:end; }
-        }
-        @media (max-width:620px) {
-          .kq-practice-mode-grid,.kq-practice-start-card { grid-template-columns:1fr; }
-          .kq-practice-start-card > small { grid-column:1; }
-          .kq-practice-teaser,.kq-practice-topline { align-items:flex-start; flex-direction:column; }
-          .kq-practice-form { grid-template-columns:1fr; }
-          .kq-practice-form button { width:100%; }
-          .kq-practice-summary-grid { grid-template-columns:1fr; }
-          .kq-practice-decision-row,.kq-practice-rating-row { display:grid; }
-        }
-      `;
+      const style=document.createElement("style");style.id="kotobaContextPracticeStylesV2";style.textContent=`
+        #kqContextPracticeRoot{display:grid;gap:18px}.kq-practice-home-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:18px}.kq-practice-home-grid h3,.kq-practice-bottom-grid h3{margin-top:0}.kq-practice-option-list{display:grid;gap:9px;margin-top:16px}.kq-practice-option-list label{display:flex;grid-template-columns:none;align-items:center;gap:11px;padding:12px;border:1px solid var(--border);border-radius:13px;background:color-mix(in srgb,var(--kq-wash,#f7f3ff) 56%,white);cursor:pointer}.kq-practice-option-list input,.kq-practice-mode-option input{width:18px;height:18px;accent-color:var(--primary)}.kq-practice-option-list label>span{display:grid;gap:2px}.kq-practice-option-list small,.kq-practice-mode-option small{color:var(--muted)}.kq-practice-grammar-info{display:grid;gap:5px;margin-top:16px;padding:13px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-practice-grammar-info span{color:var(--muted);font-size:.84rem;line-height:1.45}.kq-practice-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kq-practice-mode-option{position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:4px 9px;padding:13px;border:1px solid var(--border);border-radius:14px;background:white;cursor:pointer}.kq-practice-mode-option input{grid-row:1/4;align-self:center}.kq-practice-mode-option .kq-mode-icon{font-size:1.2rem}.kq-practice-mode-option strong{align-self:center}.kq-practice-mode-option small{grid-column:2/-1;line-height:1.35}.kq-practice-mode-option em{grid-column:2/-1;color:var(--primary-dark);font-size:.7rem;font-style:normal;font-weight:850}.kq-practice-bottom-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:18px}.kq-practice-start-card{display:grid;grid-template-columns:1fr minmax(150px,.35fr) auto;align-items:end;gap:16px;background:linear-gradient(135deg,var(--kq-wash,#f4efff),white)}.kq-practice-start-card>div{display:grid;gap:4px}.kq-practice-start-card>div>strong{color:var(--primary);font-size:3.5rem;line-height:1}.kq-practice-start-card p{margin:0;color:var(--muted)}.kq-practice-start-card>small{grid-column:1/-1;color:var(--muted)}.kq-practice-stats-card>div{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kq-practice-stats-card>div>span{display:grid;gap:3px;padding:10px;border-radius:12px;background:var(--kq-wash,#f4efff);text-align:center}.kq-practice-stats-card>div strong{color:var(--primary);font-size:1.5rem}.kq-practice-stats-card>div small,.kq-practice-stats-card p{color:var(--muted)}.kq-practice-teaser{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 18px;background:linear-gradient(120deg,var(--kq-wash,#f4efff),white)}.kq-practice-teaser>div{display:flex;align-items:center;gap:14px}.kq-practice-teaser h3,.kq-practice-teaser p{margin:0}.kq-practice-teaser p{color:var(--muted);margin-top:4px}.kq-practice-topline{display:flex;align-items:center;justify-content:space-between;gap:16px}.kq-practice-topline>div{flex:1;display:grid;gap:7px}.kq-practice-progress{height:9px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-practice-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width .25s ease}.kq-practice-card{max-width:850px;width:100%;min-height:560px;margin:0 auto;display:flex;flex-direction:column;justify-content:center;text-align:center}.kq-practice-mode{display:inline-flex;align-self:center;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;background:var(--kq-wash,#f4efff);color:var(--primary-dark)}.kq-practice-mode em{padding:4px 7px;border-radius:999px;background:white;font-size:.65rem;font-style:normal}.kq-practice-instruction{margin:20px auto 12px;color:var(--muted);font-weight:800}.kq-practice-grammar{display:inline-grid;align-self:center;gap:2px;margin:0 auto 10px;padding:8px 12px;border-radius:12px;background:var(--kq-wash,#f4efff)}.kq-practice-grammar strong{color:var(--primary-dark)}.kq-practice-grammar span{color:var(--muted);font-size:.72rem}.kq-practice-sentence{max-width:730px;margin:10px auto 18px;font-size:1.42rem;font-weight:850;line-height:2.35}.kq-practice-sentence ruby,.kq-practice-reveal-sentence ruby,.kq-practice-parts ruby,.kq-practice-vocab-chips ruby{ruby-align:center}.kq-practice-sentence rt,.kq-practice-reveal-sentence rt,.kq-practice-parts rt,.kq-practice-vocab-chips rt{color:var(--primary-dark);font-size:.52em}.kq-practice-target{padding:5px 8px;border-radius:9px;color:var(--text);background:color-mix(in srgb,var(--accent) 50%,white)}.kq-practice-blank{display:inline-block;min-width:120px;padding:2px 8px;border-bottom:3px solid var(--primary);color:var(--primary-dark)}.kq-practice-audio{margin:12px auto}.kq-practice-audio-large{width:68px;height:68px;font-size:1.65rem}.kq-practice-base,.kq-practice-translation-hint{max-width:690px;margin:8px auto 14px;padding:11px 14px;border-radius:12px;background:var(--kq-wash,#f4efff);color:var(--muted)}.kq-practice-german-prompt{max-width:700px;margin:10px auto 18px;font-size:1.35rem;font-weight:850;line-height:1.6}.kq-practice-vocab-help{max-width:700px;margin:0 auto 10px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;text-align:left}.kq-practice-vocab-help summary{cursor:pointer;color:var(--primary-dark);font-weight:800}.kq-practice-vocab-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px}.kq-practice-vocab-chips>span{display:grid;gap:2px;padding:7px 10px;border-radius:10px;background:white;border:1px solid var(--border);font-weight:850}.kq-practice-vocab-chips small{color:var(--muted);font-size:.68rem;font-weight:700}.kq-practice-parts{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;max-width:760px;margin:12px auto 18px}.kq-practice-parts>div{padding:14px;border-radius:13px;background:var(--kq-wash,#f4efff);font-size:1.12rem;line-height:2}.kq-practice-parts>span{color:var(--primary);font-size:1.5rem;font-weight:950}.kq-practice-form{max-width:650px;width:100%;margin:14px auto 0;display:grid;grid-template-columns:1fr auto;gap:10px}.kq-practice-form textarea{grid-column:1/-1}.kq-practice-form textarea+button{grid-column:1/-1;justify-self:center}.kq-practice-reveal-sentence{max-width:720px;margin:14px auto 0;display:grid;gap:7px;padding:15px;border-radius:13px;background:var(--kq-wash,#f4efff);font-size:1.12rem;line-height:2}.kq-practice-reveal-sentence>small{color:var(--muted);font-size:.85rem;line-height:1.5}.kq-practice-decision-row,.kq-practice-rating-row{justify-content:center;margin-top:14px}.kq-keyboard-tip{text-align:center;margin:8px 0 0}.kq-practice-summary{max-width:760px;margin:0 auto;padding:38px;text-align:center}.kq-practice-summary-icon{font-size:4rem}.kq-practice-summary h2{margin:8px 0}.kq-practice-summary p{color:var(--muted)}.kq-practice-summary-grid{max-width:480px;margin:20px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kq-practice-summary-grid div{display:grid;gap:3px;padding:14px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-practice-summary-grid strong{color:var(--primary);font-size:2rem}.kq-practice-summary-grid span{color:var(--muted)}@media(max-width:900px){.kq-practice-home-grid,.kq-practice-bottom-grid{grid-template-columns:1fr}.kq-practice-start-card{grid-template-columns:1fr 1fr}.kq-practice-start-card button{align-self:end}}@media(max-width:620px){.kq-practice-mode-grid,.kq-practice-start-card,.kq-practice-parts{grid-template-columns:1fr}.kq-practice-start-card>small{grid-column:1}.kq-practice-teaser,.kq-practice-topline{align-items:flex-start;flex-direction:column}.kq-practice-form{grid-template-columns:1fr}.kq-practice-form button{width:100%}.kq-practice-summary-grid{grid-template-columns:1fr}.kq-practice-decision-row,.kq-practice-rating-row{display:grid}.kq-practice-parts>span{transform:rotate(90deg)}}`;
+      document.getElementById("kotobaContextPracticeStyles")?.remove();
       document.head.appendChild(style);
 
-      installNavigation();
-      installView();
-      installEntryPoints();
-      ["renderAll", "renderDashboard", "renderCore", "switchView"].forEach(wrapRenderer);
-      refreshEntryPoints();
-
-      window.KotobaQuestContextPractice = {
-        refresh: refreshEntryPoints,
-        open: () => { switchView("vocabPractice"); session = null; renderHome(); },
-        getEligibleVocabulary: () => eligibleVocabulary(settingsFor()),
-        getStats: () => statsFor()
-      };
+      installNavigation();installView();installEntryPoints();["renderAll","renderDashboard","renderCore","switchView"].forEach(wrapRenderer);refreshEntryPoints();
+      window.KotobaQuestContextPractice={refresh:refreshEntryPoints,open:()=>{switchView("vocabPractice");session=null;renderHome();},getEligibleVocabulary:()=>eligibleVocabulary(settingsFor()),getStats:()=>statsFor(),previewSentences:(limit=10)=>buildSentenceBank(eligibleVocabulary(settingsFor()),Math.max(1,Number(limit)||10)).slice(0,Math.max(1,Number(limit)||10))};
     }
-
     function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
