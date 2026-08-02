@@ -16854,6 +16854,15 @@
           };
         }),
         openGrammarView,
+        openGrammarPoint: pointId => startLesson(pointId),
+        getGrammarCatalog: () => POINTS.map(point => ({
+          id: point.id,
+          level: point.level,
+          title: point.title || point.name || point.pattern || point.id,
+          pattern: point.pattern || point.grammar || point.title || point.id,
+          subtitle: point.subtitle || "",
+          summary: point.summary || ""
+        })),
         startReviewSession,
         getDueItems: () => dueItems(),
         getKnownVocabularyPool: () => knownVocabularyPool,
@@ -19687,13 +19696,1004 @@
       scheduleEnhancement();
     }
 
+    function learningInsightsBootstrap() {
+      if (window.__KOTOBA_LEARNING_INSIGHTS_V1__) return;
+      window.__KOTOBA_LEARNING_INSIGHTS_V1__ = true;
+
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const ANALYTICS_VERSION = 1;
+      const GRAMMAR_SCAN_VERSION = 1;
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const STUDY_VIEWS = new Set(["placement", "lessons", "reviews", "grammarLesson", "grammarReview"]);
+      const STAGE_LABELS = ["Neu", "Apprentice 1", "Apprentice 2", "Apprentice 3", "Apprentice 4", "Guru 1", "Guru 2", "Master", "Erleuchtet", "Abgeschlossen"];
+
+      const GRAMMAR_RULES = [
+        { id: "wake-niwa-ikanai", test: /わけには(?:いかない|いきません|いかなかった)/ },
+        { id: "wake-dewanai", test: /わけ(?:では|じゃ)(?:ない|ありません|なかった)/ },
+        { id: "wake-ga-nai", test: /わけが(?:ない|ありません|なかった)/ },
+        { id: "nai-koto-wa-nai", test: /ないこと(?:は|も)(?:ない|ありません)/ },
+        { id: "te-kara-denaito", test: /てからで(?:ないと|なければ)/ },
+        { id: "ni-chigainai", test: /に違い(?:ない|ありません)/ },
+        { id: "ta-totan", test: /たとたん(?:に)?/ },
+        { id: "ta-bakari", test: /たばかり/ },
+        { id: "ta-tokoro-result", test: /たところ/ },
+        { id: "te-irai", test: /て以来/ },
+        { id: "ni-shitagatte", test: /に(?:したがって|従って|したがい|従い)/ },
+        { id: "ni-tsurete", test: /につれて/ },
+        { id: "to-tomoni", test: /とともに|と共に/ },
+        { id: "tsuide-ni", test: /ついでに/ },
+        { id: "saichuu-ni", test: /最中(?:に|だ|です|の)?/ },
+        { id: "tochuu-de", test: /途中(?:で|に|だ|です|の)?/ },
+        { id: "ni-taishite", test: /に対(?:して|する|し|した)/ },
+        { id: "ni-kurabete", test: /(?:に|と)比べ(?:て|る|た)/ },
+        { id: "ippou-de", test: /一方(?:で|だ|です)/ },
+        { id: "hanmen", test: /反面/ },
+        { id: "okage-de", test: /おかげ(?:で|だ|です|か)/ },
+        { id: "sei-de", test: /せい(?:で|だ|です|か|に)/ },
+        { id: "koto-kara", test: /ことから/ },
+        { id: "tame-ni", test: /ため(?:に|の|だ|です)/ },
+        { id: "you-ni-naru", test: /ようにな(?:る|った|りました|って|らない|りません)/ },
+        { id: "you-ni-suru", test: /ようにし(?:て|た|ます|ました|ない|よう)/ },
+        { id: "koto-ni-naru", test: /ことにな(?:る|った|りました|って|らない)/ },
+        { id: "koto-ni-suru", test: /ことにし(?:て|た|ます|ました|ない)/ },
+        { id: "naku-naru", test: /なくな(?:る|った|りました|って|らない)/ },
+        { id: "uchi-ni", test: /うちに/ },
+        { id: "aida-aida-ni", test: /(?:ている|ていた|てる|てた|ない|なかった|の)間(?:に|は|も|、|。)/ },
+        { id: "tokoro-da", test: /ところ(?:だ|です|だった|でした|に|を)/ },
+        { id: "wake-da", test: /わけ(?:だ|です|だった|でした)/ },
+        { id: "rashii", test: /らしい(?:です|。|、|$)?/, exclude: /素晴らしい/ },
+        { id: "youda-mitaida", test: /よう(?:だ|です|な|に)|みたい(?:だ|です|な|に)/ },
+        { id: "hazu-da", test: /はず(?:だ|です|だった|でした|が|の|は)/ },
+        { id: "tabi-ni", test: /たびに|度に/ },
+        { id: "hodo", test: /ほど/ },
+        { id: "sou-appearance", test: /そう(?:だ|です|な|に|だった|でした)/, group: "sou" },
+        { id: "sou-hearsay", test: /そう(?:だ|です|だった|でした)/, group: "sou" }
+      ];
+
+      const esc = value => String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+      function sourceData() {
+        try {
+          if (typeof data !== "undefined" && data && typeof data === "object") return data;
+        } catch {}
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+        } catch {
+          return {};
+        }
+      }
+
+      function dateKey(value = Date.now()) {
+        const date = new Date(value);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      }
+
+      function defaultDay() {
+        return {
+          activeMs: 0,
+          reviewCorrect: 0,
+          reviewIncorrect: 0,
+          vocabCorrect: 0,
+          vocabIncorrect: 0,
+          grammarCorrect: 0,
+          grammarIncorrect: 0,
+          coreLessons: 0,
+          miningLessons: 0,
+          grammarLessons: 0,
+          vocabGuru: 0,
+          grammarGuru: 0,
+          burned: 0,
+          imports: 0
+        };
+      }
+
+      function normalizeAnalytics(value) {
+        const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        const days = {};
+        Object.entries(source.days || {}).forEach(([key, day]) => {
+          days[key] = { ...defaultDay(), ...(day && typeof day === "object" ? day : {}) };
+        });
+        return {
+          version: ANALYTICS_VERSION,
+          trackingStartedAt: Number(source.trackingStartedAt || Date.now()),
+          days,
+          events: Array.isArray(source.events) ? source.events.slice(-500) : []
+        };
+      }
+
+      function analyticsFor(source = sourceData()) {
+        source.studyAnalytics = normalizeAnalytics(source.studyAnalytics);
+        return source.studyAnalytics;
+      }
+
+      let internalWrite = false;
+      function writeSource(source, { refresh = true } = {}) {
+        try {
+          if (typeof data !== "undefined" && data && data !== source) {
+            data.studyAnalytics = source.studyAnalytics;
+            data.grammarMiningScan = source.grammarMiningScan;
+            data.vocabulary = source.vocabulary;
+          }
+        } catch {}
+        internalWrite = true;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
+        } finally {
+          internalWrite = false;
+        }
+        if (refresh) setTimeout(() => {
+          renderStatistics();
+          renderGrammarMiningCards();
+        }, 0);
+      }
+
+      function grammarProgress() {
+        try {
+          const value = window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.();
+          return Array.isArray(value) ? value : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function grammarCatalog() {
+        try {
+          const value = window.KotobaQuestGrammarSupportApi?.getGrammarCatalog?.();
+          if (Array.isArray(value) && value.length) return value;
+        } catch {}
+        return grammarProgress().map(point => ({
+          id: point.id,
+          level: point.level,
+          title: point.title || point.pattern || point.id,
+          subtitle: ""
+        }));
+      }
+
+      function snapshot(source = sourceData()) {
+        const vocabulary = new Map();
+        (Array.isArray(source.vocabulary) ? source.vocabulary : []).forEach(item => {
+          const id = String(item?.id || item?.packEntryId || `${item?.word || ""}|${item?.reading || ""}`);
+          vocabulary.set(id, {
+            id,
+            word: String(item?.word || ""),
+            reading: String(item?.reading || ""),
+            sourceType: item?.sourceType === "mining" ? "mining" : "core",
+            stage: Number(item?.stage || 0),
+            correct: Number(item?.correct || 0),
+            incorrect: Number(item?.incorrect || 0),
+            guru: Boolean(item?.guruPassed) || Number(item?.stage || 0) >= 5,
+            lrImport: Boolean(item?.lrImportKey)
+          });
+        });
+
+        const grammar = new Map();
+        grammarProgress().forEach(point => {
+          const skills = new Map();
+          (point.skills || []).forEach(skill => skills.set(skill.id, {
+            stage: Number(skill?.stage || 0),
+            correct: Number(skill?.correct || 0),
+            incorrect: Number(skill?.incorrect || 0)
+          }));
+          grammar.set(point.id, {
+            id: point.id,
+            title: point.title || point.pattern || point.id,
+            lessonComplete: Boolean(point.lessonComplete),
+            guru: skills.size > 0 && [...skills.values()].every(skill => skill.stage >= 5),
+            skills
+          });
+        });
+        return { vocabulary, grammar };
+      }
+
+      let previousSnapshot = snapshot();
+      let pendingSnapshotSource = null;
+      let snapshotTimer = null;
+
+      function addEvent(analytics, event) {
+        analytics.events.push({ at: Date.now(), ...event });
+        analytics.events = analytics.events.slice(-500);
+      }
+
+      function processSnapshot(source) {
+        const next = snapshot(source);
+        const analytics = analyticsFor(source);
+        const day = analytics.days[dateKey()] ||= defaultDay();
+        let changed = false;
+
+        next.vocabulary.forEach((item, id) => {
+          const old = previousSnapshot.vocabulary.get(id);
+          if (!old) {
+            if (item.lrImport) {
+              day.imports += 1;
+              addEvent(analytics, { type: "import", id, label: item.word, area: "mining" });
+              changed = true;
+            }
+            return;
+          }
+          const correctDelta = Math.max(0, item.correct - old.correct);
+          const incorrectDelta = Math.max(0, item.incorrect - old.incorrect);
+          if (correctDelta || incorrectDelta) {
+            day.reviewCorrect += correctDelta;
+            day.reviewIncorrect += incorrectDelta;
+            day.vocabCorrect += correctDelta;
+            day.vocabIncorrect += incorrectDelta;
+            addEvent(analytics, {
+              type: "vocab-review",
+              id,
+              label: item.word,
+              area: item.sourceType,
+              correct: correctDelta,
+              incorrect: incorrectDelta
+            });
+            changed = true;
+          }
+          if (old.stage === 0 && item.stage > 0) {
+            if (item.sourceType === "mining") day.miningLessons += 1;
+            else day.coreLessons += 1;
+            addEvent(analytics, { type: "vocab-lesson", id, label: item.word, area: item.sourceType });
+            changed = true;
+          }
+          if (!old.guru && item.guru) {
+            day.vocabGuru += 1;
+            addEvent(analytics, { type: "vocab-guru", id, label: item.word, area: item.sourceType });
+            changed = true;
+          }
+          if (old.stage < 9 && item.stage >= 9) {
+            day.burned += 1;
+            addEvent(analytics, { type: "vocab-burned", id, label: item.word, area: item.sourceType });
+            changed = true;
+          }
+        });
+
+        next.grammar.forEach((point, id) => {
+          const old = previousSnapshot.grammar.get(id);
+          if (!old) return;
+          let correctDelta = 0;
+          let incorrectDelta = 0;
+          point.skills.forEach((skill, skillId) => {
+            const oldSkill = old.skills.get(skillId) || { correct: 0, incorrect: 0 };
+            correctDelta += Math.max(0, skill.correct - oldSkill.correct);
+            incorrectDelta += Math.max(0, skill.incorrect - oldSkill.incorrect);
+          });
+          if (correctDelta || incorrectDelta) {
+            day.reviewCorrect += correctDelta;
+            day.reviewIncorrect += incorrectDelta;
+            day.grammarCorrect += correctDelta;
+            day.grammarIncorrect += incorrectDelta;
+            addEvent(analytics, {
+              type: "grammar-review",
+              id,
+              label: point.title,
+              area: "grammar",
+              correct: correctDelta,
+              incorrect: incorrectDelta
+            });
+            changed = true;
+          }
+          if (!old.lessonComplete && point.lessonComplete) {
+            day.grammarLessons += 1;
+            addEvent(analytics, { type: "grammar-lesson", id, label: point.title, area: "grammar" });
+            changed = true;
+          }
+          if (!old.guru && point.guru) {
+            day.grammarGuru += 1;
+            addEvent(analytics, { type: "grammar-guru", id, label: point.title, area: "grammar" });
+            changed = true;
+          }
+        });
+
+        previousSnapshot = next;
+        if (changed) writeSource(source);
+      }
+
+      function scheduleSnapshot(source = sourceData()) {
+        pendingSnapshotSource = source;
+        clearTimeout(snapshotTimer);
+        snapshotTimer = setTimeout(() => {
+          const latest = pendingSnapshotSource;
+          pendingSnapshotSource = null;
+          processSnapshot(latest);
+        }, 80);
+      }
+
+      try {
+        const originalSetItem = Storage.prototype.setItem;
+        if (!originalSetItem.__kqInsightsWrapped) {
+          const wrapped = function(key, value) {
+            const result = originalSetItem.call(this, key, value);
+            if (!internalWrite && String(key) === STORAGE_KEY) {
+              try { scheduleSnapshot(JSON.parse(String(value || "{}"))); } catch {}
+              setTimeout(scheduleGrammarScan, 120);
+            }
+            return result;
+          };
+          wrapped.__kqInsightsWrapped = true;
+          wrapped.__kqOriginal = originalSetItem;
+          Storage.prototype.setItem = wrapped;
+        }
+      } catch (error) {
+        console.warn("Kotoba Quest analytics tracking could not be installed", error);
+      }
+
+      let lastInteractionAt = Date.now();
+      let activeStartedAt = null;
+      let activeTimer = null;
+
+      function activeViewId() {
+        return document.querySelector(".view.active")?.id || "";
+      }
+
+      function shouldTrackTime() {
+        return document.visibilityState === "visible" && STUDY_VIEWS.has(activeViewId()) && Date.now() - lastInteractionAt < 3 * 60 * 1000;
+      }
+
+      function flushActiveTime() {
+        if (activeStartedAt == null) return;
+        const now = Date.now();
+        const elapsed = Math.max(0, Math.min(5 * 60 * 1000, now - activeStartedAt));
+        activeStartedAt = shouldTrackTime() ? now : null;
+        if (elapsed < 1000) return;
+        const source = sourceData();
+        const analytics = analyticsFor(source);
+        const day = analytics.days[dateKey()] ||= defaultDay();
+        day.activeMs += elapsed;
+        writeSource(source, { refresh: false });
+      }
+
+      function updateTimeTracking() {
+        if (shouldTrackTime()) {
+          if (activeStartedAt == null) activeStartedAt = Date.now();
+        } else {
+          flushActiveTime();
+          activeStartedAt = null;
+        }
+      }
+
+      ["pointerdown", "keydown", "touchstart"].forEach(type => document.addEventListener(type, () => {
+        lastInteractionAt = Date.now();
+        updateTimeTracking();
+      }, { passive: true }));
+      document.addEventListener("visibilitychange", updateTimeTracking);
+      window.addEventListener("beforeunload", flushActiveTime);
+      const viewClassObserver = new MutationObserver(updateTimeTracking);
+      document.querySelectorAll(".view").forEach(view => viewClassObserver.observe(view, { attributes: true, attributeFilter: ["class"] }));
+      activeTimer = setInterval(() => {
+        if (shouldTrackTime()) flushActiveTime();
+        else updateTimeTracking();
+      }, 60 * 1000);
+
+      function normalizeSentence(value) {
+        return String(value || "").normalize("NFKC").replace(/\s+/g, "").trim();
+      }
+
+      function detectGrammar(sentence) {
+        const normalized = normalizeSentence(sentence);
+        if (!normalized) return [];
+        const found = [];
+        GRAMMAR_RULES.forEach(rule => {
+          rule.test.lastIndex = 0;
+          if (rule.exclude) {
+            rule.exclude.lastIndex = 0;
+            if (rule.exclude.test(normalized)) return;
+          }
+          if (rule.test.test(normalized) && !found.includes(rule.id)) found.push(rule.id);
+        });
+        return found;
+      }
+
+      function miningCards(source = sourceData()) {
+        return (Array.isArray(source.vocabulary) ? source.vocabulary : []).filter(item => item?.sourceType === "mining");
+      }
+
+      function cardContexts(item) {
+        const contexts = [];
+        if (item?.example) contexts.push({
+          sentence: String(item.example),
+          translation: String(item.exampleTranslation || ""),
+          source: String(item.collection || item?.lrSource?.collection || "")
+        });
+        (Array.isArray(item?.lrContexts) ? item.lrContexts : []).forEach(context => {
+          const sentence = String(context?.sentence || "");
+          if (!sentence || contexts.some(entry => normalizeSentence(entry.sentence) === normalizeSentence(sentence))) return;
+          contexts.push({
+            sentence,
+            translation: String(context?.translation || ""),
+            source: String(context?.source || item.collection || "")
+          });
+        });
+        return contexts;
+      }
+
+      function scanSignature(cards) {
+        let hash = 2166136261;
+        let contextCount = 0;
+        const feed = value => {
+          const text = String(value || "");
+          for (let index = 0; index < text.length; index++) {
+            hash ^= text.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+          }
+        };
+        cards.forEach(item => {
+          feed(item?.id || "");
+          cardContexts(item).forEach(context => {
+            contextCount += 1;
+            feed(context.sentence);
+          });
+        });
+        return `${GRAMMAR_SCAN_VERSION}:${cards.length}:${contextCount}:${hash >>> 0}`;
+      }
+
+      let scanTimer = null;
+      let scanBusy = false;
+
+      function scheduleGrammarScan() {
+        clearTimeout(scanTimer);
+        scanTimer = setTimeout(scanGrammarMining, 180);
+      }
+
+      function scanGrammarMining({ force = false } = {}) {
+        if (scanBusy) return;
+        const source = sourceData();
+        const cards = miningCards(source);
+        const signature = scanSignature(cards);
+        const oldScan = source.grammarMiningScan || {};
+        if (!force && oldScan.version === GRAMMAR_SCAN_VERSION && oldScan.signature === signature) {
+          renderGrammarMiningCards();
+          enhanceCurrentMiningLesson();
+          return;
+        }
+        scanBusy = true;
+        try {
+          const summary = {};
+          cards.forEach(item => {
+            const contexts = cardContexts(item).map(context => {
+              const detectedGrammar = detectGrammar(context.sentence);
+              detectedGrammar.forEach(id => {
+                const entry = summary[id] ||= { count: 0, cardIds: [], examples: [] };
+                entry.count += 1;
+                if (!entry.cardIds.includes(item.id)) entry.cardIds.push(item.id);
+                if (entry.examples.length < 4 && !entry.examples.some(example => normalizeSentence(example.sentence) === normalizeSentence(context.sentence))) {
+                  entry.examples.push({ ...context, word: item.word, cardId: item.id });
+                }
+              });
+              return { ...context, detectedGrammar };
+            });
+            item.detectedGrammar = [...new Set(contexts.flatMap(context => context.detectedGrammar))];
+          });
+          source.grammarMiningScan = {
+            version: GRAMMAR_SCAN_VERSION,
+            signature,
+            scannedAt: Date.now(),
+            summary
+          };
+          writeSource(source, { refresh: false });
+        } finally {
+          scanBusy = false;
+        }
+        renderGrammarMiningCards();
+        enhanceCurrentMiningLesson();
+      }
+
+      function pointStatus(point) {
+        if (!point) return { key: "unknown", label: "Noch nicht gelernt", rank: 0 };
+        const skills = point.skills || [];
+        if (skills.length && skills.every(skill => Number(skill.stage || 0) >= 5)) return { key: "guru", label: "Guru", rank: 3 };
+        if (point.lessonComplete) return { key: "learned", label: "Gelernt", rank: 2 };
+        return { key: "new", label: `Grammatik-Level ${point.level}`, rank: 1 };
+      }
+
+      function grammarMaps() {
+        const progress = new Map(grammarProgress().map(point => [point.id, point]));
+        const catalog = new Map(grammarCatalog().map(point => [point.id, point]));
+        return { progress, catalog };
+      }
+
+      function grammarMatchMarkup(ids, { compact = false } = {}) {
+        const { progress, catalog } = grammarMaps();
+        const unique = [...new Set(ids || [])];
+        if (!unique.length) return "";
+        const hasBothSou = unique.includes("sou-appearance") && unique.includes("sou-hearsay");
+        const output = [];
+        const handled = new Set();
+        unique.forEach(id => {
+          if (handled.has(id)) return;
+          if (hasBothSou && (id === "sou-appearance" || id === "sou-hearsay")) {
+            handled.add("sou-appearance");
+            handled.add("sou-hearsay");
+            const statuses = [pointStatus(progress.get("sou-appearance")), pointStatus(progress.get("sou-hearsay"))];
+            const best = statuses.sort((a, b) => b.rank - a.rank)[0];
+            output.push(`<button type="button" class="kq-grammar-chip ${best.key}" data-kq-grammar-open="sou-appearance" title="Der Satz enthält そう. Ob es sich um Eindruck oder Hörensagen handelt, prüfst du über den Kontext."><strong>〜そうだ</strong><span>用法 prüfen · ${esc(best.label)}</span></button>`);
+            return;
+          }
+          const point = progress.get(id);
+          const info = catalog.get(id) || point || { title: id, level: "?" };
+          const status = pointStatus(point);
+          output.push(`<button type="button" class="kq-grammar-chip ${status.key}" data-kq-grammar-open="${esc(id)}"><strong>${esc(info.title || info.pattern || id)}</strong>${compact ? "" : `<span>${esc(status.label)}</span>`}</button>`);
+        });
+        return output.join("");
+      }
+
+      function scanSummary() {
+        return sourceData().grammarMiningScan?.summary || {};
+      }
+
+      function grammarSummaryEntries() {
+        const { progress, catalog } = grammarMaps();
+        return Object.entries(scanSummary()).map(([id, value]) => {
+          const point = progress.get(id);
+          const info = catalog.get(id) || point || { id, title: id, level: "?", subtitle: "" };
+          return {
+            id,
+            ...value,
+            point,
+            info,
+            status: pointStatus(point)
+          };
+        }).sort((left, right) =>
+          left.status.rank - right.status.rank ||
+          Number(right.count || 0) - Number(left.count || 0) ||
+          String(left.info.title || "").localeCompare(String(right.info.title || ""), "ja")
+        );
+      }
+
+      function openGrammarPoint(id) {
+        try {
+          if (window.KotobaQuestGrammarSupportApi?.openGrammarPoint) {
+            window.KotobaQuestGrammarSupportApi.openGrammarPoint(id);
+            return;
+          }
+          window.KotobaQuestGrammarSupportApi?.openGrammarView?.("grammar");
+        } catch {}
+      }
+
+      function installGrammarMiningCard() {
+        const mining = document.getElementById("mining");
+        if (mining && !document.getElementById("kqGrammarMiningCard")) {
+          const card = document.createElement("article");
+          card.id = "kqGrammarMiningCard";
+          card.className = "card kq-grammar-mining-card";
+          const importer = document.getElementById("kqLanguageReactorImport");
+          if (importer) importer.after(card);
+          else mining.append(card);
+        }
+
+        const grammar = document.getElementById("grammar");
+        if (grammar && !document.getElementById("kqGrammarFromMining")) {
+          const card = document.createElement("article");
+          card.id = "kqGrammarFromMining";
+          card.className = "card kq-grammar-from-mining";
+          const title = grammar.querySelector(":scope > .section-title");
+          if (title) title.after(card);
+          else grammar.prepend(card);
+        }
+      }
+
+      function renderGrammarMiningCards() {
+        installGrammarMiningCard();
+        const entries = grammarSummaryEntries();
+        const miningCard = document.getElementById("kqGrammarMiningCard");
+        if (miningCard) {
+          const totalContexts = entries.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
+          const unlearned = entries.filter(entry => entry.status.rank < 2).length;
+          miningCard.innerHTML = `
+            <div class="section-title kq-grammar-mining-title">
+              <div><span class="kq-insight-kicker">Grammatik × Mining</span><h2>Grammatik in deinen Sätzen</h2><p>Erkannt werden die Strukturen, die bereits im aktuellen N3-Grammatikpfad enthalten sind.</p></div>
+              <div class="kq-grammar-mining-summary"><strong>${entries.length}</strong><span>Strukturen</span><strong>${totalContexts}</strong><span>Treffer</span><strong>${unlearned}</strong><span>noch ungelernt</span></div>
+            </div>
+            ${entries.length ? `<div class="kq-grammar-mining-list">${entries.map(entry => `
+              <article class="kq-grammar-mining-entry ${entry.status.key}">
+                <div class="kq-grammar-mining-head"><div><strong>${esc(entry.info.title || entry.id)}</strong><span>${esc(entry.info.subtitle || `Grammatik-Level ${entry.info.level}`)}</span></div><span class="kq-grammar-status ${entry.status.key}">${esc(entry.status.label)}</span></div>
+                <div class="kq-grammar-example">${entry.examples?.[0] ? `<span>${esc(entry.examples[0].sentence)}</span>${entry.examples[0].translation ? `<small>${esc(entry.examples[0].translation)}</small>` : ""}` : ""}</div>
+                <div class="button-row"><span class="small muted">${Number(entry.count || 0)} Satz${Number(entry.count || 0) === 1 ? "" : "treffer"}</span><button type="button" class="ghost" data-kq-grammar-open="${esc(entry.id)}">${entry.status.rank >= 2 ? "Erklärung öffnen" : "Zum Grammatikpfad"}</button></div>
+              </article>`).join("")}</div>` : `<div class="empty">Noch keine Grammatiktreffer. Nach einem Language-Reactor-Import werden deine Satzkontexte automatisch analysiert.</div>`}`;
+        }
+
+        const grammarCard = document.getElementById("kqGrammarFromMining");
+        if (grammarCard) {
+          const candidates = entries.filter(entry => entry.status.rank < 2).slice(0, 6);
+          const learned = entries.filter(entry => entry.status.rank >= 2).slice(0, 4);
+          grammarCard.innerHTML = `
+            <div class="section-title"><div><span class="kq-insight-kicker">Aus deinem Mining</span><h3>Grammatik aus echten Serien- und Filmsätzen</h3><p>Ungelernten Strukturen kannst du begegnen, ohne dass sie automatisch als gelernt gelten.</p></div></div>
+            ${entries.length ? `<div class="kq-mining-grammar-columns">
+              <div><strong class="kq-column-title">Als Nächstes interessant</strong>${candidates.length ? candidates.map(entry => `<button type="button" class="kq-mining-grammar-row" data-kq-grammar-open="${esc(entry.id)}"><span><strong>${esc(entry.info.title || entry.id)}</strong><small>${Number(entry.count || 0)}× in deinen Sätzen</small></span><em>${esc(entry.status.label)}</em></button>`).join("") : `<div class="small muted">Alle erkannten Strukturen wurden bereits gelernt.</div>`}</div>
+              <div><strong class="kq-column-title">Schon erkannt und gelernt</strong>${learned.length ? learned.map(entry => `<button type="button" class="kq-mining-grammar-row learned" data-kq-grammar-open="${esc(entry.id)}"><span><strong>${esc(entry.info.title || entry.id)}</strong><small>${Number(entry.count || 0)}× wiederentdeckt</small></span><em>${esc(entry.status.label)}</em></button>`).join("") : `<div class="small muted">Noch keine bereits gelernte Grammatik in Mining-Sätzen erkannt.</div>`}</div>
+            </div>` : `<div class="small muted">Importiere zunächst Wörter mit Satzkontext aus Language Reactor.</div>`}`;
+        }
+      }
+
+      function enhanceCurrentMiningLesson() {
+        try {
+          if (!document.getElementById("lessons")?.classList.contains("active")) return;
+          if (!lessonSession || lessonSession.kind !== "mining") return;
+          const item = lessonSession.items?.[lessonSession.index];
+          const card = document.getElementById("lessonCard");
+          if (!item || !card || card.querySelector(".kq-lesson-grammar")) return;
+          const ids = item.detectedGrammar || detectGrammar(item.example);
+          if (!ids.length) return;
+          const panel = document.createElement("div");
+          panel.className = "kq-lesson-grammar";
+          panel.innerHTML = `<strong>Grammatik in diesem Satz</strong><div class="kq-grammar-chip-row">${grammarMatchMarkup(ids)}</div><span>Die Markierung ist nur eine Erkennungshilfe und verändert deinen Grammatik-SRS-Stand nicht.</span>`;
+          const buttonRow = [...card.querySelectorAll(":scope > .button-row")].at(-1);
+          if (buttonRow) buttonRow.before(panel);
+          else card.append(panel);
+        } catch {}
+      }
+
+      function formatDuration(ms) {
+        const minutes = Math.round(Number(ms || 0) / 60000);
+        if (minutes < 60) return `${minutes} Min.`;
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        return rest ? `${hours} Std. ${rest} Min.` : `${hours} Std.`;
+      }
+
+      function dayRange(days) {
+        return Array.from({ length: days }, (_, index) => {
+          const date = new Date(Date.now() - (days - 1 - index) * DAY_MS);
+          return { key: dateKey(date), date };
+        });
+      }
+
+      function sumDays(analytics, days) {
+        return dayRange(days).reduce((result, entry) => {
+          const day = { ...defaultDay(), ...(analytics.days[entry.key] || {}) };
+          Object.keys(defaultDay()).forEach(key => result[key] += Number(day[key] || 0));
+          return result;
+        }, defaultDay());
+      }
+
+      function totalAccuracy() {
+        const source = sourceData();
+        let vocabCorrect = 0, vocabIncorrect = 0;
+        (source.vocabulary || []).forEach(item => {
+          vocabCorrect += Number(item?.correct || 0);
+          vocabIncorrect += Number(item?.incorrect || 0);
+        });
+        let grammarCorrect = 0, grammarIncorrect = 0;
+        grammarProgress().forEach(point => (point.skills || []).forEach(skill => {
+          grammarCorrect += Number(skill?.correct || 0);
+          grammarIncorrect += Number(skill?.incorrect || 0);
+        }));
+        const correct = vocabCorrect + grammarCorrect;
+        const incorrect = vocabIncorrect + grammarIncorrect;
+        return {
+          correct,
+          incorrect,
+          vocabCorrect,
+          vocabIncorrect,
+          grammarCorrect,
+          grammarIncorrect,
+          percent: correct + incorrect ? Math.round(correct / (correct + incorrect) * 100) : 0
+        };
+      }
+
+      function difficultVocabulary(limit = 8) {
+        return (sourceData().vocabulary || [])
+          .map(item => {
+            const correct = Number(item?.correct || 0);
+            const incorrect = Number(item?.incorrect || 0);
+            const attempts = correct + incorrect;
+            return {
+              id: item.id,
+              word: item.word,
+              reading: item.reading,
+              type: item.sourceType === "mining" ? "Mining" : "Core",
+              correct,
+              incorrect,
+              attempts,
+              rate: attempts ? incorrect / attempts : 0,
+              score: incorrect * 3 + (attempts >= 3 ? incorrect / attempts * 4 : 0)
+            };
+          })
+          .filter(item => item.incorrect >= 2 && item.attempts >= 2)
+          .sort((a, b) => b.score - a.score || b.incorrect - a.incorrect)
+          .slice(0, limit);
+      }
+
+      function difficultGrammar(limit = 8) {
+        return grammarProgress().map(point => {
+          const correct = (point.skills || []).reduce((sum, skill) => sum + Number(skill.correct || 0), 0);
+          const incorrect = (point.skills || []).reduce((sum, skill) => sum + Number(skill.incorrect || 0), 0);
+          const attempts = correct + incorrect;
+          return {
+            id: point.id,
+            title: point.title || point.pattern || point.id,
+            correct,
+            incorrect,
+            attempts,
+            rate: attempts ? incorrect / attempts : 0,
+            score: incorrect * 3 + (attempts >= 3 ? incorrect / attempts * 4 : 0)
+          };
+        }).filter(item => item.incorrect >= 2 && item.attempts >= 2)
+          .sort((a, b) => b.score - a.score || b.incorrect - a.incorrect)
+          .slice(0, limit);
+      }
+
+      function stageDistribution(items) {
+        const buckets = [
+          { label: "Neu", test: stage => stage === 0 },
+          { label: "Apprentice", test: stage => stage >= 1 && stage <= 4 },
+          { label: "Guru", test: stage => stage >= 5 && stage <= 6 },
+          { label: "Master+", test: stage => stage >= 7 && stage <= 8 },
+          { label: "Abgeschlossen", test: stage => stage >= 9 }
+        ];
+        return buckets.map(bucket => ({ ...bucket, count: items.filter(item => bucket.test(Number(item?.stage || 0))).length }));
+      }
+
+      function renderBarRows(rows, total) {
+        const max = Math.max(1, total || rows.reduce((sum, row) => sum + row.count, 0));
+        return rows.map(row => `<div class="kq-stat-bar-row"><span>${esc(row.label)}</span><div><i style="width:${Math.max(row.count ? 2 : 0, row.count / max * 100)}%"></i></div><strong>${row.count}</strong></div>`).join("");
+      }
+
+      function installStatisticsView() {
+        const nav = document.querySelector(".nav");
+        if (nav && !nav.querySelector('[data-view="statistics"]')) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.view = "statistics";
+          button.textContent = "Statistiken";
+          button.addEventListener("click", () => {
+            try { switchView("statistics"); } catch {}
+            renderStatistics();
+          });
+          const archive = nav.querySelector('[data-view="archive"]');
+          if (archive) archive.before(button);
+          else nav.append(button);
+        }
+
+        const main = document.querySelector("main");
+        if (main && !document.getElementById("statistics")) {
+          const section = document.createElement("section");
+          section.id = "statistics";
+          section.className = "view";
+          section.innerHTML = `<div class="section-title"><div><h2>Lernstatistiken</h2><p>Fortschritt, Genauigkeit, Lernzeit und schwierige Inhalte – getrennt nach Vokabeln und Grammatik.</p></div></div><div id="kqStatisticsContent"></div>`;
+          const archive = document.getElementById("archive");
+          if (archive) archive.before(section);
+          else main.append(section);
+        }
+
+        const dashboard = document.getElementById("kqLearningDashboard");
+        if (dashboard && !document.getElementById("kqStatisticsTeaser")) {
+          const teaser = document.createElement("article");
+          teaser.id = "kqStatisticsTeaser";
+          teaser.className = "card kq-statistics-teaser";
+          teaser.innerHTML = `<div><span class="kq-insight-kicker">Deine Entwicklung</span><h3>Was läuft gut – und was braucht mehr Aufmerksamkeit?</h3><p class="muted">Genauigkeit, Lernzeit, Wochenaktivität und Problemfälle gemeinsam ansehen.</p></div><button type="button" class="secondary" id="kqOpenStatistics">Statistiken öffnen</button>`;
+          dashboard.append(teaser);
+          teaser.querySelector("#kqOpenStatistics")?.addEventListener("click", () => {
+            try { switchView("statistics"); } catch {}
+            renderStatistics();
+          });
+        }
+      }
+
+      function renderStatistics() {
+        installStatisticsView();
+        const root = document.getElementById("kqStatisticsContent");
+        if (!root) return;
+        const source = sourceData();
+        const analytics = analyticsFor(source);
+        const today = { ...defaultDay(), ...(analytics.days[dateKey()] || {}) };
+        const week = sumDays(analytics, 7);
+        const accuracy = totalAccuracy();
+        const core = (source.vocabulary || []).filter(item => item?.sourceType === "core");
+        const mining = (source.vocabulary || []).filter(item => item?.sourceType === "mining");
+        const grammar = grammarProgress();
+        const grammarLearned = grammar.filter(point => point.lessonComplete).length;
+        const grammarGuru = grammar.filter(point => (point.skills || []).length && point.skills.every(skill => Number(skill.stage || 0) >= 5)).length;
+        const coreGuru = core.filter(item => Number(item?.stage || 0) >= 5 || item?.guruPassed).length;
+        const miningStarted = mining.filter(item => Number(item?.stage || 0) > 0).length;
+        const miningGuru = mining.filter(item => Number(item?.stage || 0) >= 5 || item?.guruPassed).length;
+        const imported = mining.filter(item => item?.lrImportKey).length;
+        const importedStarted = mining.filter(item => item?.lrImportKey && Number(item?.stage || 0) > 0).length;
+        const importedGuru = mining.filter(item => item?.lrImportKey && (Number(item?.stage || 0) >= 5 || item?.guruPassed)).length;
+        const contextCount = mining.reduce((sum, item) => sum + cardContexts(item).length, 0);
+        const vocabDifficult = difficultVocabulary();
+        const grammarDifficult = difficultGrammar();
+        const activity = (() => {
+          try {
+            const days = source.studyActivity?.days || {};
+            return dayRange(28).map(entry => ({
+              ...entry,
+              actions: Number(days[entry.key] || 0),
+              activeMs: Number(analytics.days[entry.key]?.activeMs || 0)
+            }));
+          } catch { return []; }
+        })();
+        const maxActivity = Math.max(1, ...activity.map(day => day.actions + Math.round(day.activeMs / 600000)));
+        const startLabel = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(analytics.trackingStartedAt));
+
+        root.innerHTML = `
+          <div class="kq-stats-hero">
+            <article class="card kq-stat-primary"><span>Heute aktiv gelernt</span><strong>${formatDuration(today.activeMs)}</strong><small>Die Lernzeit wird seit ${esc(startLabel)} in aktiven Lern- und Reviewansichten erfasst.</small></article>
+            <article class="card"><span class="kq-stat-label">Gesamtgenauigkeit</span><strong class="kq-stat-big">${accuracy.percent}%</strong><div class="kq-accuracy-split"><span>Vokabeln ${accuracy.vocabCorrect + accuracy.vocabIncorrect ? Math.round(accuracy.vocabCorrect / (accuracy.vocabCorrect + accuracy.vocabIncorrect) * 100) : 0}%</span><span>Grammatik ${accuracy.grammarCorrect + accuracy.grammarIncorrect ? Math.round(accuracy.grammarCorrect / (accuracy.grammarCorrect + accuracy.grammarIncorrect) * 100) : 0}%</span></div></article>
+            <article class="card"><span class="kq-stat-label">Diese Woche</span><strong class="kq-stat-big">${week.reviewCorrect + week.reviewIncorrect}</strong><small>bewertete Antworten · ${week.coreLessons + week.miningLessons + week.grammarLessons} neue Inhalte</small></article>
+            <article class="card"><span class="kq-stat-label">Heute geschafft</span><strong class="kq-stat-big">${today.reviewCorrect}</strong><small>richtige Antworten · ${today.reviewIncorrect} Fehler · ${today.vocabGuru + today.grammarGuru} neue Guru-Erfolge</small></article>
+          </div>
+
+          <div class="grid-two kq-stat-section-grid">
+            <article class="card"><div class="section-title"><div><h3>Aktivität der letzten 28 Tage</h3><p>Farbe kombiniert gespeicherte Lernaktionen und aktive Lernzeit.</p></div></div><div class="kq-activity-calendar">${activity.map(day => {
+              const intensity = Math.min(4, Math.ceil((day.actions + Math.round(day.activeMs / 600000)) / maxActivity * 4));
+              const label = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" }).format(day.date);
+              return `<span class="level-${intensity}" title="${esc(label)}: ${day.actions} Aktionen, ${formatDuration(day.activeMs)}">${day.date.getDate()}</span>`;
+            }).join("")}</div><div class="kq-calendar-legend"><span>wenig</span>${[0,1,2,3,4].map(level => `<i class="level-${level}"></i>`).join("")}<span>viel</span></div></article>
+            <article class="card"><div class="section-title"><div><h3>Fortschritt</h3><p>Guru bedeutet erstmals gefestigt; abgeschlossen entspricht der letzten SRS-Stufe.</p></div></div><div class="kq-progress-list">
+              <div><span><strong>Core 2000</strong><em>${coreGuru} von ${core.length} auf Guru</em></span><div><i style="width:${core.length ? coreGuru / core.length * 100 : 0}%"></i></div></div>
+              <div><span><strong>Mining</strong><em>${miningGuru} Guru · ${miningStarted} begonnen · ${mining.length} insgesamt</em></span><div><i style="width:${mining.length ? miningGuru / mining.length * 100 : 0}%"></i></div></div>
+              <div><span><strong>Grammatik</strong><em>${grammarGuru} Guru · ${grammarLearned} von ${grammar.length} gelernt</em></span><div><i style="width:${grammar.length ? grammarGuru / grammar.length * 100 : 0}%"></i></div></div>
+            </div></article>
+          </div>
+
+          <div class="grid-two kq-stat-section-grid">
+            <article class="card"><div class="section-title"><div><h3>Vokabel-SRS</h3><p>Core und Mining gemeinsam nach aktueller Stufe.</p></div></div><div class="kq-stat-bars">${renderBarRows(stageDistribution([...core, ...mining]), Math.max(1, core.length + mining.length))}</div></article>
+            <article class="card"><div class="section-title"><div><h3>Language-Reactor-Weg</h3><p>Vom importierten Satz bis zur gefestigten Mining-Vokabel.</p></div></div><div class="kq-funnel"><div><strong>${imported}</strong><span>importiert</span></div><b>→</b><div><strong>${importedStarted}</strong><span>begonnen</span></div><b>→</b><div><strong>${importedGuru}</strong><span>Guru</span></div></div><div class="small muted" style="margin-top:14px">${contextCount} unterschiedliche Satzkontexte sind derzeit mit Mining-Karten verbunden.</div></article>
+          </div>
+
+          <div class="grid-two kq-stat-section-grid">
+            <article class="card"><div class="section-title"><div><h3>Schwierige Vokabeln</h3><p>Mindestens zwei Fehler; sortiert nach Fehlerzahl und Fehlerquote.</p></div></div><div class="kq-difficult-list">${vocabDifficult.length ? vocabDifficult.map(item => `<div><span><strong>${esc(item.word)}</strong><small>${esc(item.reading)} · ${esc(item.type)}</small></span><em>${item.incorrect} Fehler · ${Math.round(item.rate * 100)}%</em></div>`).join("") : `<div class="empty">Noch keine wiederkehrenden Problemvokabeln – sehr gut.</div>`}</div></article>
+            <article class="card"><div class="section-title"><div><h3>Schwierige Grammatik</h3><p>Die Fehler aller vier Teilfähigkeiten werden zusammengeführt.</p></div></div><div class="kq-difficult-list">${grammarDifficult.length ? grammarDifficult.map(item => `<button type="button" data-kq-grammar-open="${esc(item.id)}"><span><strong>${esc(item.title)}</strong><small>${item.attempts} bewertete Antworten</small></span><em>${item.incorrect} Fehler · ${Math.round(item.rate * 100)}%</em></button>`).join("") : `<div class="empty">Noch keine wiederkehrenden Grammatik-Problemfälle.</div>`}</div></article>
+          </div>`;
+      }
+
+      document.addEventListener("click", event => {
+        const button = event.target.closest("[data-kq-grammar-open]");
+        if (!button) return;
+        event.preventDefault();
+        openGrammarPoint(button.dataset.kqGrammarOpen);
+      });
+
+      ["renderDashboard", "renderMining", "renderLesson", "renderReview", "renderAll"].forEach(name => {
+        try {
+          const original = eval(name);
+          if (typeof original !== "function" || original.__kqInsightsWrapped) return;
+          const wrapped = function(...args) {
+            const result = original.apply(this, args);
+            setTimeout(() => {
+              installStatisticsView();
+              renderStatistics();
+              renderGrammarMiningCards();
+              enhanceCurrentMiningLesson();
+            }, 0);
+            return result;
+          };
+          wrapped.__kqInsightsWrapped = true;
+          eval(`${name} = wrapped`);
+        } catch {}
+      });
+
+      const style = document.createElement("style");
+      style.id = "kotobaLearningInsightsStyles";
+      style.textContent = `
+        .kq-insight-kicker { display:inline-flex; margin-bottom:5px; padding:5px 9px; border-radius:999px; color:var(--primary-dark); background:var(--kq-wash,#f2edff); font-size:.7rem; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }
+        .kq-statistics-teaser { display:flex; justify-content:space-between; align-items:center; gap:18px; background:linear-gradient(135deg,var(--kq-wash,#f4efff),white); }
+        .kq-statistics-teaser h3 { margin:3px 0 6px; }
+        .kq-statistics-teaser p { margin:0; }
+        #kqStatisticsContent { display:grid; gap:18px; }
+        .kq-stats-hero { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+        .kq-stats-hero > article { min-height:155px; display:grid; align-content:center; gap:7px; }
+        .kq-stat-primary { background:linear-gradient(135deg,var(--kq-a,#d8c9f2),var(--kq-b,#f2d6e5)); }
+        .kq-stat-primary > strong,.kq-stat-big { color:var(--primary); font-size:2.7rem; line-height:1; }
+        .kq-stat-primary small,.kq-stats-hero small { color:var(--muted); line-height:1.4; }
+        .kq-stat-label { color:var(--muted); font-weight:850; }
+        .kq-accuracy-split { display:flex; flex-wrap:wrap; gap:6px; }
+        .kq-accuracy-split span { padding:5px 8px; border-radius:999px; color:var(--primary-dark); background:var(--kq-wash,#f3efff); font-size:.72rem; font-weight:850; }
+        .kq-stat-section-grid { align-items:stretch; }
+        .kq-stat-section-grid > .card { min-height:245px; }
+        .kq-activity-calendar { display:grid; grid-template-columns:repeat(14,1fr); gap:7px; }
+        .kq-activity-calendar span { aspect-ratio:1; display:grid; place-items:center; border-radius:8px; color:var(--muted); background:#f4f1f8; font-size:.68rem; font-weight:850; }
+        .kq-activity-calendar .level-1,.kq-calendar-legend .level-1 { background:color-mix(in srgb,var(--primary) 22%,white); }
+        .kq-activity-calendar .level-2,.kq-calendar-legend .level-2 { color:var(--primary-dark); background:color-mix(in srgb,var(--primary) 40%,white); }
+        .kq-activity-calendar .level-3,.kq-calendar-legend .level-3 { color:white; background:color-mix(in srgb,var(--primary) 68%,white); }
+        .kq-activity-calendar .level-4,.kq-calendar-legend .level-4 { color:white; background:var(--primary); }
+        .kq-calendar-legend { display:flex; align-items:center; justify-content:flex-end; gap:5px; margin-top:10px; color:var(--muted); font-size:.7rem; }
+        .kq-calendar-legend i { width:13px; height:13px; border-radius:4px; background:#f4f1f8; }
+        .kq-progress-list { display:grid; gap:17px; }
+        .kq-progress-list > div { display:grid; gap:7px; }
+        .kq-progress-list span { display:flex; justify-content:space-between; gap:10px; }
+        .kq-progress-list em { color:var(--muted); font-size:.78rem; font-style:normal; text-align:right; }
+        .kq-progress-list > div > div,.kq-stat-bar-row > div { height:10px; overflow:hidden; border-radius:999px; background:var(--kq-wash,#f2edff); }
+        .kq-progress-list i,.kq-stat-bar-row i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--primary),var(--accent)); }
+        .kq-stat-bars { display:grid; gap:12px; }
+        .kq-stat-bar-row { display:grid; grid-template-columns:105px 1fr 42px; align-items:center; gap:10px; }
+        .kq-stat-bar-row > span { color:var(--muted); font-size:.8rem; font-weight:800; }
+        .kq-stat-bar-row > strong { text-align:right; }
+        .kq-funnel { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:10px; }
+        .kq-funnel > div { display:grid; place-items:center; gap:3px; padding:18px 8px; border-radius:16px; background:var(--kq-wash,#f4efff); text-align:center; }
+        .kq-funnel strong { color:var(--primary); font-size:2rem; }
+        .kq-funnel span { color:var(--muted); font-size:.76rem; }
+        .kq-funnel b { color:var(--primary); }
+        .kq-difficult-list { display:grid; gap:8px; }
+        .kq-difficult-list > div,.kq-difficult-list > button { width:100%; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:11px 12px; border:1px solid var(--border); border-radius:13px; color:var(--text); background:white; text-align:left; }
+        .kq-difficult-list > button:hover { border-color:var(--primary); }
+        .kq-difficult-list span { display:grid; gap:2px; }
+        .kq-difficult-list small { color:var(--muted); }
+        .kq-difficult-list em { color:var(--bad); font-size:.75rem; font-style:normal; font-weight:850; text-align:right; }
+        .kq-grammar-mining-card,.kq-grammar-from-mining { margin-top:18px; }
+        .kq-grammar-mining-title { align-items:center; }
+        .kq-grammar-mining-title h2 { margin:3px 0 5px; }
+        .kq-grammar-mining-summary { display:grid; grid-template-columns:auto auto; gap:3px 8px; padding:11px 14px; border-radius:15px; background:var(--kq-wash,#f4efff); }
+        .kq-grammar-mining-summary strong { color:var(--primary); font-size:1.25rem; text-align:right; }
+        .kq-grammar-mining-summary span { color:var(--muted); font-size:.72rem; align-self:center; }
+        .kq-grammar-mining-list { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+        .kq-grammar-mining-entry { display:grid; gap:10px; padding:14px; border:1px solid var(--border); border-radius:15px; background:white; }
+        .kq-grammar-mining-entry.new { border-style:dashed; }
+        .kq-grammar-mining-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+        .kq-grammar-mining-head > div { display:grid; gap:3px; }
+        .kq-grammar-mining-head > div > strong { font-size:1.2rem; }
+        .kq-grammar-mining-head > div > span { color:var(--muted); font-size:.75rem; }
+        .kq-grammar-status { padding:6px 8px; border-radius:999px; background:var(--kq-wash,#f2edff); color:var(--primary-dark); font-size:.68rem; font-weight:900; white-space:nowrap; }
+        .kq-grammar-status.guru { color:#3d735f; background:#e8f7f0; }
+        .kq-grammar-status.learned { color:#536da2; background:#edf2ff; }
+        .kq-grammar-example { min-height:48px; display:grid; gap:3px; padding:9px 10px; border-radius:11px; background:var(--kq-wash,#faf8ff); line-height:1.5; }
+        .kq-grammar-example small { color:var(--muted); }
+        .kq-grammar-mining-entry .button-row { justify-content:space-between; align-items:center; }
+        .kq-mining-grammar-columns { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .kq-column-title { display:block; margin-bottom:8px; }
+        .kq-mining-grammar-row { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:7px; padding:10px 11px; border:1px solid var(--border); border-radius:12px; color:var(--text); background:white; text-align:left; }
+        .kq-mining-grammar-row:hover { border-color:var(--primary); }
+        .kq-mining-grammar-row > span { display:grid; gap:2px; }
+        .kq-mining-grammar-row small { color:var(--muted); }
+        .kq-mining-grammar-row em { color:var(--primary-dark); font-size:.7rem; font-style:normal; font-weight:850; }
+        .kq-lesson-grammar { display:grid; gap:9px; max-width:620px; margin:17px auto 0; padding:14px; border:1px solid var(--border); border-radius:15px; background:var(--kq-wash,#f8f5ff); text-align:left; }
+        .kq-lesson-grammar > span { color:var(--muted); font-size:.73rem; line-height:1.4; }
+        .kq-grammar-chip-row { display:flex; flex-wrap:wrap; gap:7px; }
+        .kq-grammar-chip { display:inline-grid; gap:1px; padding:7px 10px; border:1px solid var(--border); border-radius:11px; color:var(--text); background:white; text-align:left; }
+        .kq-grammar-chip strong { font-size:.88rem; }
+        .kq-grammar-chip span { color:var(--muted); font-size:.65rem; }
+        .kq-grammar-chip.guru { border-color:#bfe2d2; background:#f2fbf7; }
+        .kq-grammar-chip.learned { border-color:#ccd8f2; background:#f5f7ff; }
+        .kq-grammar-chip.new { border-style:dashed; }
+        @media (max-width:900px) {
+          .kq-stats-hero { grid-template-columns:1fr 1fr; }
+          .kq-grammar-mining-list,.kq-mining-grammar-columns { grid-template-columns:1fr; }
+        }
+        @media (max-width:620px) {
+          .kq-stats-hero { grid-template-columns:1fr; }
+          .kq-statistics-teaser { align-items:flex-start; flex-direction:column; }
+          .kq-activity-calendar { grid-template-columns:repeat(7,1fr); }
+          .kq-funnel { grid-template-columns:1fr; }
+          .kq-funnel b { transform:rotate(90deg); justify-self:center; }
+          .kq-stat-bar-row { grid-template-columns:90px 1fr 34px; }
+          .kq-grammar-mining-summary { width:100%; }
+        }
+      `;
+      document.head.append(style);
+
+      installStatisticsView();
+      installGrammarMiningCard();
+      scheduleGrammarScan();
+      renderStatistics();
+      renderGrammarMiningCards();
+      updateTimeTracking();
+
+      window.KotobaQuestLearningInsights = {
+        refresh: () => {
+          scheduleSnapshot(sourceData());
+          scheduleGrammarScan();
+          renderStatistics();
+          renderGrammarMiningCards();
+        },
+        detectGrammar,
+        scanGrammarMining: () => scanGrammarMining({ force: true }),
+        getDifficultVocabulary: difficultVocabulary,
+        getDifficultGrammar: difficultGrammar
+      };
+    }
+
+
     function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
       const learningHubScript = "<script>(" + learningHubBootstrap.toString() + ")();<" + "/script>";
       const languageReactorScript = "<script>(" + languageReactorMiningBootstrap.toString() + ")();<" + "/script>";
+      const learningInsightsScript = "<script>(" + learningInsightsBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${pastelFuriganaScript}`;
+      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${learningInsightsScript}\n${pastelFuriganaScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
