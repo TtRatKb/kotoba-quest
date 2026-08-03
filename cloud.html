@@ -15851,7 +15851,10 @@
       function activeGrammarSourceLabel() {
         if (document.getElementById("grammarReview")?.classList.contains("active") && reviewCurrent) {
           const point = POINTS.find(item => item.id === reviewCurrent.pointId);
-          return `Grammar SRS · Level ${Number(point?.level || 1)}${point?.title ? ` · ${point.title}` : ""}`;
+          const suffix = reviewCurrent.difficulty === "guided" && point?.title
+            ? ` · ${point.title}`
+            : " · Freier Abruf";
+          return `Grammar SRS · Level ${Number(point?.level || 1)}${suffix}`;
         }
         return `Grammar Path · Level ${Number(lessonPoint?.level || 1)}${lessonPoint?.title ? ` · ${lessonPoint.title}` : ""}`;
       }
@@ -16730,7 +16733,7 @@
           card.innerHTML = `${commonHead}<h2>Aktiver Abruf</h2><p class="grammar-explanation">Formuliere den Satz selbst. Du kannst Romaji tippen; die Eingabe wird unmittelbar in Hiragana umgewandelt.</p>
             <div class="grammar-review-prompt">${escapeHtml(lessonPoint.checkpoint.cue)}</div>
             <textarea class="grammar-input" id="grammarLessonAnswer" rows="3" placeholder="Romaji oder Japanisch eingeben …" autocomplete="off"></textarea>
-            <div class="grammar-input-help">Beispiel: <strong>hanaseru you ni narimashita</strong> → はなせる ように なりました</div>
+            <div class="grammar-input-help">Beispiel: <strong>hanaseru you ni narimashita</strong> → はなせる ように なりました · <strong>Enter</strong> prüft · <strong>Shift+Enter</strong> fügt eine neue Zeile ein.</div>
             <div id="grammarLessonFeedback"></div>
             <div class="button-row" style="margin-top:15px">
               <button class="ghost" id="grammarLessonPrev">Zurück</button>
@@ -16820,6 +16823,7 @@
       let reviewRevealed = false;
       let reviewPracticeOnly = false;
       let reviewResults = { good: 0, close: 0, bad: 0 };
+      let reviewSentenceHistory = new Map();
 
       function shuffle(values) {
         const array = [...values];
@@ -16830,19 +16834,161 @@
         return array;
       }
 
+      function grammarQuestionSentence(question, skillId) {
+        if (!question) return "";
+        if (skillId === "listening") return String(question.audio || question.shown || question.model || "");
+        if (skillId === "production") return String(question.model || question.shown || question.audio || "");
+        return String(question.shown || question.audio || question.model || "");
+      }
+
+      function grammarRequiredTokens(point) {
+        return Array.isArray(point?.checkpoint?.required)
+          ? point.checkpoint.required.filter(Boolean)
+          : [];
+      }
+
+      function questionUsesTarget(point, sentence) {
+        const required = grammarRequiredTokens(point);
+        if (!required.length) return true;
+        const normalized = normalizeJapanese(sentence);
+        return required.some(token => normalized.includes(normalizeJapanese(token)));
+      }
+
+      function syntheticQuestions(point, skillId) {
+        const sources = [];
+        for (const item of point?.formation || []) {
+          if (item?.jp && item?.de) {
+            sources.push({
+              jp: String(item.jp),
+              de: String(item.de),
+              highlight: String(item.highlight || ""),
+              label: String(item.label || "Bildungsform")
+            });
+          }
+        }
+
+        for (const side of [point?.contrast?.left, point?.contrast?.right]) {
+          if (!side?.jp || !side?.de || !questionUsesTarget(point, side.jp)) continue;
+          sources.push({
+            jp: String(side.jp),
+            de: String(side.de),
+            highlight: String(side.highlight || ""),
+            label: String(side.label || "Kontrast")
+          });
+        }
+
+        const generated = [];
+        sources.forEach((source, index) => {
+          const aspect = `context-${index + 1}`;
+          const aspectLabel = source.label || "Neuer Kontext";
+          if (skillId === "meaning") {
+            generated.push({
+              prompt: "Gib die Aussage dieses Satzes auf Deutsch wieder und erkläre kurz, was sich grammatisch ausdrückt.",
+              shown: source.jp,
+              model: source.de,
+              selfCheck: true,
+              aspect,
+              aspectLabel
+            });
+          } else if (skillId === "listening") {
+            generated.push({
+              audio: source.jp,
+              prompt: "Höre den vollständigen Satz und gib seine Kernaussage auf Deutsch wieder.",
+              model: source.de,
+              selfCheck: true,
+              aspect,
+              aspectLabel
+            });
+          } else if (skillId === "production") {
+            generated.push({
+              prompt: `Schreibe auf Japanisch: „${source.de}“`,
+              model: source.jp,
+              answers: [source.jp],
+              required: grammarRequiredTokens(point),
+              aspect,
+              aspectLabel
+            });
+          } else if (skillId === "form" && source.highlight && source.jp.includes(source.highlight)) {
+            generated.push({
+              prompt: "Setze die grammatisch passende Form in die Lücke ein.",
+              shown: source.jp.replace(source.highlight, "＿＿＿＿"),
+              model: source.highlight,
+              answers: [source.highlight],
+              aspect,
+              aspectLabel
+            });
+          }
+        });
+
+        if (skillId === "production") {
+          for (const model of point?.checkpoint?.models || []) {
+            generated.push({
+              prompt: String(point?.checkpoint?.cue || "Formuliere den Satz auf Japanisch."),
+              model: String(model),
+              answers: [...(point.checkpoint.models || [])],
+              required: grammarRequiredTokens(point),
+              aspect: "checkpoint",
+              aspectLabel: "Aktiver Abruf"
+            });
+          }
+        }
+
+        return generated;
+      }
+
+      function reviewQuestionPool(point, skillId) {
+        const original = Array.isArray(point?.questions?.[skillId])
+          ? point.questions[skillId]
+          : [];
+        const combined = [...original, ...syntheticQuestions(point, skillId)];
+        const seen = new Set();
+        return combined.filter(question => {
+          const sentence = grammarQuestionSentence(question, skillId);
+          const key = `${normalizeJapanese(sentence)}|${String(question.prompt || "")}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+
       function makeReviewItem(pointId, skillId, practiceOnly = false) {
         const point = POINTS.find(item => item.id === pointId);
-        const pool = point?.questions?.[skillId] || [];
+        const pool = reviewQuestionPool(point, skillId);
         const skillState = grammarState.points[pointId].skills[skillId];
-        const aspects = [...new Set(pool.map(question => question.aspect || "general"))];
-        const aspect = aspects.length
-          ? aspects[Math.max(0, Number(skillState.rotationIndex || 0)) % aspects.length]
-          : "general";
-        const candidates = pool.filter(question => (question.aspect || "general") === aspect);
-        const variant = candidates.length
-          ? candidates[Math.max(0, Number(skillState.variantIndex || 0)) % candidates.length]
-          : pool[0];
-        return { pointId, skillId, question: variant, practiceOnly, repeated: false };
+        const stage = Math.max(1, Number(skillState.stage || 1));
+        const difficulty = stage <= 2
+          ? "guided"
+          : stage <= 4
+            ? "reduced"
+            : "independent";
+
+        const used = reviewSentenceHistory.get(pointId) || new Set();
+        reviewSentenceHistory.set(pointId, used);
+        const startIndex = pool.length
+          ? (Math.max(0, Number(skillState.rotationIndex || 0)) +
+             Math.max(0, Number(skillState.variantIndex || 0)) +
+             used.size) % pool.length
+          : 0;
+        const ordered = pool.length
+          ? pool.map((_, index) => pool[(startIndex + index) % pool.length])
+          : [];
+        const variant = ordered.find(question => {
+          const sentence = grammarQuestionSentence(question, skillId);
+          return sentence && !used.has(normalizeJapanese(sentence));
+        }) || ordered[0] || point?.questions?.[skillId]?.[0];
+
+        const sentenceKey = normalizeJapanese(grammarQuestionSentence(variant, skillId));
+        if (sentenceKey) used.add(sentenceKey);
+
+        return {
+          pointId,
+          skillId,
+          question: variant,
+          practiceOnly,
+          repeated: false,
+          difficulty,
+          stage
+        };
       }
 
       function startReviewSession(practiceOnly = false, pointId = null) {
@@ -16866,6 +17012,7 @@
           }
         }
         reviewPracticeOnly = practiceOnly;
+        reviewSentenceHistory = new Map();
         reviewQueue = shuffle(baseItems).slice(0, 20).map(item => makeReviewItem(item.pointId, item.skillId, practiceOnly));
         reviewIndex = 0;
         reviewCurrent = null;
@@ -16886,6 +17033,36 @@
         document.getElementById("grammarNoDueBack")?.addEventListener("click", () => openGrammarView("grammar"));
       }
 
+      function adaptiveReviewPrompt(question, skillId, difficulty) {
+        if (difficulty === "guided") return String(question?.prompt || "");
+        if (skillId === "form") return "Setze die grammatisch passende Form in die Lücke ein.";
+        if (skillId === "listening") return "Höre den Satz und gib seine Kernaussage auf Deutsch wieder.";
+        if (skillId === "meaning") return "Erkläre die Aussage und die Funktion der verwendeten Grammatik auf Deutsch.";
+        return String(question?.prompt || "Formuliere den Satz auf Japanisch.");
+      }
+
+      function difficultyMeta(difficulty) {
+        if (difficulty === "guided") {
+          return {
+            heading: null,
+            badge: "Mit Strukturhinweis",
+            note: "In den ersten beiden erfolgreichen Wiederholungen wird die Zielstruktur noch angezeigt."
+          };
+        }
+        if (difficulty === "reduced") {
+          return {
+            heading: "Grammatik im Kontext",
+            badge: "Ohne vorgegebene Regel",
+            note: "Die Zielstruktur wird nicht mehr genannt. Entscheide selbst, welche Grammatik hier passt."
+          };
+        }
+        return {
+          heading: "Freier Grammatikabruf",
+          badge: "Gemischte Anwendung",
+          note: "Keine Regelvorgabe: Wähle die passende Struktur vollständig selbst."
+        };
+      }
+
       function renderReview() {
         const card = document.getElementById("grammarReviewCard");
         if (!card) return;
@@ -16898,6 +17075,9 @@
         const point = POINTS.find(item => item.id === reviewCurrent.pointId);
         const skill = SKILLS.find(item => item.id === reviewCurrent.skillId);
         const question = reviewCurrent.question;
+        const difficulty = difficultyMeta(reviewCurrent.difficulty);
+        const adaptivePrompt = adaptiveReviewPrompt(question, skill.id, reviewCurrent.difficulty);
+        const heading = difficulty.heading || point.title;
         const progress = Math.round((reviewIndex / reviewQueue.length) * 100);
         const isListening = skill.id === "listening";
         const shown = question.shown || "";
@@ -16910,16 +17090,17 @@
           <div class="grammar-stepper"><span class="done" style="flex:${Math.max(1, progress)}"></span><span style="flex:${Math.max(1, 100 - progress)}"></span></div>
           <div class="counter">Aufgabe ${reviewIndex + 1} von ${reviewQueue.length}${reviewPracticeOnly ? " · Freies Üben" : " · SRS-Review"}</div>
           <div class="grammar-review-type">${skill.icon} ${skill.label}</div>
-          <div class="grammar-badge" style="margin-top:10px">${escapeHtml(question.aspectLabel || "Gemischte Anwendung")}</div>
-          <h2>${escapeHtml(point.title)}</h2>
-          <div class="grammar-review-prompt">${renderMixedTextWithFurigana(question.prompt)}</div>
+          <div class="grammar-badge" style="margin-top:10px">${escapeHtml(reviewCurrent.difficulty === "guided" ? (question.aspectLabel || difficulty.badge) : difficulty.badge)}</div>
+          <h2>${escapeHtml(heading)}</h2>
+          <div class="small muted" style="margin:8px 0 4px">${escapeHtml(difficulty.note)}</div>
+          <div class="grammar-review-prompt">${renderMixedTextWithFurigana(adaptivePrompt)}</div>
           ${isListening
             ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz und seine Vokabelhilfen bleiben bis zur Auswertung verborgen.</div></div>`
             : reviewSentence
               ? `<div class="grammar-review-sentence">${reviewSupport.sentenceHtml}</div>${reviewSupport.notesHtml}`
               : ""}
           <textarea class="grammar-input" id="grammarReviewAnswer" rows="3" placeholder="${skill.id === "form" || skill.id === "production" ? "Romaji oder Japanisch eingeben …" : "Deine Antwort …"}" autocomplete="off"></textarea>
-          ${skill.id === "form" || skill.id === "production" ? `<div class="grammar-input-help">Romaji wird beim Tippen automatisch in Hiragana umgewandelt. Hiragana statt Kanji wird akzeptiert, wenn es als Lösung hinterlegt ist.</div>` : ""}
+          <div class="grammar-input-help">${skill.id === "form" || skill.id === "production" ? "Romaji wird beim Tippen automatisch in Hiragana umgewandelt. Hiragana statt Kanji wird akzeptiert, wenn es als Lösung hinterlegt ist. " : ""}<strong>Enter</strong> prüft · <strong>Shift+Enter</strong> fügt eine neue Zeile ein.</div>
           <div id="grammarReviewFeedback"></div>
           <div class="button-row" style="margin-top:15px"><button class="ghost" id="grammarReviewExit">Session verlassen</button><button class="primary" id="grammarReviewCheck">Antwort prüfen</button></div>`;
 
@@ -16988,13 +17169,15 @@
             <div style="margin-top:6px">${escapeHtml(assessment.note)}</div>
             ${skill.id === "listening" && revealedSupport ? `<div style="margin-top:12px"><div class="sentence-audio-row"><strong class="grammar-review-revealed-sentence">${revealedSupport.sentenceHtml}</strong><button class="grammar-audio" id="grammarReplayListening" data-audio="${escapeHtml(question.audio)}">🔊</button></div>${revealedSupport.notesHtml}</div>` : ""}
             ${skill.id === "production" && revealedSupport ? `<div style="margin-top:12px"><span class="small muted">Musterlösung</span><div class="grammar-review-sentence grammar-review-model-sentence">${revealedSupport.sentenceHtml}</div>${revealedSupport.notesHtml}</div>` : `<div style="margin-top:9px">Musterlösung: <strong>${modelLooksJapanese ? renderFuriganaOnly(String(question.model || "")) : escapeHtml(question.model)}</strong></div>`}
-            <div class="small muted" style="margin-top:6px">Bewerte dich danach selbst. „Fast richtig“ hält die SRS-Stufe und fragt die Aufgabe später erneut.</div>
+            <div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--kq-wash,#f4efff)"><span class="small muted">Geprüfte Struktur</span><div><strong>${escapeHtml(point.title)}</strong> · ${escapeHtml(point.subtitle || "")}</div></div>
+            <div class="small muted" style="margin-top:7px">Bewerte dich danach selbst. „Fast richtig“ hält die SRS-Stufe und fragt die Aufgabe später erneut.</div>
           </div>
           <div class="grammar-grade-row">
-            <button class="grammar-grade-bad" data-grade="bad">Falsch</button>
-            <button class="grammar-grade-close" data-grade="close">Fast richtig</button>
-            <button class="grammar-grade-good" data-grade="good">Richtig</button>
-          </div>`;
+            <button class="grammar-grade-bad" data-grade="bad">Falsch · 3</button>
+            <button class="grammar-grade-close" data-grade="close">Fast richtig · 2</button>
+            <button class="grammar-grade-good" data-grade="good">Richtig · Enter/1</button>
+          </div>
+          <div class="small muted" style="text-align:center;margin-top:8px">Tastatur: Enter oder 1 = richtig · 2 = fast richtig · 3 = falsch</div>`;
         reviewRevealed = true;
         document.getElementById("grammarReviewCheck").hidden = true;
         attachGrammarSupportActions(feedback);
@@ -17043,6 +17226,59 @@
         document.getElementById("grammarSummaryContinue")?.addEventListener("click", () => startReviewSession(false));
         updateGrammarDashboard();
       }
+
+      function visibleGrammarAction(id) {
+        const button = document.getElementById(id);
+        if (!button || button.hidden || button.disabled || button.offsetParent === null) return null;
+        return button;
+      }
+
+      document.addEventListener("keydown", event => {
+        if (event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return;
+        const lessonActive = document.getElementById("grammarLesson")?.classList.contains("active");
+        const reviewActive = document.getElementById("grammarReview")?.classList.contains("active");
+        if (!lessonActive && !reviewActive) return;
+
+        if (reviewActive && reviewRevealed && ["Enter", "1", "2", "3"].includes(event.key)) {
+          if (event.key === "Enter" && event.shiftKey) return;
+          event.preventDefault();
+          event.stopPropagation();
+          gradeReview(event.key === "2" ? "close" : event.key === "3" ? "bad" : "good");
+          return;
+        }
+
+        if (event.key !== "Enter") return;
+        if (event.shiftKey && event.target?.tagName === "TEXTAREA") return;
+
+        if (reviewActive) {
+          const summaryAction = visibleGrammarAction("grammarSummaryContinue") ||
+            visibleGrammarAction("grammarSummaryBack") ||
+            visibleGrammarAction("grammarNoDueBack");
+          if (summaryAction) {
+            event.preventDefault();
+            event.stopPropagation();
+            summaryAction.click();
+            return;
+          }
+          if (!reviewRevealed && reviewCurrent) {
+            event.preventDefault();
+            event.stopPropagation();
+            revealReviewAnswer();
+          }
+          return;
+        }
+
+        if (lessonActive) {
+          const action = visibleGrammarAction("grammarLessonCheck") ||
+            visibleGrammarAction("grammarLessonComplete") ||
+            visibleGrammarAction("grammarLessonNext");
+          if (action) {
+            event.preventDefault();
+            event.stopPropagation();
+            action.click();
+          }
+        }
+      }, true);
 
       grammarNav.addEventListener("click", () => openGrammarView("grammar"));
       document.getElementById("dashboardGrammarOpen")?.addEventListener("click", () => openGrammarView("grammar"));
@@ -25133,9 +25369,13 @@
       document.addEventListener("keydown",event=>{
         if(!document.getElementById("particlePractice")?.classList.contains("active")||currentTab!=="path")return;
         if(event.key!=="Enter"||event.repeat||event.isComposing)return;
+        if(event.shiftKey&&event.target?.tagName==="TEXTAREA")return;
         if(viewMode==="review"&&reviewSession?.feedback){event.preventDefault();nextReview();}
         else if(viewMode==="lesson"&&lessonFeedback?.correct){event.preventDefault();document.getElementById("kqPpLessonDone")?.click();}
+        else if(viewMode==="lesson"&&!lessonFeedback&&document.getElementById("kqPpNext")){event.preventDefault();document.getElementById("kqPpNext").click();}
         else if(viewMode==="review"&&!reviewSession?.feedback){const buttons=[...document.querySelectorAll("[data-pp-choice]")].filter(button=>!button.disabled);if(buttons.length&&document.activeElement?.tagName!=="INPUT"){event.preventDefault();buttons[0].focus();}}
+        else if(viewMode==="overview"&&document.getElementById("kqPpContinue")){event.preventDefault();document.getElementById("kqPpContinue").click();}
+        else if(document.getElementById("kqPpSummaryBack")){event.preventDefault();document.getElementById("kqPpSummaryBack").click();}
       });
       document.addEventListener("keydown",event=>{
         if(!document.getElementById("particlePractice")?.classList.contains("active")||currentTab!=="path"||viewMode!=="review"||reviewSession?.feedback)return;
