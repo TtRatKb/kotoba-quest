@@ -15586,9 +15586,172 @@
         return `${escapeHtml(source.slice(0, localStart))}<mark style="background:${color}">${escapeHtml(source.slice(localStart, localEnd))}</mark>${escapeHtml(source.slice(localEnd))}`;
       }
 
+      let vocabularySupportCandidateSignature = "";
+      let vocabularySupportCandidateCache = [];
+      const automaticSentenceSupportCache = new Map();
+
+      function vocabularySupportCandidates() {
+        const vocabulary = currentVocabulary();
+        let coreEntries = [];
+        try {
+          coreEntries = typeof CORE_PACK !== "undefined" && Array.isArray(CORE_PACK?.entries)
+            ? CORE_PACK.entries
+            : [];
+        } catch {}
+        const signature = `${vocabulary.length}|${knownVocabularyPool.length}|${coreEntries.length}|${vocabulary.at(-1)?.id || vocabulary.at(-1)?.packEntryId || ""}|${knownVocabularyPool.at(-1)?.id || ""}`;
+        if (signature === vocabularySupportCandidateSignature) return vocabularySupportCandidateCache;
+
+        const candidates = [];
+        const seen = new Set();
+        const add = item => {
+          const word = String(item?.word || "").trim();
+          const reading = String(item?.reading || "").trim();
+          const meaning = Array.isArray(item?.meanings)
+            ? item.meanings.filter(Boolean).join("; ")
+            : String(item?.meaning || item?.productionCue || "").trim();
+          const key = `${normalizeVocabKey(word)}|${normalizeVocabKey(reading)}`;
+          if (!word || !meaning || seen.has(key)) return;
+          seen.add(key);
+          candidates.push({ item, word, reading, meaning });
+        };
+        vocabulary.forEach(add);
+        knownVocabularyPool.forEach(add);
+        coreEntries.forEach(add);
+        vocabularySupportCandidateSignature = signature;
+        vocabularySupportCandidateCache = candidates;
+        automaticSentenceSupportCache.clear();
+        return vocabularySupportCandidateCache;
+      }
+
+      function kanjiStemVariant(candidate) {
+        const word = String(candidate?.word || "");
+        const reading = String(candidate?.reading || "");
+        const match = word.match(/^([\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]+)([\u3040-\u309f]+)$/);
+        if (!match) return null;
+        const kanji = match[1];
+        const okurigana = match[2];
+        const stemReading = reading.endsWith(okurigana)
+          ? reading.slice(0, Math.max(0, reading.length - okurigana.length))
+          : "";
+        if (!kanji || !stemReading) return null;
+        return { surface: kanji, reading: stemReading };
+      }
+
+      function autoSentenceSupport(sentence) {
+        const source = String(sentence || "");
+        if (!source) return [];
+        vocabularySupportCandidates();
+        if (automaticSentenceSupportCache.has(source)) return automaticSentenceSupportCache.get(source);
+        const raw = [];
+        for (const candidate of vocabularySupportCandidates()) {
+          const exactSurface = candidate.word;
+          const exactIndex = source.indexOf(exactSurface);
+          if (exactIndex >= 0) {
+            raw.push({
+              start: exactIndex,
+              end: exactIndex + exactSurface.length,
+              length: exactSurface.length,
+              word: {
+                surface: exactSurface,
+                reading: candidate.reading,
+                base: candidate.word,
+                baseReading: candidate.reading,
+                meaning: candidate.meaning
+              }
+            });
+            continue;
+          }
+          const stem = kanjiStemVariant(candidate);
+          if (!stem) continue;
+          const stemIndex = source.indexOf(stem.surface);
+          if (stemIndex < 0) continue;
+          raw.push({
+            start: stemIndex,
+            end: stemIndex + stem.surface.length,
+            length: stem.surface.length,
+            word: {
+              surface: stem.surface,
+              reading: stem.reading,
+              base: candidate.word,
+              baseReading: candidate.reading,
+              meaning: candidate.meaning,
+              formLabel: "Konjugierte oder abgeleitete Form im Satz",
+              formation: `${candidate.word} → verwendete Satzform`,
+              contextMeaning: candidate.meaning,
+              grammarRole: "Die vollständige Form wird durch die Grammatik der aktuellen Aufgabe bestimmt."
+            }
+          });
+        }
+        raw.sort((a, b) => a.start - b.start || b.length - a.length);
+        const selected = [];
+        let coveredUntil = -1;
+        for (const candidate of raw) {
+          if (candidate.start < coveredUntil) continue;
+          selected.push(candidate.word);
+          coveredUntil = candidate.end;
+        }
+        automaticSentenceSupportCache.set(source, selected);
+        return selected;
+      }
+
+      function supportWordsForSentence(sentence) {
+        const source = String(sentence || "");
+        const curated = Array.isArray(GRAMMAR_SENTENCE_SUPPORT[source])
+          ? GRAMMAR_SENTENCE_SUPPORT[source]
+          : [];
+        const automatic = autoSentenceSupport(source);
+        if (!curated.length) return automatic;
+        if (!automatic.length) return curated;
+
+        const positioned = [];
+        for (const [priority, words] of [[0, curated], [1, automatic]]) {
+          let cursor = 0;
+          for (const word of words) {
+            const start = source.indexOf(String(word.surface || ""), cursor);
+            if (start < 0) continue;
+            const end = start + String(word.surface || "").length;
+            positioned.push({ word, start, end, priority, length: end - start });
+            cursor = end;
+          }
+        }
+        positioned.sort((a, b) => a.start - b.start || a.priority - b.priority || b.length - a.length);
+        const result = [];
+        let coveredUntil = -1;
+        for (const entry of positioned) {
+          if (entry.start < coveredUntil) continue;
+          result.push(entry.word);
+          coveredUntil = entry.end;
+        }
+        return result;
+      }
+
+      function renderFuriganaOnly(sentence) {
+        const source = String(sentence || "");
+        const words = supportWordsForSentence(source);
+        if (!words.length) return escapeHtml(source);
+        let cursor = 0;
+        let html = "";
+        for (const word of words) {
+          const position = source.indexOf(word.surface, cursor);
+          if (position < 0) continue;
+          html += escapeHtml(source.slice(cursor, position));
+          html += rubyHtml(word.surface, word.reading);
+          cursor = position + word.surface.length;
+        }
+        html += escapeHtml(source.slice(cursor));
+        return html;
+      }
+
+      function renderMixedTextWithFurigana(value) {
+        return String(value || "")
+          .split(/([ぁ-んァ-ヶ一-龯々〆ヶー]+)/g)
+          .map(part => /[ぁ-んァ-ヶ一-龯々〆ヶ]/.test(part) ? renderFuriganaOnly(part) : escapeHtml(part))
+          .join("");
+      }
+
       function renderSupportedSentence(example, color) {
         const sentence = String(example?.jp || "");
-        const words = GRAMMAR_SENTENCE_SUPPORT[sentence] || [];
+        const words = supportWordsForSentence(sentence);
         if (!words.length) {
           return {
             sentenceHtml: highlightedJapanese(sentence, example?.highlight, `${color}22`),
@@ -15650,8 +15813,8 @@
         const actions = entry
           ? `<div class="grammar-vocab-path-note">${escapeHtml(status)}</div>`
           : `<div class="grammar-vocab-actions">
-              <button class="grammar-add-vocab" data-grammar-add-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-translation="${escapeHtml(encodedTranslation)}">Zum Mining hinzufügen</button>
-              <button class="grammar-known-vocab" data-grammar-known-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-translation="${escapeHtml(encodedTranslation)}">Zu bekannten Vokabeln hinzufügen</button>
+              <button class="grammar-add-vocab" data-grammar-add-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-word-base="${escapeHtml(encodeURIComponent(word.base || ""))}" data-word-reading="${escapeHtml(encodeURIComponent(word.baseReading || ""))}" data-translation="${escapeHtml(encodedTranslation)}">Zum Mining hinzufügen</button>
+              <button class="grammar-known-vocab" data-grammar-known-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${number - 1}" data-word-base="${escapeHtml(encodeURIComponent(word.base || ""))}" data-word-reading="${escapeHtml(encodeURIComponent(word.baseReading || ""))}" data-translation="${escapeHtml(encodedTranslation)}">Zu bekannten Vokabeln hinzufügen</button>
             </div>`;
         return `<div class="grammar-vocab-footnote">
           <span class="grammar-vocab-number">${number}</span>
@@ -15670,14 +15833,31 @@
       }
 
       function currentVisibleSupportWords(sentence) {
-        return (GRAMMAR_SENTENCE_SUPPORT[sentence] || []).filter(word =>
+        return supportWordsForSentence(sentence).filter(word =>
           !vocabularyIsGuru(findVocabularyEntry(word)) && !findKnownVocabularyEntry(word)
         );
       }
 
-      function addGrammarWordToMining(sentence, visibleIndex, translation) {
+      function resolveGrammarSupportWord(sentence, visibleIndex, base = "", reading = "") {
         const visibleWords = currentVisibleSupportWords(sentence);
-        const word = visibleWords[visibleIndex];
+        const normalizedBase = normalizeVocabKey(base);
+        const normalizedReading = normalizeVocabKey(reading);
+        return visibleWords.find(word =>
+          normalizeVocabKey(word.base) === normalizedBase &&
+          (!normalizedReading || normalizeVocabKey(word.baseReading) === normalizedReading)
+        ) || visibleWords[visibleIndex] || null;
+      }
+
+      function activeGrammarSourceLabel() {
+        if (document.getElementById("grammarReview")?.classList.contains("active") && reviewCurrent) {
+          const point = POINTS.find(item => item.id === reviewCurrent.pointId);
+          return `Grammar SRS · Level ${Number(point?.level || 1)}${point?.title ? ` · ${point.title}` : ""}`;
+        }
+        return `Grammar Path · Level ${Number(lessonPoint?.level || 1)}${lessonPoint?.title ? ` · ${lessonPoint.title}` : ""}`;
+      }
+
+      function addGrammarWordToMining(sentence, visibleIndex, translation, base = "", reading = "") {
+        const word = resolveGrammarSupportWord(sentence, visibleIndex, base, reading);
         if (!word) return;
         const plannedEntry = vocabularyPathEntry(word);
         if (plannedEntry) {
@@ -15691,7 +15871,7 @@
           meanings: [word.meaning],
           productionCue: word.meaning,
           sourceType: "mining",
-          collection: `Grammar Path · Level ${Number(lessonPoint?.level || 1)}${lessonPoint?.title ? ` · ${lessonPoint.title}` : ""}`,
+          collection: activeGrammarSourceLabel(),
           example: sentence,
           exampleTranslation: translation,
           stage: 0,
@@ -15725,9 +15905,8 @@
         }
       }
 
-      function addGrammarWordToKnown(sentence, visibleIndex, translation) {
-        const visibleWords = currentVisibleSupportWords(sentence);
-        const word = visibleWords[visibleIndex];
+      function addGrammarWordToKnown(sentence, visibleIndex, translation, base = "", reading = "") {
+        const word = resolveGrammarSupportWord(sentence, visibleIndex, base, reading);
         if (!word) return;
         const planned = vocabularyPathEntry(word);
         if (planned) {
@@ -15744,7 +15923,7 @@
           word: word.base,
           reading: word.baseReading,
           meaning: word.meaning,
-          source: `Grammar Path · Level ${Number(lessonPoint?.level || 1)}${lessonPoint?.title ? ` · ${lessonPoint.title}` : ""}`,
+          source: activeGrammarSourceLabel(),
           example: sentence,
           exampleTranslation: translation,
           createdAt: Date.now()
@@ -15794,18 +15973,35 @@
       }
 
       function attachGrammarSupportActions(container) {
+        const readWordIdentity = button => ({
+          base: decodeURIComponent(button.dataset.wordBase || ""),
+          reading: decodeURIComponent(button.dataset.wordReading || "")
+        });
+        const showSavedStatus = (button, identity) => {
+          const actions = button.closest(".grammar-vocab-actions");
+          if (!actions) return;
+          const word = { base: identity.base, baseReading: identity.reading };
+          const entry = vocabularyPathEntry(word);
+          const known = findKnownVocabularyEntry(word);
+          if (!entry && !known) return;
+          actions.outerHTML = `<div class="grammar-vocab-path-note">${escapeHtml(known ? "Als bekannt markiert" : vocabularyPathStatus(entry))}</div>`;
+        };
         container?.querySelectorAll("[data-grammar-add-vocab]").forEach(button => {
           button.addEventListener("click", () => {
             const sentence = decodeURIComponent(button.dataset.sentence || "");
             const translation = decodeURIComponent(button.dataset.translation || "");
-            addGrammarWordToMining(sentence, Number(button.dataset.wordIndex || 0), translation);
+            const identity = readWordIdentity(button);
+            addGrammarWordToMining(sentence, Number(button.dataset.wordIndex || 0), translation, identity.base, identity.reading);
+            showSavedStatus(button, identity);
           });
         });
         container?.querySelectorAll("[data-grammar-known-vocab]").forEach(button => {
           button.addEventListener("click", () => {
             const sentence = decodeURIComponent(button.dataset.sentence || "");
             const translation = decodeURIComponent(button.dataset.translation || "");
-            addGrammarWordToKnown(sentence, Number(button.dataset.wordIndex || 0), translation);
+            const identity = readWordIdentity(button);
+            addGrammarWordToKnown(sentence, Number(button.dataset.wordIndex || 0), translation, identity.base, identity.reading);
+            showSavedStatus(button, identity);
           });
         });
       }
@@ -15929,6 +16125,11 @@
         .grammar-review-type { display:inline-flex; align-items:center; gap:7px; padding:8px 12px; border-radius:999px; color:white; background:var(--primary); font-size:.78rem; font-weight:950; text-transform:uppercase; letter-spacing:.07em; }
         .grammar-review-prompt { margin:18px 0 8px; color:var(--muted); font-weight:800; }
         .grammar-review-sentence { padding:18px; border-radius:15px; background:#faf8ff; border:1px solid var(--border); font-size:1.35rem; font-weight:900; line-height:1.5; }
+        .grammar-review-sentence ruby,.grammar-review-revealed-sentence ruby { ruby-position:over; }
+        .grammar-review-sentence rt,.grammar-review-revealed-sentence rt { font-size:.56em; color:var(--primary-dark); font-weight:850; }
+        .grammar-review-revealed-sentence { font-size:1.28rem; line-height:1.8; }
+        .grammar-review-model-sentence { margin-top:7px; }
+        #grammarReviewCard .grammar-vocab-help { margin-top:12px; text-align:left; }
         .grammar-listening-box { text-align:center; padding:24px; border-radius:17px; background:linear-gradient(180deg,#edf2ff,#fff); border:1px solid #cad6f8; }
         .grammar-listening-box button { width:64px; height:64px; border-radius:50%; color:white; background:#496fd4; font-size:1.45rem; box-shadow:0 10px 26px rgba(73,111,212,.25); }
         .grammar-grade-row { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px; }
@@ -16700,6 +16901,10 @@
         const progress = Math.round((reviewIndex / reviewQueue.length) * 100);
         const isListening = skill.id === "listening";
         const shown = question.shown || "";
+        const reviewSentence = isListening ? String(question.audio || "") : String(shown || "");
+        const reviewSupport = reviewSentence
+          ? renderSupportedSentence({ jp: reviewSentence, de: String(question.model || ""), highlight: "" }, point.color || "#6c63d9")
+          : { sentenceHtml: "", notesHtml: "" };
 
         card.innerHTML = `
           <div class="grammar-stepper"><span class="done" style="flex:${Math.max(1, progress)}"></span><span style="flex:${Math.max(1, 100 - progress)}"></span></div>
@@ -16707,15 +16912,18 @@
           <div class="grammar-review-type">${skill.icon} ${skill.label}</div>
           <div class="grammar-badge" style="margin-top:10px">${escapeHtml(question.aspectLabel || "Gemischte Anwendung")}</div>
           <h2>${escapeHtml(point.title)}</h2>
-          <div class="grammar-review-prompt">${escapeHtml(question.prompt)}</div>
+          <div class="grammar-review-prompt">${renderMixedTextWithFurigana(question.prompt)}</div>
           ${isListening
-            ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz bleibt bis zur Auswertung verborgen.</div></div>`
-            : `<div class="grammar-review-sentence">${escapeHtml(shown)}</div>`}
+            ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz und seine Vokabelhilfen bleiben bis zur Auswertung verborgen.</div></div>`
+            : reviewSentence
+              ? `<div class="grammar-review-sentence">${reviewSupport.sentenceHtml}</div>${reviewSupport.notesHtml}`
+              : ""}
           <textarea class="grammar-input" id="grammarReviewAnswer" rows="3" placeholder="${skill.id === "form" || skill.id === "production" ? "Romaji oder Japanisch eingeben …" : "Deine Antwort …"}" autocomplete="off"></textarea>
           ${skill.id === "form" || skill.id === "production" ? `<div class="grammar-input-help">Romaji wird beim Tippen automatisch in Hiragana umgewandelt. Hiragana statt Kanji wird akzeptiert, wenn es als Lösung hinterlegt ist.</div>` : ""}
           <div id="grammarReviewFeedback"></div>
           <div class="button-row" style="margin-top:15px"><button class="ghost" id="grammarReviewExit">Session verlassen</button><button class="primary" id="grammarReviewCheck">Antwort prüfen</button></div>`;
 
+        attachGrammarSupportActions(card);
         document.getElementById("grammarPlayListening")?.addEventListener("click", () => speakJapanese(question.audio));
         if (isListening) setTimeout(() => speakJapanese(question.audio), 180);
         document.getElementById("grammarReviewExit")?.addEventListener("click", () => openGrammarView("grammar"));
@@ -16765,12 +16973,21 @@
         const question = reviewCurrent.question;
         const assessment = assessAnswer(question, skill.id, answer);
         const feedback = document.getElementById("grammarReviewFeedback");
+        const revealedSentence = skill.id === "listening"
+          ? String(question.audio || "")
+          : skill.id === "production"
+            ? String(question.model || "")
+            : "";
+        const revealedSupport = revealedSentence && /[ぁ-んァ-ヶ一-龯々〆ヶ]/.test(revealedSentence)
+          ? renderSupportedSentence({ jp: revealedSentence, de: String(question.model || ""), highlight: "" }, point.color || "#6c63d9")
+          : null;
+        const modelLooksJapanese = /[ぁ-んァ-ヶ一-龯々〆ヶ]/.test(String(question.model || ""));
         feedback.innerHTML = `
           <div class="grammar-feedback ${assessment.likely === true ? "good" : assessment.likely === false ? "warn" : ""}">
             <strong>${assessment.likely === true ? "Wahrscheinlich passend" : assessment.likely === false ? "Bitte genau vergleichen" : "Mit der Musterlösung vergleichen"}</strong>
             <div style="margin-top:6px">${escapeHtml(assessment.note)}</div>
-            ${skill.id === "listening" ? `<div style="margin-top:9px">Gehörter Satz: <strong>${escapeHtml(question.audio)}</strong> <button class="grammar-audio" id="grammarReplayListening" data-audio="${escapeHtml(question.audio)}">🔊</button></div>` : ""}
-            <div style="margin-top:9px">Musterlösung: <strong>${escapeHtml(question.model)}</strong></div>
+            ${skill.id === "listening" && revealedSupport ? `<div style="margin-top:12px"><div class="sentence-audio-row"><strong class="grammar-review-revealed-sentence">${revealedSupport.sentenceHtml}</strong><button class="grammar-audio" id="grammarReplayListening" data-audio="${escapeHtml(question.audio)}">🔊</button></div>${revealedSupport.notesHtml}</div>` : ""}
+            ${skill.id === "production" && revealedSupport ? `<div style="margin-top:12px"><span class="small muted">Musterlösung</span><div class="grammar-review-sentence grammar-review-model-sentence">${revealedSupport.sentenceHtml}</div>${revealedSupport.notesHtml}</div>` : `<div style="margin-top:9px">Musterlösung: <strong>${modelLooksJapanese ? renderFuriganaOnly(String(question.model || "")) : escapeHtml(question.model)}</strong></div>`}
             <div class="small muted" style="margin-top:6px">Bewerte dich danach selbst. „Fast richtig“ hält die SRS-Stufe und fragt die Aufgabe später erneut.</div>
           </div>
           <div class="grammar-grade-row">
@@ -16780,6 +16997,7 @@
           </div>`;
         reviewRevealed = true;
         document.getElementById("grammarReviewCheck").hidden = true;
+        attachGrammarSupportActions(feedback);
         document.getElementById("grammarReplayListening")?.addEventListener("click", () => speakJapanese(question.audio));
         feedback.querySelectorAll("[data-grade]").forEach(button => button.addEventListener("click", () => gradeReview(button.dataset.grade)));
       }
