@@ -19418,6 +19418,1148 @@
       } catch {}
     }
 
+
+    function problemWordWorkshopBootstrap() {
+      if (window.__KOTOBA_PROBLEM_WORD_WORKSHOP_V1__) return;
+      window.__KOTOBA_PROBLEM_WORD_WORKSHOP_V1__ = true;
+
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const WORKSHOP_VERSION = 1;
+      const STAGE_NAMES = [
+        "Neu", "Apprentice 1", "Apprentice 2", "Apprentice 3", "Apprentice 4",
+        "Guru 1", "Guru 2", "Master", "Erleuchtet", "Abgeschlossen"
+      ];
+      const ANCHORS = [
+        [/moto|modo/, "Motor"], [/kae/, "Käse"], [/kiku/, "Kicker"], [/miru/, "Miro"],
+        [/nomu/, "Nomen"], [/tab(e|a)/, "Tabelle"], [/hanas/, "Hannes"], [/kuru/, "Kuh"],
+        [/iku/, "Igel"], [/ageru/, "A-Gel"], [/sageru/, "Säge"], [/akeru/, "Acker"],
+        [/shimeru/, "Schirm"], [/hashir/, "Haschisch"], [/aruk/, "Alu"], [/oyog/, "Joghurt"],
+        [/yom/, "Jumbo"], [/kak/, "Kacka"], [/kau/, "Kakao"], [/uru/, "Uhu"],
+        [/matsu/, "Matsche"], [/motsu/, "Mozzarella"], [/tsukau/, "Zug"], [/tsukur/, "Zucker"],
+        [/wakaru/, "Wackelpudding"], [/omou/, "Oma"], [/shiru/, "Schere"], [/narau/, "Nahrung"],
+        [/neru/, "Nero"], [/okiru/, "Oki"], [/hairu/, "Hai"], [/deru/, "Derrick"],
+        [/suwaru/, "Souvenir"], [/tatsu/, "Tatze"], [/yasumu/, "Jasmin"], [/hatarak/, "Hantel"],
+        [/atsui/, "Azubi"], [/samui/, "Samurai"], [/omoshiro/, "Omo"], [/muzukashi/, "Musik"],
+        [/tanosh/, "Tanne"], [/kanashi/, "Kanada"], [/ureshi/, "Ursula"], [/kowai/, "Koi"],
+        [/hayai/, "Hai"], [/osoi/, "O-Saft"], [/chikai/, "Chicago"], [/tooi/, "Toy"],
+        [/takai/, "Takko"], [/yasui/, "Jasmin"], [/ooki/, "Oki"], [/chiisai/, "Cheese"],
+        [/atarashi/, "Attila"], [/furui/, "Fury"], [/akarui/, "Akku"], [/kurai/, "Kurai"],
+        [/shizuka/, "Sissi"], [/genki/, "Genki"], [/benri/, "Ben"], [/daiji/, "Daisy"]
+      ];
+      const EMOJI_RULES = [
+        [/essen|mahlzeit|speise|frühstück|mittag|abendessen/i, "🍽️"],
+        [/trinken|getränk|wasser|kaffee|tee/i, "🥤"],
+        [/gehen|laufen|spazieren|weg/i, "🚶"],
+        [/kommen|ankommen/i, "🚪"],
+        [/zurück|heim|rückkehr/i, "↩️"],
+        [/sehen|anschauen|film|fernsehen/i, "👀"],
+        [/hören|musik|stimme/i, "👂"],
+        [/sprechen|sagen|reden|erzählen/i, "💬"],
+        [/lesen|buch|text/i, "📖"],
+        [/schreiben|brief|notiz/i, "✍️"],
+        [/lernen|studieren|schule/i, "🎓"],
+        [/arbeiten|beruf|firma/i, "💼"],
+        [/schlafen|bett|müde/i, "😴"],
+        [/kaufen|geschäft|preis|geld/i, "🛍️"],
+        [/regen|wetter|wolke/i, "🌧️"],
+        [/sonne|hell|warm/i, "☀️"],
+        [/angst|gefährlich|erschrecken/i, "😱"],
+        [/freude|glücklich|spaß/i, "😊"],
+        [/traurig|weinen/i, "😢"],
+        [/denken|glauben|meinen/i, "💭"]
+      ];
+
+      let activeFilter = "active";
+      let searchQuery = "";
+      let selectedKey = null;
+      let practice = null;
+      let wrapped = false;
+
+      function esc(value) {
+        try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
+        return String(value ?? "")
+          .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+      }
+
+      function sourceData() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+      }
+
+      function workshopState() {
+        const source = sourceData();
+        if (!source.problemWordWorkshop || typeof source.problemWordWorkshop !== "object") {
+          source.problemWordWorkshop = { version: WORKSHOP_VERSION, entries: {}, totalPractice: { correct: 0, incorrect: 0 } };
+        }
+        const state = source.problemWordWorkshop;
+        state.version = WORKSHOP_VERSION;
+        state.entries = state.entries && typeof state.entries === "object" ? state.entries : {};
+        state.totalPractice = state.totalPractice && typeof state.totalPractice === "object"
+          ? state.totalPractice
+          : { correct: 0, incorrect: 0 };
+        try { if (typeof data !== "undefined") data.problemWordWorkshop = state; } catch {}
+        return state;
+      }
+
+      function persistWorkshop(message = "") {
+        const state = workshopState();
+        try {
+          if (typeof data !== "undefined") {
+            data.problemWordWorkshop = state;
+            if (typeof saveData === "function") saveData();
+            else if (typeof persist === "function") persist();
+            else localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          } else {
+            const source = sourceData();
+            source.problemWordWorkshop = state;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
+          }
+        } catch (error) {
+          console.warn("Problemwort-Werkstatt konnte nicht gespeichert werden", error);
+        }
+        try { window.KotobaQuestLearningHub?.refresh?.(); } catch {}
+        try { window.KotobaQuestLearningInsights?.refresh?.(); } catch {}
+        if (message) notify(message);
+      }
+
+      function notify(message) {
+        try { if (typeof toast === "function") return toast(message); } catch {}
+        console.info(message);
+      }
+
+      function normalizeKey(value) {
+        return String(value || "").normalize("NFKC").replace(/[\s・･、。！？!?]/g, "").toLowerCase();
+      }
+
+      function normalizeLatinValue(value) {
+        try { if (typeof normalizeLatin === "function") return normalizeLatin(value); } catch {}
+        return String(value || "").trim().toLocaleLowerCase("de-DE").normalize("NFKC")
+          .replace(/[.!?;:()[\]{}"'`´]/g, "").replace(/\s+/g, " ");
+      }
+
+      function normalizeJapanese(value) {
+        try { if (typeof normalizeKana === "function") return normalizeKana(value); } catch {}
+        return String(value || "").trim().normalize("NFKC").replace(/\s+/g, "")
+          .replace(/[\u30a1-\u30f6]/g, char => String.fromCharCode(char.charCodeAt(0) - 0x60));
+      }
+
+      function containsKanji(value) {
+        return /[\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]/.test(String(value || ""));
+      }
+
+      function ruby(word, reading) {
+        const surface = String(word || "");
+        const yomi = String(reading || "");
+        if (!surface || !yomi || !containsKanji(surface)) return esc(surface);
+        return `<ruby>${esc(surface)}<rt>${esc(yomi)}</rt></ruby>`;
+      }
+
+      function stableKey(item) {
+        if (item?.workshopKey) return String(item.workshopKey);
+        if (item?.id) return `${item.sourceType === "known" ? "known" : "vocab"}:${item.id}`;
+        return `word:${normalizeKey(item?.word)}|${normalizeKey(item?.reading)}`;
+      }
+
+      function meaningsOf(item) {
+        const values = Array.isArray(item?.meanings)
+          ? item.meanings
+          : [item?.meaning, item?.productionCue].filter(Boolean);
+        return [...new Set(values.map(value => String(value || "").trim()).filter(Boolean))];
+      }
+
+      function allEligibleItems() {
+        const source = sourceData();
+        const currentLevel = Math.max(1, Number(source.currentLevel || 1));
+        const vocabulary = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        const known = Array.isArray(source.knownVocabulary) ? source.knownVocabulary : [];
+        const result = [];
+        for (const item of vocabulary) {
+          const unlocked = item?.sourceType === "mining" || Number(item?.stage || 0) > 0 || Boolean(item?.guruPassed) || Number(item?.level || 0) <= currentLevel;
+          if (!unlocked || !item?.word) continue;
+          result.push({ ...item, workshopKey: stableKey(item), meanings: meaningsOf(item) });
+        }
+        for (const item of known) {
+          if (!item?.word && !item?.base) continue;
+          const normalized = {
+            ...item,
+            id: item.id || `known-${normalizeKey(item.word || item.base)}-${normalizeKey(item.reading || item.baseReading)}`,
+            word: item.word || item.base || "",
+            reading: item.reading || item.baseReading || "",
+            meanings: meaningsOf(item),
+            sourceType: "known",
+            stage: 5,
+            guruPassed: true
+          };
+          normalized.workshopKey = stableKey(normalized);
+          result.push(normalized);
+        }
+        const unique = new Map();
+        for (const item of result) {
+          const lexical = `${normalizeKey(item.word)}|${normalizeKey(item.reading)}`;
+          const existing = unique.get(lexical);
+          if (!existing || item.sourceType !== "known") unique.set(lexical, item);
+        }
+        return [...unique.values()];
+      }
+
+      function itemMap() {
+        return new Map(allEligibleItems().map(item => [stableKey(item), item]));
+      }
+
+      function snapshotOf(item) {
+        return {
+          key: stableKey(item),
+          id: item?.id || "",
+          word: String(item?.word || ""),
+          reading: String(item?.reading || ""),
+          meanings: meaningsOf(item),
+          sourceType: String(item?.sourceType || "known"),
+          level: Number(item?.level || 0),
+          collection: String(item?.collection || item?.source || ""),
+          example: String(item?.example || ""),
+          exampleTranslation: String(item?.exampleTranslation || "")
+        };
+      }
+
+      function ensureEntry(item) {
+        const state = workshopState();
+        const key = stableKey(item);
+        const previous = state.entries[key] || {};
+        state.entries[key] = {
+          manual: Boolean(previous.manual),
+          resolved: Boolean(previous.resolved),
+          resolvedIncorrectBaseline: Math.max(0, Number(previous.resolvedIncorrectBaseline || 0)),
+          resolvedWorkshopIncorrectBaseline: Math.max(0, Number(previous.resolvedWorkshopIncorrectBaseline || 0)),
+          meaningMnemonic: String(previous.meaningMnemonic || ""),
+          productionMnemonic: String(previous.productionMnemonic || ""),
+          story: String(previous.story || ""),
+          imageCue: String(previous.imageCue || ""),
+          note: String(previous.note || ""),
+          confusions: Array.isArray(previous.confusions) ? previous.confusions.map(String) : [],
+          acceptedMeanings: Array.isArray(previous.acceptedMeanings) ? previous.acceptedMeanings.map(String) : [],
+          practice: {
+            correct: Math.max(0, Number(previous.practice?.correct || 0)),
+            incorrect: Math.max(0, Number(previous.practice?.incorrect || 0)),
+            lastPracticedAt: previous.practice?.lastPracticedAt == null ? null : Number(previous.practice.lastPracticedAt)
+          },
+          snapshot: { ...snapshotOf(item), ...(previous.snapshot || {}) },
+          updatedAt: Number(previous.updatedAt || Date.now())
+        };
+        return state.entries[key];
+      }
+
+      function entryFor(item) {
+        return workshopState().entries[stableKey(item)] || null;
+      }
+
+      function currentErrors(item) {
+        return Math.max(0, Number(item?.incorrect || 0));
+      }
+
+      function candidateInfo(item) {
+        const entry = entryFor(item);
+        const correct = Math.max(0, Number(item?.correct || 0));
+        const incorrect = currentErrors(item);
+        const total = correct + incorrect;
+        const ratio = total ? incorrect / total : 0;
+        const workshopIncorrect = Math.max(0, Number(entry?.practice?.incorrect || 0));
+        const reasons = [];
+        if (entry?.manual) reasons.push("von dir markiert");
+        if (incorrect >= 2) reasons.push(`${incorrect} Fehler im SRS`);
+        if (total >= 4 && ratio >= 0.3) reasons.push(`${Math.round(ratio * 100)} % Fehlerquote`);
+        if (workshopIncorrect >= 2) reasons.push(`${workshopIncorrect} Fehler in der Werkstatt`);
+        const automatic = incorrect >= 2 || (total >= 4 && ratio >= 0.3) || workshopIncorrect >= 2;
+        const newErrorsAfterResolved = Boolean(entry?.resolved) && (
+          incorrect > Number(entry.resolvedIncorrectBaseline || 0) ||
+          workshopIncorrect > Number(entry.resolvedWorkshopIncorrectBaseline || 0)
+        );
+        const resolved = Boolean(entry?.resolved) && !newErrorsAfterResolved;
+        const active = (Boolean(entry?.manual) || automatic) && !resolved;
+        const score = (entry?.manual ? 40 : 0) + incorrect * 8 + ratio * 20 + workshopIncorrect * 6 + (Number(item?.stage || 0) < 3 ? 2 : 0);
+        return { entry, correct, incorrect, total, ratio, workshopIncorrect, reasons, automatic, resolved, active, score };
+      }
+
+      function candidateItems() {
+        const live = allEligibleItems();
+        const liveByKey = new Map(live.map(item => [stableKey(item), item]));
+        const state = workshopState();
+        for (const [key, entry] of Object.entries(state.entries)) {
+          if (!liveByKey.has(key) && entry?.snapshot?.word) {
+            liveByKey.set(key, { ...entry.snapshot, workshopKey: key, meanings: meaningsOf(entry.snapshot), correct: 0, incorrect: 0, stage: entry.snapshot.sourceType === "known" ? 5 : 0 });
+          }
+        }
+        return [...liveByKey.values()]
+          .map(item => ({ item, info: candidateInfo(item) }))
+          .filter(record => record.info.active || record.info.resolved)
+          .sort((left, right) => Number(right.info.active) - Number(left.info.active) || right.info.score - left.info.score || String(left.item.word).localeCompare(String(right.item.word), "ja"));
+      }
+
+      function stageLabel(item) {
+        if (item?.sourceType === "known") return "Als bekannt markiert";
+        return STAGE_NAMES[Math.max(0, Math.min(9, Number(item?.stage || 0)))] || "Unbekannt";
+      }
+
+      function sourceLabel(item) {
+        if (item?.sourceType === "core") return `Core · Level ${Number(item?.level || 1)}`;
+        if (item?.sourceType === "mining") return item?.collection ? `Mining · ${item.collection}` : "Mining";
+        return "Bekannte Vokabel";
+      }
+
+      function kanaToRomaji(value) {
+        const map = {
+          "きゃ":"kya","きゅ":"kyu","きょ":"kyo","しゃ":"sha","しゅ":"shu","しょ":"sho","ちゃ":"cha","ちゅ":"chu","ちょ":"cho","にゃ":"nya","にゅ":"nyu","にょ":"nyo","ひゃ":"hya","ひゅ":"hyu","ひょ":"hyo","みゃ":"mya","みゅ":"myu","みょ":"myo","りゃ":"rya","りゅ":"ryu","りょ":"ryo","ぎゃ":"gya","ぎゅ":"gyu","ぎょ":"gyo","じゃ":"ja","じゅ":"ju","じょ":"jo","びゃ":"bya","びゅ":"byu","びょ":"byo","ぴゃ":"pya","ぴゅ":"pyu","ぴょ":"pyo",
+          "あ":"a","い":"i","う":"u","え":"e","お":"o","か":"ka","き":"ki","く":"ku","け":"ke","こ":"ko","さ":"sa","し":"shi","す":"su","せ":"se","そ":"so","た":"ta","ち":"chi","つ":"tsu","て":"te","と":"to","な":"na","に":"ni","ぬ":"nu","ね":"ne","の":"no","は":"ha","ひ":"hi","ふ":"fu","へ":"he","ほ":"ho","ま":"ma","み":"mi","む":"mu","め":"me","も":"mo","や":"ya","ゆ":"yu","よ":"yo","ら":"ra","り":"ri","る":"ru","れ":"re","ろ":"ro","わ":"wa","を":"o","ん":"n","が":"ga","ぎ":"gi","ぐ":"gu","げ":"ge","ご":"go","ざ":"za","じ":"ji","ず":"zu","ぜ":"ze","ぞ":"zo","だ":"da","ぢ":"ji","づ":"zu","で":"de","ど":"do","ば":"ba","び":"bi","ぶ":"bu","べ":"be","ぼ":"bo","ぱ":"pa","ぴ":"pi","ぷ":"pu","ぺ":"pe","ぽ":"po","ー":"-"
+        };
+        let source = String(value || "").normalize("NFKC").replace(/[\u30a1-\u30f6]/g, char => String.fromCharCode(char.charCodeAt(0) - 0x60));
+        let result = "";
+        for (let index = 0; index < source.length;) {
+          const pair = source.slice(index, index + 2);
+          if (map[pair]) { result += map[pair]; index += 2; continue; }
+          const char = source[index];
+          if (char === "っ") {
+            const nextPair = source.slice(index + 1, index + 3);
+            const next = map[nextPair] || map[source[index + 1]] || "";
+            result += next ? next[0] : "";
+            index += 1;
+            continue;
+          }
+          result += map[char] || char;
+          index += 1;
+        }
+        return result;
+      }
+
+      function emojiFor(item) {
+        const meaning = meaningsOf(item).join(" ");
+        for (const [pattern, emoji] of EMOJI_RULES) if (pattern.test(meaning)) return emoji;
+        return "🎭";
+      }
+
+      function suggestionSet(item) {
+        const reading = String(item?.reading || item?.word || "");
+        const romaji = kanaToRomaji(reading).replace(/-/g, "");
+        const meaning = meaningsOf(item)[0] || "diese Bedeutung";
+        const emoji = emojiFor(item);
+        const anchor = ANCHORS.find(([pattern]) => pattern.test(romaji))?.[1] || ({a:"Auto",i:"Igel",u:"Uhu",e:"Esel",o:"Ofen",k:"Katze",s:"Sonne",t:"Tasse",n:"Nadel",h:"Hammer",m:"Motor",y:"Joghurt",r:"Radio",w:"Wasser",g:"Gabel",z:"Zebra",j:"Jacke",b:"Banane",p:"Panda",f:"Fahrrad"}[romaji[0]] || "eine verrückte Figur");
+        const context = item?.exampleTranslation || item?.example || `Du brauchst plötzlich das Wort für „${meaning}“.`;
+        return [
+          {
+            target: "meaningMnemonic",
+            label: "Klanganker",
+            text: `Stell dir ${anchor.toLowerCase().startsWith("ein") ? anchor : `einen riesigen Gegenstand namens „${anchor}“`} vor. Er ruft laut „${reading}!“, während ${emoji} genau die Bedeutung „${meaning}“ zeigt.`
+          },
+          {
+            target: "story",
+            label: "Szenenanker",
+            text: `${emoji} Szene: ${context} Übertreibe die Szene völlig und lass darin das Wort „${reading}“ mehrmals hörbar auftauchen.`
+          },
+          {
+            target: "productionMnemonic",
+            label: "Rückwärtsanker",
+            text: `Wenn du an „${meaning}“ denkst, siehst du zuerst ${emoji}, dann ${anchor} – und daraus springt die Lesung „${reading}“ hervor.`
+          }
+        ];
+      }
+
+      function levenshtein(left, right) {
+        const a = String(left || "");
+        const b = String(right || "");
+        const row = Array.from({ length: b.length + 1 }, (_, index) => index);
+        for (let i = 1; i <= a.length; i++) {
+          let previous = row[0];
+          row[0] = i;
+          for (let j = 1; j <= b.length; j++) {
+            const saved = row[j];
+            row[j] = Math.min(row[j] + 1, row[j - 1] + 1, previous + (a[i - 1] === b[j - 1] ? 0 : 1));
+            previous = saved;
+          }
+        }
+        return row[b.length];
+      }
+
+      function confusionSuggestions(item, limit = 6) {
+        const reading = normalizeJapanese(item?.reading || "");
+        const word = String(item?.word || "");
+        const meaningTokens = new Set(normalizeLatinValue(meaningsOf(item).join(" ")).split(" ").filter(token => token.length >= 4));
+        return allEligibleItems()
+          .filter(candidate => stableKey(candidate) !== stableKey(item))
+          .map(candidate => {
+            const candidateReading = normalizeJapanese(candidate?.reading || "");
+            const distance = reading && candidateReading ? levenshtein(reading, candidateReading) : 99;
+            const sharedMeaning = normalizeLatinValue(meaningsOf(candidate).join(" ")).split(" ").filter(token => meaningTokens.has(token)).length;
+            const sharedKanji = containsKanji(word) && String(candidate?.word || "").split("").some(char => containsKanji(char) && word.includes(char));
+            const score = (distance <= 1 ? 16 : distance === 2 ? 9 : distance === 3 ? 3 : 0) + sharedMeaning * 8 + (sharedKanji ? 5 : 0) + (reading && candidateReading && reading[0] === candidateReading[0] ? 2 : 0);
+            return { candidate, score, distance };
+          })
+          .filter(record => record.score >= 5)
+          .sort((left, right) => right.score - left.score)
+          .slice(0, limit)
+          .map(record => record.candidate);
+      }
+
+      function sentenceWithFurigana(sentence) {
+        const source = String(sentence || "");
+        if (!source) return "";
+        const tokens = allEligibleItems()
+          .filter(item => item?.word && item?.reading && containsKanji(item.word) && source.includes(item.word))
+          .sort((left, right) => String(right.word).length - String(left.word).length);
+        if (!tokens.length) return esc(source);
+        const occupied = new Array(source.length).fill(false);
+        const matches = [];
+        for (const item of tokens) {
+          let start = source.indexOf(item.word);
+          while (start >= 0) {
+            const end = start + item.word.length;
+            if (!occupied.slice(start, end).some(Boolean)) {
+              matches.push({ start, end, item });
+              for (let index = start; index < end; index++) occupied[index] = true;
+            }
+            start = source.indexOf(item.word, start + item.word.length);
+          }
+        }
+        matches.sort((a, b) => a.start - b.start);
+        let cursor = 0;
+        let output = "";
+        for (const match of matches) {
+          output += esc(source.slice(cursor, match.start));
+          output += ruby(match.item.word, match.item.reading);
+          cursor = match.end;
+        }
+        output += esc(source.slice(cursor));
+        return output;
+      }
+
+      function installView() {
+        const nav = document.querySelector(".nav");
+        if (nav && !nav.querySelector('[data-view="problemWords"]')) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.view = "problemWords";
+          button.textContent = "🧠 Werkstatt";
+          const practiceButton = nav.querySelector('[data-view="vocabPractice"]');
+          if (practiceButton) practiceButton.insertAdjacentElement("afterend", button);
+          else nav.appendChild(button);
+          button.addEventListener("click", () => openWorkshop());
+        }
+
+        if (!document.getElementById("problemWords")) {
+          const section = document.createElement("section");
+          section.id = "problemWords";
+          section.className = "view";
+          section.innerHTML = `<div id="kqProblemWorkshopRoot"></div>`;
+          const insertionPoint = document.getElementById("placement") || document.querySelector("main > section:last-of-type");
+          insertionPoint?.before(section);
+        }
+
+        const quick = document.querySelector("#kqLearningDashboard .kq-quick-grid");
+        if (quick && !quick.querySelector("#kqQuickProblemWords")) {
+          const button = document.createElement("button");
+          button.id = "kqQuickProblemWords";
+          button.type = "button";
+          button.className = "secondary";
+          button.textContent = "🧠 Problemwörter";
+          button.addEventListener("click", () => openWorkshop());
+          quick.appendChild(button);
+        }
+
+        const overview = document.getElementById("kqVocabularyOverview");
+        if (overview && !document.getElementById("kqProblemWordTeaser")) {
+          const activeCount = candidateItems().filter(record => record.info.active).length;
+          const teaser = document.createElement("article");
+          teaser.id = "kqProblemWordTeaser";
+          teaser.className = "card kq-problem-teaser";
+          teaser.innerHTML = `<div><span class="mode-icon">🧠</span><div><h3>Problemwort-Werkstatt</h3><p><strong data-problem-count>${activeCount}</strong> hartnäckige Wörter mit Mnemonics, Geschichten und Verwechslungsgruppen bearbeiten.</p></div></div><button class="secondary" type="button">Werkstatt öffnen</button>`;
+          overview.insertAdjacentElement("afterend", teaser);
+          teaser.querySelector("button")?.addEventListener("click", () => openWorkshop());
+        } else {
+          const count = document.querySelector("#kqProblemWordTeaser [data-problem-count]");
+          if (count) count.textContent = String(candidateItems().filter(record => record.info.active).length);
+        }
+      }
+
+      function openWorkshop(key = null) {
+        installView();
+        selectedKey = key;
+        practice = null;
+        try { switchView("problemWords"); } catch {
+          document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === "problemWords"));
+        }
+        key ? renderEditor(key) : renderHome();
+      }
+
+      function filteredCandidates() {
+        const records = candidateItems();
+        return records.filter(record => {
+          if (activeFilter === "automatic" && (!record.info.automatic || record.info.resolved)) return false;
+          if (activeFilter === "manual" && (!record.info.entry?.manual || record.info.resolved)) return false;
+          if (activeFilter === "resolved" && !record.info.resolved) return false;
+          if (activeFilter === "active" && !record.info.active) return false;
+          const haystack = `${record.item.word} ${record.item.reading} ${meaningsOf(record.item).join(" ")} ${record.item.collection || ""}`.toLocaleLowerCase("de-DE");
+          return !searchQuery || haystack.includes(searchQuery.toLocaleLowerCase("de-DE"));
+        });
+      }
+
+      function renderHome() {
+        installView();
+        const root = document.getElementById("kqProblemWorkshopRoot");
+        if (!root) return;
+        selectedKey = null;
+        const records = candidateItems();
+        const active = records.filter(record => record.info.active);
+        const automatic = active.filter(record => record.info.automatic).length;
+        const manual = active.filter(record => record.info.entry?.manual).length;
+        const resolved = records.filter(record => record.info.resolved).length;
+        const filtered = filteredCandidates();
+        const searchMatches = searchQuery
+          ? allEligibleItems().filter(item => {
+              const haystack = `${item.word} ${item.reading} ${meaningsOf(item).join(" ")}`.toLocaleLowerCase("de-DE");
+              return haystack.includes(searchQuery.toLocaleLowerCase("de-DE"));
+            }).slice(0, 12)
+          : [];
+
+        root.innerHTML = `
+          <div class="section-title kq-problem-title"><div><p class="eyebrow">Gedächtnisanker statt stumpfer Wiederholung</p><h2>Problemwort-Werkstatt</h2><p>Hartnäckige Vokabeln bekommen Klanganker, persönliche Szenen, getrennte Abrufhilfen und Verwechslungsgruppen. Die Werkstatt verändert deine normalen SRS-Stufen nicht.</p></div></div>
+          <div class="kq-problem-stats">
+            <article class="card"><span>Aktiv</span><strong>${active.length}</strong><small>brauchen gerade einen besseren Anker</small></article>
+            <article class="card"><span>Automatisch erkannt</span><strong>${automatic}</strong><small>durch Fehler und Fehlerquote</small></article>
+            <article class="card"><span>Selbst markiert</span><strong>${manual}</strong><small>„Will einfach nicht hängen bleiben“</small></article>
+            <article class="card"><span>Stabilisiert</span><strong>${resolved}</strong><small>keine neuen Fehler seit dem Abschluss</small></article>
+          </div>
+          <div class="grid-two kq-problem-top-grid">
+            <article class="card">
+              <div class="section-title"><div><h3>Wort manuell markieren</h3><p>Durchsuche alles, was bereits freigeschaltet, bekannt oder im Mining ist.</p></div></div>
+              <input id="kqProblemSearch" type="search" value="${esc(searchQuery)}" placeholder="Japanisch, Lesung oder Bedeutung …" autocomplete="off" />
+              <div id="kqProblemSearchResults" class="kq-problem-search-results">
+                ${searchMatches.length ? searchMatches.map(item => {
+                  const info = candidateInfo(item);
+                  return `<div class="kq-problem-search-row"><div><strong>${ruby(item.word, item.reading)}</strong><span>${esc(meaningsOf(item).join(", "))}</span><small>${esc(sourceLabel(item))}</small></div><button class="${info.entry?.manual ? "ghost" : "secondary"}" type="button" data-problem-toggle="${esc(stableKey(item))}">${info.entry?.manual ? "Markierung entfernen" : "Als Problemwort markieren"}</button></div>`;
+                }).join("") : searchQuery ? `<div class="empty">Kein passendes bereits verfügbares Wort gefunden.</div>` : `<div class="small muted">Beginne zu tippen, um ein Wort bewusst in die Werkstatt zu holen.</div>`}
+              </div>
+            </article>
+            <article class="card kq-problem-explainer">
+              <h3>Wann erscheint ein Wort automatisch?</h3>
+              <p>Ab zwei echten SRS-Fehlern, bei mindestens 30 % Fehlerquote nach vier Antworten oder nach mehreren Fehlern in der Werkstatt.</p>
+              <p>Nach einem Fehler wird deine gespeicherte Eselsbrücke eingeblendet. Vor der Antwort bleibt sie verborgen, damit du nicht von der Hilfe abhängig wirst.</p>
+              <div class="button-row"><button class="primary" id="kqPracticeAllProblems" ${active.length ? "" : "disabled"}>Aktive Problemwörter üben</button></div>
+            </article>
+          </div>
+          <article class="card kq-problem-list-card">
+            <div class="kq-problem-toolbar">
+              <div class="kq-segmented" role="tablist">
+                ${[["active","Aktiv"],["automatic","Automatisch"],["manual","Selbst markiert"],["resolved","Stabilisiert"],["all","Alle"]].map(([id,label]) => `<button type="button" class="${activeFilter === id ? "active" : ""}" data-problem-filter="${id}">${label}</button>`).join("")}
+              </div>
+              <span class="small muted">${filtered.length} Einträge</span>
+            </div>
+            <div class="kq-problem-list">
+              ${filtered.length ? filtered.map(({ item, info }) => {
+                const entry = info.entry;
+                const mnemonicReady = Boolean(entry?.meaningMnemonic || entry?.productionMnemonic || entry?.story);
+                return `<div class="kq-problem-card ${info.resolved ? "resolved" : ""}">
+                  <div class="kq-problem-word"><strong>${ruby(item.word, item.reading)}</strong><span>${esc(meaningsOf(item).join(", ") || "Bedeutung fehlt")}</span><small>${esc(sourceLabel(item))} · ${esc(stageLabel(item))}</small></div>
+                  <div class="kq-problem-reasons">${(info.reasons.length ? info.reasons : ["manuell stabilisiert"]).map(reason => `<span>${esc(reason)}</span>`).join("")}${mnemonicReady ? `<span class="ready">🧠 Anker vorhanden</span>` : `<span class="missing">Anker fehlt</span>`}</div>
+                  <div class="kq-problem-actions"><button class="primary" type="button" data-problem-edit="${esc(stableKey(item))}">Werkstatt öffnen</button><button class="secondary" type="button" data-problem-practice="${esc(stableKey(item))}">Gezielt üben</button><button class="ghost" type="button" data-problem-resolve="${esc(stableKey(item))}">${info.resolved ? "Wieder aktivieren" : "Als stabil markieren"}</button></div>
+                </div>`;
+              }).join("") : `<div class="empty">${activeFilter === "resolved" ? "Noch kein Problemwort wurde als stabil markiert." : "In diesem Bereich gibt es gerade keine Wörter."}</div>`}
+            </div>
+          </article>`;
+
+        root.querySelector("#kqProblemSearch")?.addEventListener("input", event => {
+          searchQuery = String(event.target.value || "").trim();
+          renderHome();
+          setTimeout(() => {
+            const input = document.getElementById("kqProblemSearch");
+            if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+          }, 0);
+        });
+        root.querySelectorAll("[data-problem-filter]").forEach(button => button.addEventListener("click", () => { activeFilter = button.dataset.problemFilter; renderHome(); }));
+        root.querySelectorAll("[data-problem-toggle]").forEach(button => button.addEventListener("click", () => toggleManual(button.dataset.problemToggle)));
+        root.querySelectorAll("[data-problem-edit]").forEach(button => button.addEventListener("click", () => renderEditor(button.dataset.problemEdit)));
+        root.querySelectorAll("[data-problem-practice]").forEach(button => button.addEventListener("click", () => startPractice([button.dataset.problemPractice])));
+        root.querySelectorAll("[data-problem-resolve]").forEach(button => button.addEventListener("click", () => toggleResolved(button.dataset.problemResolve)));
+        root.querySelector("#kqPracticeAllProblems")?.addEventListener("click", () => startPractice(active.slice(0, 12).map(record => stableKey(record.item))));
+      }
+
+      function itemForKey(key) {
+        const live = itemMap().get(key);
+        if (live) return live;
+        const snapshot = workshopState().entries[key]?.snapshot;
+        return snapshot?.word ? { ...snapshot, workshopKey: key, meanings: meaningsOf(snapshot), correct: 0, incorrect: 0 } : null;
+      }
+
+      function toggleManual(key) {
+        const item = itemForKey(key);
+        if (!item) return;
+        const entry = ensureEntry(item);
+        entry.manual = !entry.manual;
+        if (entry.manual) entry.resolved = false;
+        entry.updatedAt = Date.now();
+        persistWorkshop(entry.manual ? `${item.word} wurde als Problemwort markiert.` : `Manuelle Markierung für ${item.word} entfernt.`);
+        renderHome();
+      }
+
+      function toggleResolved(key) {
+        const item = itemForKey(key);
+        if (!item) return;
+        const entry = ensureEntry(item);
+        entry.resolved = !candidateInfo(item).resolved;
+        if (entry.resolved) {
+          entry.resolvedIncorrectBaseline = currentErrors(item);
+          entry.resolvedWorkshopIncorrectBaseline = Number(entry.practice?.incorrect || 0);
+        }
+        entry.updatedAt = Date.now();
+        persistWorkshop(entry.resolved ? `${item.word} wurde als vorerst stabil markiert.` : `${item.word} ist wieder aktiv.`);
+        renderHome();
+      }
+
+      function renderEditor(key) {
+        installView();
+        const root = document.getElementById("kqProblemWorkshopRoot");
+        const item = itemForKey(key);
+        if (!root || !item) { renderHome(); return; }
+        selectedKey = key;
+        const entry = ensureEntry(item);
+        const suggestions = suggestionSet(item);
+        const confusing = confusionSuggestions(item);
+        const confusionItems = entry.confusions.map(itemForKey).filter(Boolean);
+        const info = candidateInfo(item);
+
+        root.innerHTML = `
+          <div class="kq-workshop-back"><button class="ghost" id="kqProblemBack" type="button">← Zur Problemwortliste</button></div>
+          <div class="kq-workshop-editor-head card">
+            <div><p class="eyebrow">${esc(sourceLabel(item))}</p><h2>${ruby(item.word, item.reading)}</h2><p class="kq-editor-meaning">${esc(meaningsOf(item).join(" · "))}</p><div class="kq-problem-reasons">${info.reasons.map(reason => `<span>${esc(reason)}</span>`).join("") || `<span>von dir ausgewählt</span>`}</div></div>
+            <div class="kq-editor-emoji">${esc(entry.imageCue || emojiFor(item))}</div>
+          </div>
+          ${item.example ? `<article class="card kq-workshop-context"><span>Vorhandener Kontext</span><strong>${sentenceWithFurigana(item.example)}</strong>${item.exampleTranslation ? `<p>${esc(item.exampleTranslation)}</p>` : ""}</article>` : ""}
+          <div class="grid-two kq-workshop-editor-grid">
+            <article class="card">
+              <h3>Deine Gedächtnisanker</h3>
+              <label>Japanisch → Bedeutung
+                <textarea id="kqMeaningMnemonic" rows="4" placeholder="Welche Klang- oder Bildgeschichte führt von ${esc(item.reading || item.word)} zu ${esc(meaningsOf(item)[0] || "der Bedeutung")}?">${esc(entry.meaningMnemonic)}</textarea>
+              </label>
+              <label>Bedeutung → Japanisch
+                <textarea id="kqProductionMnemonic" rows="4" placeholder="Was lässt dich von der deutschen Bedeutung zur Lesung zurückfinden?">${esc(entry.productionMnemonic)}</textarea>
+              </label>
+              <label>Übertriebene Mini-Geschichte
+                <textarea id="kqProblemStory" rows="5" placeholder="Je absurder, persönlicher und bildhafter, desto besser.">${esc(entry.story)}</textarea>
+              </label>
+              <div class="form-grid"><label>Emoji / kurzes Bildsignal<input id="kqImageCue" value="${esc(entry.imageCue)}" placeholder="${esc(emojiFor(item))}" maxlength="30" /></label><label>Persönliche Notiz<input id="kqProblemNote" value="${esc(entry.note)}" placeholder="Warum verwechsle ich das Wort?" /></label></div>
+            </article>
+            <article class="card">
+              <h3>Rohvorschläge</h3>
+              <p class="small muted">Nicht jeder Klanganker passt zu dir. Übernimm nur, was sofort ein klares Bild erzeugt, und ändere es ruhig komplett.</p>
+              <div class="kq-suggestion-list">${suggestions.map((suggestion, index) => `<div class="kq-suggestion"><span>${esc(suggestion.label)}</span><p>${esc(suggestion.text)}</p><button class="secondary" type="button" data-use-suggestion="${index}">In das passende Feld übernehmen</button></div>`).join("")}</div>
+            </article>
+          </div>
+          <article class="card kq-confusion-editor">
+            <div class="section-title"><div><h3>Verwechslungsgruppe</h3><p>Ähnliche Lesungen und Bedeutungen bewusst nebeneinanderstellen.</p></div></div>
+            <div id="kqSelectedConfusions" class="kq-confusion-selected">${confusionItems.length ? confusionItems.map(candidate => `<div><strong>${ruby(candidate.word, candidate.reading)}</strong><span>${esc(meaningsOf(candidate).join(", "))}</span><button class="ghost" type="button" data-remove-confusion="${esc(stableKey(candidate))}">Entfernen</button></div>`).join("") : `<span class="small muted">Noch keine Wörter ausgewählt.</span>`}</div>
+            <h4>Automatisch vorgeschlagen</h4>
+            <div class="kq-confusion-suggestions">${confusing.length ? confusing.map(candidate => `<button type="button" class="ghost" data-add-confusion="${esc(stableKey(candidate))}"><strong>${ruby(candidate.word, candidate.reading)}</strong><span>${esc(meaningsOf(candidate).join(", "))}</span></button>`).join("") : `<span class="small muted">Keine besonders ähnliche Vokabel in deinem aktuellen Wortschatz gefunden.</span>`}</div>
+          </article>
+          <div class="button-row kq-editor-actions"><button class="primary" id="kqSaveProblemWord" type="button">Werkstattkarte speichern</button><button class="secondary" id="kqPracticeProblemWord" type="button">Jetzt gezielt üben</button><button class="ghost" id="kqResolveProblemWord" type="button">${info.resolved ? "Wieder aktivieren" : "Als stabil markieren"}</button></div>`;
+
+        document.getElementById("kqProblemBack")?.addEventListener("click", renderHome);
+        root.querySelectorAll("[data-use-suggestion]").forEach(button => button.addEventListener("click", () => {
+          const suggestion = suggestions[Number(button.dataset.useSuggestion)];
+          const target = suggestion?.target === "productionMnemonic" ? document.getElementById("kqProductionMnemonic") : suggestion?.target === "story" ? document.getElementById("kqProblemStory") : document.getElementById("kqMeaningMnemonic");
+          if (!target || !suggestion) return;
+          target.value = target.value.trim() ? `${target.value.trim()}\n\n${suggestion.text}` : suggestion.text;
+          target.focus();
+        }));
+        root.querySelectorAll("[data-add-confusion]").forEach(button => button.addEventListener("click", () => {
+          const candidateKey = button.dataset.addConfusion;
+          if (!entry.confusions.includes(candidateKey)) entry.confusions.push(candidateKey);
+          entry.updatedAt = Date.now();
+          persistWorkshop();
+          renderEditor(key);
+        }));
+        root.querySelectorAll("[data-remove-confusion]").forEach(button => button.addEventListener("click", () => {
+          entry.confusions = entry.confusions.filter(value => value !== button.dataset.removeConfusion);
+          entry.updatedAt = Date.now();
+          persistWorkshop();
+          renderEditor(key);
+        }));
+        document.getElementById("kqSaveProblemWord")?.addEventListener("click", () => saveEditor(item));
+        document.getElementById("kqPracticeProblemWord")?.addEventListener("click", () => { saveEditor(item, false); startPractice([key]); });
+        document.getElementById("kqResolveProblemWord")?.addEventListener("click", () => { saveEditor(item, false); toggleResolved(key); });
+      }
+
+      function saveEditor(item, announce = true) {
+        const entry = ensureEntry(item);
+        entry.manual = true;
+        entry.meaningMnemonic = String(document.getElementById("kqMeaningMnemonic")?.value || "").trim();
+        entry.productionMnemonic = String(document.getElementById("kqProductionMnemonic")?.value || "").trim();
+        entry.story = String(document.getElementById("kqProblemStory")?.value || "").trim();
+        entry.imageCue = String(document.getElementById("kqImageCue")?.value || "").trim();
+        entry.note = String(document.getElementById("kqProblemNote")?.value || "").trim();
+        entry.updatedAt = Date.now();
+        persistWorkshop(announce ? `Gedächtnisanker für ${item.word} gespeichert.` : "");
+      }
+
+      function practiceQuestions(keys) {
+        const items = keys.map(itemForKey).filter(Boolean);
+        const questions = [];
+        for (const item of items) {
+          const entry = ensureEntry(item);
+          questions.push({ type: "meaning", key: stableKey(item) });
+          questions.push({ type: "production", key: stableKey(item) });
+          if (item.example) {
+            questions.push({ type: "listening", key: stableKey(item) });
+            if (item.example.includes(item.word)) questions.push({ type: "cloze", key: stableKey(item) });
+          }
+          if (entry.confusions.length) questions.push({ type: "distinguish", key: stableKey(item) });
+        }
+        for (let index = questions.length - 1; index > 0; index--) {
+          const swap = Math.floor(Math.random() * (index + 1));
+          [questions[index], questions[swap]] = [questions[swap], questions[index]];
+        }
+        return questions.slice(0, keys.length === 1 ? 8 : 24);
+      }
+
+      function startPractice(keys) {
+        const unique = [...new Set(keys)].filter(key => itemForKey(key));
+        if (!unique.length) { notify("Keine Problemwörter zum Üben vorhanden."); return; }
+        practice = {
+          keys: unique,
+          questions: practiceQuestions(unique),
+          index: 0,
+          feedback: null,
+          selectedOption: null,
+          results: { correct: 0, incorrect: 0 },
+          startedAt: Date.now()
+        };
+        try { switchView("problemWords"); } catch {}
+        renderPractice();
+      }
+
+      function currentQuestion() {
+        return practice?.questions?.[practice.index] || null;
+      }
+
+      function expectedFor(question, item) {
+        const entry = ensureEntry(item);
+        if (question.type === "meaning" || question.type === "listening" || question.type === "distinguish") {
+          return [...meaningsOf(item), ...entry.acceptedMeanings].filter(Boolean);
+        }
+        return [item.word, item.reading].filter(Boolean);
+      }
+
+      function distinguishOptions(item) {
+        const entry = ensureEntry(item);
+        const targets = [{ key: stableKey(item), label: meaningsOf(item)[0] || "Bedeutung fehlt", correct: true }];
+        for (const key of entry.confusions) {
+          const candidate = itemForKey(key);
+          if (candidate) targets.push({ key, label: meaningsOf(candidate)[0] || candidate.word, correct: false });
+        }
+        for (const candidate of allEligibleItems().sort(() => Math.random() - 0.5)) {
+          if (targets.length >= 4) break;
+          const label = meaningsOf(candidate)[0];
+          if (!label || targets.some(option => normalizeLatinValue(option.label) === normalizeLatinValue(label))) continue;
+          targets.push({ key: stableKey(candidate), label, correct: false });
+        }
+        return targets.slice(0, 4).sort(() => Math.random() - 0.5);
+      }
+
+      function playQuestionAudio(item) {
+        try {
+          if (typeof playItemAudio === "function") {
+            playItemAudio(item, item.example ? "sentence" : "word");
+            return;
+          }
+        } catch {}
+        if (!("speechSynthesis" in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(item.example || item.reading || item.word);
+        utterance.lang = "ja-JP";
+        utterance.rate = 0.84;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      function renderPractice() {
+        const root = document.getElementById("kqProblemWorkshopRoot");
+        if (!root || !practice) return;
+        if (practice.index >= practice.questions.length) { renderPracticeSummary(); return; }
+        const question = currentQuestion();
+        const item = itemForKey(question.key);
+        if (!item) { practice.index++; renderPractice(); return; }
+        const entry = ensureEntry(item);
+        const feedback = practice.feedback;
+        const options = question.type === "distinguish" ? (question.options ||= distinguishOptions(item)) : [];
+        const cloze = item.example ? item.example.replace(item.word, "＿＿＿") : "";
+        const prompt = question.type === "meaning" ? ruby(item.word, item.reading)
+          : question.type === "production" ? esc(meaningsOf(item)[0] || "Bedeutung fehlt")
+          : question.type === "listening" ? `<button class="kq-big-audio" id="kqProblemAudio" type="button">🔊 Satz anhören</button>`
+          : question.type === "cloze" ? sentenceWithFurigana(cloze)
+          : ruby(item.word, item.reading);
+        const instruction = question.type === "meaning" ? "Was bedeutet dieses Wort?"
+          : question.type === "production" ? "Gib das japanische Wort oder seine Lesung ein."
+          : question.type === "listening" ? "Höre den Satz und gib die Bedeutung des Problemworts ein."
+          : question.type === "cloze" ? "Setze das fehlende Problemwort ein."
+          : "Welche Bedeutung gehört zu diesem Wort?";
+        const mnemonic = question.type === "production" || question.type === "cloze"
+          ? entry.productionMnemonic
+          : entry.meaningMnemonic;
+
+        root.innerHTML = `
+          <div class="kq-workshop-back"><button class="ghost" id="kqPracticeQuit" type="button">← Runde beenden</button></div>
+          <article class="card kq-problem-practice-card">
+            <div class="counter">Problemwort-Training · ${practice.index + 1} von ${practice.questions.length}</div>
+            <div class="kq-practice-type">${question.type === "meaning" ? "Verstehen" : question.type === "production" ? "Produzieren" : question.type === "listening" ? "Listening" : question.type === "cloze" ? "Kontextlücke" : "Unterscheiden"}</div>
+            <h2>${instruction}</h2>
+            <div class="kq-problem-prompt">${prompt}</div>
+            ${question.type === "distinguish" ? `<div class="kq-choice-list">${options.map((option, index) => `<button type="button" data-choice-index="${index}" class="${practice.selectedOption === index ? "selected" : ""}"><span>${index + 1}</span>${esc(option.label)}</button>`).join("")}</div>` : `<form id="kqProblemAnswerForm" class="review-form"><input id="kqProblemAnswer" autocomplete="off" placeholder="Antwort eingeben …" ${feedback ? "disabled" : ""}/><button class="primary" type="submit" ${feedback ? "disabled" : ""}>Prüfen</button></form>`}
+            ${feedback ? `<div class="feedback ${feedback.correct ? "good" : "bad"}"><strong>${feedback.correct ? "Richtig" : "Noch nicht"}</strong><div>${esc(feedback.message)}</div></div>
+              ${!feedback.correct ? `<div class="kq-mnemonic-reveal"><span>Dein Gedächtnisanker</span>${mnemonic ? `<p>${esc(mnemonic)}</p>` : `<p>Noch kein passender Anker gespeichert. Öffne das Wort nach der Runde in der Werkstatt.</p>`}${entry.story ? `<p><strong>Szene:</strong> ${esc(entry.story)}</p>` : ""}${entry.imageCue ? `<div class="kq-mnemonic-emoji">${esc(entry.imageCue)}</div>` : ""}</div>` : ""}
+              <div class="button-row kq-practice-next-row">${!feedback.correct && (question.type === "meaning" || question.type === "listening") ? `<button class="ghost" id="kqAcceptProblemSynonym" type="button">Meine Übersetzung als Synonym speichern</button>` : ""}${!feedback.correct ? `<button class="ghost" id="kqProblemTypo" type="button">Nur vertippt</button>` : ""}<button class="primary" id="kqProblemNext" type="button">Weiter</button></div>` : ""}
+            <p class="small muted kq-enter-note">Enter prüft und führt nach dem Feedback direkt weiter. Bei Auswahlfragen funktionieren auch die Tasten 1–4.</p>
+          </article>`;
+
+        document.getElementById("kqPracticeQuit")?.addEventListener("click", renderHome);
+        document.getElementById("kqProblemAudio")?.addEventListener("click", () => playQuestionAudio(item));
+        if (question.type === "listening" && !feedback) setTimeout(() => playQuestionAudio(item), 160);
+        const form = document.getElementById("kqProblemAnswerForm");
+        form?.addEventListener("submit", event => {
+          event.preventDefault();
+          const answer = String(document.getElementById("kqProblemAnswer")?.value || "").trim();
+          if (answer) gradePractice(answer);
+        });
+        root.querySelectorAll("[data-choice-index]").forEach(button => button.addEventListener("click", () => {
+          if (feedback) return;
+          practice.selectedOption = Number(button.dataset.choiceIndex);
+          gradePractice(options[practice.selectedOption]?.label || "");
+        }));
+        document.getElementById("kqProblemNext")?.addEventListener("click", nextPracticeQuestion);
+        document.getElementById("kqProblemTypo")?.addEventListener("click", () => {
+          if (!practice.feedback) return;
+          undoLastPracticeError(item);
+          practice.feedback = { correct: true, message: "Als Tippfehler gewertet. Die normale SRS-Stufe bleibt ohnehin unverändert." };
+          renderPractice();
+        });
+        document.getElementById("kqAcceptProblemSynonym")?.addEventListener("click", () => {
+          const answer = String(practice.feedback?.answer || "").trim();
+          if (!answer) return;
+          const normalized = normalizeLatinValue(answer);
+          if (!entry.acceptedMeanings.some(value => normalizeLatinValue(value) === normalized)) entry.acceptedMeanings.push(answer);
+          const live = sourceData().vocabulary?.find(candidate => stableKey(candidate) === stableKey(item));
+          if (live && Array.isArray(live.meanings) && !live.meanings.some(value => normalizeLatinValue(value) === normalized)) live.meanings.push(answer);
+          undoLastPracticeError(item);
+          practice.feedback = { correct: true, message: `„${answer}“ wurde als zusätzliche Übersetzung gespeichert.` };
+          persistWorkshop();
+          renderPractice();
+        });
+        if (!feedback && question.type !== "distinguish") setTimeout(() => document.getElementById("kqProblemAnswer")?.focus(), 0);
+        if (feedback) setTimeout(() => document.getElementById("kqProblemNext")?.focus(), 0);
+      }
+
+      function isCorrectAnswer(question, item, answer) {
+        const expected = expectedFor(question, item);
+        if (question.type === "meaning" || question.type === "listening" || question.type === "distinguish") {
+          const normalized = normalizeLatinValue(answer);
+          return expected.some(value => normalizeLatinValue(value) === normalized);
+        }
+        const normalized = normalizeJapanese(answer);
+        return expected.some(value => normalizeJapanese(value) === normalized || String(value || "").normalize("NFKC") === String(answer || "").trim().normalize("NFKC"));
+      }
+
+      function gradePractice(answer) {
+        if (!practice || practice.feedback) return;
+        const question = currentQuestion();
+        const item = itemForKey(question.key);
+        if (!item) return;
+        const entry = ensureEntry(item);
+        const correct = isCorrectAnswer(question, item, answer);
+        entry.practice.lastPracticedAt = Date.now();
+        entry.updatedAt = Date.now();
+        const state = workshopState();
+        if (correct) {
+          entry.practice.correct++;
+          state.totalPractice.correct = Math.max(0, Number(state.totalPractice.correct || 0)) + 1;
+          practice.results.correct++;
+          practice.feedback = { correct: true, message: "Der Abruf sitzt für diese Runde." };
+        } else {
+          entry.practice.incorrect++;
+          state.totalPractice.incorrect = Math.max(0, Number(state.totalPractice.incorrect || 0)) + 1;
+          practice.results.incorrect++;
+          const expected = expectedFor(question, item).join(" / ");
+          practice.feedback = { correct: false, answer, message: `Gesucht war: ${expected}. Das Wort kommt später in dieser Runde noch einmal.` };
+          const insertAt = Math.min(practice.questions.length, practice.index + 4);
+          practice.questions.splice(insertAt, 0, { ...question, repeated: true, options: undefined });
+        }
+        persistWorkshop();
+        renderPractice();
+      }
+
+      function undoLastPracticeError(item) {
+        const entry = ensureEntry(item);
+        if (entry.practice.incorrect > 0) entry.practice.incorrect--;
+        const state = workshopState();
+        if (Number(state.totalPractice.incorrect || 0) > 0) state.totalPractice.incorrect--;
+        if (practice.results.incorrect > 0) practice.results.incorrect--;
+        practice.results.correct++;
+        entry.practice.correct++;
+        state.totalPractice.correct = Math.max(0, Number(state.totalPractice.correct || 0)) + 1;
+        const repeatedIndex = practice.questions.findIndex((candidate, index) => index > practice.index && candidate.repeated && candidate.key === currentQuestion()?.key && candidate.type === currentQuestion()?.type);
+        if (repeatedIndex >= 0) practice.questions.splice(repeatedIndex, 1);
+        persistWorkshop();
+      }
+
+      function nextPracticeQuestion() {
+        if (!practice?.feedback) return;
+        practice.index++;
+        practice.feedback = null;
+        practice.selectedOption = null;
+        renderPractice();
+      }
+
+      function renderPracticeSummary() {
+        const root = document.getElementById("kqProblemWorkshopRoot");
+        if (!root || !practice) return;
+        const total = practice.results.correct + practice.results.incorrect;
+        const percent = total ? Math.round(practice.results.correct / total * 100) : 0;
+        root.innerHTML = `<article class="card kq-problem-practice-card kq-practice-summary"><div class="study-word" style="font-size:4rem">${percent >= 80 ? "🧠✨" : "🌱"}</div><h2>Werkstattrunde abgeschlossen</h2><p>${practice.results.correct} Abrufe klappten, ${practice.results.incorrect} brauchten noch den Gedächtnisanker. Die normalen SRS-Stufen wurden nicht verändert.</p><div class="button-row"><button class="primary" id="kqPracticeAgain" type="button">Noch eine Runde</button><button class="secondary" id="kqPracticeSummaryBack" type="button">Zur Werkstatt</button></div></article>`;
+        const keys = [...practice.keys];
+        document.getElementById("kqPracticeAgain")?.addEventListener("click", () => startPractice(keys));
+        document.getElementById("kqPracticeSummaryBack")?.addEventListener("click", renderHome);
+      }
+
+      function addMarkButton(container, item, question = null, feedback = null) {
+        if (!container || !item?.word || container.querySelector(".kq-problem-mark-button")) return;
+        const entry = entryFor(item);
+        const info = candidateInfo(item);
+        const row = container.querySelector(".button-row") || container;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `ghost kq-problem-mark-button ${entry?.manual ? "active" : ""}`;
+        button.textContent = entry?.manual ? "🧠 Als Problemwort markiert" : "🧠 Problemwort markieren";
+        button.addEventListener("click", event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const target = ensureEntry(item);
+          target.manual = !target.manual;
+          if (target.manual) target.resolved = false;
+          target.updatedAt = Date.now();
+          persistWorkshop(target.manual ? `${item.word} wurde in die Werkstatt gelegt.` : `Markierung für ${item.word} entfernt.`);
+          button.textContent = target.manual ? "🧠 Als Problemwort markiert" : "🧠 Problemwort markieren";
+          button.classList.toggle("active", target.manual);
+        });
+        row.appendChild(button);
+
+        if (feedback && !feedback.correct) {
+          const mnemonic = question?.type === "production" ? entry?.productionMnemonic : entry?.meaningMnemonic;
+          if (mnemonic || entry?.story) {
+            const panel = document.createElement("div");
+            panel.className = "kq-mnemonic-after-error";
+            panel.innerHTML = `<strong>🧠 Dein gespeicherter Anker</strong>${mnemonic ? `<p>${esc(mnemonic)}</p>` : ""}${entry?.story ? `<p><b>Szene:</b> ${esc(entry.story)}</p>` : ""}`;
+            const feedbackElement = container.querySelector(".feedback");
+            feedbackElement?.insertAdjacentElement("afterend", panel);
+          }
+        }
+      }
+
+      function wrapRenderers() {
+        if (wrapped) return;
+        wrapped = true;
+        try {
+          const originalQuestionCard = renderQuestionCard;
+          if (typeof originalQuestionCard === "function" && !originalQuestionCard.__kqProblemWrapped) {
+            const replacement = function(card, question, item, options) {
+              const result = originalQuestionCard.apply(this, arguments);
+              try { addMarkButton(card, item, question, options?.feedback); } catch {}
+              return result;
+            };
+            replacement.__kqProblemWrapped = true;
+            renderQuestionCard = replacement;
+          }
+        } catch {}
+        try {
+          const originalLesson = renderLesson;
+          if (typeof originalLesson === "function" && !originalLesson.__kqProblemWrapped) {
+            const replacement = function() {
+              const result = originalLesson.apply(this, arguments);
+              try {
+                const item = lessonSession?.items?.[lessonSession.index];
+                addMarkButton(document.getElementById("lessonCard"), item);
+              } catch {}
+              return result;
+            };
+            replacement.__kqProblemWrapped = true;
+            renderLesson = replacement;
+          }
+        } catch {}
+        try {
+          const originalVocabulary = renderVocabulary;
+          if (typeof originalVocabulary === "function" && !originalVocabulary.__kqProblemWrapped) {
+            const replacement = function() {
+              const result = originalVocabulary.apply(this, arguments);
+              try {
+                document.querySelectorAll("#vocabList .vocab-row").forEach(row => {
+                  if (row.querySelector(".kq-problem-row-button")) return;
+                  const id = row.querySelector("[data-id]")?.dataset.id;
+                  const item = sourceData().vocabulary?.find(candidate => String(candidate.id) === String(id));
+                  if (!item) return;
+                  const button = document.createElement("button");
+                  button.type = "button";
+                  button.className = "ghost kq-problem-row-button";
+                  button.textContent = "🧠";
+                  button.title = "Als Problemwort markieren";
+                  button.addEventListener("click", () => toggleManual(stableKey(item)));
+                  row.lastElementChild?.appendChild(button);
+                });
+              } catch {}
+              return result;
+            };
+            replacement.__kqProblemWrapped = true;
+            renderVocabulary = replacement;
+          }
+        } catch {}
+      }
+
+      function installStyles() {
+        if (document.getElementById("kqProblemWorkshopStyle")) return;
+        const style = document.createElement("style");
+        style.id = "kqProblemWorkshopStyle";
+        style.textContent = `
+          #kqProblemWorkshopRoot { display:grid; gap:18px; }
+          .kq-problem-title { align-items:flex-start; }
+          .kq-problem-title h2 { font-size:clamp(1.9rem,4vw,3rem); }
+          .kq-problem-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+          .kq-problem-stats article { min-height:132px; display:grid; align-content:center; gap:4px; }
+          .kq-problem-stats span,.kq-problem-stats small { color:var(--muted); font-weight:750; }
+          .kq-problem-stats strong { color:var(--primary); font-size:2.35rem; line-height:1; }
+          .kq-problem-top-grid { align-items:start; }
+          .kq-problem-explainer p { color:var(--muted); line-height:1.55; }
+          .kq-problem-search-results { display:grid; gap:8px; margin-top:12px; max-height:360px; overflow:auto; }
+          .kq-problem-search-row { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:11px 12px; border:1px solid var(--border); border-radius:13px; background:var(--kq-card-soft,#faf8ff); }
+          .kq-problem-search-row strong,.kq-problem-search-row span,.kq-problem-search-row small { display:block; }
+          .kq-problem-search-row strong { font-size:1.15rem; }
+          .kq-problem-search-row span,.kq-problem-search-row small { color:var(--muted); margin-top:2px; }
+          .kq-problem-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+          .kq-problem-list { display:grid; gap:10px; }
+          .kq-problem-card { display:grid; grid-template-columns:minmax(180px,.9fr) minmax(180px,1fr) auto; gap:14px; align-items:center; padding:15px; border:1px solid var(--border); border-radius:16px; background:white; }
+          .kq-problem-card.resolved { opacity:.72; background:var(--kq-card-soft,#faf8ff); }
+          .kq-problem-word strong,.kq-problem-word span,.kq-problem-word small { display:block; }
+          .kq-problem-word strong { font-size:1.45rem; }
+          .kq-problem-word span { margin-top:3px; font-weight:800; }
+          .kq-problem-word small { margin-top:4px; color:var(--muted); }
+          .kq-problem-reasons { display:flex; flex-wrap:wrap; gap:6px; }
+          .kq-problem-reasons span { padding:6px 9px; border-radius:999px; background:var(--kq-wash,#eee8ff); color:var(--primary-dark); font-size:.76rem; font-weight:850; }
+          .kq-problem-reasons span.ready { background:#e5f7ed; color:#267855; }
+          .kq-problem-reasons span.missing { background:#fff1dc; color:#9a641a; }
+          .kq-problem-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
+          .kq-problem-actions button { padding:9px 11px; }
+          .kq-problem-teaser { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; }
+          .kq-problem-teaser > div { display:flex; align-items:center; gap:14px; }
+          .kq-problem-teaser h3,.kq-problem-teaser p { margin:0; }
+          .kq-problem-teaser p { margin-top:4px; color:var(--muted); }
+          .kq-workshop-back { display:flex; }
+          .kq-workshop-editor-head { display:flex; justify-content:space-between; align-items:center; gap:20px; background:linear-gradient(130deg,var(--kq-wash,#eee8ff),white); }
+          .kq-workshop-editor-head h2 { margin:0; font-size:clamp(2.5rem,7vw,5rem); }
+          .kq-editor-meaning { margin:8px 0 12px; font-size:1.2rem; font-weight:850; }
+          .kq-editor-emoji { font-size:4.5rem; }
+          .kq-workshop-context > span,.kq-workshop-context > strong,.kq-workshop-context > p { display:block; }
+          .kq-workshop-context > span { color:var(--muted); font-size:.82rem; font-weight:850; text-transform:uppercase; letter-spacing:.08em; }
+          .kq-workshop-context > strong { margin-top:9px; font-size:1.45rem; line-height:2; }
+          .kq-workshop-context > p { margin:7px 0 0; color:var(--muted); }
+          .kq-workshop-editor-grid { align-items:start; }
+          .kq-workshop-editor-grid article { display:grid; gap:14px; }
+          .kq-suggestion-list { display:grid; gap:10px; }
+          .kq-suggestion { padding:13px; border:1px solid var(--border); border-radius:14px; background:var(--kq-card-soft,#faf8ff); }
+          .kq-suggestion > span { display:inline-flex; padding:5px 8px; border-radius:999px; background:var(--kq-wash,#eee8ff); color:var(--primary-dark); font-size:.75rem; font-weight:900; }
+          .kq-suggestion p { color:var(--muted); line-height:1.5; }
+          .kq-confusion-selected { display:grid; gap:8px; margin-bottom:16px; }
+          .kq-confusion-selected > div { display:grid; grid-template-columns:minmax(120px,.5fr) 1fr auto; align-items:center; gap:12px; padding:11px; border:1px solid var(--border); border-radius:13px; }
+          .kq-confusion-selected span { color:var(--muted); }
+          .kq-confusion-suggestions { display:flex; flex-wrap:wrap; gap:8px; }
+          .kq-confusion-suggestions button { display:grid; gap:2px; text-align:left; }
+          .kq-confusion-suggestions span { color:var(--muted); font-size:.8rem; }
+          .kq-editor-actions { justify-content:center; padding-bottom:12px; }
+          .kq-problem-practice-card { max-width:820px; width:100%; margin:0 auto; text-align:center; min-height:520px; display:flex; flex-direction:column; justify-content:center; }
+          .kq-practice-type { align-self:center; margin:14px 0 5px; padding:7px 11px; border-radius:999px; color:var(--primary-dark); background:var(--kq-wash,#eee8ff); font-weight:900; }
+          .kq-problem-prompt { margin:20px auto; font-size:clamp(2rem,6vw,4.5rem); line-height:1.8; font-weight:950; }
+          .kq-big-audio { width:150px; height:100px; border-radius:25px; color:white; background:var(--primary); font-size:2.3rem; }
+          .kq-choice-list { display:grid; gap:9px; max-width:620px; width:100%; margin:16px auto; }
+          .kq-choice-list button { display:grid; grid-template-columns:38px 1fr; align-items:center; gap:10px; padding:13px; border:1px solid var(--border); border-radius:14px; color:var(--text); background:white; text-align:left; font-weight:850; }
+          .kq-choice-list button span { display:grid; place-items:center; width:30px; height:30px; border-radius:9px; color:white; background:var(--primary); }
+          .kq-mnemonic-reveal,.kq-mnemonic-after-error { margin:15px auto 0; padding:15px; border:1px solid var(--border); border-radius:15px; background:linear-gradient(130deg,var(--kq-wash,#eee8ff),white); line-height:1.55; text-align:left; }
+          .kq-mnemonic-reveal span { color:var(--primary-dark); font-size:.78rem; font-weight:950; text-transform:uppercase; letter-spacing:.08em; }
+          .kq-mnemonic-reveal p,.kq-mnemonic-after-error p { margin:7px 0 0; }
+          .kq-mnemonic-emoji { margin-top:9px; font-size:2.4rem; text-align:center; }
+          .kq-practice-next-row { justify-content:center; margin-top:14px; }
+          .kq-enter-note { margin-top:15px; }
+          .kq-problem-mark-button { margin:8px; }
+          .kq-problem-mark-button.active { color:var(--primary-dark); background:var(--kq-wash,#eee8ff); }
+          .kq-problem-row-button { width:38px; padding:7px !important; }
+          ruby rt { font-size:.5em; color:var(--muted); font-weight:750; }
+          @media (max-width:960px) {
+            .kq-problem-stats { grid-template-columns:1fr 1fr; }
+            .kq-problem-card { grid-template-columns:1fr; }
+            .kq-problem-actions { justify-content:flex-start; }
+          }
+          @media (max-width:640px) {
+            .kq-problem-stats { grid-template-columns:1fr; }
+            .kq-problem-search-row,.kq-confusion-selected > div { grid-template-columns:1fr; }
+            .kq-workshop-editor-head,.kq-problem-teaser { align-items:flex-start; flex-direction:column; }
+            .kq-editor-emoji { font-size:3.2rem; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      document.addEventListener("keydown", event => {
+        if (!document.getElementById("problemWords")?.classList.contains("active") || !practice) return;
+        if (event.repeat || event.isComposing) return;
+        if (practice.feedback && event.key === "Enter") {
+          event.preventDefault();
+          nextPracticeQuestion();
+          return;
+        }
+        const question = currentQuestion();
+        if (!practice.feedback && question?.type === "distinguish" && /^[1-4]$/.test(event.key)) {
+          const option = document.querySelector(`[data-choice-index="${Number(event.key) - 1}"]`);
+          if (option) { event.preventDefault(); option.click(); }
+        }
+      });
+
+      installStyles();
+      installView();
+      wrapRenderers();
+      try {
+        const hub = window.KotobaQuestLearningHub;
+        const originalHubRefresh = hub?.refresh;
+        if (hub && typeof originalHubRefresh === "function" && !originalHubRefresh.__kqProblemWrapped) {
+          const replacement = function() {
+            const result = originalHubRefresh.apply(this, arguments);
+            setTimeout(installView, 0);
+            return result;
+          };
+          replacement.__kqProblemWrapped = true;
+          hub.refresh = replacement;
+        }
+      } catch {}
+      try {
+        const originalSwitchView = switchView;
+        if (typeof originalSwitchView === "function" && !originalSwitchView.__kqProblemWrapped) {
+          const replacement = function(viewName) {
+            const result = originalSwitchView.apply(this, arguments);
+            if (viewName === "problemWords") selectedKey ? renderEditor(selectedKey) : practice ? renderPractice() : renderHome();
+            if (viewName === "dashboard" || viewName === "core") installView();
+            return result;
+          };
+          replacement.__kqProblemWrapped = true;
+          switchView = replacement;
+        }
+      } catch {}
+
+      window.KotobaQuestProblemWorkshop = {
+        open: openWorkshop,
+        mark: key => { const item = itemForKey(key); if (item) { const entry = ensureEntry(item); entry.manual = true; entry.resolved = false; persistWorkshop(); } },
+        getCandidates: () => candidateItems().map(record => ({ item: snapshotOf(record.item), ...record.info, entry: record.info.entry ? { ...record.info.entry } : null })),
+        startPractice,
+        refresh: () => { installView(); if (document.getElementById("problemWords")?.classList.contains("active")) selectedKey ? renderEditor(selectedKey) : practice ? renderPractice() : renderHome(); }
+      };
+    }
+
     function pastelFuriganaBootstrap() {
       if (window.__kotobaPastelFuriganaInstalled) return;
       window.__kotobaPastelFuriganaInstalled = true;
@@ -21071,11 +22213,11 @@
 
       const FRAME_TAGS = {
         read:["reading"], write:["writing"], drink:["beverage"], eat:["food"], watch:["media"], listen:["audio"],
-        buy:["reading","beverage","food","media","wearable","device","transport"], make:["food","writing","task","media"],
-        use:["device","transport","language"], study:["language","task"], teach:["language","task"], send:["writing"],
-        open:["reading","device"], wash:["wearable","food"], choose:["reading","beverage","food","media","wearable","device","task","transport"],
-        carry:["reading","beverage","food","wearable","device","transport"], wear:["wearable"], photo:["media"], search:["reading","device","task","person"],
-        repair:["device","transport"], borrow:["reading","device","transport"], speak:["language"], practice:["language","task","media"], reserve:["task","place","transport"], clean:["place","device"]
+        buy:["reading","beverage","food","media","wearable","device","transport","thing"], make:["food","writing","task","thing"],
+        use:["device","transport","thing"], study:["language","reading","task"], teach:["language","task","reading"], send:["writing","thing"],
+        open:["reading","device","thing"], wash:["wearable","food","thing"], choose:["reading","beverage","food","media","wearable","device","task","transport","thing"],
+        carry:["reading","beverage","food","wearable","device","transport","thing"], wear:["wearable"], photo:["media"], search:["reading","device","task","person","thing"],
+        repair:["device","transport","thing"], borrow:["reading","device","transport","thing"], speak:["language"], practice:["language","task","media"], reserve:["task","place","transport"], clean:["place","thing"]
       };
 
       function compatibleNouns(verb, nouns) {
@@ -21098,15 +22240,7 @@
         return String(item?.meanings?.[0] || item?.word || "").replace(/^to\s+/i, "").trim();
       }
 
-      const COMMON_GERMAN_OBJECTS = {
-        "本":"ein Buch","手紙":"einen Brief","水":"Wasser","お茶":"Tee","茶":"Tee","コーヒー":"Kaffee","牛乳":"Milch",
-        "パン":"Brot","映画":"einen Film","音楽":"Musik","日本語":"Japanisch","英語":"Englisch","電話":"das Telefon",
-        "メール":"eine E-Mail","雑誌":"eine Zeitschrift","新聞":"eine Zeitung","写真":"ein Foto","服":"Kleidung","薬":"Medizin"
-      };
-
       function objectGloss(item) {
-        const mapped = COMMON_GERMAN_OBJECTS[String(item?.word || "")];
-        if (mapped) return mapped;
         const value = firstMeaning(item);
         return value || "etwas";
       }
@@ -21114,20 +22248,6 @@
       function verbGloss(item) {
         const value = firstMeaning(item).replace(/^sich\s+/i, "sich ");
         return value || "machen";
-      }
-
-      function zuVerb(item) {
-        const infinitive = verbGloss(item);
-        if (!infinitive) return "etwas zu tun";
-        const reflexive = infinitive.startsWith("sich ");
-        const core = reflexive ? infinitive.slice(5) : infinitive;
-        const inseparable = /^(be|emp|ent|er|ge|miss|ver|zer)/i.test(core) || /ieren$/i.test(core);
-        const separable = core.match(/^(ab|an|auf|aus|bei|ein|fest|fort|her|hin|los|mit|nach|statt|teil|um|vor|weg|weiter|wieder|zu|zurück|zusammen)(.+)$/i);
-        let result;
-        if (inseparable) result = `zu ${core}`;
-        else if (separable) result = `${separable[1]}zu${separable[2]}`;
-        else result = `zu ${core}`;
-        return reflexive ? `sich ${result}` : result;
       }
 
       function pick(values, avoid = new Set()) {
@@ -21235,7 +22355,7 @@
         templates.push({ id:"tsumori", label:"〜つもり: Absicht", status:"Grundgrammatik · N4", build:() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!v||!n||!dict) return null;
           const tokens=[token("今週末","こんしゅうまつ"),token("は"),itemToken(n),token("を"),itemToken(v,dict),token("つもりです。")];
-          return makeSpec({id:`tsumori-${v.id}-${n.id}`,grammar:"tsumori",grammarLabel:"〜つもり",tokens,de:`Dieses Wochenende habe ich vor, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+          return makeSpec({id:`tsumori-${v.id}-${n.id}`,grammar:"tsumori",grammarLabel:"〜つもり",tokens,de:`Dieses Wochenende habe ich vor, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
         }});
 
         templates.push({ id:"hou-ga-ii", label:"〜たほうがいい: Empfehlung", status:"Grundgrammatik · N4", build:() => {
@@ -21259,12 +22379,12 @@
         templates.push({ id:"koto-ga-aru", label:"〜たことがある: Erfahrung", status:"Grundgrammatik · N4", build:() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const past=formOf(v,"past"); if(!past||!n) return null;
           const tokens=[itemToken(n),token("を"),itemToken(v,past),token("ことがあります。")];
-          return makeSpec({id:`exp-${v.id}-${n.id}`,grammar:"koto-ga-aru",grammarLabel:"〜たことがある",tokens,de:`Ich habe bereits Erfahrung damit, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:past}});
+          return makeSpec({id:`exp-${v.id}-${n.id}`,grammar:"koto-ga-aru",grammarLabel:"〜たことがある",tokens,de:`Ich habe bereits Erfahrung damit, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:past}});
         }});
 
         templates.push({ id:"to-omou", label:"〜と思う: Meinung/Vermutung", status:"Grundgrammatik · N4", build:() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!dict||!n) return null;
-          const tokens=[token("明日","あした"),token("は"),itemToken(n),token("を"),itemToken(v,dict),token("と"),token("思います","おもいます"),token("。")];
+          const tokens=[token("明日","あした"),token("は"),itemToken(n),token("を"),itemToken(v,dict),token("と思います。")];
           return makeSpec({id:`omou-${v.id}-${n.id}`,grammar:"to-omou",grammarLabel:"〜と思う",tokens,de:`Ich glaube, dass ich morgen ${objectGloss(n)} ${verbGloss(v)} werde.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
         }});
 
@@ -21285,12 +22405,12 @@
         add("you-ni-suru","〜ようにする",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
           const tokens=[token("毎日","まいにち"),itemToken(n),token("を"),itemToken(v,dict),token("ようにしています。")];
-          return makeSpec({id:`yousuru-${v.id}-${n.id}`,grammar:"you-ni-suru",grammarLabel:"〜ようにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bemühe mich, jeden Tag ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:dict}});
+          return makeSpec({id:`yousuru-${v.id}-${n.id}`,grammar:"you-ni-suru",grammarLabel:"〜ようにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bemühe mich, jeden Tag ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:dict}});
         });
         add("koto-ni-suru","〜ことにする",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
           const tokens=[itemToken(n),token("を"),itemToken(v,dict),token("ことにしました。")];
-          return makeSpec({id:`kotosuru-${v.id}-${n.id}`,grammar:"koto-ni-suru",grammarLabel:"〜ことにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich habe beschlossen, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:dict}});
+          return makeSpec({id:`kotosuru-${v.id}-${n.id}`,grammar:"koto-ni-suru",grammarLabel:"〜ことにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich habe beschlossen, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:dict}});
         });
         add("koto-ni-naru","〜ことになる",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
@@ -21300,23 +22420,23 @@
         add("you-ni-naru","〜ようになる",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, potential=formOf(v,"potential") || formOf(v,"dictionary"); if(!potential||!n) return null;
           const tokens=[token("最近","さいきん"),token("、"),itemToken(n),token("を"),itemToken(v,potential),token("ようになりました。")];
-          return makeSpec({id:`younaru-${v.id}-${n.id}`,grammar:"you-ni-naru",grammarLabel:"〜ようになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`In letzter Zeit bin ich in der Lage, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
+          return makeSpec({id:`younaru-${v.id}-${n.id}`,grammar:"you-ni-naru",grammarLabel:"〜ようになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`In letzter Zeit bin ich in der Lage, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
         });
         add("tokoro-da","〜ところだ",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
           const tokens=[token("今","いま"),token("、"),itemToken(n),token("を"),itemToken(v,dict),token("ところです。")];
-          return makeSpec({id:`tokoro-${v.id}-${n.id}`,grammar:"tokoro-da",grammarLabel:"〜ところだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade dabei, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+          return makeSpec({id:`tokoro-${v.id}-${n.id}`,grammar:"tokoro-da",grammarLabel:"〜ところだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade dabei, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
         });
         add("ta-bakari","〜たばかり",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, past=formOf(v,"past"); if(!past||!n) return null;
           const tokens=[token("今","いま"),itemToken(n),token("を"),itemToken(v,past),token("ばかりです。")];
-          return makeSpec({id:`bakari-${v.id}-${n.id}`,grammar:"ta-bakari",grammarLabel:"〜たばかり",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade erst damit fertig geworden, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:past}});
+          return makeSpec({id:`bakari-${v.id}-${n.id}`,grammar:"ta-bakari",grammarLabel:"〜たばかり",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade erst damit fertig geworden, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:past}});
         });
         add("tame-ni","〜ために",() => {
           const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
           const d1=formOf(v1,"dictionary"), m2=formOf(v2,"masu"); if(!d1||!m2||!n1||!n2) return null;
           const tokens=[itemToken(n1),token("を"),itemToken(v1,d1),token("ために、"),itemToken(n2),token("を"),itemToken(v2,m2),token("。")];
-          return makeSpec({id:`tame-${v1.id}-${v2.id}`,grammar:"tame-ni",grammarLabel:"〜ために",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Um ${objectGloss(n1)} ${zuVerb(v1)}, werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:d1},connectParts:[
+          return makeSpec({id:`tame-${v1.id}-${v2.id}`,grammar:"tame-ni",grammarLabel:"〜ために",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Um ${objectGloss(n1)} zu ${verbGloss(v1)}, werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:d1},connectParts:[
             [itemToken(n1),token("を"),itemToken(v1,d1),token("。")],
             [itemToken(n2),token("を"),itemToken(v2,m2),token("。")]
           ]});
@@ -21324,7 +22444,7 @@
         add("hazu-da","〜はずだ",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, potential=formOf(v,"potential") || formOf(v,"dictionary"); if(!potential||!n) return null;
           const tokens=[token("この方法","このほうほう"),token("なら、"),itemToken(n),token("を"),itemToken(v,potential),token("はずです。")];
-          return makeSpec({id:`hazu-${v.id}-${n.id}`,grammar:"hazu-da",grammarLabel:"〜はずだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Mit dieser Methode müsste es möglich sein, ${objectGloss(n)} ${zuVerb(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
+          return makeSpec({id:`hazu-${v.id}-${n.id}`,grammar:"hazu-da",grammarLabel:"〜はずだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Mit dieser Methode müsste es möglich sein, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
         });
         add("uchi-ni","〜うちに",() => {
           const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, tai=formOf(v,"tai"); if(!tai||!n) return null;
@@ -21721,8 +22841,9 @@
       const languageReactorScript = "<script>(" + languageReactorMiningBootstrap.toString() + ")();<" + "/script>";
       const learningInsightsScript = "<script>(" + learningInsightsBootstrap.toString() + ")();<" + "/script>";
       const contextPracticeScript = "<script>(" + contextVocabularyPracticeBootstrap.toString() + ")();<" + "/script>";
+      const problemWorkshopScript = "<script>(" + problemWordWorkshopBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${pastelFuriganaScript}`;
+      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${problemWorkshopScript}\n${pastelFuriganaScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
