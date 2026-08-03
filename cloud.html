@@ -23149,12 +23149,12 @@
         toshite: "として", toshiteno: "としての", nitaishite: "に対して", nitaisuru: "に対する",
         nikurabete: "に比べて", nikanshite: "に関して", nimotozuite: "に基づいて",
         nioujite: "に応じて", nisotte: "に沿って", nikuwaete: "に加えて",
-        nikawatte: "に代わって", otsuujite: "を通じて", wotsuujite: "を通じて", niokite: "において",
+        nikawatte: "に代わって", otsuujite: "を通じて", niokite: "において",
         nimukatte: "に向かって"
       };
 
       const Q = (id, category, expected, before, after, translation, why, extra = {}) => ({
-        id, category, expected, before, after, translation, why, accepted: [], ...extra
+        id, category, expected, before, after, translation, why, ...extra
       });
       const QUESTIONS = [
         Q("b-time-ni", "basics", "に",
@@ -23205,10 +23205,10 @@
           "大阪 ist der räumliche Ausgangspunkt der Bewegung und wird daher mit から markiert."),
         Q("b-start-kara", "basics", "から",
           [["仕事","しごと"],["は",""],["九時","くじ"]],
-          [["五時","ごじ"],["まで",""],["です",""],["。",""]],
-          "Die Arbeitszeit ist von neun bis fünf Uhr.",
-          "九時 ist der Anfang des ausdrücklich genannten Zeitraums 九時から五時まで. Der Beginn steht mit から.",
-          { wrong: { "に": "に würde einen einzelnen Zeitpunkt markieren. Zusammen mit 五時まで wird hier aber ein Zeitraum von einem Start- bis zu einem Endpunkt gebildet." } }),
+          [["始まります","はじまります"],["。",""]],
+          "Die Arbeit beginnt um neun Uhr.",
+          "九時 ist der Beginn eines Zeitraums. Ein zeitlicher Anfang steht mit から.",
+          { wrong: { "に": "九時に始まります wäre ebenfalls ein normaler Zeitpunktssatz. Hier fragt die Aufgabe ausdrücklich nach dem Beginn eines Zeitraums: ‚ab neun Uhr‘." } }),
         Q("b-end-made", "basics", "まで",
           [["今日","きょう"],["は",""],["五時","ごじ"]],
           [["働きます","はたらきます"],["。",""]],
@@ -23386,11 +23386,11 @@
           { breakdown: "から（Beginn）＋ は（Kontrast）", wrong: { "から": "から markiert den Beginn, aber der deutliche Gegensatz zu 今日までは wird erst durch は vollständig gespiegelt." } }),
 
         Q("r-nitsuite", "relations", "について",
-          [["先生","せんせい"],["に",""],["日本","にほん"],["の",""],["文化","ぶんか"]],
-          [["質問しました","しつもんしました"],["。",""]],
-          "Ich habe die Lehrkraft etwas über die japanische Kultur gefragt.",
-          "日本の文化 ist das inhaltliche Thema der Frage. について bedeutet hier eindeutig ‚über/bezüglich‘.",
-          { wrong: { "を": "質問する markiert die befragte Sache nicht einfach als direktes Objekt. Das Thema, über das gefragt wird, steht hier mit について." } }),
+          [["大学","だいがく"],["で",""],["日本","にほん"],["の",""],["文化","ぶんか"]],
+          [["勉強して","べんきょうして"],["います",""],["。",""]],
+          "An der Universität beschäftige ich mich mit der japanischen Kultur.",
+          "日本の文化 ist das inhaltliche Thema des Lernens. について bedeutet hier ‚über/bezüglich‘.",
+          { wrong: { "を": "を würde 文化 direkt zum Objekt machen. 勉強する kann zwar mit を stehen, aber diese Aufgabe übt ausdrücklich die thematische Beziehung ‚sich mit etwas beschäftigen‘." } }),
         Q("r-nitsuiteno", "relations", "についての",
           [["環境問題","かんきょうもんだい"]],
           [["本","ほん"],["を",""],["借りました","かりました"],["。",""]],
@@ -23414,7 +23414,7 @@
           [["電車","でんしゃ"],["が",""],["止まりました","とまりました"],["。",""]],
           "Durch den starken Regen kam der Zugverkehr zum Stillstand.",
           "大雨 ist die direkte Ursache des Stillstands. によって markiert diese Ursache in einer sachlichen Formulierung.",
-          { accepted: ["で"] }),
+          { wrong: { "で": "大雨で wäre in Alltagssprache ebenfalls möglich. によって ist hier die bewusst sachlich-formelle Ursachenmarkierung der Übung." } }),
         Q("r-niyoru", "relations", "による",
           [["専門家","せんもんか"]],
           [["説明","せつめい"],["は",""],["分かりやすかった","わかりやすかった"],["です",""],["。",""]],
@@ -23494,8 +23494,7 @@
           [["現代社会","げんだいしゃかい"]],
           [["情報","じょうほう"],["は",""],["非常に","ひじょうに"],["重要","じゅうよう"],["です",""],["。",""]],
           "In der modernen Gesellschaft sind Informationen äußerst wichtig.",
-          "現代社会 ist der formell ausgedrückte Bereich, in dem die Aussage gilt. において ist hier die formelle Entsprechung zu で.",
-          { accepted: ["で"] }),
+          "現代社会 ist der formell ausgedrückte Bereich, in dem die Aussage gilt. において ist hier die formelle Entsprechung zu で."),
         Q("r-nimukatte", "relations", "に向かって",
           [["選手","せんしゅ"],["たち",""],["は",""],["ゴール",""]],
           [["走り続けました","はしりつづけました"],["。",""]],
@@ -23756,13 +23755,10 @@
         const question = currentQuestion();
         const entry = currentQueueEntry();
         const entered = normalizeAnswer(input.value);
-        const acceptedAnswers = [question.expected, ...(question.accepted || [])].map(normalizeAnswer);
-        const correct = acceptedAnswers.includes(entered);
-        const exactTarget = entered === normalizeAnswer(question.expected);
+        const correct = entered === normalizeAnswer(question.expected);
         session.answer = entered;
         session.feedback = {
           correct,
-          exactTarget,
           entered,
           wrongExplanation: correct ? "" : explanationForWrong(question, entered)
         };
@@ -23789,9 +23785,6 @@
         session.feedback.typo = true;
         session.stats.incorrect = Math.max(0, session.stats.incorrect - 1);
         session.stats.correct += 1;
-        const currentId = currentQueueEntry()?.id;
-        const futureRepeatIndex = session.queue.findIndex((entry, index) => index > session.index && entry.id === currentId && entry.repeated);
-        if (futureRepeatIndex >= 0) session.queue.splice(futureRepeatIndex, 1);
         const source = sourceData();
         const stats = statsFor(source);
         stats.incorrect = Math.max(0, stats.incorrect - 1);
@@ -23931,7 +23924,7 @@
             <div class="kq-particle-translation">${esc(question.translation)}</div>
             ${feedback ? `
               <div class="kq-particle-feedback ${feedback.correct ? "good" : "bad"}">
-                <h3>${feedback.typo ? "Als Tippfehler gewertet" : feedback.correct ? (feedback.exactTarget ? `Richtig: ${esc(question.expected)}` : `Auch richtig: ${esc(feedback.entered)} · Zielstruktur: ${esc(question.expected)}`) : `Nicht ganz: ${esc(feedback.entered || "—")} → ${esc(question.expected)}`}</h3>
+                <h3>${feedback.typo ? "Als Tippfehler gewertet" : feedback.correct ? `Richtig: ${esc(question.expected)}` : `Nicht ganz: ${esc(feedback.entered || "—")} → ${esc(question.expected)}`}</h3>
                 ${!feedback.correct ? `<div class="kq-particle-explanation-block"><strong>Warum deine Antwort hier nicht passt</strong><p>${esc(feedback.wrongExplanation)}</p></div>` : ""}
                 <div class="kq-particle-explanation-block"><strong>Warum ${esc(question.expected)} richtig ist</strong><p>${esc(question.why)}</p></div>
                 ${question.breakdown ? `<div class="kq-particle-breakdown"><strong>Aufbau:</strong> ${esc(question.breakdown)}</div>` : ""}
@@ -24135,7 +24128,764 @@
       };
     }
 
-    function injectGrammarPath(html) {
+    function particlePathBootstrap() {
+      if (window.__kotobaParticlePathInstalled) return;
+      window.__kotobaParticlePathInstalled = true;
+    
+      const KEY = typeof STORAGE_KEY !== "undefined" ? STORAGE_KEY : "kotobaQuestDataV3";
+      const VERSION = 1;
+      const STAGES = [
+        { name: "Neu", delay: 0 },
+        { name: "Apprentice 1", delay: 4 * 60 * 60 * 1000 },
+        { name: "Apprentice 2", delay: 8 * 60 * 60 * 1000 },
+        { name: "Apprentice 3", delay: 24 * 60 * 60 * 1000 },
+        { name: "Apprentice 4", delay: 2 * 24 * 60 * 60 * 1000 },
+        { name: "Guru 1", delay: 7 * 24 * 60 * 60 * 1000 },
+        { name: "Guru 2", delay: 14 * 24 * 60 * 60 * 1000 },
+        { name: "Master", delay: 30 * 24 * 60 * 60 * 1000 },
+        { name: "Erleuchtet", delay: 120 * 24 * 60 * 60 * 1000 },
+        { name: "Abgeschlossen", delay: Infinity }
+      ];
+      const SKILLS = [
+        { id: "function", label: "Funktion verstehen", icon: "💡" },
+        { id: "production", label: "Partikel einsetzen", icon: "✍️" },
+        { id: "contrast", label: "Ähnliche Partikel unterscheiden", icon: "⚖️" }
+      ];
+      const LEVELS = [
+        { id: 1, title: "Thema und Satzkern", subtitle: "は・が・を・の" },
+        { id: 2, title: "Ort, Ziel und Begleitung", subtitle: "に・で・へ・と" },
+        { id: 3, title: "Ausgangspunkt, Grenze und Aufzählung", subtitle: "から・まで・も・や" },
+        { id: 4, title: "Begrenzung und Hervorhebung", subtitle: "だけ・しか・でも・か" },
+        { id: 5, title: "Kontrastierte Beziehungen", subtitle: "には・では・とは・へは" },
+        { id: 6, title: "Ergänzung, Frist und Nomenverbindung", subtitle: "にも・からも・までに・での" },
+        { id: 7, title: "Richtung, Quelle und Bezug", subtitle: "への・からの・について・にとって" },
+        { id: 8, title: "Formelle Beziehungen und Rollen", subtitle: "によって・に基づいて・に対して・として" }
+      ];
+    
+      const R = (surface, reading = "") => [surface, reading];
+      const E = (before, after, de, note = "") => ({ before, after, de, note });
+      const P = (id, level, particle, title, summary, formation, functions, contrast, examples, options = {}) => ({
+        id, level, particle, title, summary, formation, functions, contrast, examples,
+        breakdown: options.breakdown || "",
+        accepted: options.accepted || [particle],
+        distractors: options.distractors || [],
+        wrong: options.wrong || {},
+        mistake: options.mistake || ""
+      });
+    
+      const POINTS = [
+        P("wa-topic", 1, "は", "は – Thema und Kontrast",
+          "は sagt, worüber der folgende Satz eine Aussage macht. Es markiert nicht automatisch das grammatische Subjekt.",
+          "Nomen + は",
+          ["Thema eines Satzes", "Kontrast zu einer anderen Möglichkeit", "bereits bekannter Gesprächsgegenstand"],
+          "が hebt häufig neue oder identifizierende Information hervor; は setzt einen Rahmen, über den gesprochen wird.",
+          [
+            E([R("私", "わたし")], [R("学生", "がくせい"), R("です")], "Ich bin Studentin."),
+            E([R("この", ""), R("本", "ほん")], [R("読みました", "よみました"), R("が"), R("、"), R("その", ""), R("本", "ほん"), R("は"), R("まだ", ""), R("です")], "Dieses Buch habe ich gelesen, jenes aber noch nicht.")
+          ],
+          { distractors: ["が", "を", "も"], wrong: { "が": "が würde 私 als neu identifizierte Person hervorheben. Hier wird 私 lediglich als Thema gesetzt.", "も": "も würde ‚auch ich‘ bedeuten; dafür fehlt ein vorheriger vergleichbarer Fall." } }),
+        P("ga-subject", 1, "が", "が – Subjekt, neue Information und Fokus",
+          "が markiert das Subjekt besonders dann, wenn es neu eingeführt, identifiziert oder als Antwort auf ‚wer/was?‘ fokussiert wird.",
+          "Nomen + が",
+          ["neue Information", "Identifikation als Antwort auf 誰・何", "Subjekt in Existenz- und Fähigkeitssätzen"],
+          "は macht ein Thema; が sagt oft, welches konkrete Element die Aussage erfüllt.",
+          [
+            E([R("部屋", "へや"), R("に"), R("猫", "ねこ")], [R("います")], "Im Zimmer ist eine Katze."),
+            E([R("誰", "だれ")], [R("来ました", "きました"), R("か")], "Wer ist gekommen?")
+          ],
+          { distractors: ["は", "を", "に"], wrong: { "は": "は würde Katze bzw. ‚wer‘ als bereits gesetztes Thema behandeln. Hier wird die Information erst identifiziert.", "を": "を markiert ein direktes Objekt, nicht die Person oder Sache, die existiert bzw. handelt." } }),
+        P("o-object", 1, "を", "を – direktes Objekt und durchquerter Weg",
+          "を markiert meist das direkte Objekt einer Handlung. Bei Bewegungsverben kann es auch den Ort oder Weg markieren, den man verlässt oder durchquert.",
+          "Nomen + を + transitives Verb",
+          ["direktes Objekt", "durchquerter Weg", "verlassener Ort bei 出る・離れる"],
+          "で markiert den Ort, an dem eine Handlung stattfindet; を markiert, worauf die Handlung zielt.",
+          [
+            E([R("毎晩", "まいばん"), R("本", "ほん")], [R("読みます", "よみます")], "Ich lese jeden Abend ein Buch."),
+            E([R("七時", "しちじ"), R("に"), R("家", "いえ")], [R("出ます", "でます")], "Ich verlasse um sieben Uhr das Haus.")
+          ],
+          { distractors: ["が", "で", "に"], wrong: { "で": "で würde den Handlungsort markieren. Das Buch ist jedoch das Objekt des Lesens und das Haus der verlassene Ort.", "が": "が würde das Buch bzw. Haus zum Subjekt machen." } }),
+        P("no-link", 1, "の", "の – Nomen miteinander verbinden",
+          "の verbindet zwei Nomen. Das erste Nomen bestimmt das zweite näher: Besitz, Zugehörigkeit, Inhalt, Ort, Art oder Material.",
+          "Nomen A + の + Nomen B",
+          ["Besitz und Zugehörigkeit", "Art oder Inhalt", "Orts- oder Zeitbezug eines Nomens"],
+          "の verbindet Nomen; ein Verb oder i-Adjektiv kann ein Nomen ohne の direkt näher bestimmen.",
+          [
+            E([R("姉", "あね")], [R("傘", "かさ"), R("です")], "Es ist der Regenschirm meiner älteren Schwester."),
+            E([R("日本語", "にほんご")], [R("先生", "せんせい"), R("に"), R("質問", "しつもん"), R("しました")], "Ich stellte der Japanischlehrkraft eine Frage.")
+          ],
+          { distractors: ["と", "で", "に"], wrong: { "と": "と würde die Nomen aufzählen oder einen Partner markieren; hier bestimmt das erste Nomen das zweite näher." } }),
+    
+        P("ni-target", 2, "に", "に – Ziel, Zeitpunkt und Existenzort",
+          "に markiert einen punktuellen Zielpunkt: wohin jemand geht, wann etwas geschieht, wo etwas existiert oder zu welchem Zustand etwas wird.",
+          "Ziel/Zeit/Existenzort + に",
+          ["Bewegungsziel", "genauer Zeitpunkt", "Existenzort mit ある・いる", "Empfänger", "Ergebnis einer Veränderung"],
+          "で markiert einen Handlungsort oder ein Mittel; に markiert einen Ziel- oder Bezugspunkt.",
+          [
+            E([R("九時", "くじ")], [R("学校", "がっこう"), R("に"), R("行きます", "いきます")], "Um neun Uhr gehe ich zur Schule."),
+            E([R("机", "つくえ"), R("の"), R("上", "うえ")], [R("本", "ほん"), R("が"), R("あります")], "Auf dem Tisch liegt ein Buch.")
+          ],
+          { distractors: ["で", "へ", "を"], wrong: { "で": "で würde dort eine Handlung stattfinden lassen. Hier ist es der Ziel- bzw. Existenzpunkt.", "へ": "へ kann eine Bewegungsrichtung markieren, aber keinen Zeitpunkt oder Existenzort." } }),
+        P("de-action", 2, "で", "で – Handlungsort, Mittel und Ursache",
+          "で markiert den Rahmen, innerhalb dessen eine Handlung geschieht, sowie Mittel, Material oder unmittelbare Ursache.",
+          "Ort/Mittel/Ursache + で + Handlung",
+          ["Handlungsort", "Verkehrsmittel oder Werkzeug", "Material", "unmittelbare Ursache", "Rahmen einer Aussage"],
+          "に zeigt, dass etwas an einem Ort existiert; で zeigt, dass dort aktiv etwas geschieht.",
+          [
+            E([R("図書館", "としょかん")], [R("勉強します", "べんきょうします")], "Ich lerne in der Bibliothek."),
+            E([R("電車", "でんしゃ")], [R("会社", "かいしゃ"), R("に"), R("行きます", "いきます")], "Ich fahre mit dem Zug zur Firma.")
+          ],
+          { distractors: ["に", "を", "へ"], wrong: { "に": "に würde den Ort als Ziel oder Existenzpunkt markieren. Lernen ist eine aktive Handlung, die dort stattfindet.", "を": "を markiert Objekt oder Weg, nicht das benutzte Verkehrsmittel." } }),
+        P("e-direction", 2, "へ", "へ – Bewegungsrichtung",
+          "へ richtet den Blick auf die Richtung einer Bewegung. Das genaue Erreichen des Ziels steht weniger im Vordergrund als bei に.",
+          "Richtung + へ + Bewegungsverb",
+          ["Richtung einer Bewegung", "Adressat in formellen Wendungen wie 皆様へ"],
+          "に kann ein konkretes Ziel markieren; へ betont die Richtung. Bei vielen Bewegungsverben sind beide natürlich, aber nicht in allen Funktionen von に.",
+          [
+            E([R("来月", "らいげつ"), R("日本", "にほん")], [R("行きます", "いきます")], "Nächsten Monat fahre ich nach Japan."),
+            E([R("駅", "えき")], [R("歩いて", "あるいて"), R("います")], "Ich gehe in Richtung Bahnhof.")
+          ],
+          { distractors: ["に", "で", "を"], accepted: ["へ", "に"], wrong: { "で": "で würde den Bahnhof als Handlungsort behandeln, nicht als Bewegungsrichtung." }, mistake: "Bei reinen Bewegungszielen sind に und へ oft beide möglich. In der Lektion wird へ als Richtungsmarker geübt." }),
+        P("to-partner", 2, "と", "と – Partner, Zitat und vollständige Aufzählung",
+          "と verbindet gleichrangige Nomen vollständig, markiert einen gemeinsamen Handlungspartner oder schließt ein Zitat ab.",
+          "Partner + と / A と B / Zitat + と",
+          ["gemeinsamer Handlungspartner", "vollständige Aufzählung", "Zitat oder Gedanke"],
+          "や nennt nur Beispiele; と stellt eine vollständige Liste dar. に会う markiert die Person als Ziel des Treffens, と会う betont das gegenseitige Treffen.",
+          [
+            E([R("友達", "ともだち")], [R("映画", "えいが"), R("を"), R("見ました", "みました")], "Ich habe mit einer Freundin einen Film gesehen."),
+            E([R("パン", "")], [R("卵", "たまご"), R("を"), R("買いました", "かいました")], "Ich kaufte Brot und Eier.")
+          ],
+          { distractors: ["に", "や", "も"], wrong: { "や": "や würde nur Beispiele nennen und weitere Elemente offenlassen. Hier ist die Liste vollständig.", "に": "に kann bei Treffen die Zielperson markieren, aber nicht eine vollständige Nomenliste oder ein Zitat." } }),
+    
+        P("kara-source", 3, "から", "から – Ausgangspunkt und Ursache",
+          "から markiert, wo oder wann etwas beginnt, von wem etwas kommt oder aus welchem Grund etwas geschieht.",
+          "Ausgangspunkt/Quelle/Ursache + から",
+          ["räumlicher oder zeitlicher Ausgangspunkt", "Quelle oder Absender", "Grund vor einem Folgesatz"],
+          "まで markiert den Endpunkt; から den Anfang. ので wirkt als Ursache häufig sachlicher und weicher.",
+          [
+            E([R("授業", "じゅぎょう"), R("は"), R("九時", "くじ")], [R("始まります", "はじまります")], "Der Unterricht beginnt um neun Uhr."),
+            E([R("母", "はは")], [R("手紙", "てがみ"), R("が"), R("来ました", "きました")], "Von meiner Mutter kam ein Brief.")
+          ],
+          { distractors: ["まで", "に", "で"], wrong: { "まで": "まで bezeichnet einen Endpunkt. Der Satz braucht hier den Beginn bzw. die Quelle." } }),
+        P("made-limit", 3, "まで", "まで – Endpunkt und Reichweite",
+          "まで markiert den Endpunkt einer Strecke, Zeitspanne oder Reichweite. Die Handlung kann bis zu diesem Punkt andauern.",
+          "Endpunkt + まで",
+          ["räumlicher Endpunkt", "zeitliches Ende einer andauernden Handlung", "äußerste Reichweite: sogar bis"],
+          "までに ist eine Frist: Etwas muss spätestens bis dahin abgeschlossen sein. まで beschreibt das Andauern bis zum Endpunkt.",
+          [
+            E([R("駅", "えき")], [R("歩きました", "あるきました")], "Ich ging bis zum Bahnhof."),
+            E([R("五時", "ごじ")], [R("働きます", "はたらきます")], "Ich arbeite bis fünf Uhr.")
+          ],
+          { distractors: ["までに", "から", "に"], wrong: { "までに": "までに wäre eine Frist, bis zu der etwas abgeschlossen sein muss. Hier dauert die Bewegung bzw. Arbeit bis zum Endpunkt an." } }),
+        P("mo-addition", 3, "も", "も – auch, ebenfalls und sogar",
+          "も ersetzt häufig は・が・を und fügt einen weiteren gleichartigen Fall hinzu. Je nach Kontext kann es auch ‚sogar‘ bedeuten.",
+          "Nomen + も",
+          ["auch und ebenfalls", "sogar", "mit Fragewort + Verneinung: niemand/nichts"],
+          "は setzt ein Thema oder einen Kontrast; も sagt ausdrücklich, dass die gleiche Aussage zusätzlich gilt.",
+          [
+            E([R("兄", "あに"), R("は"), R("東京", "とうきょう"), R("に"), R("住んで", "すんで"), R("います"), R("。"), R("姉", "あね")], [R("東京", "とうきょう"), R("に"), R("住んで", "すんで"), R("います")], "Mein Bruder lebt in Tokio. Meine Schwester ebenfalls."),
+            E([R("忙しくて", "いそがしくて"), R("昼ご飯", "ひるごはん")], [R("食べませんでした", "たべませんでした")], "Ich war so beschäftigt, dass ich nicht einmal Mittag gegessen habe.")
+          ],
+          { distractors: ["は", "が", "だけ"], wrong: { "は": "は würde nur ein neues Thema bzw. einen Kontrast setzen. Das ausdrückliche ‚ebenfalls/sogar‘ braucht も." } }),
+        P("ya-examples", 3, "や", "や – unvollständige Aufzählung",
+          "や verbindet beispielhaft genannte Nomen und signalisiert, dass noch weitere Dinge derselben Art existieren. Häufig folgt など.",
+          "A や B（など）",
+          ["beispielhafte, unvollständige Aufzählung", "typische Vertreter einer Gruppe"],
+          "と listet vollständig auf; や lässt weitere, nicht genannte Elemente offen.",
+          [
+            E([R("旅行", "りょこう"), R("の"), R("ため", ""), R("に"), R("服", "ふく")], [R("薬", "くすり"), R("など", ""), R("を"), R("準備しました", "じゅんびしました")], "Für die Reise habe ich unter anderem Kleidung und Medikamente vorbereitet."),
+            E([R("机", "つくえ"), R("の"), R("上", "うえ"), R("に"), R("本", "ほん")], [R("ノート", ""), R("が"), R("あります")], "Auf dem Tisch liegen Bücher, Hefte und Ähnliches.")
+          ],
+          { distractors: ["と", "も", "の"], wrong: { "と": "と würde die Liste als vollständig behandeln. など bzw. der Kontext zeigt, dass nur Beispiele genannt werden." } }),
+    
+        P("dake-only", 4, "だけ", "だけ – neutrale Begrenzung auf ‚nur‘",
+          "だけ begrenzt eine Aussage neutral auf ein Element oder eine Menge. Das Prädikat bleibt normalerweise bejaht.",
+          "Nomen/Verb/Adjektiv + だけ",
+          ["nur und ausschließlich", "so viel/wie möglich in Mustern wie できるだけ"],
+          "しか drückt ebenfalls ‚nur‘ aus, verlangt aber zwingend eine verneinte Verbform.",
+          [
+            E([R("今日", "きょう"), R("は"), R("水", "みず")], [R("飲みました", "のみました")], "Heute habe ich nur Wasser getrunken."),
+            E([R("必要な", "ひつような"), R("物", "もの")], [R("買って", "かって"), R("ください")], "Bitte kaufen Sie nur die notwendigen Dinge.")
+          ],
+          { distractors: ["しか", "も", "でも"], wrong: { "しか": "しか verlangt eine negative Form wie 飲みませんでした. Der gegebene Satz ist bejaht." } }),
+        P("shika-negative", 4, "しか", "しか〜ない – nur und nichts außer",
+          "しか grenzt stark auf ein Element ein und verbindet sich immer mit einer verneinten Form, obwohl die Gesamtbedeutung deutsch ‚nur‘ ist.",
+          "Nomen + しか + negative Form",
+          ["nur; nichts außer", "geringe, als unzureichend empfundene Menge"],
+          "だけ funktioniert auch mit bejahten Sätzen und wirkt neutraler. しか trägt oft die Nuance ‚nicht mehr als‘.",
+          [
+            E([R("この", ""), R("店", "みせ"), R("に"), R("は"), R("一つ", "ひとつ")], [R("残って", "のこって"), R("いません")], "In diesem Geschäft ist nur noch eines übrig."),
+            E([R("日本語", "にほんご"), R("を"), R("少し", "すこし")], [R("話せません", "はなせません")], "Ich kann nur ein wenig Japanisch sprechen.")
+          ],
+          { distractors: ["だけ", "も", "まで"], wrong: { "だけ": "だけ wäre möglich, aber dann müsste die Aussage normalerweise bejaht formuliert werden. Die vorhandene Verneinung gehört zur しか-Konstruktion." } }),
+        P("demo-even", 4, "でも", "でも – selbst, sogar oder beispielsweise",
+          "でも kann an einem Nomen zeigen, dass die Aussage selbst für einen unerwarteten Fall gilt. In Vorschlägen bedeutet es oft ‚zum Beispiel‘.",
+          "Nomen + でも",
+          ["selbst/sogar bei einem unerwarteten Fall", "zum Beispiel in Vorschlägen", "beliebige Wahl mit Fragewort: 何でも"],
+          "で markiert nur Ort oder Mittel. でも fügt die Bedeutung ‚selbst/auch nur beispielsweise‘ hinzu.",
+          [
+            E([R("雨", "あめ"), R("の"), R("日", "ひ")], [R("毎朝", "まいあさ"), R("走ります", "はしります")], "Selbst an Regentagen laufe ich jeden Morgen."),
+            E([R("休憩", "きゅうけい"), R("に"), R("お茶", "おちゃ")], [R("飲みません", "のみません"), R("か")], "Wollen wir in der Pause zum Beispiel Tee trinken?")
+          ],
+          { distractors: ["で", "も", "だけ"], wrong: { "で": "で würde nur einen Rahmen oder ein Mittel markieren. Die unerwartete bzw. beispielhafte Nuance kommt von も." } }),
+        P("ka-question", 4, "か", "か – Frage und Alternative",
+          "か macht einen Satz zur Frage oder verbindet Alternativen. In eingebetteten Fragen steht es innerhalb eines größeren Satzes.",
+          "Satz + か / A か B",
+          ["direkte Frage", "eingebettete Frage", "Alternative A oder B"],
+          "ね bittet um Zustimmung, よ vermittelt neue Information. Nur か markiert die eigentliche Frage oder Alternative.",
+          [
+            E([R("明日", "あした"), R("来ます", "きます")], [R("。")], "Kommen Sie morgen?"),
+            E([R("電車", "でんしゃ")], [R("バス", ""), R("で"), R("行きます", "いきます")], "Fahren Sie mit dem Zug oder mit dem Bus?")
+          ],
+          { distractors: ["ね", "よ", "も"], wrong: { "ね": "ね sucht Zustimmung zu einer Annahme. Der Satz verlangt eine offene Frage bzw. Alternative.", "よ": "よ informiert oder betont; es bildet keine neutrale Frage." } }),
+    
+        P("niwa-contrast", 5, "には", "には – に-Beziehung kontrastieren",
+          "には besteht aus に und は. に markiert Ziel, Zeit oder Existenzort; は hebt genau diese Beziehung als Thema oder Kontrast hervor.",
+          "Nomen + に + は",
+          ["kontrastierter Existenzort", "hervorgehobenes Ziel oder Bezugselement", "‚was X betrifft, dort/zu X‘"],
+          "に allein markiert die Grundbeziehung. は wird ergänzt, wenn diese Beziehung hervorgehoben oder einem anderen Fall gegenübergestellt wird.",
+          [
+            E([R("ほか", ""), R("の"), R("部屋", "へや"), R("は"), R("暗い", "くらい"), R("です"), R("が"), R("、"), R("この", ""), R("部屋", "へや")], [R("窓", "まど"), R("が"), R("二つ", "ふたつ"), R("あります")], "Die anderen Zimmer sind dunkel, aber dieses Zimmer hat zwei Fenster."),
+            E([R("私", "わたし")], [R("その", ""), R("説明", "せつめい"), R("が"), R("難しい", "むずかしい"), R("です")], "Für mich ist diese Erklärung schwierig.")
+          ],
+          { breakdown: "に（Ziel/Bezug/Existenzort）＋ は（Thema oder Kontrast）", distractors: ["に", "では", "にも"], wrong: { "に": "に markiert die Beziehung korrekt, aber lässt die im Kontext nötige Hervorhebung bzw. den Kontrast unmarkiert.", "では": "で wäre ein Handlungsrahmen. Hier beruht die Grundbeziehung auf に." } }),
+        P("dewa-contrast", 5, "では", "では – で-Rahmen kontrastieren",
+          "では verbindet den Handlungs- oder Geltungsrahmen で mit dem kontrastierenden Thema は.",
+          "Nomen + で + は",
+          ["kontrastierter Handlungsort", "gesellschaftlicher oder thematischer Rahmen", "in der Form ではない auch Verneinung"],
+          "には basiert auf einer に-Beziehung; では auf Ort, Mittel oder Rahmen mit で.",
+          [
+            E([R("ドイツ", ""), R("では"), R("九月", "くがつ"), R("に"), R("新学期", "しんがっき"), R("が"), R("始まります", "はじまります"), R("が"), R("、"), R("日本", "にほん")], [R("四月", "しがつ"), R("に"), R("始まります", "はじまります")], "In Deutschland beginnt das Schuljahr im September, in Japan dagegen im April."),
+            E([R("この", ""), R("店", "みせ")], [R("カード", ""), R("を"), R("使えません", "つかえません")], "In diesem Geschäft kann man dagegen keine Karte benutzen.")
+          ],
+          { breakdown: "で（Ort/Rahmen）＋ は（Kontrast）", distractors: ["で", "には", "でも"], wrong: { "で": "で nennt den Rahmen, aber der Vergleich bzw. Kontrast zu einem anderen Rahmen braucht zusätzlich は.", "には": "に wäre Ziel oder Existenzort; hier gilt die Aussage innerhalb eines Handlungs- oder gesellschaftlichen Rahmens." } }),
+        P("towa-contrast", 5, "とは", "とは – と-Beziehung hervorheben",
+          "とは verbindet と mit は. Damit kann ein Partner kontrastiert, ein Zitat thematisiert oder ein Begriff definiert werden.",
+          "Nomen/Zitat + と + は",
+          ["kontrastierter Partner", "Definition: Xとは…", "überraschendes Zitat oder Inhalt"],
+          "と allein markiert Partner, Liste oder Zitat. は macht genau diese と-Beziehung zum Thema oder Kontrast.",
+          [
+            E([R("ほか", ""), R("の"), R("人", "ひと"), R("とは"), R("話しました", "はなしました"), R("が"), R("、"), R("田中", "たなか"), R("さん", "")], [R("まだ", ""), R("話して", "はなして"), R("いません")], "Mit den anderen habe ich gesprochen, mit Tanaka aber noch nicht."),
+            E([R("幸せ", "しあわせ")], [R("何", "なん"), R("でしょう", "")], "Was bedeutet eigentlich Glück?")
+          ],
+          { breakdown: "と（Partner/Zitat/Definition）＋ は（Thema/Kontrast）", distractors: ["と", "には", "では"], wrong: { "と": "と markiert die Grundbeziehung, aber ohne は fehlt die ausdrücklich thematisierende oder kontrastierende Funktion." } }),
+        P("hewa-contrast", 5, "へは", "へは – eine Richtung kontrastieren",
+          "へは verbindet die Bewegungsrichtung へ mit は. Ein Ziel oder eine Richtung wird einem anderen Ziel gegenübergestellt.",
+          "Richtung + へ + は",
+          ["kontrastierte Bewegungsrichtung", "hervorgehobener Adressat"],
+          "へ allein nennt nur die Richtung. へは signalisiert: Für diese Richtung gilt etwas Besonderes oder anderes.",
+          [
+            E([R("東京", "とうきょう"), R("へは"), R("新幹線", "しんかんせん"), R("で"), R("行きます", "いきます"), R("が"), R("、"), R("大阪", "おおさか")], [R("飛行機", "ひこうき"), R("で"), R("行きます", "いきます")], "Nach Tokio fahre ich mit dem Shinkansen, nach Osaka dagegen fliege ich."),
+            E([R("海外", "かいがい")], [R("まだ", ""), R("行った", "いった"), R("こと", ""), R("が"), R("ありません")], "Ins Ausland bin ich dagegen noch nie gereist.")
+          ],
+          { breakdown: "へ（Richtung）＋ は（Kontrast）", distractors: ["へ", "には", "でも"], wrong: { "へ": "へ markiert die Richtung, aber der Gegensatz zu einem anderen Ziel wird erst durch は sichtbar." } }),
+    
+        P("nimo-addition", 6, "にも", "にも – auch an/zu/in",
+          "にも verbindet eine に-Beziehung mit も. Ein weiterer Ziel-, Zeit- oder Bezugspunkt wird als ebenfalls zutreffend hinzugefügt.",
+          "Nomen + に + も",
+          ["auch an einem weiteren Ort oder Zeitpunkt", "auch für eine weitere Person", "sogar zu/an"],
+          "に markiert nur die Beziehung; にも fügt den Sinn ‚auch/sogar‘ hinzu.",
+          [
+            E([R("平日", "へいじつ"), R("だけ", ""), R("で"), R("なく"), R("、"), R("休日", "きゅうじつ")], [R("六時", "ろくじ"), R("に"), R("起きます", "おきます")], "Nicht nur werktags, sondern auch an freien Tagen stehe ich um sechs Uhr auf."),
+            E([R("先生", "せんせい")], [R("同じ", "おなじ"), R("質問", "しつもん"), R("を"), R("しました")], "Auch der Lehrkraft stellte ich dieselbe Frage.")
+          ],
+          { breakdown: "に（Ziel/Zeit/Bezug）＋ も（auch）", distractors: ["に", "には", "でも"], wrong: { "に": "に markiert den Bezug, aber das im Kontext geforderte ‚auch‘ fehlt." } }),
+        P("karamo-addition", 6, "からも", "からも – auch von/aus",
+          "からも verbindet eine Quelle oder einen Ausgangspunkt mit も und fügt eine weitere Quelle hinzu.",
+          "Quelle + から + も",
+          ["auch von einer weiteren Person", "auch aus einem weiteren Ort", "sogar ab einem Zeitpunkt"],
+          "から nennt nur die Quelle. からも sagt ausdrücklich, dass dieselbe Aussage zusätzlich für diese Quelle gilt.",
+          [
+            E([R("母", "はは"), R("から"), R("だけ", ""), R("で"), R("なく"), R("、"), R("父", "ちち")], [R("手紙", "てがみ"), R("が"), R("来ました", "きました")], "Nicht nur von meiner Mutter, sondern auch von meinem Vater kam ein Brief."),
+            E([R("海外", "かいがい")], [R("注文", "ちゅうもん"), R("が"), R("入って", "はいって"), R("います")], "Auch aus dem Ausland gehen Bestellungen ein.")
+          ],
+          { breakdown: "から（Quelle/Ausgangspunkt）＋ も（auch）", distractors: ["から", "にも", "まで"], wrong: { "から": "から markiert die Quelle, drückt aber den zusätzlichen Fall ‚auch‘ nicht aus." } }),
+        P("madeni-deadline", 6, "までに", "までに – Frist und Abschlusszeitpunkt",
+          "までに gibt eine Frist an: Eine Handlung muss spätestens vor oder an diesem Zeitpunkt abgeschlossen sein.",
+          "Frist + までに + punktuelle/abschließbare Handlung",
+          ["spätester Abschlusszeitpunkt", "Deadline"],
+          "まで beschreibt eine Handlung, die bis zum Endpunkt andauert. までに verlangt, dass sie bis dahin fertig ist.",
+          [
+            E([R("明日", "あした")], [R("レポート", ""), R("を"), R("出して", "だして"), R("ください")], "Bitte reichen Sie den Bericht bis spätestens morgen ein."),
+            E([R("会議", "かいぎ"), R("が"), R("始まる", "はじまる")], [R("資料", "しりょう"), R("を"), R("読んで", "よんで"), R("おきます")], "Ich lese die Unterlagen, bevor die Besprechung beginnt.")
+          ],
+          { breakdown: "まで（Endpunkt）＋ に（punktuelle Frist）", distractors: ["まで", "から", "に"], wrong: { "まで": "まで würde bedeuten, dass die Handlung selbst bis zum genannten Zeitpunkt andauert. Hier muss sie dann bereits abgeschlossen sein." } }),
+        P("deno-link", 6, "での", "での – eine で-Beziehung vor einem Nomen",
+          "での macht aus einer で-Phrase eine nähere Bestimmung für ein folgendes Nomen. Der Ort oder Rahmen gehört dadurch zum Nomen.",
+          "Ort/Rahmen + で + の + Nomen",
+          ["Handlungsort eines folgenden Nomens", "Rahmen oder Mittel als Nomenbestimmung"],
+          "で kann nicht allein direkt vor einem Nomen stehen. の verbindet die gesamte で-Beziehung mit dem Nomen.",
+          [
+            E([R("学校", "がっこう")], [R("経験", "けいけん"), R("を"), R("作文", "さくぶん"), R("に"), R("書きました", "かきました")], "Ich schrieb in einem Aufsatz über meine Erfahrungen in der Schule."),
+            E([R("オンライン", "")], [R("会議", "かいぎ"), R("は"), R("便利", "べんり"), R("です")], "Besprechungen online sind praktisch.")
+          ],
+          { breakdown: "で（Ort/Rahmen）＋ の（Nomenverbindung）", distractors: ["で", "にの", "への"], wrong: { "で": "Direkt vor dem Nomen braucht die で-Phrase das verbindende の." } }),
+    
+        P("heno-link", 7, "への", "への – Richtung als Nomenbestimmung",
+          "への verbindet eine Richtung oder einen Adressaten mit einem folgenden Nomen.",
+          "Richtung/Adressat + へ + の + Nomen",
+          ["Reise oder Bewegung zu einem Ziel", "Gefühl, Nachricht oder Haltung an jemanden"],
+          "へ allein steht vor einem Bewegungsverb; vor einem Nomen wird die Richtungsphrase mit の verbunden.",
+          [
+            E([R("日本", "にほん")], [R("旅行", "りょこう"), R("を"), R("計画して", "けいかくして"), R("います")], "Ich plane eine Reise nach Japan."),
+            E([R("家族", "かぞく")], [R("手紙", "てがみ"), R("を"), R("書きました", "かきました")], "Ich schrieb einen Brief an meine Familie.")
+          ],
+          { breakdown: "へ（Richtung/Adressat）＋ の（Nomenverbindung）", distractors: ["へ", "での", "からの"], wrong: { "へ": "Vor dem folgenden Nomen braucht die Richtungsphrase das verbindende の." } }),
+        P("karano-link", 7, "からの", "からの – Quelle als Nomenbestimmung",
+          "からの verbindet eine Quelle oder einen Ausgangspunkt mit einem folgenden Nomen.",
+          "Quelle + から + の + Nomen",
+          ["Nachricht oder Geschenk von jemandem", "Blick oder Weg von einem Ausgangspunkt aus"],
+          "から allein steht vor einem Verb oder Satzende; vor einem Nomen verbindet の die Quellenbeziehung.",
+          [
+            E([R("先生", "せんせい")], [R("助言", "じょげん"), R("が"), R("役に立ちました", "やくにたちました")], "Der Rat der Lehrkraft war hilfreich."),
+            E([R("駅", "えき")], [R("道", "みち"), R("を"), R("説明しました", "せつめいしました")], "Ich erklärte den Weg vom Bahnhof aus.")
+          ],
+          { breakdown: "から（Quelle/Ausgangspunkt）＋ の（Nomenverbindung）", distractors: ["から", "への", "での"], wrong: { "から": "Vor dem folgenden Nomen braucht die Quellenphrase das verbindende の." } }),
+        P("nitsuite-topic", 7, "について", "について – über, bezüglich",
+          "について markiert das Thema, über das gesprochen, gedacht, geschrieben oder untersucht wird.",
+          "Nomen + について（の + Nomen）",
+          ["Thema einer Erklärung, Untersuchung oder Diskussion", "bezüglich einer Sache"],
+          "は setzt ein allgemeines Satzthema. について benennt ausdrücklich den inhaltlichen Gegenstand einer Handlung.",
+          [
+            E([R("日本", "にほん"), R("の"), R("教育", "きょういく")], [R("研究して", "けんきゅうして"), R("います")], "Ich forsche über das japanische Bildungssystem."),
+            E([R("この", ""), R("問題", "もんだい")], [R("先生", "せんせい"), R("に"), R("聞きました", "ききました")], "Ich fragte die Lehrkraft nach diesem Problem.")
+          ],
+          { distractors: ["にとって", "によって", "には"], wrong: { "にとって": "にとって markiert eine Perspektive oder Bewertung, nicht den Inhalt einer Untersuchung oder Frage.", "によって": "によって markiert Ursache, Mittel oder Urheber, nicht das besprochene Thema." } }),
+        P("nitotte-perspective", 7, "にとって", "にとって – aus der Sicht von",
+          "にとって markiert die Person oder Gruppe, aus deren Perspektive etwas bewertet, wichtig, schwierig oder vorteilhaft ist.",
+          "Person/Gruppe + にとって",
+          ["Perspektive einer Bewertung", "Bedeutung oder Nutzen für jemanden"],
+          "について markiert ein Thema; にとって markiert den Bewertungsstandpunkt.",
+          [
+            E([R("子供", "こども")], [R("遊ぶ", "あそぶ"), R("時間", "じかん"), R("は"), R("大切", "たいせつ"), R("です")], "Für Kinder ist Zeit zum Spielen wichtig."),
+            E([R("私", "わたし")], [R("この", ""), R("試験", "しけん"), R("は"), R("難しかった", "むずかしかった"), R("です")], "Für mich war diese Prüfung schwierig.")
+          ],
+          { distractors: ["について", "には", "によって"], wrong: { "について": "について würde die Person zum Gesprächsthema machen. Hier ist sie der Standpunkt der Bewertung.", "には": "には kann einen Bezug hervorheben, drückt aber nicht so eindeutig die Perspektive einer Bewertung aus." } }),
+    
+        P("niyotte-means", 8, "によって", "によって – Ursache, Mittel und Urheber",
+          "によって hat mehrere formelle Funktionen: Ursache, Methode/Mittel, Unterschiede je nach Faktor und Urheber in Passivsätzen.",
+          "Nomen + によって",
+          ["Ursache", "Mittel oder Methode", "Urheber einer passiven Handlung", "Variation je nach Faktor"],
+          "で kann alltägliche Mittel und Ursachen markieren. によって wirkt formeller und zeigt häufig eine systematische Beziehung.",
+          [
+            E([R("大雨", "おおあめ")], [R("電車", "でんしゃ"), R("が"), R("止まりました", "とまりました")], "Wegen des starken Regens hielten die Züge an."),
+            E([R("この", ""), R("小説", "しょうせつ"), R("は"), R("有名な", "ゆうめいな"), R("作家", "さっか")], [R("書かれました", "かかれました")], "Dieser Roman wurde von einer berühmten Autorin geschrieben.")
+          ],
+          { distractors: ["について", "にとって", "に基づいて"], wrong: { "について": "について würde Regen bzw. Autorin nur zum Gesprächsthema machen.", "にとって": "にとって markiert eine Perspektive, keine Ursache oder Urheberschaft." } }),
+        P("nimotozuite-basis", 8, "に基づいて", "に基づいて – auf Grundlage von",
+          "に基づいて sagt, dass eine Entscheidung, Handlung oder Aussage auf Regeln, Daten, Beweisen oder einem Plan beruht.",
+          "Grundlage + に基づいて / に基づく + Nomen",
+          ["Grundlage einer Entscheidung", "Orientierung an Daten, Regeln oder Beweisen"],
+          "によって markiert Mittel oder Ursache. に基づいて betont ausdrücklich die Basis, an der man sich orientiert.",
+          [
+            E([R("データ", "")], [R("結果", "けっか"), R("を"), R("分析しました", "ぶんせきしました")], "Wir analysierten die Ergebnisse auf Grundlage der Daten."),
+            E([R("法律", "ほうりつ")], [R("判断", "はんだん"), R("しなければ", ""), R("なりません")], "Man muss auf Grundlage des Gesetzes entscheiden.")
+          ],
+          { distractors: ["によって", "について", "に対して"], wrong: { "によって": "によって könnte ein Mittel nennen, aber nicht so präzise die verbindliche Grundlage, an der sich die Entscheidung orientiert." } }),
+        P("nitaishite-target", 8, "に対して", "に対して – gegenüber und im Gegensatz zu",
+          "に対して markiert das Ziel einer Haltung oder Handlung und kann zwei Sachverhalte einander gegenüberstellen.",
+          "Person/Sache + に対して（の + Nomen）",
+          ["Ziel einer Haltung oder Reaktion", "gegenüber jemandem", "Kontrast zwischen zwei Sachverhalten"],
+          "に markiert allgemein ein Ziel. に対して betont eine gerichtete Haltung, Reaktion oder Gegenüberstellung.",
+          [
+            E([R("客", "きゃく")], [R("丁寧に", "ていねいに"), R("対応して", "たいおうして"), R("ください")], "Bitte verhalten Sie sich den Kundinnen und Kunden gegenüber höflich."),
+            E([R("兄", "あに"), R("は"), R("社交的", "しゃこうてき"), R("なの", ""), R("に"), R("、"), R("弟", "おとうと")], [R("静か", "しずか"), R("です")], "Während der ältere Bruder gesellig ist, ist der jüngere dagegen ruhig.")
+          ],
+          { distractors: ["について", "にとって", "によって"], wrong: { "について": "について macht die Person zum Gesprächsthema. Hier richtet sich eine Handlung/Haltung auf sie oder es wird ein Gegensatz aufgebaut.", "にとって": "にとって wäre die Perspektive einer Bewertung, nicht das Gegenüber einer Reaktion." } }),
+        P("toshite-role", 8, "として", "として – in der Rolle oder Eigenschaft als",
+          "として markiert die Rolle, Funktion oder Eigenschaft, in der jemand oder etwas handelt bzw. betrachtet wird.",
+          "Rolle/Funktion + として",
+          ["in der Rolle als", "in der Eigenschaft als", "als Beispiel oder Vertreter"],
+          "になる beschreibt eine Veränderung zu einer Rolle. として beschreibt die Rolle, in der jemand bereits handelt.",
+          [
+            E([R("通訳", "つうやく")], [R("会議", "かいぎ"), R("に"), R("参加しました", "さんかしました")], "Ich nahm als Dolmetscherin an der Besprechung teil."),
+            E([R("京都", "きょうと"), R("は"), R("観光地", "かんこうち")], [R("有名", "ゆうめい"), R("です")], "Kyoto ist als Reiseziel berühmt.")
+          ],
+          { distractors: ["にとって", "について", "によって"], wrong: { "にとって": "にとって würde eine Perspektive markieren. Hier geht es um die Rolle oder Eigenschaft, in der jemand bzw. etwas gilt." } })
+      ];
+    
+      const PARTICLE_RULES = Object.fromEntries(POINTS.map(point => [point.particle, point.summary]));
+      const VOCAB = {
+        "私|わたし":"ich", "学生|がくせい":"Student/in", "本|ほん":"Buch", "部屋|へや":"Zimmer", "猫|ねこ":"Katze",
+        "誰|だれ":"wer", "毎晩|まいばん":"jeden Abend", "家|いえ":"Haus; Zuhause", "姉|あね":"ältere Schwester",
+        "傘|かさ":"Regenschirm", "日本語|にほんご":"Japanisch", "先生|せんせい":"Lehrkraft", "質問|しつもん":"Frage",
+        "学校|がっこう":"Schule", "机|つくえ":"Schreibtisch", "上|うえ":"oben; auf", "図書館|としょかん":"Bibliothek",
+        "電車|でんしゃ":"Zug", "会社|かいしゃ":"Firma", "日本|にほん":"Japan", "駅|えき":"Bahnhof", "友達|ともだち":"Freund/in",
+        "映画|えいが":"Film", "卵|たまご":"Ei", "授業|じゅぎょう":"Unterricht", "母|はは":"Mutter", "手紙|てがみ":"Brief",
+        "五時|ごじ":"fünf Uhr", "兄|あに":"älterer Bruder", "東京|とうきょう":"Tokio", "旅行|りょこう":"Reise",
+        "服|ふく":"Kleidung", "薬|くすり":"Medikament", "水|みず":"Wasser", "店|みせ":"Geschäft", "雨|あめ":"Regen",
+        "日|ひ":"Tag", "休憩|きゅうけい":"Pause", "お茶|おちゃ":"Tee", "明日|あした":"morgen", "窓|まど":"Fenster",
+        "説明|せつめい":"Erklärung", "新学期|しんがっき":"neues Schuljahr", "田中|たなか":"Tanaka", "大阪|おおさか":"Osaka",
+        "飛行機|ひこうき":"Flugzeug", "海外|かいがい":"Ausland", "休日|きゅうじつ":"freier Tag", "平日|へいじつ":"Werktag",
+        "父|ちち":"Vater", "資料|しりょう":"Unterlagen", "会議|かいぎ":"Besprechung", "経験|けいけん":"Erfahrung",
+        "作文|さくぶん":"Aufsatz", "家族|かぞく":"Familie", "助言|じょげん":"Rat", "道|みち":"Weg", "教育|きょういく":"Bildung",
+        "研究|けんきゅう":"Forschung", "問題|もんだい":"Problem", "子供|こども":"Kind", "時間|じかん":"Zeit", "試験|しけん":"Prüfung",
+        "大雨|おおあめ":"starker Regen", "小説|しょうせつ":"Roman", "作家|さっか":"Schriftsteller/in", "結果|けっか":"Ergebnis",
+        "法律|ほうりつ":"Gesetz", "判断|はんだん":"Entscheidung; Beurteilung", "客|きゃく":"Kundschaft; Gast", "弟|おとうと":"jüngerer Bruder",
+        "通訳|つうやく":"Dolmetscher/in", "観光地|かんこうち":"Reiseziel; Sehenswürdigkeit"
+      };
+    
+      let state = normalizeState(sourceData().particlePath);
+      let viewMode = "overview";
+      let activePoint = null;
+      let lessonStep = 0;
+      let lessonFeedback = null;
+      let reviewSession = null;
+      let currentTab = "path";
+      let renderScheduled = false;
+    
+      function esc(value) {
+        try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
+        return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+      }
+      function sourceData() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { return {}; }
+      }
+      function normalizeSkill(raw = {}) {
+        const stage = Math.max(0, Math.min(9, Number(raw.stage || 0)));
+        return { stage, dueAt: raw.dueAt == null ? null : Number(raw.dueAt), correct: Math.max(0, Number(raw.correct || 0)), incorrect: Math.max(0, Number(raw.incorrect || 0)), lastReviewedAt: raw.lastReviewedAt == null ? null : Number(raw.lastReviewedAt) };
+      }
+      function normalizeState(raw = {}) {
+        const points = {};
+        for (const point of POINTS) {
+          const old = raw?.points?.[point.id] || {};
+          points[point.id] = {
+            lessonComplete: Boolean(old.lessonComplete),
+            lessonCompletedAt: old.lessonCompletedAt == null ? null : Number(old.lessonCompletedAt),
+            skills: Object.fromEntries(SKILLS.map(skill => [skill.id, normalizeSkill(old.skills?.[skill.id])]))
+          };
+        }
+        return {
+          version: VERSION,
+          points,
+          stats: { lessons: Math.max(0, Number(raw?.stats?.lessons || 0)), reviews: Math.max(0, Number(raw?.stats?.reviews || 0)), correct: Math.max(0, Number(raw?.stats?.correct || 0)), incorrect: Math.max(0, Number(raw?.stats?.incorrect || 0)), lastStudiedAt: raw?.stats?.lastStudiedAt || null }
+        };
+      }
+      function dateKey(value = Date.now()) {
+        const d = new Date(value); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      }
+      function recordActivity(source) {
+        const activity = source.studyActivity && typeof source.studyActivity === "object" ? source.studyActivity : { days: {}, totalActions: 0, firstActivityAt: null, lastActivityAt: null };
+        activity.days = activity.days && typeof activity.days === "object" ? activity.days : {};
+        const now = Date.now(), key = dateKey(now);
+        activity.days[key] = Math.max(0, Number(activity.days[key] || 0)) + 1;
+        activity.totalActions = Math.max(0, Number(activity.totalActions || 0)) + 1;
+        activity.firstActivityAt ||= now; activity.lastActivityAt = now; source.studyActivity = activity;
+      }
+      function persist({ activity = false } = {}) {
+        const source = sourceData();
+        source.particlePath = state;
+        if (activity) recordActivity(source);
+        try { if (typeof data !== "undefined") { data.particlePath = state; if (activity) data.studyActivity = source.studyActivity; localStorage.setItem(KEY, JSON.stringify(data)); } else localStorage.setItem(KEY, JSON.stringify(source)); }
+        catch (error) { console.error("Particle Path could not be saved", error); }
+        setTimeout(() => { window.KotobaQuestLearningInsights?.refresh?.(); updateDashboardCard(); }, 0);
+      }
+      function notify(message) {
+        try { if (typeof toast === "function") return toast(message); } catch {}
+        console.info(message);
+      }
+      function ruby(surface, reading = "") {
+        const word = String(surface || ""), kana = String(reading || "");
+        if (!word) return "";
+        if (!kana || !/[\u3400-\u9fff]/.test(word)) return esc(word);
+        return `<ruby>${esc(word)}<rt>${esc(kana)}</rt></ruby>`;
+      }
+      function renderParts(parts = []) { return parts.map(([surface, reading]) => ruby(surface, reading)).join(""); }
+      function fullSentence(point, example, { blank = false, highlight = false } = {}) {
+        const particle = blank ? '<span class="kq-pp-blank">＿＿</span>' : highlight ? `<mark>${esc(point.particle)}</mark>` : esc(point.particle);
+        return `${renderParts(example.before)}${particle}${renderParts(example.after)}`;
+      }
+      function plainSentence(point, example) { return `${example.before.map(item=>item[0]).join("")}${point.particle}${example.after.map(item=>item[0]).join("")}`; }
+      function pointState(id) { return state.points[id]; }
+      function stageLabel(stage) { return STAGES[Math.max(0, Math.min(9, Number(stage || 0)))]?.name || "Neu"; }
+      function pointStage(point) {
+        const values = SKILLS.map(skill => Number(pointState(point.id).skills[skill.id].stage || 0));
+        return Math.min(...values);
+      }
+      function isLevelUnlocked(level) {
+        if (level <= 1) return true;
+        return POINTS.filter(point => point.level === level - 1).every(point => pointState(point.id).lessonComplete);
+      }
+      function currentLevel() {
+        return LEVELS.find(level => isLevelUnlocked(level.id) && !POINTS.filter(point=>point.level===level.id).every(point=>pointState(point.id).lessonComplete))?.id || Math.max(...LEVELS.filter(level=>isLevelUnlocked(level.id)).map(level=>level.id));
+      }
+      function dueItems() {
+        const now = Date.now(), result = [];
+        for (const point of POINTS) for (const skill of SKILLS) {
+          const skillState = pointState(point.id).skills[skill.id];
+          if (skillState.stage > 0 && skillState.stage < 9 && Number(skillState.dueAt || 0) <= now) result.push({ point, skill });
+        }
+        return result.sort((a,b)=>Number(pointState(a.point.id).skills[a.skill.id].dueAt||0)-Number(pointState(b.point.id).skills[b.skill.id].dueAt||0));
+      }
+      function nextDueText() {
+        const upcoming = [];
+        for (const point of POINTS) for (const skill of SKILLS) {
+          const s = pointState(point.id).skills[skill.id]; if (s.stage > 0 && s.stage < 9 && s.dueAt != null) upcoming.push(Number(s.dueAt));
+        }
+        if (!upcoming.length) return "Noch keine Partikelreviews geplant";
+        const diff = Math.min(...upcoming) - Date.now();
+        if (diff <= 0) return "Jetzt fällig";
+        const minutes = Math.ceil(diff/60000); if (minutes < 60) return `in ${minutes} Min.`;
+        const hours = Math.ceil(diff/3600000); if (hours < 48) return `in ${hours} Std.`;
+        return `in ${Math.ceil(diff/86400000)} Tagen`;
+      }
+      function vocabEntry(surface, reading) {
+        const norm = value => String(value || "").normalize("NFKC").replace(/[\s・･]/g, "").toLowerCase();
+        const source = sourceData();
+        const all = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        const match = all.find(item => norm(item.word) === norm(surface) && (!reading || !item.reading || norm(item.reading) === norm(reading)));
+        if (match) return match;
+        try {
+          const entries = typeof CORE_PACK !== "undefined" && Array.isArray(CORE_PACK?.entries) ? CORE_PACK.entries : [];
+          const core = entries.find(item => norm(item.word) === norm(surface) && (!reading || !item.reading || norm(item.reading) === norm(reading)));
+          if (core) return { ...core, sourceType: "core", stage: 0 };
+        } catch {}
+        return null;
+      }
+      function knownEntry(surface, reading) {
+        const norm = value => String(value || "").normalize("NFKC").replace(/[\s・･]/g, "").toLowerCase();
+        const known = Array.isArray(sourceData().knownVocabulary) ? sourceData().knownVocabulary : [];
+        return known.find(item => norm(item.word) === norm(surface) && (!reading || !item.reading || norm(item.reading) === norm(reading))) || null;
+      }
+      function meaningFor(surface, reading) {
+        const entry = vocabEntry(surface, reading);
+        if (entry) return Array.isArray(entry.meanings) ? entry.meanings.join(", ") : entry.meaning || entry.productionCue || "";
+        const known = knownEntry(surface, reading); if (known?.meaning) return known.meaning;
+        const key = `${surface}|${reading}`; if (VOCAB[key]) return VOCAB[key];
+        try {
+          const lex = window.KotobaQuestGrammarSupportApi?.getSupportLexicon?.() || [];
+          const found = lex.find(item => item.base === surface && (!reading || item.baseReading === reading));
+          if (found?.meaning) return found.meaning;
+        } catch {}
+        return "";
+      }
+      function exampleWords(example) {
+        const ignored = new Set(["この","その","ほか","まだ","だけ","など","です","ます","いました","あります","います","ください","こと","ため","なく","なの","オンライン","カード","レポート","データ"]);
+        const seen = new Set(), result = [];
+        for (const [surface, reading] of [...example.before, ...example.after]) {
+          if (!reading || !/[\u3400-\u9fff]/.test(surface) || ignored.has(surface)) continue;
+          const key = `${surface}|${reading}`; if (seen.has(key)) continue; seen.add(key);
+          const meaning = meaningFor(surface, reading); if (!meaning) continue;
+          const entry = vocabEntry(surface, reading), known = knownEntry(surface, reading);
+          const stage = Number(entry?.stage || 0);
+          if (known || stage >= 5) continue;
+          result.push({ surface, reading, meaning, entry });
+        }
+        return result.slice(0, 6);
+      }
+      function vocabStatus(word) {
+        const entry = word.entry;
+        if (!entry) return "Nicht in deinen Lernpfaden";
+        if (entry.sourceType === "core" || entry.level) return Number(entry.stage||0)>0 ? `Core-Level ${Number(entry.level||1)} · ${stageLabel(entry.stage)}` : `Core-Level ${Number(entry.level||1)}`;
+        if (entry.sourceType === "mining") return `Mining · ${stageLabel(entry.stage)}`;
+        return stageLabel(entry.stage);
+      }
+      function renderVocabHelp(point, example) {
+        const words = exampleWords(example); if (!words.length) return "";
+        const sentence = encodeURIComponent(plainSentence(point, example)), translation = encodeURIComponent(example.de);
+        return `<div class="kq-pp-vocab"><div class="kq-pp-vocab-head"><strong>Vokabelhilfen</strong><span>Guru- und bekannte Wörter werden ausgeblendet.</span></div>${words.map((word,index)=>{
+          const status = vocabStatus(word);
+          const actions = word.entry ? `<em>${esc(status)}</em>` : `<div class="kq-pp-vocab-actions"><button data-pp-mining data-word="${esc(encodeURIComponent(word.surface))}" data-reading="${esc(encodeURIComponent(word.reading))}" data-meaning="${esc(encodeURIComponent(word.meaning))}" data-sentence="${esc(sentence)}" data-translation="${esc(translation)}">Zum Mining</button><button data-pp-known data-word="${esc(encodeURIComponent(word.surface))}" data-reading="${esc(encodeURIComponent(word.reading))}" data-meaning="${esc(encodeURIComponent(word.meaning))}" data-sentence="${esc(sentence)}" data-translation="${esc(translation)}">Als bekannt</button></div>`;
+          return `<div class="kq-pp-vocab-row"><span>${index+1}</span><div><strong>${ruby(word.surface,word.reading)} – ${esc(word.meaning)}</strong>${actions}</div></div>`;
+        }).join("")}</div>`;
+      }
+      function addMining(button) {
+        const word = decodeURIComponent(button.dataset.word||""), reading = decodeURIComponent(button.dataset.reading||""), meaning = decodeURIComponent(button.dataset.meaning||"");
+        const planned = vocabEntry(word, reading); if (planned) { notify(vocabStatus({entry:planned})); return; }
+        const source = sourceData(); source.vocabulary = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        const raw = { word, reading, meanings:[meaning], productionCue:meaning, sourceType:"mining", collection:"Partikel-Lernpfad", example:decodeURIComponent(button.dataset.sentence||""), exampleTranslation:decodeURIComponent(button.dataset.translation||""), stage:0, availableAt:null, correct:0, incorrect:0, guruPassed:false, createdAt:Date.now() };
+        let created = raw; try { if (typeof makeVocabulary === "function") created = makeVocabulary(raw); } catch {}
+        source.vocabulary.push(created); try { if (typeof data !== "undefined") data.vocabulary = source.vocabulary; } catch {}
+        try { localStorage.setItem(KEY, JSON.stringify(typeof data!=="undefined"?data:source)); } catch {}
+        notify(`${word} wurde zum Mining hinzugefügt.`); renderCurrent();
+      }
+      function addKnown(button) {
+        const word = decodeURIComponent(button.dataset.word||""), reading = decodeURIComponent(button.dataset.reading||""), meaning = decodeURIComponent(button.dataset.meaning||"");
+        if (vocabEntry(word, reading)) { notify("Dieses Wort ist bereits im Core- oder Mining-Pfad."); return; }
+        const source = sourceData(); source.knownVocabulary = Array.isArray(source.knownVocabulary) ? source.knownVocabulary : [];
+        if (!knownEntry(word,reading)) source.knownVocabulary.push({ id:`known-${Date.now()}-${Math.random().toString(16).slice(2)}`, word, reading, meaning, source:"Partikel-Lernpfad", example:decodeURIComponent(button.dataset.sentence||""), exampleTranslation:decodeURIComponent(button.dataset.translation||""), createdAt:Date.now() });
+        try { if (typeof data !== "undefined") data.knownVocabulary = source.knownVocabulary; localStorage.setItem(KEY, JSON.stringify(typeof data!=="undefined"?data:source)); } catch {}
+        try { window.KotobaQuestGrammarSupportApi?.renderKnownVocabularyPool?.(); } catch {}
+        notify(`${word} wurde als bekannt gespeichert.`); renderCurrent();
+      }
+      function attachVocabActions(root) {
+        root?.querySelectorAll("[data-pp-mining]").forEach(button=>button.addEventListener("click",()=>addMining(button)));
+        root?.querySelectorAll("[data-pp-known]").forEach(button=>button.addEventListener("click",()=>addKnown(button)));
+      }
+      function convertParticleInput(value, finalize = false) {
+        const map = { wa:"は",ga:"が",o:"を",wo:"を",ni:"に",de:"で",e:"へ",he:"へ",to:"と",kara:"から",made:"まで",mo:"も",ya:"や",ka:"か",dake:"だけ",shika:"しか",demo:"でも",niwa:"には",dewa:"では",towa:"とは",hewa:"へは",nemo:"にも",nimo:"にも",karamo:"からも",madeni:"までに",deno:"での",heno:"への",karano:"からの",nitsuite:"について",nitotte:"にとって",niyotte:"によって",nimotozuite:"に基づいて",nitaishite:"に対して",toshite:"として" };
+        let text = String(value||"").normalize("NFKC").replace(/\s+/g,"");
+        const lower = text.toLowerCase(); if (map[lower]) return map[lower];
+        try { if (typeof romajiToHiragana === "function") text = romajiToHiragana(text, finalize); } catch {}
+        return text;
+      }
+      function normalizeAnswer(value) { return convertParticleInput(value,true).normalize("NFKC").replace(/[\s、。！？!?]/g,"").replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)); }
+      function explanationWrong(point, entered) {
+        if (point.wrong?.[entered]) return point.wrong[entered];
+        if (!entered) return "Du hast noch keine Partikel eingegeben.";
+        if (point.particle.startsWith(entered) && point.particle !== entered) return `「${entered}」enthält bereits die Grundbeziehung, aber der Satz braucht die vollständige Verbindung 「${point.particle}」. ${point.breakdown || point.summary}`;
+        const rule = PARTICLE_RULES[entered];
+        return rule ? `「${entered}」hat normalerweise diese Funktion: ${rule} Diese Beziehung passt hier jedoch nicht. Erwartet wird 「${point.particle}」: ${point.summary}` : `「${entered}」passt hier nicht zur beschriebenen Beziehung. Erwartet wird 「${point.particle}」: ${point.summary}`;
+      }
+      function shuffle(values) { const result=[...values]; for(let i=result.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[result[i],result[j]]=[result[j],result[i]];} return result; }
+    
+      function installShell() {
+        const section = document.getElementById("particlePractice");
+        const oldRoot = document.getElementById("kqParticleRoot");
+        if (!section || !oldRoot) return false;
+        if (!document.getElementById("kqParticlePathRoot")) {
+          const tabs = document.createElement("div"); tabs.className="kq-pp-tabs"; tabs.innerHTML='<button class="active" data-pp-tab="path">📚 Lernpfad & SRS</button><button data-pp-tab="practice">🧩 Freie Partikelübungen</button>';
+          const pathRoot = document.createElement("div"); pathRoot.id="kqParticlePathRoot";
+          const practicePanel = document.createElement("div"); practicePanel.id="kqParticleFreePanel"; practicePanel.hidden=true;
+          oldRoot.parentNode.insertBefore(tabs, oldRoot); oldRoot.parentNode.insertBefore(pathRoot, oldRoot); oldRoot.parentNode.insertBefore(practicePanel, oldRoot); practicePanel.appendChild(oldRoot);
+          tabs.querySelectorAll("[data-pp-tab]").forEach(button=>button.addEventListener("click",()=>showTab(button.dataset.ppTab)));
+        }
+        const navButton=document.querySelector('[data-view="particlePractice"]'); if(navButton){navButton.textContent="Partikel"; if(!navButton.dataset.ppBound){navButton.dataset.ppBound="1";navButton.addEventListener("click",()=>{setTimeout(()=>{showTab("path");viewMode="overview";renderCurrent();},0);});}}
+        return true;
+      }
+      function showTab(tab) {
+        currentTab = tab === "practice" ? "practice" : "path";
+        const path=document.getElementById("kqParticlePathRoot"), practice=document.getElementById("kqParticleFreePanel");
+        if(path) path.hidden=currentTab!=="path"; if(practice) practice.hidden=currentTab!=="practice";
+        document.querySelectorAll("[data-pp-tab]").forEach(button=>button.classList.toggle("active",button.dataset.ppTab===currentTab));
+        if(currentTab==="path") renderCurrent(); else window.KotobaQuestParticlePractice?.refresh?.();
+      }
+      function openPath() {
+        try { if (typeof switchView === "function") switchView("particlePractice"); } catch {}
+        installShell(); showTab("path"); viewMode="overview"; renderCurrent();
+      }
+      function root() { return document.getElementById("kqParticlePathRoot"); }
+    
+      function renderOverview() {
+        const el=root(); if(!el)return;
+        const due=dueItems(), levelNow=currentLevel();
+        const completed=POINTS.filter(point=>pointState(point.id).lessonComplete).length;
+        const guru=POINTS.filter(point=>pointStage(point)>=5).length;
+        el.innerHTML=`<div class="kq-pp-hero card"><div><span class="eyebrow">Partikel-Lernpfad</span><h2>Partikel verstehen, unterscheiden und sicher einsetzen</h2><p>Jede Partikel erhält eine eigene Lektion mit Bedeutung, Satzfunktion, Kontrasten, Furigana und Vokabelhilfen. Danach werden drei Fähigkeiten getrennt im SRS wiederholt.</p><div class="button-row"><button class="primary" id="kqPpContinue">Lernpfad fortsetzen</button><button class="secondary" id="kqPpReviews" ${due.length?"":"disabled"}>${due.length} Reviews starten</button><button class="ghost" id="kqPpFree">Freie Übungen</button></div></div><div class="kq-pp-hero-stats"><span><strong>${completed}/${POINTS.length}</strong><small>Lektionen</small></span><span><strong>${guru}</strong><small>auf Guru</small></span><span><strong>${due.length}</strong><small>jetzt fällig</small></span><span><strong>${esc(nextDueText())}</strong><small>nächstes Review</small></span></div></div>
+          <div class="kq-pp-levels">${LEVELS.map(level=>renderLevel(level,levelNow)).join("")}</div>`;
+        document.getElementById("kqPpContinue")?.addEventListener("click",()=>{const next=POINTS.find(point=>isLevelUnlocked(point.level)&&!pointState(point.id).lessonComplete)||POINTS.find(point=>isLevelUnlocked(point.level)); if(next)startLesson(next.id);});
+        document.getElementById("kqPpReviews")?.addEventListener("click",()=>startReviews(false));
+        document.getElementById("kqPpFree")?.addEventListener("click",()=>showTab("practice"));
+        el.querySelectorAll("[data-pp-lesson]").forEach(button=>button.addEventListener("click",()=>startLesson(button.dataset.ppLesson)));
+        el.querySelectorAll("[data-pp-level-review]").forEach(button=>button.addEventListener("click",()=>startReviews(true,Number(button.dataset.ppLevelReview))));
+        updateDashboardCard();
+      }
+      function renderLevel(level,levelNow) {
+        const points=POINTS.filter(point=>point.level===level.id), unlocked=isLevelUnlocked(level.id), complete=points.filter(point=>pointState(point.id).lessonComplete).length;
+        return `<article class="card kq-pp-level ${unlocked?"":"locked"}"><div class="kq-pp-level-head"><div><span>Level ${level.id}${level.id===levelNow?" · aktuell":""}</span><h3>${esc(level.title)}</h3><p>${esc(level.subtitle)}</p></div><div class="kq-pp-level-progress"><strong>${complete}/${points.length}</strong><small>Lektionen</small></div></div>${unlocked?`<div class="kq-pp-point-grid">${points.map(point=>{const ps=pointState(point.id),stage=pointStage(point);return `<button data-pp-lesson="${point.id}" class="kq-pp-point ${ps.lessonComplete?"complete":""}"><span>${esc(point.particle)}</span><div><strong>${esc(point.title)}</strong><small>${ps.lessonComplete?stageLabel(stage):"Lektion offen"}</small></div></button>`;}).join("")}</div><button class="ghost kq-pp-level-review" data-pp-level-review="${level.id}">Level frei üben</button>`:`<div class="kq-pp-lock">🔒 Schließe zuerst alle Lektionen in Level ${level.id-1} ab.</div>`}</article>`;
+      }
+      function startLesson(id) { activePoint=POINTS.find(point=>point.id===id); if(!activePoint||!isLevelUnlocked(activePoint.level))return; lessonStep=0;lessonFeedback=null;viewMode="lesson";showTab("path");renderLesson(); }
+      function renderLesson() {
+        const el=root(), point=activePoint; if(!el||!point)return;
+        const ps=pointState(point.id), steps=4;
+        let content="";
+        if(lessonStep===0) content=`<div class="kq-pp-concept"><span class="kq-pp-big-particle">${esc(point.particle)}</span><h2>${esc(point.title)}</h2><p class="kq-pp-summary">${esc(point.summary)}</p><div class="kq-pp-info-grid"><div><span>Bildung</span><strong>${esc(point.formation)}</strong></div>${point.breakdown?`<div><span>Aufbau</span><strong>${esc(point.breakdown)}</strong></div>`:""}</div><h3>Was drückt es aus?</h3><ul>${point.functions.map(item=>`<li>${esc(item)}</li>`).join("")}</ul></div>`;
+        if(lessonStep===1) content=`<h2>Beispiele mit 「${esc(point.particle)}」</h2><div class="kq-pp-examples">${point.examples.map((example,index)=>`<article><span>Beispiel ${index+1}</span><div class="kq-pp-japanese">${fullSentence(point,example,{highlight:true})}</div><p>${esc(example.de)}</p>${example.note?`<small>${esc(example.note)}</small>`:""}${renderVocabHelp(point,example)}</article>`).join("")}</div>`;
+        if(lessonStep===2) content=`<h2>Abgrenzung und typische Fehler</h2><div class="kq-pp-contrast"><strong>Warum nicht einfach eine ähnliche Partikel?</strong><p>${esc(point.contrast)}</p></div>${point.mistake?`<div class="kq-pp-warning"><strong>Wichtig</strong><p>${esc(point.mistake)}</p></div>`:""}<div class="kq-pp-wrong-grid">${Object.entries(point.wrong).map(([wrong,why])=>`<div><strong>Warum nicht 「${esc(wrong)}」?</strong><p>${esc(why)}</p></div>`).join("")}</div>`;
+        if(lessonStep===3) {
+          const example=point.examples[0];
+          content=`<h2>Mini-Checkpoint</h2><p class="muted">Setze die passende Partikel ein. Romaji wird direkt in Hiragana umgewandelt.</p><div class="kq-pp-japanese kq-pp-check-sentence">${fullSentence(point,example,{blank:true})}</div><p class="kq-pp-translation">${esc(example.de)}</p><form id="kqPpLessonForm" class="kq-pp-answer-form"><input id="kqPpLessonInput" autocomplete="off" inputmode="latin" placeholder="Partikel eingeben"><button class="primary">Prüfen</button></form>${lessonFeedback?renderLessonFeedback(point,example):""}${renderVocabHelp(point,example)}`;
+        }
+        el.innerHTML=`<div class="kq-pp-topline"><button class="ghost" id="kqPpLessonBack">← Übersicht</button><div><span>Level ${point.level} · ${esc(point.particle)}</span><div><i style="width:${((lessonStep+1)/steps)*100}%"></i></div></div></div><article class="card kq-pp-lesson">${content}<div class="button-row kq-pp-lesson-nav">${lessonStep>0?'<button class="ghost" id="kqPpPrev">Zurück</button>':""}${lessonStep<3?'<button class="primary" id="kqPpNext">Weiter</button>':""}</div></article>`;
+        document.getElementById("kqPpLessonBack")?.addEventListener("click",()=>{viewMode="overview";renderOverview();});
+        document.getElementById("kqPpPrev")?.addEventListener("click",()=>{lessonStep--;lessonFeedback=null;renderLesson();});
+        document.getElementById("kqPpNext")?.addEventListener("click",()=>{lessonStep++;lessonFeedback=null;renderLesson();});
+        const input=document.getElementById("kqPpLessonInput"); if(input){input.addEventListener("input",()=>{const converted=convertParticleInput(input.value);if(converted!==input.value){input.value=converted;input.setSelectionRange(input.value.length,input.value.length);}});document.getElementById("kqPpLessonForm")?.addEventListener("submit",event=>{event.preventDefault();const entered=normalizeAnswer(input.value),correct=point.accepted.map(normalizeAnswer).includes(entered);lessonFeedback={correct,entered};if(correct)completeLesson(point);else renderLesson();});setTimeout(()=>input.focus(),0);}
+        attachVocabActions(el);
+      }
+      function renderLessonFeedback(point,example) {
+        if(lessonFeedback.correct) return `<div class="feedback good"><strong>Richtig: 「${esc(point.particle)}」</strong><p>${esc(point.summary)}</p><button class="primary" id="kqPpLessonDone" type="button">Lektion abschließen</button></div>`;
+        return `<div class="feedback bad"><strong>Noch nicht: 「${esc(lessonFeedback.entered||"—")}」</strong><p>${esc(explanationWrong(point,lessonFeedback.entered))}</p><p><strong>Warum 「${esc(point.particle)}」?</strong> ${esc(point.summary)}</p></div>`;
+      }
+      function completeLesson(point) {
+        const ps=pointState(point.id), first=!ps.lessonComplete, now=Date.now();
+        ps.lessonComplete=true; ps.lessonCompletedAt ||= now;
+        for(const skill of SKILLS){const s=ps.skills[skill.id];if(s.stage===0){s.stage=1;s.dueAt=now+STAGES[1].delay;}}
+        if(first){state.stats.lessons++;state.stats.lastStudiedAt=now;persist({activity:true});}
+        lessonFeedback={correct:true,entered:point.particle};renderLesson();
+        setTimeout(()=>document.getElementById("kqPpLessonDone")?.addEventListener("click",()=>{const next=POINTS.find(item=>item.level===point.level&&!pointState(item.id).lessonComplete)||POINTS.find(item=>item.level===point.level+1&&!pointState(item.id).lessonComplete&&isLevelUnlocked(item.level));if(next)startLesson(next.id);else{viewMode="overview";renderOverview();}}),0);
+      }
+    
+      function buildReviewQuestion(item, practiceOnly=false) {
+        const point=item.point, skill=item.skill, example=point.examples[Math.floor(Math.random()*point.examples.length)];
+        if(skill.id==="production") return { point,skill,example,type:"input",practiceOnly };
+        if(skill.id==="function") {
+          const correct=point.functions[0];
+          const distractors=shuffle([...new Set(POINTS.filter(other=>other.id!==point.id).flatMap(other=>other.functions.slice(0,1)).filter(value=>value!==correct))]).slice(0,3);
+          return {point,skill,example,type:"choice",prompt:"Welche Funktion hat die markierte Partikel hier?",correct,accepted:[correct],choices:shuffle([correct,...distractors]),practiceOnly};
+        }
+        const choices=shuffle([point.particle,...point.distractors.filter(Boolean)]).filter((value,index,array)=>array.indexOf(value)===index).slice(0,4);
+        return {point,skill,example,type:"choice-particle",prompt:"Welche Partikel passt in die Lücke?",correct:point.particle,accepted:point.accepted,choices:shuffle(choices),practiceOnly};
+      }
+      function startReviews(practiceOnly=false, level=null) {
+        let items=practiceOnly ? POINTS.filter(point=>(level?point.level===level:isLevelUnlocked(point.level))&&pointState(point.id).lessonComplete).flatMap(point=>SKILLS.map(skill=>({point,skill}))) : dueItems();
+        if(!items.length){notify(practiceOnly?"Schließe zuerst eine Partikellektion ab.":"Momentan sind keine Partikelreviews fällig.");return;}
+        items=shuffle(items).slice(0,20); reviewSession={practiceOnly,questions:items.map(item=>buildReviewQuestion(item,practiceOnly)),index:0,feedback:null,results:{good:0,bad:0},level};viewMode="review";showTab("path");renderReview();
+      }
+      function renderReview() {
+        const el=root(), session=reviewSession;if(!el||!session)return;
+        if(session.index>=session.questions.length){renderReviewSummary();return;}
+        const q=session.questions[session.index], point=q.point, example=q.example, feedback=session.feedback;
+        let interaction="";
+        if(q.type==="input") interaction=`<form id="kqPpReviewForm" class="kq-pp-answer-form"><input id="kqPpReviewInput" autocomplete="off" inputmode="latin" placeholder="Partikel eingeben" ${feedback?"disabled":""}><button class="primary" ${feedback?"disabled":""}>Prüfen</button></form>`;
+        else interaction=`<div class="kq-pp-choice-grid">${q.choices.map((choice,index)=>`<button data-pp-choice="${esc(choice)}" ${feedback?"disabled":""}><span>${index+1}</span>${esc(choice)}</button>`).join("")}</div>`;
+        el.innerHTML=`<div class="kq-pp-topline"><button class="ghost" id="kqPpReviewQuit">Session beenden</button><div><span>${session.practiceOnly?"Freie Übung":"Partikel-SRS"} · ${session.index+1}/${session.questions.length}</span><div><i style="width:${(session.index/session.questions.length)*100}%"></i></div></div></div><article class="card kq-pp-review ${feedback?(feedback.correct?"good":"bad"):""}"><span class="kq-pp-skill">${q.skill.icon} ${esc(q.skill.label)}</span><h2>${esc(q.prompt||"Setze die passende Partikel ein")}</h2><div class="kq-pp-japanese">${q.type==="function"?fullSentence(point,example,{highlight:true}):fullSentence(point,example,{blank:true})}</div><p class="kq-pp-translation">${esc(example.de)}</p>${interaction}${feedback?renderReviewFeedback(q,feedback):""}${feedback?renderVocabHelp(point,example):""}</article>`;
+        document.getElementById("kqPpReviewQuit")?.addEventListener("click",()=>{reviewSession=null;viewMode="overview";renderOverview();});
+        if(q.type==="input"&&!feedback){const input=document.getElementById("kqPpReviewInput");input?.addEventListener("input",()=>{const converted=convertParticleInput(input.value);if(converted!==input.value){input.value=converted;input.setSelectionRange(input.value.length,input.value.length);}});document.getElementById("kqPpReviewForm")?.addEventListener("submit",event=>{event.preventDefault();gradeCurrent(point.accepted.map(normalizeAnswer).includes(normalizeAnswer(input.value)),normalizeAnswer(input.value));});setTimeout(()=>input?.focus(),0);}
+        el.querySelectorAll("[data-pp-choice]").forEach(button=>button.addEventListener("click",()=>gradeCurrent((q.accepted||[q.correct]).includes(button.dataset.ppChoice),button.dataset.ppChoice)));
+        document.getElementById("kqPpReviewNext")?.addEventListener("click",nextReview);
+        attachVocabActions(el);
+        if(feedback)setTimeout(()=>document.getElementById("kqPpReviewNext")?.focus(),0);
+      }
+      function renderReviewFeedback(q,feedback) {
+        const point=q.point;
+        const explanation=feedback.correct?point.summary:explanationWrong(point,feedback.entered);
+        return `<div class="kq-pp-review-feedback"><h3>${feedback.correct?"Richtig":"Nicht ganz"}: 「${esc(feedback.correct?point.particle:feedback.entered||"—")}」</h3><div><strong>${feedback.correct?"Warum passt es?":"Warum passt deine Antwort hier nicht?"}</strong><p>${esc(explanation)}</p></div>${feedback.correct?"":`<div><strong>Richtig ist 「${esc(point.particle)}」</strong><p>${esc(point.summary)}</p>${point.contrast?`<p class="muted">Abgrenzung: ${esc(point.contrast)}</p>`:""}</div>`}<button class="primary" id="kqPpReviewNext">Weiter</button></div>`;
+      }
+      function gradeCurrent(correct,entered) {
+        if(!reviewSession||reviewSession.feedback)return;
+        const q=reviewSession.questions[reviewSession.index];reviewSession.feedback={correct,entered};reviewSession.results[correct?"good":"bad"]++;
+        if(!reviewSession.practiceOnly){const s=pointState(q.point.id).skills[q.skill.id],now=Date.now();s.lastReviewedAt=now;if(correct){s.correct++;s.stage=Math.min(9,Math.max(1,s.stage+1));s.dueAt=s.stage>=9?null:now+STAGES[s.stage].delay;state.stats.correct++;}else{s.incorrect++;s.stage=Math.max(1,s.stage-1);s.dueAt=now+30*60*1000;state.stats.incorrect++;}state.stats.reviews++;state.stats.lastStudiedAt=now;persist({activity:true});}
+        renderReview();
+      }
+      function nextReview(){if(!reviewSession)return;reviewSession.index++;reviewSession.feedback=null;renderReview();}
+      function renderReviewSummary(){const el=root(),s=reviewSession,total=s.results.good+s.results.bad,accuracy=total?Math.round(s.results.good/total*100):0;el.innerHTML=`<article class="card kq-pp-summary"><div>${accuracy>=80?"🌸":"🌱"}</div><h2>${s.practiceOnly?"Übungsrunde beendet":"Partikelreviews gespeichert"}</h2><p>${s.results.good} richtig, ${s.results.bad} falsch. ${s.practiceOnly?"Die SRS-Stufen wurden nicht verändert.":"Falsche Antworten werden nach 30 Minuten erneut fällig."}</p><div><span><strong>${accuracy}%</strong><small>Genauigkeit</small></span><span><strong>${dueItems().length}</strong><small>noch fällig</small></span></div><button class="primary" id="kqPpSummaryBack">Zur Übersicht</button></article>`;document.getElementById("kqPpSummaryBack")?.addEventListener("click",()=>{reviewSession=null;viewMode="overview";renderOverview();});updateDashboardCard();}
+      function renderCurrent(){if(currentTab!=="path")return;if(viewMode==="lesson")renderLesson();else if(viewMode==="review")renderReview();else renderOverview();}
+    
+      function installEntryPoints(){
+        const quick=document.querySelector("#kqLearningDashboard .kq-quick-grid");const old=document.getElementById("kqQuickParticles");if(old&&!old.dataset.ppPath){old.dataset.ppPath="1";old.textContent="📚 Partikel lernen";old.replaceWith(old.cloneNode(true));document.getElementById("kqQuickParticles")?.addEventListener("click",openPath);}
+        const grammar=document.getElementById("grammar");if(grammar&&!document.getElementById("kqParticlePathTeaser")){const card=document.createElement("article");card.id="kqParticlePathTeaser";card.className="card kq-pp-teaser";card.innerHTML='<div><span>📚</span><div><h3>Partikel-Lernpfad</h3><p>Einzellektionen, Vokabelhilfen und ein eigenes SRS für Partikelfunktionen.</p></div></div><button class="secondary">Partikel lernen</button>';grammar.prepend(card);card.querySelector("button")?.addEventListener("click",openPath);}
+        updateDashboardCard();
+      }
+      function updateDashboardCard(){const dash=document.getElementById("kqLearningDashboard");if(!dash)return;let card=document.getElementById("kqParticleDashboardCard");if(!card){card=document.createElement("article");card.id="kqParticleDashboardCard";card.className="card kq-pp-dashboard-card";const grid=dash.querySelector(".kq-dashboard-grid,.grid-two")||dash;grid.appendChild(card);}const due=dueItems().length,completed=POINTS.filter(point=>pointState(point.id).lessonComplete).length;card.innerHTML=`<div><span class="mode-icon">🧩</span><div><h3>Partikel</h3><p>${completed}/${POINTS.length} Lektionen · ${nextDueText()}</p></div></div><div><strong>${due}</strong><span>fällig</span></div><button class="${due?"primary":"secondary"}" type="button">${due?"Reviews starten":"Lernpfad öffnen"}</button>`;card.querySelector("button")?.addEventListener("click",()=>due?startReviews(false):openPath());}
+      function scheduleInstall(){if(renderScheduled)return;renderScheduled=true;requestAnimationFrame(()=>{renderScheduled=false;if(installShell()){installEntryPoints();if(document.getElementById("particlePractice")?.classList.contains("active")&&currentTab==="path")renderCurrent();}});}
+      function wrap(name){try{const original=eval(name);if(typeof original!=="function"||original.__kqParticlePathWrapped)return;const wrapped=function(...args){const result=original.apply(this,args);scheduleInstall();return result;};wrapped.__kqParticlePathWrapped=true;eval(`${name}=wrapped`);}catch{}}
+    
+      const style=document.createElement("style");style.id="kotobaParticlePathStyles";style.textContent=`
+        .kq-pp-tabs{display:flex;gap:8px;margin-bottom:18px;padding:6px;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--kq-wash,#f5efff) 65%,white)}.kq-pp-tabs button{flex:1;padding:11px 14px;border-radius:11px;background:transparent;color:var(--muted);font-weight:900}.kq-pp-tabs button.active{background:var(--primary);color:white}.kq-pp-hero{display:grid;grid-template-columns:1.25fr .75fr;gap:20px;background:linear-gradient(135deg,var(--kq-wash,#f4efff),white)}.kq-pp-hero h2{margin:4px 0 10px;font-size:clamp(1.7rem,4vw,2.5rem)}.kq-pp-hero p{color:var(--muted);line-height:1.55}.kq-pp-hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kq-pp-hero-stats span{display:grid;place-content:center;text-align:center;padding:13px;border:1px solid var(--border);border-radius:14px;background:white}.kq-pp-hero-stats strong{color:var(--primary);font-size:1.35rem}.kq-pp-hero-stats small{color:var(--muted)}.kq-pp-levels{display:grid;gap:16px;margin-top:18px}.kq-pp-level.locked{opacity:.58}.kq-pp-level-head{display:flex;justify-content:space-between;gap:18px}.kq-pp-level-head span{color:var(--primary-dark);font-size:.78rem;font-weight:900}.kq-pp-level-head h3{margin:4px 0}.kq-pp-level-head p{margin:0;color:var(--muted)}.kq-pp-level-progress{display:grid;align-content:center;text-align:center}.kq-pp-level-progress strong{color:var(--primary);font-size:1.7rem}.kq-pp-level-progress small{color:var(--muted)}.kq-pp-point-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.kq-pp-point{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:11px;padding:12px;text-align:left;border:1px solid var(--border);border-radius:13px;background:white}.kq-pp-point>span{display:grid;place-items:center;width:50px;height:50px;border-radius:14px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:1.25rem;font-weight:950}.kq-pp-point>div{display:grid;gap:3px}.kq-pp-point small{color:var(--muted)}.kq-pp-point.complete{border-color:color-mix(in srgb,var(--good) 50%,var(--border))}.kq-pp-level-review{margin-top:12px}.kq-pp-lock{margin-top:14px;padding:13px;border-radius:12px;background:var(--kq-wash,#f4efff);color:var(--muted)}.kq-pp-topline{display:flex;align-items:center;gap:18px;max-width:920px;margin:0 auto 12px}.kq-pp-topline>div{display:grid;gap:6px;flex:1;text-align:right;color:var(--muted);font-size:.82rem}.kq-pp-topline>div>div{height:8px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-pp-topline i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-pp-lesson,.kq-pp-review{max-width:920px;margin:0 auto;min-height:540px}.kq-pp-concept{text-align:center}.kq-pp-big-particle{display:inline-grid;place-items:center;min-width:100px;height:100px;padding:0 18px;border-radius:26px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:2.6rem;font-weight:950}.kq-pp-summary{font-size:1.08rem;line-height:1.65;color:var(--text)}.kq-pp-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0;text-align:left}.kq-pp-info-grid>div{display:grid;gap:4px;padding:13px;border:1px solid var(--border);border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-info-grid span{color:var(--muted);font-size:.78rem}.kq-pp-concept ul{text-align:left;line-height:1.65}.kq-pp-examples{display:grid;gap:14px}.kq-pp-examples article{padding:17px;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--kq-wash,#f4efff) 45%,white)}.kq-pp-examples article>span{color:var(--primary-dark);font-size:.76rem;font-weight:900}.kq-pp-japanese{margin:12px 0;font-size:clamp(1.25rem,3vw,1.75rem);font-weight:900;line-height:2.4;text-align:center}.kq-pp-japanese rt{color:var(--primary-dark);font-size:.48em}.kq-pp-japanese mark{padding:2px 8px;border-radius:8px;background:color-mix(in srgb,var(--accent) 55%,white)}.kq-pp-vocab{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--border);text-align:left}.kq-pp-vocab-head{display:flex;justify-content:space-between;gap:12px}.kq-pp-vocab-head span{color:var(--muted);font-size:.75rem}.kq-pp-vocab-row{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start}.kq-pp-vocab-row>span{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:var(--primary);color:white;font-size:.72rem;font-weight:900}.kq-pp-vocab-row>div{display:grid;gap:6px}.kq-pp-vocab-row em{color:var(--primary-dark);font-size:.75rem;font-style:normal}.kq-pp-vocab-actions{display:flex;gap:7px;flex-wrap:wrap}.kq-pp-vocab-actions button{padding:6px 9px;border-radius:9px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:.72rem;font-weight:850}.kq-pp-contrast,.kq-pp-warning,.kq-pp-wrong-grid>div{padding:15px;border-radius:14px;border:1px solid var(--border);background:var(--kq-wash,#f4efff)}.kq-pp-contrast p,.kq-pp-warning p,.kq-pp-wrong-grid p{line-height:1.6}.kq-pp-warning{margin-top:12px;background:color-mix(in srgb,#fff4c7 65%,white)}.kq-pp-wrong-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kq-pp-lesson-nav{justify-content:center;margin-top:22px}.kq-pp-check-sentence{margin-top:28px}.kq-pp-blank{display:inline-block;min-width:80px;padding:0 8px;border-bottom:3px solid var(--primary);color:var(--primary)}.kq-pp-translation{text-align:center;color:var(--muted);font-weight:750}.kq-pp-answer-form{display:grid;grid-template-columns:1fr auto;gap:10px;max-width:560px;margin:18px auto}.kq-pp-answer-form input{text-align:center;font-size:1.2rem;font-weight:850}.kq-pp-review{text-align:center;border-top:8px solid var(--primary)}.kq-pp-review.good{border-top-color:var(--good)}.kq-pp-review.bad{border-top-color:var(--bad)}.kq-pp-skill{display:inline-flex;padding:8px 13px;border-radius:999px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-weight:900}.kq-pp-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:700px;margin:18px auto}.kq-pp-choice-grid button{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--border);border-radius:13px;background:white;text-align:left;font-weight:850}.kq-pp-choice-grid span{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--kq-wash,#f4efff);color:var(--primary-dark)}.kq-pp-review-feedback{display:grid;gap:10px;max-width:730px;margin:18px auto 0;text-align:left}.kq-pp-review-feedback h3{text-align:center}.kq-pp-review-feedback>div{padding:14px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-review-feedback p{line-height:1.55}.kq-pp-review-feedback button{justify-self:center}.kq-pp-summary{max-width:720px;margin:0 auto;text-align:center}.kq-pp-summary>div:first-child{font-size:4rem}.kq-pp-summary>div:not(:first-child){display:flex;justify-content:center;gap:10px;margin:18px}.kq-pp-summary span{display:grid;padding:13px 22px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-summary strong{color:var(--primary);font-size:1.8rem}.kq-pp-summary small{color:var(--muted)}.kq-pp-teaser,.kq-pp-dashboard-card{display:flex;align-items:center;justify-content:space-between;gap:16px}.kq-pp-teaser>div,.kq-pp-dashboard-card>div:first-child{display:flex;align-items:center;gap:13px}.kq-pp-teaser>div>span{font-size:2rem}.kq-pp-teaser h3,.kq-pp-teaser p,.kq-pp-dashboard-card h3,.kq-pp-dashboard-card p{margin:0}.kq-pp-teaser p,.kq-pp-dashboard-card p{color:var(--muted);margin-top:3px}.kq-pp-dashboard-card>div:nth-child(2){display:grid;text-align:center}.kq-pp-dashboard-card>div:nth-child(2) strong{color:var(--primary);font-size:1.7rem}.kq-pp-dashboard-card>div:nth-child(2) span{color:var(--muted);font-size:.75rem}@media(max-width:800px){.kq-pp-hero{grid-template-columns:1fr}.kq-pp-point-grid,.kq-pp-wrong-grid{grid-template-columns:1fr}.kq-pp-topline{align-items:flex-start;flex-direction:column}.kq-pp-topline>div{text-align:left;width:100%}.kq-pp-teaser,.kq-pp-dashboard-card{align-items:flex-start;flex-direction:column}}@media(max-width:560px){.kq-pp-hero-stats,.kq-pp-info-grid,.kq-pp-choice-grid{grid-template-columns:1fr}.kq-pp-answer-form{grid-template-columns:1fr}.kq-pp-vocab-head{flex-direction:column}.kq-pp-point{grid-template-columns:48px 1fr}}
+      `;document.head.appendChild(style);
+    
+      const originalPracticeOpen=window.KotobaQuestParticlePractice?.open;
+      if(window.KotobaQuestParticlePractice&&typeof originalPracticeOpen==="function")window.KotobaQuestParticlePractice.open=function(){originalPracticeOpen();setTimeout(()=>showTab("practice"),0);};
+      ["renderAll","renderDashboard","renderGrammarOverview","switchView"].forEach(wrap);
+      scheduleInstall();
+    
+      document.addEventListener("keydown",event=>{
+        if(!document.getElementById("particlePractice")?.classList.contains("active")||currentTab!=="path")return;
+        if(event.key!=="Enter"||event.repeat||event.isComposing)return;
+        if(viewMode==="review"&&reviewSession?.feedback){event.preventDefault();nextReview();}
+        else if(viewMode==="lesson"&&lessonFeedback?.correct){event.preventDefault();document.getElementById("kqPpLessonDone")?.click();}
+        else if(viewMode==="review"&&!reviewSession?.feedback){const buttons=[...document.querySelectorAll("[data-pp-choice]")].filter(button=>!button.disabled);if(buttons.length&&document.activeElement?.tagName!=="INPUT"){event.preventDefault();buttons[0].focus();}}
+      });
+      document.addEventListener("keydown",event=>{
+        if(!document.getElementById("particlePractice")?.classList.contains("active")||currentTab!=="path"||viewMode!=="review"||reviewSession?.feedback)return;
+        if(/^[1-4]$/.test(event.key)){const button=document.querySelectorAll("[data-pp-choice]")[Number(event.key)-1];if(button){event.preventDefault();button.click();}}
+      });
+    
+      window.KotobaQuestParticlePath={open:openPath,startReviews:()=>startReviews(false),getDueItems:dueItems,getProgress:()=>POINTS.map(point=>({id:point.id,level:point.level,particle:point.particle,title:point.title,lessonComplete:pointState(point.id).lessonComplete,stage:pointStage(point),skills:SKILLS.map(skill=>({id:skill.id,...pointState(point.id).skills[skill.id]}))})),refresh:()=>{state=normalizeState(sourceData().particlePath);scheduleInstall();}};
+    }
+    
+        function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
       const learningHubScript = "<script>(" + learningHubBootstrap.toString() + ")();<" + "/script>";
@@ -24143,9 +24893,10 @@
       const learningInsightsScript = "<script>(" + learningInsightsBootstrap.toString() + ")();<" + "/script>";
       const contextPracticeScript = "<script>(" + contextVocabularyPracticeBootstrap.toString() + ")();<" + "/script>";
       const particleWorkshopScript = "<script>(" + particleWorkshopBootstrap.toString() + ")();<" + "/script>";
+      const particlePathScript = "<script>(" + particlePathBootstrap.toString() + ")();<" + "/script>";
       const problemWorkshopScript = "<script>(" + problemWordWorkshopBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${problemWorkshopScript}\n${pastelFuriganaScript}`;
+      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${pastelFuriganaScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
