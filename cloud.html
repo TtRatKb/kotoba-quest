@@ -22353,119 +22353,216 @@
         return kind;
       }
 
-      const NOUN_GROUPS = {
-        reading: new Set(["本","新聞","雑誌","漫画","小説","手紙","メール","記事","文章","教科書","辞書","説明","メニュー","資料"]),
-        writing: new Set(["手紙","メール","名前","文章","日記","レポート","宿題","答え","メモ","作文","資料"]),
-        beverage: new Set(["水","お茶","茶","コーヒー","ジュース","牛乳","酒","お酒","ビール","ワイン","薬"]),
-        food: new Set(["ご飯","朝ご飯","昼ご飯","晩ご飯","パン","肉","魚","野菜","果物","料理","弁当","ケーキ","卵","米","お菓子","菓子"]),
-        media: new Set(["映画","テレビ","番組","写真","絵","動画","アニメ","景色","試合","ニュース","ドラマ"]),
-        audio: new Set(["音楽","ラジオ","話","声","ニュース","歌","質問","説明"]),
-        language: new Set(["日本語","英語","言葉","漢字","文法","単語","語彙","外国語","会話"]),
-        wearable: new Set(["服","シャツ","靴","帽子","コート","上着","ズボン","スカート","眼鏡"]),
-        device: new Set(["電話","携帯電話","携帯","スマホ","パソコン","コンピューター","カメラ","ペン","鉛筆","道具","機械","時計"]),
-        task: new Set(["仕事","宿題","問題","質問","予定","計画","準備","勉強","練習","予約","掃除","試験","テスト"]),
-        transport: new Set(["車","自転車","電車","バス","切符"]),
-        place: new Set(["学校","駅","店","病院","会社","部屋","家","図書館","公園","ホテル","レストラン"]),
-        person: new Set(["人","友達","先生","家族","子供","母","父","兄","姉","弟","妹"])
+      // Sentence quality layer: only use curated noun–verb collocations.
+      // This deliberately prefers fewer natural sentences over many random combinations.
+      const NOUN_INFO = {
+        "本":{de:"ein Buch",tags:["reading","physical"]},
+        "新聞":{de:"eine Zeitung",tags:["reading","physical"]},
+        "雑誌":{de:"eine Zeitschrift",tags:["reading","physical"]},
+        "漫画":{de:"einen Manga",tags:["reading","media","physical"]},
+        "小説":{de:"einen Roman",tags:["reading","physical"]},
+        "手紙":{de:"einen Brief",tags:["reading","writing","physical"]},
+        "メール":{de:"eine E-Mail",tags:["reading","writing","digital"]},
+        "記事":{de:"einen Artikel",tags:["reading","writing"]},
+        "文章":{de:"einen Text",tags:["reading","writing"]},
+        "教科書":{de:"ein Lehrbuch",tags:["reading","study","physical"]},
+        "辞書":{de:"ein Wörterbuch",tags:["reading","study","tool","physical"]},
+        "説明":{de:"eine Erklärung",tags:["reading","audio","study"]},
+        "メニュー":{de:"die Speisekarte",tags:["reading","physical"]},
+        "資料":{de:"Unterlagen",tags:["reading","writing","study"]},
+        "名前":{de:"einen Namen",tags:["writing","memory"]},
+        "日記":{de:"einen Tagebucheintrag",tags:["writing"]},
+        "レポート":{de:"einen Bericht",tags:["writing","study"]},
+        "宿題":{de:"die Hausaufgaben",tags:["writing","study","duty"]},
+        "答え":{de:"eine Antwort",tags:["writing","study","memory"]},
+        "メモ":{de:"eine Notiz",tags:["writing"]},
+        "作文":{de:"einen Aufsatz",tags:["writing","study"]},
+        "水":{de:"Wasser",tags:["beverage"]},
+        "お茶":{de:"Tee",tags:["beverage"]},
+        "茶":{de:"Tee",tags:["beverage"]},
+        "コーヒー":{de:"Kaffee",tags:["beverage"]},
+        "ジュース":{de:"Saft",tags:["beverage"]},
+        "牛乳":{de:"Milch",tags:["beverage"]},
+        "酒":{de:"Sake",tags:["beverage"]},
+        "お酒":{de:"Alkohol",tags:["beverage"]},
+        "ビール":{de:"Bier",tags:["beverage"]},
+        "ワイン":{de:"Wein",tags:["beverage"]},
+        "薬":{de:"Medikamente",tags:["beverage","health"]},
+        "ご飯":{de:"eine Mahlzeit",tags:["food","cookable"]},
+        "朝ご飯":{de:"Frühstück",tags:["food","cookable"]},
+        "朝御飯":{de:"Frühstück",tags:["food","cookable"]},
+        "昼ご飯":{de:"Mittagessen",tags:["food","cookable"]},
+        "晩ご飯":{de:"Abendessen",tags:["food","cookable"]},
+        "パン":{de:"Brot",tags:["food","cookable"]},
+        "肉":{de:"Fleisch",tags:["food","washable"]},
+        "魚":{de:"Fisch",tags:["food","washable"]},
+        "野菜":{de:"Gemüse",tags:["food","washable","cookable"]},
+        "果物":{de:"Obst",tags:["food","washable"]},
+        "料理":{de:"ein Gericht",tags:["food","cookable"]},
+        "弁当":{de:"ein Bentō",tags:["food","cookable"]},
+        "ケーキ":{de:"einen Kuchen",tags:["food","cookable"]},
+        "卵":{de:"Eier",tags:["food","cookable"]},
+        "米":{de:"Reis",tags:["food","cookable","washable"]},
+        "お菓子":{de:"Süßigkeiten",tags:["food"]},
+        "菓子":{de:"Süßigkeiten",tags:["food"]},
+        "映画":{de:"einen Film",tags:["media","leisure"]},
+        "テレビ":{de:"Fernsehen",tags:["media","leisure","special-watch"]},
+        "番組":{de:"eine Sendung",tags:["media","leisure"]},
+        "写真":{de:"ein Foto",tags:["media","digital"]},
+        "絵":{de:"ein Bild",tags:["media","physical"]},
+        "動画":{de:"ein Video",tags:["media","digital"]},
+        "アニメ":{de:"einen Anime",tags:["media","leisure"]},
+        "景色":{de:"die Landschaft",tags:["media","leisure"]},
+        "試合":{de:"ein Spiel",tags:["media","leisure"]},
+        "ニュース":{de:"die Nachrichten",tags:["media","audio","reading"]},
+        "ドラマ":{de:"eine Serie",tags:["media","leisure"]},
+        "音楽":{de:"Musik",tags:["audio","leisure","practice"]},
+        "ラジオ":{de:"Radio",tags:["audio","leisure"]},
+        "話":{de:"eine Geschichte",tags:["audio","reading"]},
+        "声":{de:"eine Stimme",tags:["audio"]},
+        "歌":{de:"ein Lied",tags:["audio","practice"]},
+        "日本語":{de:"Japanisch",tags:["language","study","practice"]},
+        "英語":{de:"Englisch",tags:["language","study","practice"]},
+        "言葉":{de:"ein Wort",tags:["language","study","memory"]},
+        "漢字":{de:"Kanji",tags:["language","study","memory","writing"]},
+        "文法":{de:"Grammatik",tags:["language","study"]},
+        "単語":{de:"Vokabeln",tags:["language","study","memory"]},
+        "語彙":{de:"Wortschatz",tags:["language","study","memory"]},
+        "外国語":{de:"eine Fremdsprache",tags:["language","study","practice"]},
+        "会話":{de:"Konversation",tags:["language","practice"]},
+        "服":{de:"Kleidung",tags:["wearable","upper","washable"]},
+        "シャツ":{de:"ein Hemd",tags:["wearable","upper","washable"]},
+        "靴":{de:"Schuhe",tags:["wearable","lower","washable"]},
+        "帽子":{de:"einen Hut",tags:["wearable","head","washable"]},
+        "コート":{de:"einen Mantel",tags:["wearable","upper","washable"]},
+        "上着":{de:"eine Jacke",tags:["wearable","upper","washable"]},
+        "ズボン":{de:"eine Hose",tags:["wearable","lower","washable"]},
+        "スカート":{de:"einen Rock",tags:["wearable","lower","washable"]},
+        "眼鏡":{de:"eine Brille",tags:["wearable","device"]},
+        "電話":{de:"ein Telefon",tags:["device","digital","repairable"]},
+        "携帯電話":{de:"ein Handy",tags:["device","digital","repairable"]},
+        "携帯":{de:"ein Handy",tags:["device","digital","repairable"]},
+        "スマホ":{de:"ein Smartphone",tags:["device","digital","repairable","tool"]},
+        "パソコン":{de:"einen Computer",tags:["device","digital","repairable","tool"]},
+        "コンピューター":{de:"einen Computer",tags:["device","digital","repairable","tool"]},
+        "カメラ":{de:"eine Kamera",tags:["device","digital","repairable","tool"]},
+        "ペン":{de:"einen Stift",tags:["device","writing-tool","tool"]},
+        "鉛筆":{de:"einen Bleistift",tags:["device","writing-tool","tool"]},
+        "時計":{de:"eine Uhr",tags:["device","repairable"]},
+        "仕事":{de:"die Arbeit",tags:["task","duty"]},
+        "問題":{de:"eine Aufgabe",tags:["task","study"]},
+        "質問":{de:"eine Frage",tags:["task","study"]},
+        "予定":{de:"einen Termin",tags:["task","plan"]},
+        "計画":{de:"einen Plan",tags:["task","plan"]},
+        "準備":{de:"Vorbereitungen",tags:["task","duty"]},
+        "勉強":{de:"Lernstoff",tags:["task","study"]},
+        "練習":{de:"eine Übung",tags:["task","practice"]},
+        "試験":{de:"eine Prüfung",tags:["task","study"]},
+        "テスト":{de:"einen Test",tags:["task","study"]},
+        "車":{de:"ein Auto",tags:["transport","repairable"]},
+        "自転車":{de:"ein Fahrrad",tags:["transport","repairable","borrowable"]},
+        "電車":{de:"einen Zug",tags:["transport"]},
+        "バス":{de:"einen Bus",tags:["transport"]},
+        "切符":{de:"eine Fahrkarte",tags:["transport","ticket","physical"]},
+        "学校":{de:"die Schule",tags:["place","cleanable"]},
+        "店":{de:"ein Geschäft",tags:["place"]},
+        "会社":{de:"das Büro",tags:["place","cleanable"]},
+        "部屋":{de:"ein Zimmer",tags:["place","cleanable"]},
+        "家":{de:"das Haus",tags:["place","cleanable"]},
+        "図書館":{de:"die Bibliothek",tags:["place"]},
+        "ホテル":{de:"ein Hotelzimmer",tags:["place","reservable"]},
+        "レストラン":{de:"einen Tisch im Restaurant",tags:["place","reservable"]},
+        "ドア":{de:"eine Tür",tags:["openable","physical"]},
+        "窓":{de:"ein Fenster",tags:["openable","physical"]},
+        "箱":{de:"eine Schachtel",tags:["openable","physical"]},
+        "かばん":{de:"eine Tasche",tags:["openable","physical"]},
+        "鞄":{de:"eine Tasche",tags:["openable","physical"]},
+        "鍵":{de:"einen Schlüssel",tags:["physical","searchable"]},
+        "意味":{de:"eine Bedeutung",tags:["language","study","research"]},
+        "友達":{de:"einen Freund",tags:["person","searchable"]},
+        "先生":{de:"eine Lehrkraft",tags:["person","searchable"]}
       };
 
+      const VERB_SPECS = {
+        "読む":{frame:"read",de:"lesen",tags:["reading"]},
+        "読書する":{frame:"read",de:"lesen",tags:["reading"]},
+        "書く":{frame:"write",de:"schreiben",words:["手紙","メール","名前","文章","日記","レポート","宿題","答え","メモ","作文","漢字"]},
+        "記入する":{frame:"write",de:"eintragen",zu:"einzutragen",words:["名前","答え","予定"]},
+        "飲む":{frame:"drink",de:"trinken",tags:["beverage"]},
+        "食べる":{frame:"eat",de:"essen",tags:["food"]},
+        "見る":{frame:"watch",de:"ansehen",zu:"anzusehen",tags:["media"]},
+        "観る":{frame:"watch",de:"ansehen",zu:"anzusehen",tags:["media"]},
+        "聞く":{frame:"listen",de:"hören",words:["音楽","ラジオ","話","声","ニュース","歌","説明"]},
+        "聴く":{frame:"listen",de:"hören",words:["音楽","ラジオ","話","声","ニュース","歌"]},
+        "買う":{frame:"buy",de:"kaufen",words:["本","新聞","雑誌","漫画","小説","教科書","辞書","コーヒー","ジュース","牛乳","お茶","ビール","ワイン","パン","肉","魚","野菜","果物","弁当","ケーキ","お菓子","映画","写真","動画","服","シャツ","靴","帽子","コート","上着","ズボン","スカート","眼鏡","電話","携帯電話","携帯","スマホ","パソコン","コンピューター","カメラ","ペン","鉛筆","時計","車","自転車","切符"]},
+        "購入する":{frame:"buy",de:"kaufen",words:["本","新聞","雑誌","漫画","小説","教科書","辞書","コーヒー","ジュース","牛乳","お茶","ビール","ワイン","パン","肉","魚","野菜","果物","弁当","ケーキ","お菓子","映画","写真","動画","服","シャツ","靴","帽子","コート","上着","ズボン","スカート","眼鏡","電話","携帯電話","携帯","スマホ","パソコン","コンピューター","カメラ","ペン","鉛筆","時計","車","自転車","切符"]},
+        "売る":{frame:"sell",de:"verkaufen",words:["本","新聞","雑誌","漫画","小説","教科書","辞書","コーヒー","ジュース","牛乳","お茶","ビール","ワイン","パン","肉","魚","野菜","果物","弁当","ケーキ","お菓子","映画","写真","動画","服","シャツ","靴","帽子","コート","上着","ズボン","スカート","眼鏡","電話","携帯電話","携帯","スマホ","パソコン","コンピューター","カメラ","ペン","鉛筆","時計","車","自転車","切符"]},
+        "作る":{frame:"make",de:"zubereiten",tags:["cookable"]},
+        "料理する":{frame:"make",de:"zubereiten",tags:["cookable"]},
+        "使う":{frame:"use",de:"benutzen",words:["電話","携帯電話","携帯","スマホ","パソコン","コンピューター","カメラ","ペン","鉛筆","時計","車","自転車","電車","バス","辞書","日本語","英語","外国語"]},
+        "利用する":{frame:"use",de:"benutzen",words:["電話","携帯電話","携帯","スマホ","パソコン","コンピューター","カメラ","車","自転車","電車","バス","辞書"]},
+        "勉強する":{frame:"study",de:"lernen",words:["日本語","英語","外国語","漢字","文法","単語","語彙"]},
+        "学ぶ":{frame:"study",de:"lernen",words:["日本語","英語","外国語","漢字","文法","単語","語彙"]},
+        "習う":{frame:"study",de:"lernen",words:["日本語","英語","外国語","漢字","文法","会話"]},
+        "覚える":{frame:"memorize",de:"sich merken",words:["名前","言葉","漢字","単語","語彙","答え","意味"]},
+        "教える":{frame:"teach",de:"beibringen",zu:"beizubringen",tags:["language"]},
+        "説明する":{frame:"explain",de:"erklären",words:["文法","言葉","漢字","単語","意味","問題","答え"]},
+        "送る":{frame:"send",de:"schicken",words:["手紙","メール","写真","動画","資料"]},
+        "出す":{frame:"send",de:"abschicken",zu:"abzuschicken",words:["手紙","メール","宿題","レポート"]},
+        "開ける":{frame:"open",de:"öffnen",tags:["openable"]},
+        "閉める":{frame:"close",de:"schließen",tags:["openable"]},
+        "洗う":{frame:"wash",de:"waschen",tags:["washable"]},
+        "選ぶ":{frame:"choose",de:"auswählen",zu:"auszuwählen",tags:["reading","beverage","food","media","wearable","device","task","transport"]},
+        "決める":{frame:"decide",de:"festlegen",zu:"festzulegen",words:["予定","計画","答え"]},
+        "着る":{frame:"wear",de:"anziehen",zu:"anzuziehen",tags:["upper"]},
+        "履く":{frame:"wear",de:"anziehen",zu:"anzuziehen",tags:["lower"]},
+        "かぶる":{frame:"wear",de:"aufsetzen",zu:"aufzusetzen",tags:["head"]},
+        "撮る":{frame:"photo",de:"aufnehmen",zu:"aufzunehmen",words:["写真","動画"]},
+        "探す":{frame:"search",de:"suchen",words:["本","新聞","雑誌","漫画","小説","辞書","資料","電話","携帯電話","携帯","スマホ","カメラ","鍵","友達","先生"]},
+        "調べる":{frame:"research",de:"nachschlagen",zu:"nachzuschlagen",words:["言葉","漢字","文法","単語","語彙","意味","答え","資料","記事"]},
+        "直す":{frame:"repair",de:"reparieren",tags:["repairable"]},
+        "修理する":{frame:"repair",de:"reparieren",tags:["repairable"]},
+        "借りる":{frame:"borrow",de:"ausleihen",zu:"auszuleihen",words:["本","新聞","雑誌","漫画","小説","辞書","資料","自転車","カメラ"]},
+        "貸す":{frame:"lend",de:"verleihen",words:["本","新聞","雑誌","漫画","小説","辞書","資料","自転車","カメラ"]},
+        "返す":{frame:"return",de:"zurückgeben",zu:"zurückzugeben",words:["本","新聞","雑誌","漫画","小説","辞書","資料","自転車","カメラ"]},
+        "話す":{frame:"speak",de:"sprechen",words:["日本語","英語","外国語"]},
+        "練習する":{frame:"practice",de:"üben",words:["日本語","英語","外国語","会話","漢字","文法","単語","歌","音楽"]},
+        "予約する":{frame:"reserve",de:"reservieren",words:["切符","ホテル","レストラン"]},
+        "掃除する":{frame:"clean",de:"putzen",words:["部屋","家","会社"]}
+      };
+
+      function firstMeaning(item) {
+        const raw = String(item?.meanings?.[0] || item?.meaning || item?.word || "").replace(/^to\s+/i, "").trim();
+        return raw.split(/\s*(?:;|\/|\||,)\s*/)[0].replace(/\s*\([^)]*\)\s*/g, "").trim();
+      }
+
+      function nounInfo(item) {
+        return NOUN_INFO[String(item?.word || "").trim()] || null;
+      }
+
       function nounTags(item) {
-        const tags = new Set(["thing"]);
-        const word = String(item?.word || "");
-        const meaning = firstMeaning(item).toLowerCase();
-        Object.entries(NOUN_GROUPS).forEach(([tag,set]) => { if (set.has(word)) tags.add(tag); });
-        if (/book|buch|zeitung|newspaper|magazin|roman|brief|letter|artikel|text|dictionary|wörterbuch/.test(meaning)) tags.add("reading");
-        if (/brief|letter|email|e-mail|name|text|tagebuch|bericht|report|notiz|memo|hausaufgabe/.test(meaning)) tags.add("writing");
-        if (/wasser|tee|kaffee|saft|milch|bier|wein|getränk|medicine|medizin/.test(meaning)) tags.add("beverage");
-        if (/essen|frühstück|mittagessen|abendessen|brot|fleisch|fisch|gemüse|obst|reis|kuchen|snack|food/.test(meaning)) tags.add("food");
-        if (/film|fernsehen|sendung|foto|bild|video|anime|landschaft|spiel|nachrichten/.test(meaning)) tags.add("media");
-        if (/musik|radio|stimme|lied|geschichte|nachrichten|frage/.test(meaning)) tags.add("audio");
-        if (/japanisch|englisch|sprache|wort|kanji|grammatik|vokabel|gespräch/.test(meaning)) tags.add("language");
-        if (/kleidung|hemd|schuh|hut|mantel|jacke|hose|rock|brille/.test(meaning)) tags.add("wearable");
-        if (/telefon|handy|computer|kamera|stift|bleistift|werkzeug|maschine|uhr/.test(meaning)) tags.add("device");
-        if (/arbeit|hausaufgabe|problem|frage|plan|vorbereitung|studium|übung|reservierung|prüfung|test/.test(meaning)) tags.add("task");
-        if (/auto|fahrrad|zug|bus|fahrkarte/.test(meaning)) tags.add("transport");
-        if (/schule|bahnhof|geschäft|krankenhaus|firma|zimmer|haus|bibliothek|park|hotel|restaurant/.test(meaning)) tags.add("place");
-        if (/person|freund|lehrer|familie|kind|mutter|vater|bruder|schwester/.test(meaning)) tags.add("person");
-        return tags;
+        return new Set(nounInfo(item)?.tags || []);
+      }
+
+      function verbSpec(item) {
+        return VERB_SPECS[String(item?.word || "").trim()] || null;
       }
 
       function verbFrame(item) {
-        const word = String(item?.word || "");
-        const meaning = firstMeaning(item).toLowerCase();
-        const exact = {
-          "読む":"read","読書する":"read","書く":"write","記入する":"write","飲む":"drink","食べる":"eat",
-          "見る":"watch","観る":"watch","聞く":"listen","聴く":"listen","買う":"buy","購入する":"buy","売る":"buy",
-          "作る":"make","造る":"make","料理する":"make","使う":"use","利用する":"use","勉強する":"study","学ぶ":"study","習う":"study","覚える":"study",
-          "教える":"teach","説明する":"teach","送る":"send","出す":"send","開ける":"open","閉める":"open","洗う":"wash","選ぶ":"choose","決める":"choose",
-          "持つ":"carry","運ぶ":"carry","取る":"carry","置く":"carry","着る":"wear","履く":"wear","かぶる":"wear","撮る":"photo","探す":"search","調べる":"search",
-          "直す":"repair","修理する":"repair","借りる":"borrow","貸す":"borrow","返す":"borrow","話す":"speak","練習する":"practice","予約する":"reserve","掃除する":"clean","変える":"choose"
-        };
-        if (exact[word]) return exact[word];
-        if (/lesen/.test(meaning)) return "read";
-        if (/schreiben|eintragen/.test(meaning)) return "write";
-        if (/trinken/.test(meaning)) return "drink";
-        if (/essen/.test(meaning)) return "eat";
-        if (/ansehen|anschauen|sehen/.test(meaning)) return "watch";
-        if (/hören|zuhören/.test(meaning)) return "listen";
-        if (/kaufen|verkaufen/.test(meaning)) return "buy";
-        if (/machen|herstellen|zubereiten/.test(meaning)) return "make";
-        if (/benutzen|verwenden/.test(meaning)) return "use";
-        if (/lernen|studieren|üben/.test(meaning)) return "study";
-        if (/beibringen|erklären/.test(meaning)) return "teach";
-        if (/senden|schicken/.test(meaning)) return "send";
-        if (/öffnen|schließen/.test(meaning)) return "open";
-        if (/waschen/.test(meaning)) return "wash";
-        if (/auswählen|wählen|entscheiden/.test(meaning)) return "choose";
-        if (/tragen|halten|nehmen|stellen|legen/.test(meaning)) return "carry";
-        if (/anziehen|tragen/.test(meaning)) return "wear";
-        if (/fotografieren/.test(meaning)) return "photo";
-        if (/suchen|nachschlagen|untersuchen/.test(meaning)) return "search";
-        if (/reparieren|korrigieren/.test(meaning)) return "repair";
-        if (/leihen|ausleihen|zurückgeben/.test(meaning)) return "borrow";
-        if (/sprechen|reden/.test(meaning)) return "speak";
-        if (/reservieren/.test(meaning)) return "reserve";
-        if (/putzen|reinigen/.test(meaning)) return "clean";
-        return null;
+        return verbSpec(item)?.frame || null;
       }
-
-      const FRAME_TAGS = {
-        read:["reading"], write:["writing"], drink:["beverage"], eat:["food"], watch:["media"], listen:["audio"],
-        buy:["reading","beverage","food","media","wearable","device","transport","thing"], make:["food","writing","task","thing"],
-        use:["device","transport","thing"], study:["language","reading","task"], teach:["language","task","reading"], send:["writing","thing"],
-        open:["reading","device","thing"], wash:["wearable","food","thing"], choose:["reading","beverage","food","media","wearable","device","task","transport","thing"],
-        carry:["reading","beverage","food","wearable","device","transport","thing"], wear:["wearable"], photo:["media"], search:["reading","device","task","person","thing"],
-        repair:["device","transport","thing"], borrow:["reading","device","transport","thing"], speak:["language"], practice:["language","task","media"], reserve:["task","place","transport"], clean:["place","thing"]
-      };
 
       function compatibleNouns(verb, nouns) {
-        const frame = verbFrame(verb);
-        if (!frame) return [];
-        const allowed = new Set(FRAME_TAGS[frame] || []);
-        return nouns.filter(noun => [...nounTags(noun)].some(tag => allowed.has(tag)));
-      }
-
-      function pickVerbNoun(pools, avoid = new Set()) {
-        const verbs = shuffled(pools.verbs.filter(item => !avoid.has(item.id)));
-        for (const verb of verbs) {
-          const nouns = compatibleNouns(verb, pools.nouns).filter(item => !avoid.has(item.id));
-          if (nouns.length) return { verb, noun: pick(nouns) };
-        }
-        return null;
-      }
-
-      function firstMeaning(item) {
-        return String(item?.meanings?.[0] || item?.word || "").replace(/^to\s+/i, "").trim();
-      }
-
-      function objectGloss(item) {
-        const value = firstMeaning(item);
-        return value || "etwas";
-      }
-
-      function verbGloss(item) {
-        const value = firstMeaning(item).replace(/^sich\s+/i, "sich ");
-        return value || "machen";
+        const spec = verbSpec(verb);
+        if (!spec) return [];
+        const exact = new Set(spec.words || []);
+        const allowedTags = new Set(spec.tags || []);
+        return nouns.filter(noun => {
+          const info = nounInfo(noun);
+          if (!info) return false;
+          if (exact.has(String(noun.word || ""))) return true;
+          return info.tags.some(tag => allowedTags.has(tag));
+        });
       }
 
       function pick(values, avoid = new Set()) {
@@ -22480,6 +22577,149 @@
         return result;
       }
 
+      function objectGloss(item) {
+        return nounInfo(item)?.de || firstMeaning(item) || "etwas";
+      }
+
+      function verbGloss(item, noun = null) {
+        if (String(item?.word || "") === "飲む" && String(noun?.word || "") === "薬") return "einnehmen";
+        return verbSpec(item)?.de || firstMeaning(item) || "machen";
+      }
+
+      function verbZuGloss(item, noun = null) {
+        if (String(item?.word || "") === "飲む" && String(noun?.word || "") === "薬") return "einzunehmen";
+        const spec = verbSpec(item);
+        return spec?.zu || `zu ${spec?.de || firstMeaning(item) || "machen"}`;
+      }
+
+      function makeAction(verb, noun) {
+        const spec = verbSpec(verb);
+        return spec && nounInfo(noun) ? { verb, noun, frame:spec.frame, spec } : null;
+      }
+
+      function actionPhrase(action) {
+        const word = String(action?.noun?.word || "");
+        if (action?.frame === "watch" && word === "テレビ") return "fernsehen";
+        if (action?.frame === "eat" && ["朝ご飯","朝御飯"].includes(word)) return "frühstücken";
+        if (action?.frame === "eat" && word === "昼ご飯") return "zu Mittag essen";
+        if (action?.frame === "eat" && word === "晩ご飯") return "zu Abend essen";
+        if (action?.frame === "make" && ["パン","ケーキ"].includes(word)) return `${objectGloss(action.noun)} backen`;
+        if (action?.frame === "memorize") return `sich ${objectGloss(action.noun)} merken`;
+        if (action?.frame === "use" && nounTags(action.noun).has("language")) return `${objectGloss(action.noun)} verwenden`;
+        return `${objectGloss(action.noun)} ${verbGloss(action.verb, action.noun)}`;
+      }
+
+      function actionZuPhrase(action) {
+        const word = String(action?.noun?.word || "");
+        if (action?.frame === "watch" && word === "テレビ") return "fernzusehen";
+        if (action?.frame === "eat" && ["朝ご飯","朝御飯"].includes(word)) return "zu frühstücken";
+        if (action?.frame === "eat" && word === "昼ご飯") return "zu Mittag zu essen";
+        if (action?.frame === "eat" && word === "晩ご飯") return "zu Abend zu essen";
+        if (action?.frame === "make" && ["パン","ケーキ"].includes(word)) return `${objectGloss(action.noun)} zu backen`;
+        if (action?.frame === "memorize") return `sich ${objectGloss(action.noun)} zu merken`;
+        if (action?.frame === "use" && nounTags(action.noun).has("language")) return `${objectGloss(action.noun)} zu verwenden`;
+        return `${objectGloss(action.noun)} ${verbZuGloss(action.verb, action.noun)}`;
+      }
+
+      const ACTION_CACHE = new WeakMap();
+      function allActions(pools) {
+        if (ACTION_CACHE.has(pools)) return ACTION_CACHE.get(pools);
+        const actions = [];
+        for (const verb of pools.verbs) {
+          for (const noun of compatibleNouns(verb, pools.nouns)) {
+            const action = makeAction(verb, noun);
+            if (action) actions.push(action);
+          }
+        }
+        ACTION_CACHE.set(pools, actions);
+        return actions;
+      }
+
+      function actionMatches(action, { frames = null, words = null, tags = null } = {}) {
+        if (!action) return false;
+        if (frames?.length && !frames.includes(action.frame)) return false;
+        if (words?.length && !words.includes(String(action.noun.word || ""))) return false;
+        if (tags?.length) {
+          const actual = nounTags(action.noun);
+          if (!tags.some(tag => actual.has(tag))) return false;
+        }
+        return true;
+      }
+
+      function pickAction(pools, options = {}, avoid = new Set()) {
+        const candidates = allActions(pools).filter(action =>
+          !avoid.has(action.verb.id) && !avoid.has(action.noun.id) && actionMatches(action, options)
+        );
+        return pick(candidates) || null;
+      }
+
+      function pickVerbNoun(pools, avoid = new Set(), options = {}) {
+        const action = pickAction(pools, options, avoid);
+        return action ? { verb:action.verb, noun:action.noun, action } : null;
+      }
+
+      const RELATION_PATTERNS = {
+        sequence:[
+          {firstFrames:["buy"],secondFrames:["eat"],sameNoun:true},
+          {firstFrames:["buy"],secondFrames:["drink"],sameNoun:true},
+          {firstFrames:["make"],secondFrames:["eat"],sameNoun:true,firstTags:["cookable"]},
+          {firstFrames:["borrow"],secondFrames:["read"],sameNoun:true},
+          {firstFrames:["search"],secondFrames:["borrow"],sameNoun:true},
+          {firstFrames:["write"],secondFrames:["send"],sameNoun:true},
+          {firstFrames:["photo"],secondFrames:["send"],sameNoun:true},
+          {firstFrames:["study"],secondFrames:["practice"],sameNoun:true},
+          {firstFrames:["open"],secondFrames:["read"],firstWords:["本","雑誌","漫画","小説","辞書"],secondWords:["本","雑誌","漫画","小説","辞書"],sameNoun:true},
+          {firstFrames:["wash"],secondFrames:["make"],firstWords:["野菜","米","魚"],secondTags:["cookable"]},
+          {firstFrames:["read"],secondFrames:["write"]},
+          {firstFrames:["clean"],secondFrames:["study","read","write"]}
+        ],
+        simultaneous:[
+          {firstFrames:["listen"],secondFrames:["read","study","write"]},
+          {firstFrames:["watch"],secondFrames:["eat","drink"],secondWords:["水","お茶","茶","コーヒー","ジュース","牛乳","パン","肉","魚","野菜","果物","料理","弁当","ケーキ","卵","米","お菓子","菓子"]},
+          {firstFrames:["drink"],firstWords:["水","お茶","茶","コーヒー","ジュース","牛乳"],secondFrames:["read","study"]},
+          {firstFrames:["read"],secondFrames:["listen"]},
+          {firstFrames:["study"],secondFrames:["listen"]}
+        ],
+        cause:[
+          {firstFrames:["study"],secondFrames:["buy"],secondWords:["辞書","教科書"]},
+          {firstFrames:["study"],secondFrames:["use"],secondWords:["辞書","パソコン","コンピューター","スマホ"]},
+          {firstFrames:["read"],secondFrames:["borrow"],sameNoun:true},
+          {firstFrames:["watch"],secondFrames:["buy","reserve"],secondWords:["切符"]},
+          {firstFrames:["eat"],secondFrames:["make"],sameNoun:true,firstTags:["cookable"]},
+          {firstFrames:["drink"],secondFrames:["buy"],sameNoun:true},
+          {firstFrames:["write"],secondFrames:["use"],secondWords:["パソコン","コンピューター","スマホ","ペン","鉛筆"]},
+          {firstFrames:["photo"],secondFrames:["use"],secondWords:["カメラ","スマホ"]}
+        ],
+        contrast:[
+          {firstFrames:["read","watch","listen","eat","drink","photo"],secondFrames:["study","practice","write","clean","research"]}
+        ],
+        listing:[
+          {firstFrames:["read","watch","listen","photo"],secondFrames:["read","watch","listen","photo"]},
+          {firstFrames:["study","practice","write","research"],secondFrames:["study","practice","write","research"]},
+          {firstFrames:["eat","drink"],secondFrames:["eat","drink"]}
+        ]
+      };
+
+      function pickRelatedActions(pools, relation) {
+        const actions = allActions(pools);
+        for (const pattern of shuffled(RELATION_PATTERNS[relation] || [])) {
+          const firsts = shuffled(actions.filter(action => actionMatches(action, {
+            frames:pattern.firstFrames, words:pattern.firstWords, tags:pattern.firstTags
+          })));
+          for (const first of firsts) {
+            const seconds = actions.filter(second => {
+              if (first.verb.id === second.verb.id) return false;
+              if (!actionMatches(second, { frames:pattern.secondFrames, words:pattern.secondWords, tags:pattern.secondTags })) return false;
+              if (pattern.sameNoun && String(first.noun.word || "") !== String(second.noun.word || "")) return false;
+              if (!pattern.sameNoun && first.noun.id === second.noun.id) return false;
+              return true;
+            });
+            if (seconds.length) return [first, pick(seconds)];
+          }
+        }
+        return null;
+      }
+
       function guruGrammarIds() {
         try {
           const progress = window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.();
@@ -22489,8 +22729,8 @@
       }
 
       function sentencePools(pool) {
-        const verbs = pool.filter(item => classify(item) === "verb" && verbFrame(item) && formOf(item,"te") && formOf(item,"masu"));
-        const nouns = pool.filter(item => classify(item) === "noun");
+        const verbs = pool.filter(item => classify(item) === "verb" && verbSpec(item) && formOf(item,"te") && formOf(item,"masu"));
+        const nouns = pool.filter(item => classify(item) === "noun" && nounInfo(item));
         const adjectives = pool.filter(item => classify(item) === "iadj" || classify(item) === "naadj");
         return { verbs, nouns, adjectives };
       }
@@ -22500,176 +22740,196 @@
       }
 
       function basicTemplates(pools) {
-        const { verbs, nouns } = pools;
         const templates = [];
-        const enough = verbs.length >= 2 && nouns.length >= 2;
-        if (!enough) return templates;
+        if (!allActions(pools).length) return templates;
 
         templates.push({ id:"te-sequence", label:"て-Form: Handlungen verbinden", status:"Grundgrammatik · N5/N4", build:() => {
-          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
-          const f1=formOf(v1,"te"), f2=formOf(v2,"masu"); if(!v1||!v2||!n1||!n2||!f1||!f2) return null;
-          const tokens=[token("明日","あした"),token("、"),itemToken(n1),token("を"),itemToken(v1,f1),token("、それから"),itemToken(n2),token("を"),itemToken(v2,f2),token("。")];
-          return makeSpec({id:`te-${v1.id}-${v2.id}`,grammar:"te-sequence",grammarLabel:"て-Form: Reihenfolge",tokens,de:`Morgen werde ich zuerst ${objectGloss(n1)} ${verbGloss(v1)} und danach ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:4,item:v1,form:f1},connectParts:[
-            [token("明日","あした"),token("、"),itemToken(n1),token("を"),itemToken(v1,formOf(v1,"masu")),token("。")],
-            [token("それから"),itemToken(n2),token("を"),itemToken(v2,f2),token("。")]
+          const pair=pickRelatedActions(pools,"sequence"); if(!pair) return null;
+          const [a1,a2]=pair, f1=formOf(a1.verb,"te"), f2=formOf(a2.verb,"masu"); if(!f1||!f2) return null;
+          const tokens=[token("明日","あした"),token("、"),itemToken(a1.noun),token("を"),itemToken(a1.verb,f1),token("、それから"),itemToken(a2.noun),token("を"),itemToken(a2.verb,f2),token("。")];
+          return makeSpec({id:`te-${a1.verb.id}-${a1.noun.id}-${a2.verb.id}-${a2.noun.id}`,grammar:"te-sequence",grammarLabel:"て-Form: Reihenfolge",tokens,de:`Morgen werde ich zuerst ${actionPhrase(a1)} und danach ${actionPhrase(a2)}.`,targets:[a1.noun,a1.verb,a2.noun,a2.verb],formTarget:{tokenIndex:4,item:a1.verb,form:f1},connectParts:[
+            [token("明日","あした"),token("、"),itemToken(a1.noun),token("を"),itemToken(a1.verb,formOf(a1.verb,"masu")),token("。")],
+            [token("それから"),itemToken(a2.noun),token("を"),itemToken(a2.verb,f2),token("。")]
           ]});
         }});
 
         templates.push({ id:"te-kara", label:"〜てから: zuerst … dann", status:"Grundgrammatik · N5/N4", build:() => {
-          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
-          const f1=formOf(v1,"te"), f2=formOf(v2,"masu"); if(!f1||!f2||!n1||!n2) return null;
-          const tokens=[itemToken(n1),token("を"),itemToken(v1,f1),token("から、"),itemToken(n2),token("を"),itemToken(v2,f2),token("。")];
-          return makeSpec({id:`tekara-${v1.id}-${v2.id}`,grammar:"te-kara",grammarLabel:"〜てから",tokens,de:`Zuerst werde ich ${objectGloss(n1)} ${verbGloss(v1)}; danach werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:f1},connectParts:[
-            [itemToken(n1),token("を"),itemToken(v1,formOf(v1,"masu")),token("。")],
-            [itemToken(n2),token("を"),itemToken(v2,f2),token("。")]
+          const pair=pickRelatedActions(pools,"sequence"); if(!pair) return null;
+          const [a1,a2]=pair, f1=formOf(a1.verb,"te"), f2=formOf(a2.verb,"masu"); if(!f1||!f2) return null;
+          const tokens=[itemToken(a1.noun),token("を"),itemToken(a1.verb,f1),token("から、"),itemToken(a2.noun),token("を"),itemToken(a2.verb,f2),token("。")];
+          return makeSpec({id:`tekara-${a1.verb.id}-${a1.noun.id}-${a2.verb.id}-${a2.noun.id}`,grammar:"te-kara",grammarLabel:"〜てから",tokens,de:`Zuerst werde ich ${actionPhrase(a1)}; danach werde ich ${actionPhrase(a2)}.`,targets:[a1.noun,a1.verb,a2.noun,a2.verb],formTarget:{tokenIndex:2,item:a1.verb,form:f1},connectParts:[
+            [itemToken(a1.noun),token("を"),itemToken(a1.verb,formOf(a1.verb,"masu")),token("。")],
+            [itemToken(a2.noun),token("を"),itemToken(a2.verb,f2),token("。")]
           ]});
         }});
 
         templates.push({ id:"nagara", label:"〜ながら: gleichzeitig", status:"Grundgrammatik · N4", build:() => {
-          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
-          const m1=formOf(v1,"masu"), m2=formOf(v2,"masu"); if(!m1||!m2||!n1||!n2) return null;
+          const pair=pickRelatedActions(pools,"simultaneous"); if(!pair) return null;
+          const [a1,a2]=pair, m1=formOf(a1.verb,"masu"), m2=formOf(a2.verb,"masu"); if(!m1||!m2) return null;
           const stem={surface:m1.surface.replace(/ます$/, ""),reading:m1.reading.replace(/ます$/, ""),label:"ます-Stamm",key:"stem"};
-          const tokens=[itemToken(n1),token("を"),itemToken(v1,stem),token("ながら、"),itemToken(n2),token("を"),itemToken(v2,m2),token("。")];
-          return makeSpec({id:`nagara-${v1.id}-${v2.id}`,grammar:"nagara",grammarLabel:"〜ながら",tokens,de:`Ich werde gleichzeitig ${objectGloss(n1)} ${verbGloss(v1)} und ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:stem},connectParts:[
-            [itemToken(n1),token("を"),itemToken(v1,m1),token("。")],
-            [itemToken(n2),token("を"),itemToken(v2,m2),token("。")]
+          const tokens=[itemToken(a1.noun),token("を"),itemToken(a1.verb,stem),token("ながら、"),itemToken(a2.noun),token("を"),itemToken(a2.verb,m2),token("。")];
+          return makeSpec({id:`nagara-${a1.verb.id}-${a1.noun.id}-${a2.verb.id}-${a2.noun.id}`,grammar:"nagara",grammarLabel:"〜ながら",tokens,de:`Ich werde gleichzeitig ${actionPhrase(a1)} und ${actionPhrase(a2)}.`,targets:[a1.noun,a1.verb,a2.noun,a2.verb],formTarget:{tokenIndex:2,item:a1.verb,form:stem},connectParts:[
+            [itemToken(a1.noun),token("を"),itemToken(a1.verb,m1),token("。")],
+            [itemToken(a2.noun),token("を"),itemToken(a2.verb,m2),token("。")]
           ]});
         }});
 
         templates.push({ id:"nakute-mo-ii", label:"〜なくてもいい: nicht müssen", status:"Grundgrammatik · N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, nai=formOf(v,"nai"); if(!nai||!n) return null;
+          const a=pickAction(pools,{frames:["study","practice","write","clean","read","use","research"]}); if(!a) return null;
+          const nai=formOf(a.verb,"nai"); if(!nai) return null;
           const nakute={surface:nai.surface.replace(/ない$/, "なくて"),reading:nai.reading.replace(/ない$/, "なくて"),label:"negative て-Form",key:"nakute"};
-          const tokens=[token("今日","きょう"),token("は"),itemToken(n),token("を"),itemToken(v,nakute),token("もいいです。")];
-          return makeSpec({id:`nakutemo-${v.id}-${n.id}`,grammar:"nakute-mo-ii",grammarLabel:"〜なくてもいい",tokens,de:`Heute musst du ${objectGloss(n)} nicht ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:nakute}});
+          const tokens=[token("今日","きょう"),token("は"),itemToken(a.noun),token("を"),itemToken(a.verb,nakute),token("もいいです。")];
+          return makeSpec({id:`nakutemo-${a.verb.id}-${a.noun.id}`,grammar:"nakute-mo-ii",grammarLabel:"〜なくてもいい",tokens,de:`Heute ist es nicht nötig, ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:nakute}});
         }});
 
         templates.push({ id:"node", label:"〜ので: Grund angeben", status:"Grundgrammatik · N4", build:() => {
-          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
-          const tai=formOf(v1,"tai"), masu=formOf(v2,"masu"); if(!tai||!masu||!n1||!n2) return null;
-          const tokens=[itemToken(n1),token("を"),itemToken(v1,tai),token("ので、"),itemToken(n2),token("を"),itemToken(v2,masu),token("。")];
-          return makeSpec({id:`node-${v1.id}-${v2.id}`,grammar:"node",grammarLabel:"〜ので",tokens,de:`Weil ich ${objectGloss(n1)} ${verbGloss(v1)} möchte, werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:tai},connectParts:[
-            [itemToken(n1),token("を"),itemToken(v1,tai),token("。")],
-            [itemToken(n2),token("を"),itemToken(v2,masu),token("。")]
+          const pair=pickRelatedActions(pools,"cause"); if(!pair) return null;
+          const [goal,support]=pair, tai=formOf(goal.verb,"tai"), masu=formOf(support.verb,"masu"); if(!tai||!masu) return null;
+          const tokens=[itemToken(goal.noun),token("を"),itemToken(goal.verb,tai),token("ので、"),itemToken(support.noun),token("を"),itemToken(support.verb,masu),token("。")];
+          return makeSpec({id:`node-${goal.verb.id}-${goal.noun.id}-${support.verb.id}-${support.noun.id}`,grammar:"node",grammarLabel:"〜ので",tokens,de:`Weil ich ${actionPhrase(goal)} möchte, werde ich ${actionPhrase(support)}.`,targets:[goal.noun,goal.verb,support.noun,support.verb],formTarget:{tokenIndex:2,item:goal.verb,form:tai},connectParts:[
+            [itemToken(goal.noun),token("を"),itemToken(goal.verb,tai),token("。")],
+            [itemToken(support.noun),token("を"),itemToken(support.verb,masu),token("。")]
           ]});
         }});
 
         templates.push({ id:"keredo", label:"〜けれど: Gegensatz", status:"Grundgrammatik · N4", build:() => {
-          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
-          const tai=formOf(v1,"tai"), nai=formOf(v2,"nai"); if(!tai||!nai||!n1||!n2) return null;
-          const tokens=[itemToken(n1),token("を"),itemToken(v1,tai),token("けれど、"),itemToken(n2),token("を"),itemToken(v2,nai),token("といけません。")];
-          return makeSpec({id:`keredo-${v1.id}-${v2.id}`,grammar:"keredo",grammarLabel:"〜けれど",tokens,de:`Ich möchte ${objectGloss(n1)} ${verbGloss(v1)}, muss aber ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:tai},connectParts:[
-            [itemToken(n1),token("を"),itemToken(v1,tai),token("。")],
-            [itemToken(n2),token("を"),itemToken(v2,nai),token("といけません。")]
+          const pair=pickRelatedActions(pools,"contrast"); if(!pair) return null;
+          const [wish,duty]=pair, tai=formOf(wish.verb,"tai"), nai=formOf(duty.verb,"nai"); if(!tai||!nai) return null;
+          const tokens=[itemToken(wish.noun),token("を"),itemToken(wish.verb,tai),token("けれど、"),itemToken(duty.noun),token("を"),itemToken(duty.verb,nai),token("といけません。")];
+          return makeSpec({id:`keredo-${wish.verb.id}-${wish.noun.id}-${duty.verb.id}-${duty.noun.id}`,grammar:"keredo",grammarLabel:"〜けれど",tokens,de:`Ich möchte ${actionPhrase(wish)}, muss aber ${actionPhrase(duty)}.`,targets:[wish.noun,wish.verb,duty.noun,duty.verb],formTarget:{tokenIndex:2,item:wish.verb,form:tai},connectParts:[
+            [itemToken(wish.noun),token("を"),itemToken(wish.verb,tai),token("。")],
+            [itemToken(duty.noun),token("を"),itemToken(duty.verb,nai),token("といけません。")]
           ]});
         }});
 
         templates.push({ id:"tari-tari", label:"〜たり〜たりする: Beispiele aufzählen", status:"Grundgrammatik · N4", build:() => {
-          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
-          const past1=formOf(v1,"past"), past2=formOf(v2,"past"); if(!past1||!past2||!n1||!n2) return null;
-          const tokens=[token("休みの日","やすみのひ"),token("には、"),itemToken(n1),token("を"),itemToken(v1,past1),token("り、"),itemToken(n2),token("を"),itemToken(v2,past2),token("りします。")];
-          return makeSpec({id:`tari-${v1.id}-${v2.id}`,grammar:"tari-tari",grammarLabel:"〜たり〜たりする",tokens,de:`An freien Tagen mache ich zum Beispiel Folgendes: ${objectGloss(n1)} ${verbGloss(v1)} und ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:4,item:v1,form:past1}});
+          const pair=pickRelatedActions(pools,"listing"); if(!pair) return null;
+          const [a1,a2]=pair, past1=formOf(a1.verb,"past"), past2=formOf(a2.verb,"past"); if(!past1||!past2) return null;
+          const tokens=[token("休みの日","やすみのひ"),token("には、"),itemToken(a1.noun),token("を"),itemToken(a1.verb,past1),token("り、"),itemToken(a2.noun),token("を"),itemToken(a2.verb,past2),token("りします。")];
+          return makeSpec({id:`tari-${a1.verb.id}-${a1.noun.id}-${a2.verb.id}-${a2.noun.id}`,grammar:"tari-tari",grammarLabel:"〜たり〜たりする",tokens,de:`An freien Tagen mache ich verschiedene Dinge, zum Beispiel ${actionPhrase(a1)} und ${actionPhrase(a2)}.`,targets:[a1.noun,a1.verb,a2.noun,a2.verb],formTarget:{tokenIndex:4,item:a1.verb,form:past1}});
         }});
 
         templates.push({ id:"tsumori", label:"〜つもり: Absicht", status:"Grundgrammatik · N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!v||!n||!dict) return null;
-          const tokens=[token("今週末","こんしゅうまつ"),token("は"),itemToken(n),token("を"),itemToken(v,dict),token("つもりです。")];
-          return makeSpec({id:`tsumori-${v.id}-${n.id}`,grammar:"tsumori",grammarLabel:"〜つもり",tokens,de:`Dieses Wochenende habe ich vor, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+          const a=pickAction(pools,{frames:["read","write","study","practice","watch","listen","eat","drink","make","clean","research","borrow"]}); if(!a) return null;
+          const dict=formOf(a.verb,"dictionary"); if(!dict) return null;
+          const tokens=[token("今週末","こんしゅうまつ"),token("は"),itemToken(a.noun),token("を"),itemToken(a.verb,dict),token("つもりです。")];
+          return makeSpec({id:`tsumori-${a.verb.id}-${a.noun.id}`,grammar:"tsumori",grammarLabel:"〜つもり",tokens,de:`Dieses Wochenende habe ich vor, ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:dict}});
         }});
 
         templates.push({ id:"hou-ga-ii", label:"〜たほうがいい: Empfehlung", status:"Grundgrammatik · N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const past=formOf(v,"past"); if(!past||!n) return null;
-          const tokens=[token("もっと"),itemToken(n),token("を"),itemToken(v,past),token("ほうがいいです。")];
-          return makeSpec({id:`hou-${v.id}-${n.id}`,grammar:"hou-ga-ii",grammarLabel:"〜たほうがいい",tokens,de:`Du solltest mehr ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:past}});
+          const a=pickAction(pools,{frames:["read","study","practice","write","listen","research","clean"]}); if(!a) return null;
+          const past=formOf(a.verb,"past"); if(!past) return null;
+          const tokens=[token("もっと"),itemToken(a.noun),token("を"),itemToken(a.verb,past),token("ほうがいいです。")];
+          return makeSpec({id:`hou-${a.verb.id}-${a.noun.id}`,grammar:"hou-ga-ii",grammarLabel:"〜たほうがいい",tokens,de:`Es wäre besser, wenn du öfter ${actionPhrase(a)} würdest.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:3,item:a.verb,form:past}});
         }});
 
         templates.push({ id:"te-mo-ii", label:"〜てもいい: Erlaubnis", status:"Grundgrammatik · N5/N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const te=formOf(v,"te"); if(!te||!n) return null;
-          const tokens=[token("ここで"),itemToken(n),token("を"),itemToken(v,te),token("もいいです。")];
-          return makeSpec({id:`temoii-${v.id}-${n.id}`,grammar:"te-mo-ii",grammarLabel:"〜てもいい",tokens,de:`Du darfst hier ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:te}});
+          const a=pickAction(pools,{frames:["read","write","listen","use","study","practice","eat","drink","watch"]}); if(!a) return null;
+          const te=formOf(a.verb,"te"); if(!te) return null;
+          const tokens=[token("ここで"),itemToken(a.noun),token("を"),itemToken(a.verb,te),token("もいいです。")];
+          return makeSpec({id:`temoii-${a.verb.id}-${a.noun.id}`,grammar:"te-mo-ii",grammarLabel:"〜てもいい",tokens,de:`Du darfst hier ${actionPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:3,item:a.verb,form:te}});
         }});
 
         templates.push({ id:"te-wa-ikenai", label:"〜てはいけない: Verbot", status:"Grundgrammatik · N5/N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const te=formOf(v,"te"); if(!te||!n) return null;
-          const tokens=[token("この場所","このばしょ"),token("で"),itemToken(n),token("を"),itemToken(v,te),token("はいけません。")];
-          return makeSpec({id:`tewa-${v.id}-${n.id}`,grammar:"te-wa-ikenai",grammarLabel:"〜てはいけない",tokens,de:`An diesem Ort darf man ${objectGloss(n)} nicht ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:te}});
+          const a=pickAction(pools,{frames:["read","write","listen","use","study","practice","eat","drink","watch","photo"]}); if(!a) return null;
+          const te=formOf(a.verb,"te"); if(!te) return null;
+          const tokens=[token("この場所","このばしょ"),token("で"),itemToken(a.noun),token("を"),itemToken(a.verb,te),token("はいけません。")];
+          return makeSpec({id:`tewa-${a.verb.id}-${a.noun.id}`,grammar:"te-wa-ikenai",grammarLabel:"〜てはいけない",tokens,de:`An diesem Ort ist es verboten, ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:te}});
         }});
 
         templates.push({ id:"koto-ga-aru", label:"〜たことがある: Erfahrung", status:"Grundgrammatik · N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const past=formOf(v,"past"); if(!past||!n) return null;
-          const tokens=[itemToken(n),token("を"),itemToken(v,past),token("ことがあります。")];
-          return makeSpec({id:`exp-${v.id}-${n.id}`,grammar:"koto-ga-aru",grammarLabel:"〜たことがある",tokens,de:`Ich habe bereits Erfahrung damit, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:past}});
+          const a=pickAction(pools,{frames:["read","write","study","practice","watch","listen","eat","drink","make","use","borrow","speak","photo"]}); if(!a) return null;
+          const past=formOf(a.verb,"past"); if(!past) return null;
+          const tokens=[itemToken(a.noun),token("を"),itemToken(a.verb,past),token("ことがあります。")];
+          return makeSpec({id:`exp-${a.verb.id}-${a.noun.id}`,grammar:"koto-ga-aru",grammarLabel:"〜たことがある",tokens,de:`Ich habe Erfahrung damit, ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:2,item:a.verb,form:past}});
         }});
 
         templates.push({ id:"to-omou", label:"〜と思う: Meinung/Vermutung", status:"Grundgrammatik · N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!dict||!n) return null;
-          const tokens=[token("明日","あした"),token("は"),itemToken(n),token("を"),itemToken(v,dict),token("と思います。")];
-          return makeSpec({id:`omou-${v.id}-${n.id}`,grammar:"to-omou",grammarLabel:"〜と思う",tokens,de:`Ich glaube, dass ich morgen ${objectGloss(n)} ${verbGloss(v)} werde.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+          const a=pickAction(pools,{frames:["read","write","study","practice","watch","listen","eat","drink","make","use","buy","borrow","clean","research"]}); if(!a) return null;
+          const dict=formOf(a.verb,"dictionary"); if(!dict) return null;
+          const tokens=[token("明日","あした"),token("は"),itemToken(a.noun),token("を"),itemToken(a.verb,dict),token("と思います。")];
+          return makeSpec({id:`omou-${a.verb.id}-${a.noun.id}`,grammar:"to-omou",grammarLabel:"〜と思う",tokens,de:`Ich glaube, dass ich morgen ${actionPhrase(a)} werde.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:dict}});
         }});
 
         templates.push({ id:"kamoshirenai", label:"〜かもしれない: Möglichkeit", status:"Grundgrammatik · N4", build:() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun; const dict=formOf(v,"dictionary"); if(!dict||!n) return null;
-          const tokens=[token("後","あと"),token("で"),itemToken(n),token("を"),itemToken(v,dict),token("かもしれません。")];
-          return makeSpec({id:`kamo-${v.id}-${n.id}`,grammar:"kamoshirenai",grammarLabel:"〜かもしれない",tokens,de:`Vielleicht werde ich später ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+          const a=pickAction(pools,{frames:["read","write","study","practice","watch","listen","eat","drink","make","use","buy","borrow","clean","research"]}); if(!a) return null;
+          const dict=formOf(a.verb,"dictionary"); if(!dict) return null;
+          const tokens=[token("後","あと"),token("で"),itemToken(a.noun),token("を"),itemToken(a.verb,dict),token("かもしれません。")];
+          return makeSpec({id:`kamo-${a.verb.id}-${a.noun.id}`,grammar:"kamoshirenai",grammarLabel:"〜かもしれない",tokens,de:`Vielleicht werde ich später ${actionPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:dict}});
         }});
         return templates;
       }
 
       function guruTemplates(pools, guruIds) {
-        const { verbs, nouns } = pools;
-        if (verbs.length < 1 || nouns.length < 1) return [];
+        if (!allActions(pools).length) return [];
         const templates = [];
         const add = (id, label, build) => { if (guruIds.has(id)) templates.push({ id, label, status:"Deine Guru-Grammatik", build }); };
 
         add("you-ni-suru","〜ようにする",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
-          const tokens=[token("毎日","まいにち"),itemToken(n),token("を"),itemToken(v,dict),token("ようにしています。")];
-          return makeSpec({id:`yousuru-${v.id}-${n.id}`,grammar:"you-ni-suru",grammarLabel:"〜ようにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bemühe mich, jeden Tag ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:dict}});
+          const a=pickAction(pools,{frames:["study","practice","read","write","listen","research"]}); if(!a) return null;
+          const dict=formOf(a.verb,"dictionary"); if(!dict) return null;
+          const tokens=[token("毎日","まいにち"),itemToken(a.noun),token("を"),itemToken(a.verb,dict),token("ようにしています。")];
+          return makeSpec({id:`yousuru-${a.verb.id}-${a.noun.id}`,grammar:"you-ni-suru",grammarLabel:"〜ようにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bemühe mich, jeden Tag ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:3,item:a.verb,form:dict}});
         });
         add("koto-ni-suru","〜ことにする",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
-          const tokens=[itemToken(n),token("を"),itemToken(v,dict),token("ことにしました。")];
-          return makeSpec({id:`kotosuru-${v.id}-${n.id}`,grammar:"koto-ni-suru",grammarLabel:"〜ことにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich habe beschlossen, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:2,item:v,form:dict}});
+          const a=pickAction(pools,{frames:["study","practice","read","write","watch","listen","eat","drink","make","clean","research","borrow"]}); if(!a) return null;
+          const dict=formOf(a.verb,"dictionary"); if(!dict) return null;
+          const tokens=[itemToken(a.noun),token("を"),itemToken(a.verb,dict),token("ことにしました。")];
+          return makeSpec({id:`kotosuru-${a.verb.id}-${a.noun.id}`,grammar:"koto-ni-suru",grammarLabel:"〜ことにする",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich habe beschlossen, ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:2,item:a.verb,form:dict}});
         });
         add("koto-ni-naru","〜ことになる",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
-          const tokens=[token("来月","らいげつ"),token("から"),itemToken(n),token("を"),itemToken(v,dict),token("ことになりました。")];
-          return makeSpec({id:`kotonaru-${v.id}-${n.id}`,grammar:"koto-ni-naru",grammarLabel:"〜ことになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Es wurde beschlossen, dass ich ab nächsten Monat ${objectGloss(n)} ${verbGloss(v)} soll.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+          const a=pickAction(pools,{frames:["study","practice","write","clean","research","use"]}); if(!a) return null;
+          const dict=formOf(a.verb,"dictionary"); if(!dict) return null;
+          const tokens=[token("来月","らいげつ"),token("から"),itemToken(a.noun),token("を"),itemToken(a.verb,dict),token("ことになりました。")];
+          return makeSpec({id:`kotonaru-${a.verb.id}-${a.noun.id}`,grammar:"koto-ni-naru",grammarLabel:"〜ことになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Es wurde beschlossen, dass ich ab nächsten Monat ${actionPhrase(a)} soll.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:dict}});
         });
         add("you-ni-naru","〜ようになる",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, potential=formOf(v,"potential") || formOf(v,"dictionary"); if(!potential||!n) return null;
-          const tokens=[token("最近","さいきん"),token("、"),itemToken(n),token("を"),itemToken(v,potential),token("ようになりました。")];
-          return makeSpec({id:`younaru-${v.id}-${n.id}`,grammar:"you-ni-naru",grammarLabel:"〜ようになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`In letzter Zeit bin ich in der Lage, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
+          const a=pickAction(pools,{frames:["study","practice","read","write","speak","research"]}); if(!a) return null;
+          const potential=formOf(a.verb,"potential") || formOf(a.verb,"dictionary"); if(!potential) return null;
+          const tokens=[token("最近","さいきん"),token("、"),itemToken(a.noun),token("を"),itemToken(a.verb,potential),token("ようになりました。")];
+          return makeSpec({id:`younaru-${a.verb.id}-${a.noun.id}`,grammar:"you-ni-naru",grammarLabel:"〜ようになる",grammarStatus:"Deine Guru-Grammatik",tokens,de:`In letzter Zeit kann ich ${actionPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:potential}});
         });
         add("tokoro-da","〜ところだ",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, dict=formOf(v,"dictionary"); if(!dict||!n) return null;
-          const tokens=[token("今","いま"),token("、"),itemToken(n),token("を"),itemToken(v,dict),token("ところです。")];
-          return makeSpec({id:`tokoro-${v.id}-${n.id}`,grammar:"tokoro-da",grammarLabel:"〜ところだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade dabei, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:dict}});
+          const a=pickAction(pools,{frames:["study","practice","read","write","watch","listen","eat","drink","make","clean","research","borrow"]}); if(!a) return null;
+          const dict=formOf(a.verb,"dictionary"); if(!dict) return null;
+          const tokens=[token("今","いま"),token("、"),itemToken(a.noun),token("を"),itemToken(a.verb,dict),token("ところです。")];
+          return makeSpec({id:`tokoro-${a.verb.id}-${a.noun.id}`,grammar:"tokoro-da",grammarLabel:"〜ところだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade dabei, ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:dict}});
         });
         add("ta-bakari","〜たばかり",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, past=formOf(v,"past"); if(!past||!n) return null;
-          const tokens=[token("今","いま"),itemToken(n),token("を"),itemToken(v,past),token("ばかりです。")];
-          return makeSpec({id:`bakari-${v.id}-${n.id}`,grammar:"ta-bakari",grammarLabel:"〜たばかり",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade erst damit fertig geworden, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:3,item:v,form:past}});
+          const a=pickAction(pools,{frames:["study","practice","read","write","watch","listen","eat","drink","make","clean","research","borrow"]}); if(!a) return null;
+          const past=formOf(a.verb,"past"); if(!past) return null;
+          const tokens=[token("今","いま"),itemToken(a.noun),token("を"),itemToken(a.verb,past),token("ばかりです。")];
+          return makeSpec({id:`bakari-${a.verb.id}-${a.noun.id}`,grammar:"ta-bakari",grammarLabel:"〜たばかり",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Ich bin gerade erst damit fertig geworden, ${actionZuPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:3,item:a.verb,form:past}});
         });
         add("tame-ni","〜ために",() => {
-          const p1=pickVerbNoun(pools), p2=pickVerbNoun(pools,new Set([p1?.verb?.id,p1?.noun?.id])); const v1=p1?.verb,n1=p1?.noun,v2=p2?.verb,n2=p2?.noun;
-          const d1=formOf(v1,"dictionary"), m2=formOf(v2,"masu"); if(!d1||!m2||!n1||!n2) return null;
-          const tokens=[itemToken(n1),token("を"),itemToken(v1,d1),token("ために、"),itemToken(n2),token("を"),itemToken(v2,m2),token("。")];
-          return makeSpec({id:`tame-${v1.id}-${v2.id}`,grammar:"tame-ni",grammarLabel:"〜ために",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Um ${objectGloss(n1)} zu ${verbGloss(v1)}, werde ich ${objectGloss(n2)} ${verbGloss(v2)}.`,targets:[n1,v1,n2,v2],formTarget:{tokenIndex:2,item:v1,form:d1},connectParts:[
-            [itemToken(n1),token("を"),itemToken(v1,d1),token("。")],
-            [itemToken(n2),token("を"),itemToken(v2,m2),token("。")]
+          const pair=pickRelatedActions(pools,"cause"); if(!pair) return null;
+          const [goal,support]=pair, d1=formOf(goal.verb,"dictionary"), m2=formOf(support.verb,"masu"); if(!d1||!m2) return null;
+          const tokens=[itemToken(goal.noun),token("を"),itemToken(goal.verb,d1),token("ために、"),itemToken(support.noun),token("を"),itemToken(support.verb,m2),token("。")];
+          return makeSpec({id:`tame-${goal.verb.id}-${goal.noun.id}-${support.verb.id}-${support.noun.id}`,grammar:"tame-ni",grammarLabel:"〜ために",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Um ${actionZuPhrase(goal)}, werde ich ${actionPhrase(support)}.`,targets:[goal.noun,goal.verb,support.noun,support.verb],formTarget:{tokenIndex:2,item:goal.verb,form:d1},connectParts:[
+            [itemToken(goal.noun),token("を"),itemToken(goal.verb,d1),token("。")],
+            [itemToken(support.noun),token("を"),itemToken(support.verb,m2),token("。")]
           ]});
         });
         add("hazu-da","〜はずだ",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, potential=formOf(v,"potential") || formOf(v,"dictionary"); if(!potential||!n) return null;
-          const tokens=[token("この方法","このほうほう"),token("なら、"),itemToken(n),token("を"),itemToken(v,potential),token("はずです。")];
-          return makeSpec({id:`hazu-${v.id}-${n.id}`,grammar:"hazu-da",grammarLabel:"〜はずだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Mit dieser Methode müsste es möglich sein, ${objectGloss(n)} zu ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:potential}});
+          const a=pickAction(pools,{frames:["study","practice","read","write","speak","research"]}); if(!a) return null;
+          const potential=formOf(a.verb,"potential") || formOf(a.verb,"dictionary"); if(!potential) return null;
+          const tokens=[token("この方法","このほうほう"),token("なら、"),itemToken(a.noun),token("を"),itemToken(a.verb,potential),token("はずです。")];
+          return makeSpec({id:`hazu-${a.verb.id}-${a.noun.id}`,grammar:"hazu-da",grammarLabel:"〜はずだ",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Mit dieser Methode müsste ich ${actionPhrase(a)} können.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:potential}});
         });
         add("uchi-ni","〜うちに",() => {
-          const pair=pickVerbNoun(pools), v=pair?.verb, n=pair?.noun, tai=formOf(v,"tai"); if(!tai||!n) return null;
-          const tokens=[token("時間","じかん"),token("があるうちに、"),itemToken(n),token("を"),itemToken(v,tai),token("です。")];
-          return makeSpec({id:`uchi-${v.id}-${n.id}`,grammar:"uchi-ni",grammarLabel:"〜うちに",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Solange ich noch Zeit habe, möchte ich ${objectGloss(n)} ${verbGloss(v)}.`,targets:[n,v],formTarget:{tokenIndex:4,item:v,form:tai}});
+          const a=pickAction(pools,{frames:["study","practice","read","write","watch","listen","eat","drink","make","clean","research","borrow"]}); if(!a) return null;
+          const tai=formOf(a.verb,"tai"); if(!tai) return null;
+          const tokens=[token("時間","じかん"),token("があるうちに、"),itemToken(a.noun),token("を"),itemToken(a.verb,tai),token("です。")];
+          return makeSpec({id:`uchi-${a.verb.id}-${a.noun.id}`,grammar:"uchi-ni",grammarLabel:"〜うちに",grammarStatus:"Deine Guru-Grammatik",tokens,de:`Solange ich noch Zeit habe, möchte ich ${actionPhrase(a)}.`,targets:[a.noun,a.verb],formTarget:{tokenIndex:4,item:a.verb,form:tai}});
         });
         return templates;
+      }
+
+      function sentenceQualityCheck(spec) {
+        if (!spec?.jp || !spec?.de) return false;
+        if (/Brot\s+vergessen|Buch\s+(?:lernen|studieren)|Medikamente\s+trinken/i.test(spec.de)) return false;
+        if (/lernen;|studieren;|vergessen.*Brot/i.test(spec.de)) return false;
+        return true;
       }
 
       function buildSentenceBank(pool, desired = 90) {
@@ -22679,11 +22939,11 @@
         const bank = [];
         const seen = new Set();
         let attempts = 0;
-        while (bank.length < desired && attempts < desired * 12 && templates.length) {
+        while (bank.length < desired && attempts < desired * 20 && templates.length) {
           attempts += 1;
           const template = templates[attempts % templates.length] || templates[Math.floor(Math.random()*templates.length)];
           const spec = template.build();
-          if (!spec?.jp || !spec?.de || seen.has(spec.jp)) continue;
+          if (!sentenceQualityCheck(spec) || seen.has(spec.jp)) continue;
           spec.grammar = template.id;
           spec.grammarLabel ||= template.label;
           spec.grammarStatus ||= template.status;
