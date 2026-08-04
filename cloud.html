@@ -352,7 +352,7 @@
     const SAVE_DELAY_MS = 800;
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "vocabulary-support-and-answer-veto-1";
+    const CLOUD_FEATURE_VERSION = "cumulative-statistics-and-streak-2";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -379,7 +379,7 @@
     const toastElement = document.getElementById("toast");
 
     let currentUser = null;
-    let observedLocalRaw = localStorage.getItem(STORAGE_KEY);
+    let observedLocalRaw = null;
     let saveTimer = null;
     let saveInFlight = false;
     let saveQueued = false;
@@ -388,6 +388,160 @@
     let toastTimer = null;
     let appDocumentHtml = null;
     let appLoadPromise = null;
+
+    const CUMULATIVE_STATS_BACKUP_KEY = "kotobaQuestCumulativeStatsV2";
+    const CUMULATIVE_STATS_VERSION = 2;
+
+    function finiteNonNegative(value) {
+      const number = Number(value);
+      return Number.isFinite(number) && number > 0 ? number : 0;
+    }
+
+    function earliestTimestamp(...values) {
+      const valid = values.map(Number).filter(value => Number.isFinite(value) && value > 0);
+      return valid.length ? Math.min(...valid) : null;
+    }
+
+    function latestTimestamp(...values) {
+      const valid = values.map(Number).filter(value => Number.isFinite(value) && value > 0);
+      return valid.length ? Math.max(...valid) : null;
+    }
+
+    function mergeNumericRecord(left, right) {
+      const first = left && typeof left === "object" && !Array.isArray(left) ? left : {};
+      const second = right && typeof right === "object" && !Array.isArray(right) ? right : {};
+      const result = { ...first, ...second };
+      new Set([...Object.keys(first), ...Object.keys(second)]).forEach(key => {
+        const leftValue = Number(first[key]);
+        const rightValue = Number(second[key]);
+        if (Number.isFinite(leftValue) || Number.isFinite(rightValue)) {
+          result[key] = Math.max(
+            Number.isFinite(leftValue) ? Math.max(0, leftValue) : 0,
+            Number.isFinite(rightValue) ? Math.max(0, rightValue) : 0
+          );
+        }
+      });
+      return result;
+    }
+
+    function mergeEventHistory(left, right) {
+      const events = [];
+      const seen = new Set();
+      [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]
+        .filter(event => event && typeof event === "object")
+        .sort((a, b) => Number(a.at || 0) - Number(b.at || 0))
+        .forEach(event => {
+          const key = [
+            Number(event.at || 0),
+            String(event.type || ""),
+            String(event.id || ""),
+            String(event.area || ""),
+            Number(event.correct || 0),
+            Number(event.incorrect || 0)
+          ].join("|");
+          if (seen.has(key)) return;
+          seen.add(key);
+          events.push(event);
+        });
+      return events.slice(-500);
+    }
+
+    function mergeStudyAnalytics(current, preserved) {
+      const left = current && typeof current === "object" && !Array.isArray(current) ? current : {};
+      const right = preserved && typeof preserved === "object" && !Array.isArray(preserved) ? preserved : {};
+      const days = {};
+      const leftDays = left.days && typeof left.days === "object" && !Array.isArray(left.days) ? left.days : {};
+      const rightDays = right.days && typeof right.days === "object" && !Array.isArray(right.days) ? right.days : {};
+      new Set([...Object.keys(leftDays), ...Object.keys(rightDays)]).forEach(key => {
+        days[key] = mergeNumericRecord(leftDays[key], rightDays[key]);
+      });
+      return {
+        ...right,
+        ...left,
+        version: Math.max(CUMULATIVE_STATS_VERSION, Number(left.version || 0), Number(right.version || 0)),
+        trackingStartedAt: earliestTimestamp(left.trackingStartedAt, right.trackingStartedAt) || Date.now(),
+        days,
+        events: mergeEventHistory(right.events, left.events)
+      };
+    }
+
+    function analyticsDayHasActivity(day) {
+      if (!day || typeof day !== "object") return false;
+      return Object.entries(day).some(([key, value]) => key !== "activeMs" ? finiteNonNegative(value) > 0 : finiteNonNegative(value) >= 1000);
+    }
+
+    function mergeStudyActivity(current, preserved, analytics) {
+      const left = current && typeof current === "object" && !Array.isArray(current) ? current : {};
+      const right = preserved && typeof preserved === "object" && !Array.isArray(preserved) ? preserved : {};
+      const days = {};
+      const leftDays = left.days && typeof left.days === "object" && !Array.isArray(left.days) ? left.days : {};
+      const rightDays = right.days && typeof right.days === "object" && !Array.isArray(right.days) ? right.days : {};
+      new Set([...Object.keys(leftDays), ...Object.keys(rightDays), ...Object.keys(analytics?.days || {})]).forEach(key => {
+        const count = Math.max(finiteNonNegative(leftDays[key]), finiteNonNegative(rightDays[key]));
+        days[key] = count || (analyticsDayHasActivity(analytics?.days?.[key]) ? 1 : 0);
+      });
+      Object.keys(days).forEach(key => {
+        if (!days[key]) delete days[key];
+      });
+      const summedActions = Object.values(days).reduce((sum, value) => sum + finiteNonNegative(value), 0);
+      return {
+        ...right,
+        ...left,
+        days,
+        totalActions: Math.max(finiteNonNegative(left.totalActions), finiteNonNegative(right.totalActions), summedActions),
+        firstActivityAt: earliestTimestamp(left.firstActivityAt, right.firstActivityAt, analytics?.trackingStartedAt),
+        lastActivityAt: latestTimestamp(left.lastActivityAt, right.lastActivityAt)
+      };
+    }
+
+    function readCumulativeStatsBackup() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CUMULATIVE_STATS_BACKUP_KEY) || "null");
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function mergeCumulativeStatsData(source, backup = readCumulativeStatsBackup()) {
+      const target = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+      const analytics = mergeStudyAnalytics(target.studyAnalytics, backup.studyAnalytics);
+      const activity = mergeStudyActivity(target.studyActivity, backup.studyActivity, analytics);
+      target.studyAnalytics = analytics;
+      target.studyActivity = activity;
+      target.statisticsPersistenceVersion = CUMULATIVE_STATS_VERSION;
+      return target;
+    }
+
+    function writeCumulativeStatsBackup(source) {
+      try {
+        localStorage.setItem(CUMULATIVE_STATS_BACKUP_KEY, JSON.stringify({
+          version: CUMULATIVE_STATS_VERSION,
+          updatedAtMs: Date.now(),
+          studyActivity: source.studyActivity || {},
+          studyAnalytics: source.studyAnalytics || {}
+        }));
+      } catch (error) {
+        console.warn("Kotoba Quest Statistik-Backup konnte nicht geschrieben werden", error);
+      }
+    }
+
+    function stabilizeCumulativeProgress(raw = localStorage.getItem(STORAGE_KEY)) {
+      if (!raw) return raw;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return raw;
+        const merged = mergeCumulativeStatsData(parsed);
+        const nextRaw = JSON.stringify(merged);
+        if (nextRaw !== raw) localStorage.setItem(STORAGE_KEY, nextRaw);
+        writeCumulativeStatsBackup(merged);
+        return nextRaw;
+      } catch {
+        return raw;
+      }
+    }
+
+    observedLocalRaw = stabilizeCumulativeProgress();
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -483,6 +637,162 @@
         // Zusätzliche Absicherung, falls eine spätere index.html den Schalter
         // zwar noch enthält, ihn aber an anderer Stelle wieder deaktiviert.
         .replace(/if\s*\(\s*!data\.browserTtsFallback\s*\)\s*\{/g, "if(false) {");
+    }
+
+    function cumulativeStatsGuardBootstrap() {
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const BACKUP_KEY = "kotobaQuestCumulativeStatsV2";
+      const VERSION = 2;
+
+      const number = value => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+      };
+      const earliest = (...values) => {
+        const valid = values.map(Number).filter(value => Number.isFinite(value) && value > 0);
+        return valid.length ? Math.min(...valid) : null;
+      };
+      const latest = (...values) => {
+        const valid = values.map(Number).filter(value => Number.isFinite(value) && value > 0);
+        return valid.length ? Math.max(...valid) : null;
+      };
+      const mergeNumbers = (left, right) => {
+        const a = left && typeof left === "object" && !Array.isArray(left) ? left : {};
+        const b = right && typeof right === "object" && !Array.isArray(right) ? right : {};
+        const result = { ...a, ...b };
+        new Set([...Object.keys(a), ...Object.keys(b)]).forEach(key => {
+          const av = Number(a[key]);
+          const bv = Number(b[key]);
+          if (Number.isFinite(av) || Number.isFinite(bv)) {
+            result[key] = Math.max(Number.isFinite(av) ? Math.max(0, av) : 0, Number.isFinite(bv) ? Math.max(0, bv) : 0);
+          }
+        });
+        return result;
+      };
+      const mergeEvents = (left, right) => {
+        const result = [];
+        const seen = new Set();
+        [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]
+          .filter(event => event && typeof event === "object")
+          .sort((a, b) => Number(a.at || 0) - Number(b.at || 0))
+          .forEach(event => {
+            const key = [Number(event.at || 0), event.type || "", event.id || "", event.area || "", Number(event.correct || 0), Number(event.incorrect || 0)].join("|");
+            if (seen.has(key)) return;
+            seen.add(key);
+            result.push(event);
+          });
+        return result.slice(-500);
+      };
+      const mergeAnalytics = (current, preserved) => {
+        const a = current && typeof current === "object" && !Array.isArray(current) ? current : {};
+        const b = preserved && typeof preserved === "object" && !Array.isArray(preserved) ? preserved : {};
+        const aDays = a.days && typeof a.days === "object" && !Array.isArray(a.days) ? a.days : {};
+        const bDays = b.days && typeof b.days === "object" && !Array.isArray(b.days) ? b.days : {};
+        const days = {};
+        new Set([...Object.keys(aDays), ...Object.keys(bDays)]).forEach(key => days[key] = mergeNumbers(aDays[key], bDays[key]));
+        return {
+          ...b,
+          ...a,
+          version: Math.max(VERSION, Number(a.version || 0), Number(b.version || 0)),
+          trackingStartedAt: earliest(a.trackingStartedAt, b.trackingStartedAt) || Date.now(),
+          days,
+          events: mergeEvents(b.events, a.events)
+        };
+      };
+      const dayHasActivity = day => day && typeof day === "object" && Object.entries(day).some(([key, value]) => key === "activeMs" ? number(value) >= 1000 : number(value) > 0);
+      const mergeActivity = (current, preserved, analytics) => {
+        const a = current && typeof current === "object" && !Array.isArray(current) ? current : {};
+        const b = preserved && typeof preserved === "object" && !Array.isArray(preserved) ? preserved : {};
+        const aDays = a.days && typeof a.days === "object" && !Array.isArray(a.days) ? a.days : {};
+        const bDays = b.days && typeof b.days === "object" && !Array.isArray(b.days) ? b.days : {};
+        const days = {};
+        new Set([...Object.keys(aDays), ...Object.keys(bDays), ...Object.keys(analytics?.days || {})]).forEach(key => {
+          const count = Math.max(number(aDays[key]), number(bDays[key]));
+          if (count || dayHasActivity(analytics?.days?.[key])) days[key] = count || 1;
+        });
+        const totalFromDays = Object.values(days).reduce((sum, value) => sum + number(value), 0);
+        return {
+          ...b,
+          ...a,
+          days,
+          totalActions: Math.max(number(a.totalActions), number(b.totalActions), totalFromDays),
+          firstActivityAt: earliest(a.firstActivityAt, b.firstActivityAt, analytics?.trackingStartedAt),
+          lastActivityAt: latest(a.lastActivityAt, b.lastActivityAt)
+        };
+      };
+      const readBackup = () => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(BACKUP_KEY) || "null");
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch { return {}; }
+      };
+      const mergeData = (source, backup = readBackup()) => {
+        const target = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+        target.studyAnalytics = mergeAnalytics(target.studyAnalytics, backup.studyAnalytics);
+        target.studyActivity = mergeActivity(target.studyActivity, backup.studyActivity, target.studyAnalytics);
+        target.statisticsPersistenceVersion = VERSION;
+        return target;
+      };
+      const nativeSetItem = Storage.prototype.setItem;
+      const saveBackup = source => {
+        nativeSetItem.call(localStorage, BACKUP_KEY, JSON.stringify({
+          version: VERSION,
+          updatedAtMs: Date.now(),
+          studyActivity: source.studyActivity || {},
+          studyAnalytics: source.studyAnalytics || {}
+        }));
+      };
+      const stabilize = raw => {
+        if (!raw) return raw;
+        try {
+          const parsed = JSON.parse(String(raw));
+          if (!parsed || typeof parsed !== "object") return raw;
+          const merged = mergeData(parsed);
+          const next = JSON.stringify(merged);
+          nativeSetItem.call(localStorage, STORAGE_KEY, next);
+          saveBackup(merged);
+          return next;
+        } catch { return raw; }
+      };
+
+      stabilize(localStorage.getItem(STORAGE_KEY));
+
+      if (!Storage.prototype.setItem.__kqCumulativeStatsGuard) {
+        const wrapped = function(key, value) {
+          if (String(key) !== STORAGE_KEY) return nativeSetItem.call(this, key, value);
+          let nextValue = value;
+          try {
+            const parsed = JSON.parse(String(value || "{}"));
+            const merged = mergeData(parsed);
+            nextValue = JSON.stringify(merged);
+            saveBackup(merged);
+            try {
+              if (typeof data !== "undefined" && data && typeof data === "object") {
+                data.studyActivity = merged.studyActivity;
+                data.studyAnalytics = merged.studyAnalytics;
+                data.statisticsPersistenceVersion = VERSION;
+              }
+            } catch {}
+          } catch {}
+          return nativeSetItem.call(this, key, nextValue);
+        };
+        wrapped.__kqCumulativeStatsGuard = true;
+        wrapped.__kqOriginal = nativeSetItem;
+        Storage.prototype.setItem = wrapped;
+      }
+
+      window.KotobaQuestCumulativeStatsGuard = {
+        version: VERSION,
+        stabilize: () => stabilize(localStorage.getItem(STORAGE_KEY))
+      };
+    }
+
+    function injectCumulativeStatsGuard(html) {
+      const guardScript = "<script>(" + cumulativeStatsGuardBootstrap.toString() + ")();<" + "/script>";
+      if (/<head(?:\s[^>]*)?>/i.test(html)) {
+        return html.replace(/<head(?:\s[^>]*)?>/i, match => `${match}\n${guardScript}`);
+      }
+      return `${guardScript}${html}`;
     }
 
     function core2000PackBootstrap() {
@@ -15749,6 +16059,116 @@
           .join("");
       }
 
+
+      // Grammar review vocabulary support pass 1.4:
+      // Ausgangsformen und Hörhilfen verwenden dieselben dynamischen
+      // Vokabelinformationen wie die vollständigen Beispielsätze.
+      function grammarReviewVisibleWords(source) {
+        return supportWordsForSentence(String(source || "")).filter(word =>
+          !vocabularyIsGuru(findVocabularyEntry(word)) && !findKnownVocabularyEntry(word)
+        );
+      }
+
+      function renderGrammarReviewVocabularyCards(source, translation = "", heading = "Vokabelhilfen", note = "") {
+        const textSource = String(source || "");
+        const visibleWords = grammarReviewVisibleWords(textSource);
+        if (!visibleWords.length) return "";
+        return `<div class="grammar-vocab-help grammar-review-vocab-help">
+          <div class="grammar-vocab-heading"><strong>${escapeHtml(heading)}</strong><span>${escapeHtml(note || "Wörter ab Guru 1 werden automatisch ausgeblendet.")}</span></div>
+          ${visibleWords.map((word, index) => renderVocabularyFootnote(word, index + 1, textSource, String(translation || ""))).join("")}
+        </div>`;
+      }
+
+
+      // Grammar production vocabulary bank pass 1.5:
+      // Bei Deutsch→Japanisch-Aufgaben werden nur noch nicht gefestigte
+      // Grundformen als neutrale Wortbank gezeigt. Satzstellung und konkrete
+      // Flexion bleiben Teil der eigentlichen Grammatikaufgabe.
+      function renderGrammarProductionVocabularyBank(modelSentence, germanPrompt = "") {
+        const sentence = String(modelSentence || "");
+        if (!sentence || !/[ぁ-んァ-ヶ一-龯々〆ヶ]/.test(sentence)) return "";
+
+        const uniqueWords = [];
+        const seen = new Set();
+        for (const word of grammarReviewVisibleWords(sentence)) {
+          const key = `${normalizeVocabKey(word.base)}|${normalizeVocabKey(word.baseReading)}`;
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          uniqueWords.push(word);
+        }
+        if (!uniqueWords.length) return "";
+
+        // Nicht in Satzreihenfolge anzeigen, damit die Wortbank die japanische
+        // Satzstruktur nicht bereits verrät.
+        uniqueWords.sort((left, right) =>
+          String(left.baseReading || left.reading || left.base || "").localeCompare(
+            String(right.baseReading || right.reading || right.base || ""),
+            "ja"
+          )
+        );
+
+        const encodedSentence = encodeURIComponent(sentence);
+        const encodedTranslation = encodeURIComponent(String(germanPrompt || ""));
+        const cards = uniqueWords.map((word, index) => {
+          const entry = vocabularyPathEntry(word);
+          const status = vocabularyPathStatus(entry);
+          const actions = entry
+            ? `<div class="grammar-vocab-path-note">${escapeHtml(status)}</div>`
+            : `<div class="grammar-vocab-actions">
+                <button class="grammar-add-vocab" data-grammar-add-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${index}" data-word-base="${escapeHtml(encodeURIComponent(word.base || ""))}" data-word-reading="${escapeHtml(encodeURIComponent(word.baseReading || ""))}" data-translation="${escapeHtml(encodedTranslation)}">Zum Mining hinzufügen</button>
+                <button class="grammar-known-vocab" data-grammar-known-vocab data-sentence="${escapeHtml(encodedSentence)}" data-word-index="${index}" data-word-base="${escapeHtml(encodeURIComponent(word.base || ""))}" data-word-reading="${escapeHtml(encodeURIComponent(word.baseReading || ""))}" data-translation="${escapeHtml(encodedTranslation)}">Zu bekannten Vokabeln hinzufügen</button>
+              </div>`;
+          return `<div class="grammar-vocab-footnote grammar-production-vocab-card">
+            <span class="grammar-vocab-number">${index + 1}</span>
+            <div class="grammar-vocab-content">
+              <div class="grammar-vocab-base"><strong>${rubyHtml(word.base, word.baseReading)}</strong><span>– ${escapeHtml(word.meaning)}</span><em>${escapeHtml(status)}</em></div>
+              ${word.pos ? `<div class="small muted" style="margin-top:4px">${escapeHtml(word.pos)}</div>` : ""}
+              ${actions}
+            </div>
+          </div>`;
+        }).join("");
+
+        return `<div class="grammar-vocab-help grammar-review-vocab-help grammar-production-word-bank">
+          <div class="grammar-vocab-heading"><strong>Benötigte Vokabeln</strong><span>Nur noch nicht gefestigte Grundformen. Reihenfolge und passende Form musst du selbst bilden.</span></div>
+          ${cards}
+        </div>`;
+      }
+
+      function renderGrammarReviewPromptSupport(prompt, color = "#6c63d9") {
+        const source = String(prompt || "");
+        const words = supportWordsForSentence(source);
+        if (!words.length) {
+          return { promptHtml: renderMixedTextWithFurigana(source), notesHtml: "" };
+        }
+
+        const visibleWords = words.filter(word =>
+          !vocabularyIsGuru(findVocabularyEntry(word)) && !findKnownVocabularyEntry(word)
+        );
+        const noteNumberByWord = new Map(visibleWords.map((word, index) => [word, index + 1]));
+        let cursor = 0;
+        let promptHtml = "";
+
+        for (const word of words) {
+          const position = source.indexOf(String(word.surface || ""), cursor);
+          if (position < 0) continue;
+          promptHtml += renderMixedTextWithFurigana(source.slice(cursor, position));
+          promptHtml += rubyHtml(word.surface, word.reading);
+          const noteNumber = noteNumberByWord.get(word);
+          if (noteNumber) promptHtml += `<sup class="grammar-vocab-marker">${noteNumber}</sup>`;
+          cursor = position + String(word.surface || "").length;
+        }
+        promptHtml += renderMixedTextWithFurigana(source.slice(cursor));
+
+        const isSourceForm = /(?:Ausgangsform|Grundform|Wortvorgabe)\s*:/i.test(source);
+        const notesHtml = visibleWords.length
+          ? `<div class="grammar-vocab-help grammar-review-vocab-help grammar-review-source-help">
+              <div class="grammar-vocab-heading"><strong>${isSourceForm ? "Vokabelhilfe zur Ausgangsform" : "Vokabelhilfe zur Wortvorgabe"}</strong><span>Lesung, Bedeutung, Grundform und dein aktueller Lernstatus.</span></div>
+              ${visibleWords.map((word, index) => renderVocabularyFootnote(word, index + 1, source, "")).join("")}
+            </div>`
+          : "";
+        return { promptHtml, notesHtml };
+      }
+
       function renderSupportedSentence(example, color) {
         const sentence = String(example?.jp || "");
         const words = supportWordsForSentence(sentence);
@@ -17085,6 +17505,21 @@
         const reviewSupport = reviewSentence
           ? renderSupportedSentence({ jp: reviewSentence, de: String(question.model || ""), highlight: "" }, point.color || "#6c63d9")
           : { sentenceHtml: "", notesHtml: "" };
+        const promptSupport = renderGrammarReviewPromptSupport(adaptivePrompt, point.color || "#6c63d9");
+        const listeningVocabularyHelp = isListening
+          ? renderGrammarReviewVocabularyCards(
+              reviewSentence,
+              String(question.model || ""),
+              "Vokabelhilfe zum Audio",
+              "Der Satz bleibt bis zur Auswertung verborgen; unbekannte Wörter werden als Hörhilfe gezeigt."
+            )
+          : "";
+        const productionVocabularyHelp = skill.id === "production"
+          ? renderGrammarProductionVocabularyBank(
+              String(question.model || ""),
+              String(question.prompt || adaptivePrompt || "")
+            )
+          : "";
 
         card.innerHTML = `
           <div class="grammar-stepper"><span class="done" style="flex:${Math.max(1, progress)}"></span><span style="flex:${Math.max(1, 100 - progress)}"></span></div>
@@ -17093,9 +17528,11 @@
           <div class="grammar-badge" style="margin-top:10px">${escapeHtml(reviewCurrent.difficulty === "guided" ? (question.aspectLabel || difficulty.badge) : difficulty.badge)}</div>
           <h2>${escapeHtml(heading)}</h2>
           <div class="small muted" style="margin:8px 0 4px">${escapeHtml(difficulty.note)}</div>
-          <div class="grammar-review-prompt">${renderMixedTextWithFurigana(adaptivePrompt)}</div>
+          <div class="grammar-review-prompt">${promptSupport.promptHtml}</div>
+          ${promptSupport.notesHtml}
+          ${productionVocabularyHelp}
           ${isListening
-            ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz und seine Vokabelhilfen bleiben bis zur Auswertung verborgen.</div></div>`
+            ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz bleibt bis zur Auswertung verborgen. Unbekannte Vokabeln erscheinen darunter als Hörhilfe.</div></div>${listeningVocabularyHelp}`
             : reviewSentence
               ? `<div class="grammar-review-sentence">${reviewSupport.sentenceHtml}</div>${reviewSupport.notesHtml}`
               : ""}
@@ -17167,7 +17604,7 @@
           <div class="grammar-feedback ${assessment.likely === true ? "good" : assessment.likely === false ? "warn" : ""}">
             <strong>${assessment.likely === true ? "Wahrscheinlich passend" : assessment.likely === false ? "Bitte genau vergleichen" : "Mit der Musterlösung vergleichen"}</strong>
             <div style="margin-top:6px">${escapeHtml(assessment.note)}</div>
-            ${skill.id === "listening" && revealedSupport ? `<div style="margin-top:12px"><div class="sentence-audio-row"><strong class="grammar-review-revealed-sentence">${revealedSupport.sentenceHtml}</strong><button class="grammar-audio" id="grammarReplayListening" data-audio="${escapeHtml(question.audio)}">🔊</button></div>${revealedSupport.notesHtml}</div>` : ""}
+            ${skill.id === "listening" && revealedSupport ? `<div class="grammar-review-audio-result" style="margin-top:12px"><span class="small muted">Gehörter Satz mit Furigana</span><div class="sentence-audio-row"><strong class="grammar-review-revealed-sentence">${revealedSupport.sentenceHtml}</strong><button class="grammar-audio" id="grammarReplayListening" data-audio="${escapeHtml(question.audio)}">🔊</button></div></div>` : ""}
             ${skill.id === "production" && revealedSupport ? `<div style="margin-top:12px"><span class="small muted">Musterlösung</span><div class="grammar-review-sentence grammar-review-model-sentence">${revealedSupport.sentenceHtml}</div>${revealedSupport.notesHtml}</div>` : `<div style="margin-top:9px">Musterlösung: <strong>${modelLooksJapanese ? renderFuriganaOnly(String(question.model || "")) : escapeHtml(question.model)}</strong></div>`}
             <div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--kq-wash,#f4efff)"><span class="small muted">Geprüfte Struktur</span><div><strong>${escapeHtml(point.title)}</strong> · ${escapeHtml(point.subtitle || "")}</div></div>
             <div class="small muted" style="margin-top:7px">Bewerte dich danach selbst. „Fast richtig“ hält die SRS-Stufe und fragt die Aufgabe später erneut.</div>
@@ -21297,7 +21734,7 @@
       window.__KOTOBA_LEARNING_INSIGHTS_V1__ = true;
 
       const STORAGE_KEY = "kotobaQuestDataV3";
-      const ANALYTICS_VERSION = 1;
+      const ANALYTICS_VERSION = 2;
       const GRAMMAR_SCAN_VERSION = 1;
       const DAY_MS = 24 * 60 * 60 * 1000;
       const STUDY_VIEWS = new Set(["placement", "lessons", "reviews", "grammarLesson", "grammarReview", "vocabPractice"]);
@@ -21944,6 +22381,24 @@
         }, defaultDay());
       }
 
+      function allTimeTotals(analytics) {
+        return Object.values(analytics?.days || {}).reduce((result, storedDay) => {
+          const day = { ...defaultDay(), ...(storedDay && typeof storedDay === "object" ? storedDay : {}) };
+          Object.keys(defaultDay()).forEach(key => result[key] += Number(day[key] || 0));
+          return result;
+        }, defaultDay());
+      }
+
+      function persistedActivitySummary(source = sourceData()) {
+        const activity = source.studyActivity && typeof source.studyActivity === "object" ? source.studyActivity : {};
+        const activeDays = Object.values(activity.days || {}).filter(value => Number(value || 0) > 0).length;
+        const actionsFromDays = Object.values(activity.days || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+        return {
+          activeDays,
+          totalActions: Math.max(Number(activity.totalActions || 0), actionsFromDays)
+        };
+      }
+
       function totalAccuracy() {
         const source = sourceData();
         let vocabCorrect = 0, vocabIncorrect = 0;
@@ -22076,6 +22531,8 @@
         const analytics = analyticsFor(source);
         const today = { ...defaultDay(), ...(analytics.days[dateKey()] || {}) };
         const week = sumDays(analytics, 7);
+        const allTime = allTimeTotals(analytics);
+        const activitySummary = persistedActivitySummary(source);
         const accuracy = totalAccuracy();
         const core = (source.vocabulary || []).filter(item => item?.sourceType === "core");
         const mining = (source.vocabulary || []).filter(item => item?.sourceType === "mining");
@@ -22110,6 +22567,13 @@
             <article class="card"><span class="kq-stat-label">Gesamtgenauigkeit</span><strong class="kq-stat-big">${accuracy.percent}%</strong><div class="kq-accuracy-split"><span>Vokabeln ${accuracy.vocabCorrect + accuracy.vocabIncorrect ? Math.round(accuracy.vocabCorrect / (accuracy.vocabCorrect + accuracy.vocabIncorrect) * 100) : 0}%</span><span>Grammatik ${accuracy.grammarCorrect + accuracy.grammarIncorrect ? Math.round(accuracy.grammarCorrect / (accuracy.grammarCorrect + accuracy.grammarIncorrect) * 100) : 0}%</span></div></article>
             <article class="card"><span class="kq-stat-label">Diese Woche</span><strong class="kq-stat-big">${week.reviewCorrect + week.reviewIncorrect}</strong><small>bewertete Antworten · ${week.coreLessons + week.miningLessons + week.grammarLessons} neue Inhalte</small></article>
             <article class="card"><span class="kq-stat-label">Heute geschafft</span><strong class="kq-stat-big">${today.reviewCorrect}</strong><small>richtige Antworten · ${today.reviewIncorrect} Fehler · ${today.vocabGuru + today.grammarGuru} neue Guru-Erfolge</small></article>
+          </div>
+
+          <div class="kq-lifetime-strip">
+            <article class="card"><span>Insgesamt beantwortet</span><strong>${accuracy.correct + accuracy.incorrect}</strong><small>${accuracy.correct} richtig · ${accuracy.incorrect} falsch</small></article>
+            <article class="card"><span>Aktive Lerntage</span><strong>${activitySummary.activeDays}</strong><small>${activitySummary.totalActions} gespeicherte Lernaktionen</small></article>
+            <article class="card"><span>Gesamte Lernzeit</span><strong>${formatDuration(allTime.activeMs)}</strong><small>über alle dauerhaft gespeicherten Tage</small></article>
+            <article class="card"><span>Gelernte Inhalte</span><strong>${allTime.coreLessons + allTime.miningLessons + allTime.grammarLessons}</strong><small>${allTime.vocabGuru + allTime.grammarGuru} Guru-Erfolge insgesamt</small></article>
           </div>
 
           <div class="grid-two kq-stat-section-grid">
@@ -22178,6 +22642,10 @@
         .kq-stat-label { color:var(--muted); font-weight:850; }
         .kq-accuracy-split { display:flex; flex-wrap:wrap; gap:6px; }
         .kq-accuracy-split span { padding:5px 8px; border-radius:999px; color:var(--primary-dark); background:var(--kq-wash,#f3efff); font-size:.72rem; font-weight:850; }
+        .kq-lifetime-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+        .kq-lifetime-strip > article { min-height:125px; display:grid; align-content:center; gap:5px; }
+        .kq-lifetime-strip span,.kq-lifetime-strip small { color:var(--muted); font-weight:750; }
+        .kq-lifetime-strip strong { color:var(--primary); font-size:2rem; line-height:1.05; }
         .kq-stat-section-grid { align-items:stretch; }
         .kq-stat-section-grid > .card { min-height:245px; }
         .kq-activity-calendar { display:grid; grid-template-columns:repeat(14,1fr); gap:7px; }
@@ -22246,10 +22714,12 @@
         .kq-grammar-chip.new { border-style:dashed; }
         @media (max-width:900px) {
           .kq-stats-hero { grid-template-columns:1fr 1fr; }
+          .kq-lifetime-strip { grid-template-columns:1fr 1fr; }
           .kq-grammar-mining-list,.kq-mining-grammar-columns { grid-template-columns:1fr; }
         }
         @media (max-width:620px) {
           .kq-stats-hero { grid-template-columns:1fr; }
+          .kq-lifetime-strip { grid-template-columns:1fr; }
           .kq-statistics-teaser { align-items:flex-start; flex-direction:column; }
           .kq-activity-calendar { grid-template-columns:repeat(7,1fr); }
           .kq-funnel { grid-template-columns:1fr; }
@@ -26431,7 +26901,9 @@
         appDocumentHtml = injectGrammarPath(
           injectCore2000Pack(
             enableAutomaticBrowserAudioFallback(
-              injectLegacySettingFields(originalHtml)
+              injectLegacySettingFields(
+                injectCumulativeStatsGuard(originalHtml)
+              )
             )
           )
         );
@@ -26482,7 +26954,7 @@
     });
 
     function readLocalRaw() {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = stabilizeCumulativeProgress(localStorage.getItem(STORAGE_KEY));
       return isValidProgress(raw) ? raw : null;
     }
 
@@ -26694,13 +27166,14 @@
     }
 
     function restoreCloudProgress(cloudProgress) {
-      localStorage.setItem(STORAGE_KEY, cloudProgress.raw);
+      const restoredRaw = stabilizeCumulativeProgress(cloudProgress.raw);
+      localStorage.setItem(STORAGE_KEY, restoredRaw);
       writeMeta({
         uid: currentUser.uid,
         lastSyncedHash: cloudProgress.hash,
         lastCloudUpdatedAtMs: cloudProgress.updatedAtMs
       });
-      observedLocalRaw = cloudProgress.raw;
+      observedLocalRaw = restoredRaw;
       reloadAppDocument();
       setStatus("good", "Cloudstand geladen", `Wiederhergestellt · ${formatTime()} Uhr`);
       toast("Dein Cloud-Spielstand wurde wiederhergestellt.");
@@ -26845,7 +27318,7 @@
     });
 
     setInterval(() => {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = stabilizeCumulativeProgress(localStorage.getItem(STORAGE_KEY));
       if (raw === observedLocalRaw) return;
       observedLocalRaw = raw;
       scheduleCloudSave();
