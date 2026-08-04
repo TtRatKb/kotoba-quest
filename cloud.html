@@ -391,6 +391,97 @@
 
     const CUMULATIVE_STATS_BACKUP_KEY = "kotobaQuestCumulativeStatsV2";
     const CUMULATIVE_STATS_VERSION = 2;
+    const PARTICLE_PATH_BACKUP_KEY = "kotobaQuestParticlePathBackupV1";
+    const PARTICLE_PATH_BACKUP_VERSION = 1;
+
+    function objectValue(value) {
+      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    }
+
+    function mergeParticleSkillState(current, preserved) {
+      const left = objectValue(current);
+      const right = objectValue(preserved);
+      const leftStage = Math.max(0, Math.min(9, Number(left.stage || 0)));
+      const rightStage = Math.max(0, Math.min(9, Number(right.stage || 0)));
+      const stage = Math.max(leftStage, rightStage);
+      const dueCandidates = [left.dueAt, right.dueAt].map(Number).filter(Number.isFinite);
+      const reviewedCandidates = [left.lastReviewedAt, right.lastReviewedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
+      return {
+        ...right,
+        ...left,
+        stage,
+        dueAt: dueCandidates.length ? Math.max(...dueCandidates) : null,
+        correct: Math.max(0, Number(left.correct || 0), Number(right.correct || 0)),
+        incorrect: Math.max(0, Number(left.incorrect || 0), Number(right.incorrect || 0)),
+        lastReviewedAt: reviewedCandidates.length ? Math.max(...reviewedCandidates) : null
+      };
+    }
+
+    function mergeParticlePathState(current, preserved) {
+      const left = objectValue(current);
+      const right = objectValue(preserved);
+      const points = {};
+      const leftPoints = objectValue(left.points);
+      const rightPoints = objectValue(right.points);
+      new Set([...Object.keys(leftPoints), ...Object.keys(rightPoints)]).forEach(id => {
+        const a = objectValue(leftPoints[id]);
+        const b = objectValue(rightPoints[id]);
+        const completedCandidates = [a.lessonCompletedAt, b.lessonCompletedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
+        const skills = {};
+        const aSkills = objectValue(a.skills);
+        const bSkills = objectValue(b.skills);
+        new Set([...Object.keys(aSkills), ...Object.keys(bSkills), "function", "production", "contrast"]).forEach(skillId => {
+          skills[skillId] = mergeParticleSkillState(aSkills[skillId], bSkills[skillId]);
+        });
+        points[id] = {
+          ...b,
+          ...a,
+          lessonComplete: Boolean(a.lessonComplete || b.lessonComplete),
+          lessonCompletedAt: completedCandidates.length ? Math.min(...completedCandidates) : null,
+          skills
+        };
+      });
+      const aStats = objectValue(left.stats);
+      const bStats = objectValue(right.stats);
+      const lastStudiedCandidates = [aStats.lastStudiedAt, bStats.lastStudiedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
+      return {
+        ...right,
+        ...left,
+        version: Math.max(PARTICLE_PATH_BACKUP_VERSION, Number(left.version || 0), Number(right.version || 0)),
+        points,
+        stats: {
+          ...bStats,
+          ...aStats,
+          lessons: Math.max(0, Number(aStats.lessons || 0), Number(bStats.lessons || 0), Object.values(points).filter(point => point.lessonComplete).length),
+          reviews: Math.max(0, Number(aStats.reviews || 0), Number(bStats.reviews || 0)),
+          correct: Math.max(0, Number(aStats.correct || 0), Number(bStats.correct || 0)),
+          incorrect: Math.max(0, Number(aStats.incorrect || 0), Number(bStats.incorrect || 0)),
+          lastStudiedAt: lastStudiedCandidates.length ? Math.max(...lastStudiedCandidates) : null
+        }
+      };
+    }
+
+    function readParticlePathBackup() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(PARTICLE_PATH_BACKUP_KEY) || "null");
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function writeParticlePathBackup(source) {
+      try {
+        if (!source?.particlePath || typeof source.particlePath !== "object") return;
+        localStorage.setItem(PARTICLE_PATH_BACKUP_KEY, JSON.stringify({
+          version: PARTICLE_PATH_BACKUP_VERSION,
+          updatedAtMs: Date.now(),
+          particlePath: source.particlePath
+        }));
+      } catch (error) {
+        console.warn("Kotoba Quest Partikel-Backup konnte nicht geschrieben werden", error);
+      }
+    }
 
     function finiteNonNegative(value) {
       const number = Number(value);
@@ -507,9 +598,12 @@
       const target = source && typeof source === "object" && !Array.isArray(source) ? source : {};
       const analytics = mergeStudyAnalytics(target.studyAnalytics, backup.studyAnalytics);
       const activity = mergeStudyActivity(target.studyActivity, backup.studyActivity, analytics);
+      const particleBackup = readParticlePathBackup();
       target.studyAnalytics = analytics;
       target.studyActivity = activity;
+      target.particlePath = mergeParticlePathState(target.particlePath, particleBackup.particlePath);
       target.statisticsPersistenceVersion = CUMULATIVE_STATS_VERSION;
+      target.particlePersistenceVersion = PARTICLE_PATH_BACKUP_VERSION;
       return target;
     }
 
@@ -521,6 +615,7 @@
           studyActivity: source.studyActivity || {},
           studyAnalytics: source.studyAnalytics || {}
         }));
+        writeParticlePathBackup(source);
       } catch (error) {
         console.warn("Kotoba Quest Statistik-Backup konnte nicht geschrieben werden", error);
       }
@@ -642,7 +737,9 @@
     function cumulativeStatsGuardBootstrap() {
       const STORAGE_KEY = "kotobaQuestDataV3";
       const BACKUP_KEY = "kotobaQuestCumulativeStatsV2";
+      const PARTICLE_BACKUP_KEY = "kotobaQuestParticlePathBackupV1";
       const VERSION = 2;
+      const PARTICLE_VERSION = 1;
 
       const number = value => {
         const parsed = Number(value);
@@ -720,6 +817,68 @@
           lastActivityAt: latest(a.lastActivityAt, b.lastActivityAt)
         };
       };
+      const objectValue = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      const mergeParticleSkill = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const due = [a.dueAt, b.dueAt].map(Number).filter(Number.isFinite);
+        const reviewed = [a.lastReviewedAt, b.lastReviewedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
+        return {
+          ...b, ...a,
+          stage: Math.max(0, Math.min(9, Number(a.stage || 0)), Math.min(9, Number(b.stage || 0))),
+          dueAt: due.length ? Math.max(...due) : null,
+          correct: Math.max(0, Number(a.correct || 0), Number(b.correct || 0)),
+          incorrect: Math.max(0, Number(a.incorrect || 0), Number(b.incorrect || 0)),
+          lastReviewedAt: reviewed.length ? Math.max(...reviewed) : null
+        };
+      };
+      const mergeParticlePath = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const aPoints = objectValue(a.points);
+        const bPoints = objectValue(b.points);
+        const points = {};
+        new Set([...Object.keys(aPoints), ...Object.keys(bPoints)]).forEach(id => {
+          const ap = objectValue(aPoints[id]);
+          const bp = objectValue(bPoints[id]);
+          const completed = [ap.lessonCompletedAt, bp.lessonCompletedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
+          const aSkills = objectValue(ap.skills);
+          const bSkills = objectValue(bp.skills);
+          const skills = {};
+          new Set([...Object.keys(aSkills), ...Object.keys(bSkills), "function", "production", "contrast"]).forEach(skillId => {
+            skills[skillId] = mergeParticleSkill(aSkills[skillId], bSkills[skillId]);
+          });
+          points[id] = {
+            ...bp, ...ap,
+            lessonComplete: Boolean(ap.lessonComplete || bp.lessonComplete),
+            lessonCompletedAt: completed.length ? Math.min(...completed) : null,
+            skills
+          };
+        });
+        const aStats = objectValue(a.stats);
+        const bStats = objectValue(b.stats);
+        const studied = [aStats.lastStudiedAt, bStats.lastStudiedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
+        return {
+          ...b, ...a,
+          version: Math.max(PARTICLE_VERSION, Number(a.version || 0), Number(b.version || 0)),
+          points,
+          stats: {
+            ...bStats, ...aStats,
+            lessons: Math.max(0, Number(aStats.lessons || 0), Number(bStats.lessons || 0), Object.values(points).filter(point => point.lessonComplete).length),
+            reviews: Math.max(0, Number(aStats.reviews || 0), Number(bStats.reviews || 0)),
+            correct: Math.max(0, Number(aStats.correct || 0), Number(bStats.correct || 0)),
+            incorrect: Math.max(0, Number(aStats.incorrect || 0), Number(bStats.incorrect || 0)),
+            lastStudiedAt: studied.length ? Math.max(...studied) : null
+          }
+        };
+      };
+      const readParticleBackup = () => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(PARTICLE_BACKUP_KEY) || "null");
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch { return {}; }
+      };
+
       const readBackup = () => {
         try {
           const parsed = JSON.parse(localStorage.getItem(BACKUP_KEY) || "null");
@@ -728,9 +887,12 @@
       };
       const mergeData = (source, backup = readBackup()) => {
         const target = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+        const particleBackup = readParticleBackup();
         target.studyAnalytics = mergeAnalytics(target.studyAnalytics, backup.studyAnalytics);
         target.studyActivity = mergeActivity(target.studyActivity, backup.studyActivity, target.studyAnalytics);
+        target.particlePath = mergeParticlePath(target.particlePath, particleBackup.particlePath);
         target.statisticsPersistenceVersion = VERSION;
+        target.particlePersistenceVersion = PARTICLE_VERSION;
         return target;
       };
       const nativeSetItem = Storage.prototype.setItem;
@@ -741,6 +903,13 @@
           studyActivity: source.studyActivity || {},
           studyAnalytics: source.studyAnalytics || {}
         }));
+        if (source.particlePath && typeof source.particlePath === "object") {
+          nativeSetItem.call(localStorage, PARTICLE_BACKUP_KEY, JSON.stringify({
+            version: PARTICLE_VERSION,
+            updatedAtMs: Date.now(),
+            particlePath: source.particlePath
+          }));
+        }
       };
       const stabilize = raw => {
         if (!raw) return raw;
@@ -770,7 +939,9 @@
               if (typeof data !== "undefined" && data && typeof data === "object") {
                 data.studyActivity = merged.studyActivity;
                 data.studyAnalytics = merged.studyAnalytics;
+                data.particlePath = merged.particlePath;
                 data.statisticsPersistenceVersion = VERSION;
+                data.particlePersistenceVersion = PARTICLE_VERSION;
               }
             } catch {}
           } catch {}
@@ -18532,8 +18703,13 @@
       const style = document.createElement("style");
       style.id = "kotobaVocabularyExperienceStyles";
       style.textContent = `
-        .vocab-lesson-sentence { color:var(--text); font-size:1.08rem; font-weight:850; line-height:1.85; }
-        .vocab-lesson-sentence ruby { ruby-align:center; }
+        .vocab-lesson-sentence { color:var(--text); font-size:1.08rem; font-weight:850; line-height:1.85; white-space:normal; overflow-wrap:normal; word-break:normal; }
+        .sentence-audio-row .vocab-lesson-sentence { flex:1 1 auto; min-width:0; }
+        /* Die Basis-App setzt alle spans im Kontextpanel auf display:block. Die
+           annotierten Satz-Tokens müssen hier ausdrücklich inline bleiben. */
+        .context-panel .vocab-lesson-sentence .vocab-lesson-token { display:inline !important; }
+        .context-panel .vocab-lesson-sentence .grammar-vocab-marker { display:inline; }
+        .vocab-lesson-sentence ruby { ruby-align:center; white-space:nowrap; }
         .vocab-lesson-sentence rt { color:#655e78; font-size:.58em; font-weight:750; }
         .vocab-lesson-token.target { padding:2px 5px; border-radius:7px; background:rgba(121,87,213,.14); color:var(--primary-dark); font-weight:950; }
         .vocab-lesson-token.unknown { text-decoration:underline dotted #d47a2c 2px; text-underline-offset:4px; }
@@ -19382,6 +19558,7 @@
     function languageReactorMiningBootstrap() {
       if (window.__KOTOBA_LANGUAGE_REACTOR_IMPORT_V1__) return;
       window.__KOTOBA_LANGUAGE_REACTOR_IMPORT_V1__ = true;
+      // Language Reactor import session reset pass 2.1 · Particle progress persistence pass 2.2
 
       const STORAGE_KEY = "kotobaQuestDataV3";
       const MAX_PREVIEW_ROWS = 300;
@@ -19844,32 +20021,42 @@
           candidate.statusKind = "muted";
           return candidate;
         }
+        const hasMedia = Boolean(candidate.media?.audioDataURL || candidate.media?.imageDataURL);
+        const hasContext = Boolean(candidate.example || candidate.tags.length || candidate.source?.title);
+        const shouldMerge = hasMedia || (hasContext && !history.has(candidate.importKey));
         if (coreMatch) {
-          candidate.action = "core";
-          candidate.selected = false;
+          candidate.action = "mergeCore";
+          candidate.selected = shouldMerge;
           candidate.match = coreMatch;
-          candidate.status = `Bereits im Core · Level ${Number(coreMatch.level || 1)}`;
+          candidate.status = history.has(candidate.importKey)
+            ? hasMedia
+              ? `Bereits im Core · Originalaudio/Szenenbild werden ergänzt; Level und SRS bleiben unverändert`
+              : `Dieser Kontext wurde schon verarbeitet; Core-Level und SRS bleiben unverändert`
+            : `Bereits im Core · Serienkontext wird ergänzt; Level und SRS bleiben unverändert`;
           candidate.statusKind = "core";
           return candidate;
         }
         if (knownMatch) {
-          candidate.action = "knownExisting";
-          candidate.selected = false;
+          candidate.action = "mergeKnown";
+          candidate.selected = shouldMerge;
           candidate.match = knownMatch;
-          candidate.status = "Bereits als bekannt gespeichert";
+          candidate.status = history.has(candidate.importKey)
+            ? hasMedia
+              ? "Bereits bekannt · Originalaudio/Szenenbild werden ergänzt; Bekannt-Status bleibt erhalten"
+              : "Dieser Kontext wurde schon verarbeitet; Bekannt-Status bleibt erhalten"
+            : "Bereits bekannt · Serienkontext wird ergänzt; Bekannt-Status bleibt erhalten";
           candidate.statusKind = "known";
           return candidate;
         }
         if (miningMatch) {
           candidate.action = "mergeMining";
-          const hasMedia = Boolean(candidate.media?.audioDataURL || candidate.media?.imageDataURL);
-          candidate.selected = hasMedia || (Boolean(candidate.example || candidate.tags.length) && !history.has(candidate.importKey));
+          candidate.selected = shouldMerge;
           candidate.match = miningMatch;
           candidate.status = history.has(candidate.importKey)
             ? hasMedia
-              ? "Schon im Mining · Originalaudio und Szenenbild werden lokal ergänzt"
-              : "Dieser Language-Reactor-Eintrag wurde schon verarbeitet"
-            : "Schon im Mining · neuer Kontext wird ergänzt";
+              ? "Schon im Mining · Originalaudio/Szenenbild werden ergänzt; Lernstand bleibt unverändert"
+              : "Dieser Kontext wurde schon verarbeitet; Lernstand bleibt unverändert"
+            : "Schon im Mining · neuer Serienkontext wird ergänzt; Lernstand bleibt unverändert";
           candidate.statusKind = "existing";
           return candidate;
         }
@@ -19952,9 +20139,9 @@
         const labels = {
           addMining: "Neu",
           addKnown: "Bekannt",
-          mergeMining: "Kontext",
-          core: "Core",
-          knownExisting: "Bekannt",
+          mergeMining: "Mining + Kontext",
+          mergeCore: "Core + Kontext",
+          mergeKnown: "Bekannt + Kontext",
           history: "Importiert",
           incomplete: "Fehlt",
           skip: "Übersprungen"
@@ -19998,21 +20185,21 @@
         const counts = statusCounts();
         const newCount = Number(counts.addMining || 0);
         const knownCount = Number(counts.addKnown || 0);
-        const coreCount = Number(counts.core || 0);
-        const existingCount = Number(counts.mergeMining || 0);
+        const coreCount = Number(counts.mergeCore || 0);
+        const existingCount = Number(counts.mergeMining || 0) + Number(counts.mergeCore || 0) + Number(counts.mergeKnown || 0);
         const incompleteCount = Number(counts.incomplete || 0);
         stats.innerHTML = `
           <span class="kq-lr-stat"><strong>${newCount}</strong> neu</span>
-          <span class="kq-lr-stat known"><strong>${knownCount}</strong> bekannt</span>
-          <span class="kq-lr-stat core"><strong>${coreCount}</strong> im Core</span>
-          <span class="kq-lr-stat existing"><strong>${existingCount}</strong> schon im Mining</span>
+          <span class="kq-lr-stat known"><strong>${knownCount}</strong> als bekannt neu</span>
+          <span class="kq-lr-stat core"><strong>${coreCount}</strong> Core-Kontexte</span>
+          <span class="kq-lr-stat existing"><strong>${existingCount}</strong> vorhandene Karten werden ergänzt</span>
           <span class="kq-lr-stat warning"><strong>${incompleteCount}</strong> unvollständig</span>`;
 
         const rows = candidates.slice(0, MAX_PREVIEW_ROWS);
         list.innerHTML = rows.map((candidate, index) => `
           <div class="kq-lr-row ${candidate.selected ? "selected" : ""}" data-lr-row="${index}">
             <label class="kq-lr-check">
-              <input type="checkbox" data-lr-select="${index}" ${candidate.selected ? "checked" : ""} ${["core", "knownExisting", "history", "skip", "incomplete"].includes(candidate.action) ? "disabled" : ""} />
+              <input type="checkbox" data-lr-select="${index}" ${candidate.selected ? "checked" : ""} ${["history", "skip", "incomplete"].includes(candidate.action) ? "disabled" : ""} />
             </label>
             <div class="kq-lr-word">
               <strong>${rubyMarkup(candidate)}</strong>
@@ -20051,8 +20238,8 @@
       function setSelection(mode) {
         for (const candidate of candidates) {
           if (mode === "none") candidate.selected = false;
-          else if (mode === "importable") candidate.selected = ["addMining", "addKnown", "mergeMining"].includes(candidate.action) && !candidate.incomplete;
-          else if (mode === "learning") candidate.selected = ["addMining", "mergeMining"].includes(candidate.action) && !candidate.incomplete;
+          else if (mode === "importable") candidate.selected = ["addMining", "addKnown", "mergeMining", "mergeCore", "mergeKnown"].includes(candidate.action) && !candidate.incomplete;
+          else if (mode === "learning") candidate.selected = ["addMining", "mergeMining", "mergeCore"].includes(candidate.action) && !candidate.incomplete;
         }
         renderPreview();
       }
@@ -20109,13 +20296,37 @@
       }
 
       function mergeContext(target, candidate) {
+        // Context/media enrichment must never alter a card's learning progress.
+        const protectedProgress = {};
+        for (const key of ["stage", "availableAt", "correct", "incorrect", "guruPassed", "level", "createdAt", "sourceType", "packId", "packEntryId"]) {
+          if (Object.prototype.hasOwnProperty.call(target, key)) protectedProgress[key] = target[key];
+        }
+
         const context = contextRecord(candidate);
         const existing = Array.isArray(target.lrContexts) ? target.lrContexts : [];
-        const duplicate = existing.some(item =>
+        const duplicateIndex = existing.findIndex(item =>
           normalize(item?.sentence) === normalize(context.sentence) &&
           normalize(item?.source) === normalize(context.source)
         );
-        if (!duplicate && context.sentence) target.lrContexts = [...existing, context].slice(-12);
+        let contextsChanged = false;
+        if (context.sentence) {
+          if (duplicateIndex >= 0) {
+            const previous = existing[duplicateIndex] || {};
+            const updated = {
+              ...previous,
+              ...context,
+              hasAudio: Boolean(previous.hasAudio || context.hasAudio),
+              hasImage: Boolean(previous.hasImage || context.hasImage)
+            };
+            const next = [...existing];
+            next[duplicateIndex] = updated;
+            target.lrContexts = next.slice(-12);
+            contextsChanged = Boolean(context.hasAudio || context.hasImage);
+          } else {
+            target.lrContexts = [...existing, context].slice(-12);
+            contextsChanged = true;
+          }
+        }
         if (!target.example && candidate.example) target.example = candidate.example;
         if (!target.exampleTranslation && candidate.exampleTranslation) target.exampleTranslation = candidate.exampleTranslation;
         const tags = new Set([...(Array.isArray(target.lrTags) ? target.lrTags : []), ...candidate.tags]);
@@ -20124,10 +20335,19 @@
         target.lrMediaKey = candidate.importKey;
         target.lrHasAudio = Boolean(candidate.media?.audioDataURL) || Boolean(target.lrHasAudio);
         target.lrHasImage = Boolean(candidate.media?.imageDataURL) || Boolean(target.lrHasImage);
-        if (candidate.source?.title) target.collection = candidate.source.collection;
-        return !duplicate;
+        target.lrSource = candidate.source || target.lrSource || {};
+        // Keep Story/Grammar/etc. collections intact. Only LR-created cards may adopt
+        // a newer LR title as their primary collection.
+        if (candidate.source?.title && (!target.collection || /^Language Reactor(?:\s*·|$)/i.test(String(target.collection)))) {
+          target.collection = candidate.source.collection;
+        }
+
+        Object.assign(target, protectedProgress);
+        return contextsChanged || Boolean(candidate.media?.audioDataURL || candidate.media?.imageDataURL);
       }
 
+      // Mining context layout + progress-safe media merge pass 2.3
+      
       function addMiningCandidate(candidate) {
         const payload = {
           word: candidate.word,
@@ -20223,7 +20443,7 @@
             addKnownCandidate(candidate);
             summary.addedKnown += 1;
             history.add(candidate.importKey);
-          } else if (candidate.action === "mergeMining" && candidate.match) {
+          } else if (["mergeMining", "mergeCore", "mergeKnown"].includes(candidate.action) && candidate.match) {
             if (mergeContext(candidate.match, candidate)) summary.merged += 1;
             history.add(candidate.importKey);
           } else {
@@ -20250,26 +20470,24 @@
         try { if (typeof renderVocabulary === "function") renderVocabulary(); } catch {}
         try { if (typeof toast === "function") toast(`${summary.addedMining} neue Mining-Karten und ${summary.addedKnown} bekannte Wörter importiert.`); } catch {}
 
-        classifyAll();
-        renderPreview();
+        const successMessage = `Import abgeschlossen: ${summary.addedMining} neue Mining-Karten, ${summary.addedKnown} bekannte Wörter, ${summary.merged} ergänzte Kontexte und ${summary.mediaSaved} lokale Medienpakete. Core-Dubletten wurden nicht doppelt angelegt.${summary.mediaFailed ? ` ${summary.mediaFailed} Medien konnten wegen des lokalen Browserspeichers nicht gesichert werden.` : ""} Du kannst jetzt direkt eine neue JSON-Datei auswählen.`;
+        resetPreview({ feedbackKind: "good", feedbackMessage: successMessage });
         renderLastImport();
-        const feedback = document.getElementById("kqLrFeedback");
-        if (feedback) {
-          feedback.className = "kq-lr-feedback good";
-          feedback.textContent = `Import abgeschlossen: ${summary.addedMining} neue Mining-Karten, ${summary.addedKnown} bekannte Wörter, ${summary.merged} ergänzte Kontexte und ${summary.mediaSaved} lokale Medienpakete. Core-Dubletten wurden nicht doppelt angelegt.${summary.mediaFailed ? ` ${summary.mediaFailed} Medien konnten wegen des lokalen Browserspeichers nicht gesichert werden.` : ""}`;
-        }
       }
 
-      function resetPreview() {
+      function resetPreview(options = {}) {
+        const settings = options && typeof options === "object" ? options : {};
         candidates = [];
         sourceFileName = "";
         parseSummary = null;
         const input = document.getElementById("kqLrFileInput");
         if (input) input.value = "";
+        const dropzone = document.getElementById("kqLrDropzone");
+        dropzone?.classList.remove("dragging");
         const feedback = document.getElementById("kqLrFeedback");
         if (feedback) {
-          feedback.className = "kq-lr-feedback";
-          feedback.textContent = "Exportdateien werden lokal verarbeitet. Originalaudio und ein Szenenbild werden – sofern vorhanden – separat im lokalen Browserspeicher abgelegt und vergrößern den Cloud-Spielstand nicht.";
+          feedback.className = `kq-lr-feedback${settings.feedbackKind ? ` ${settings.feedbackKind}` : ""}`;
+          feedback.textContent = settings.feedbackMessage || "Exportdateien werden lokal verarbeitet. Originalaudio und ein Szenenbild werden – sofern vorhanden – separat im lokalen Browserspeicher abgelegt und vergrößern den Cloud-Spielstand nicht.";
         }
         renderPreview();
       }
@@ -20292,8 +20510,8 @@
           <div class="kq-lr-rules">
             <div><strong>Orange / Learning</strong><span>Neue Einträge werden Mining-Karten.</span></div>
             <div><strong>Known</strong><span>Wandert ins Archiv „Bekannte Vokabeln“.</span></div>
-            <div><strong>Schon im Core</strong><span>Wird erkannt und nicht doppelt angelegt.</span></div>
-            <div><strong>Schon im Mining</strong><span>Kontext, Serienquelle und vorhandene Medien werden ergänzt.</span></div>
+            <div><strong>Schon im Core oder bekannt</strong><span>Keine neue Karte: Serienkontext und Medien werden an den vorhandenen Eintrag gehängt.</span></div>
+            <div><strong>Schon im Mining</strong><span>Kontext, Quelle und Medien werden ergänzt; Stufe, Fehler und nächste Fälligkeit bleiben unverändert.</span></div>
           </div>
           <label class="kq-lr-dropzone" id="kqLrDropzone" tabindex="0">
             <input id="kqLrFileInput" type="file" accept=".json,application/json" hidden />
@@ -25916,10 +26134,23 @@
             skills: Object.fromEntries(SKILLS.map(skill => [skill.id, normalizeSkill(old.skills?.[skill.id])]))
           };
         }
+        const legacyLessonCount = Math.min(POINTS.length, Math.max(0, Number(raw?.stats?.lessons || 0)));
+        const completedCount = Object.values(points).filter(point => point.lessonComplete).length;
+        if (!completedCount && legacyLessonCount > 0) {
+          const restoredAt = Number(raw?.stats?.lastStudiedAt || Date.now());
+          POINTS.slice(0, legacyLessonCount).forEach(point => {
+            points[point.id].lessonComplete = true;
+            points[point.id].lessonCompletedAt = restoredAt;
+            SKILLS.forEach(skill => {
+              const value = points[point.id].skills[skill.id];
+              if (value.stage === 0) value.stage = 1;
+            });
+          });
+        }
         return {
           version: VERSION,
           points,
-          stats: { lessons: Math.max(0, Number(raw?.stats?.lessons || 0)), reviews: Math.max(0, Number(raw?.stats?.reviews || 0)), correct: Math.max(0, Number(raw?.stats?.correct || 0)), incorrect: Math.max(0, Number(raw?.stats?.incorrect || 0)), lastStudiedAt: raw?.stats?.lastStudiedAt || null }
+          stats: { lessons: Math.max(legacyLessonCount, Object.values(points).filter(point => point.lessonComplete).length), reviews: Math.max(0, Number(raw?.stats?.reviews || 0)), correct: Math.max(0, Number(raw?.stats?.correct || 0)), incorrect: Math.max(0, Number(raw?.stats?.incorrect || 0)), lastStudiedAt: raw?.stats?.lastStudiedAt || null }
         };
       }
       function dateKey(value = Date.now()) {
@@ -25936,10 +26167,20 @@
       function persist({ activity = false } = {}) {
         const source = sourceData();
         source.particlePath = state;
+        source.particlePersistenceVersion = 1;
         if (activity) recordActivity(source);
-        try { if (typeof data !== "undefined") { data.particlePath = state; if (activity) data.studyActivity = source.studyActivity; localStorage.setItem(KEY, JSON.stringify(data)); } else localStorage.setItem(KEY, JSON.stringify(source)); }
-        catch (error) { console.error("Particle Path could not be saved", error); }
-        setTimeout(() => { window.KotobaQuestLearningInsights?.refresh?.(); updateDashboardCard(); }, 0);
+        try {
+          if (typeof data !== "undefined") {
+            data.particlePath = state;
+            data.particlePersistenceVersion = 1;
+            if (activity) data.studyActivity = source.studyActivity;
+            localStorage.setItem(KEY, JSON.stringify(data));
+          } else {
+            localStorage.setItem(KEY, JSON.stringify(source));
+          }
+          localStorage.setItem("kotobaQuestParticlePathBackupV1", JSON.stringify({ version: 1, updatedAtMs: Date.now(), particlePath: state }));
+        } catch (error) { console.error("Particle Path could not be saved", error); }
+        setTimeout(() => { window.KotobaQuestCumulativeStatsGuard?.stabilize?.(); window.KotobaQuestLearningInsights?.refresh?.(); updateDashboardCard(); }, 0);
       }
       function notify(message) {
         try { if (typeof toast === "function") return toast(message); } catch {}
@@ -27478,7 +27719,7 @@
 
     async function saveLocalProgressToCloud({ force = false, reason = "automatic" } = {}) {
       if (!currentUser || reconciliationInFlight) return;
-      const raw = readLocalRaw();
+      const raw = stabilizeCumulativeProgress(readLocalRaw());
       if (!raw) {
         setStatus("good", "Cloud verbunden", "Noch kein veränderter Spielstand vorhanden.");
         return;
@@ -27581,7 +27822,7 @@
       setStatus("busy", "Cloud wird geprüft …", "Lokaler und gesicherter Fortschritt werden verglichen.");
 
       try {
-        const localRaw = readLocalRaw();
+        const localRaw = stabilizeCumulativeProgress(readLocalRaw());
         const cloudProgress = await readCloudProgress();
 
         if (!cloudProgress) {
