@@ -28314,21 +28314,23 @@ ${tooltipText(segment, status)}`)}"`
       }
     
 
-      const STORY_LANGUAGE_SUPPORT_VERSION = "3.2";
+      const STORY_LANGUAGE_SUPPORT_VERSION = "3.3";
       const STORY_PROGRESS_PERSISTENCE_PASS = "3.3";
       const STORY_VOCABULARY_BUDGET_DEFAULT = 0.20;
 
-      const STORY_VERY_COMMON_WORDS = new Set([
+      // These groups describe GENERAL Japanese usage (everyday language,
+      // books, news and media). They never count occurrences inside this story.
+      const GENERAL_VERY_COMMON_WORDS = new Set([
         "ずっと","誰も","誰にも","何","次","なる","見る","会う","気づく","黒い","手袋","力","街","空気","一瞬","少しずつ","受け取る","現れる","笑顔","今回","対象","正面","必要","意味","違い","名前","人々","一人","千人","帰宅する","動く","言う","持つ","外す","長い","小さい","強い","熱い","赤い","朝","夜"
       ]);
-      const STORY_COMMON_WORDS = new Set([
-        "東京","ドイツ","新宿駅","改札","遠回りする","身につける","生き方","端末","震える","要請","翌朝","都内","先に","人懐っこい","握手","拳","差し出す","思わず","苛立つ","飛んでくる","最悪","第一印象","会議室","敵","個性","衝撃","体内","放出する","殴る","背","預ける","接触","制御","疑い","気に入る","立ち上がる","距離","片方","手首","吸う","裸","行為","指先","視線","守る","感じる","埋める","経つ","見慣れる"
+      const GENERAL_COMMON_WORDS = new Set([
+        "東京","ドイツ","新宿駅","遠回りする","身につける","生き方","端末","震える","要請","翌朝","都内","先に","人懐っこい","握手","拳","差し出す","思わず","苛立つ","飛んでくる","最悪","第一印象","会議室","敵","個性","衝撃","体内","放出する","殴る","背","預ける","接触","制御","疑い","気に入る","立ち上がる","距離","片方","手首","吸う","裸","行為","指先","視線","守る","感じる","埋める","経つ","見慣れる"
       ]);
-      const STORY_LESS_COMMON_WORDS = new Set([
+      const GENERAL_MEDIUM_FREQUENCY_WORDS = new Set([
         "経由する","微か","蓄積する","立体映像","合同対策本部","担当機関","配慮","爆発音","一段","のみ込む","接触面","保護膜","退く","共同任務","三か月","空白","薄い","胸","内側","戦闘前","脅し"
       ]);
-      const STORY_SPECIFIC_WORDS = new Set([
-        "プロヒーロー","DynaRiot Agency","Red Riot","Kinergy","Bakugo Katsuki","Kirishima","クソ髪","吸収野郎","個性","共同任務","合同対策本部","接触試験"
+      const GENERAL_SPECIAL_OR_PROPER_WORDS = new Set([
+        "プロヒーロー","DynaRiot Agency","Red Riot","Kinergy","Bakugo Katsuki","Kirishima","クソ髪","吸収野郎","共同任務","合同対策本部","接触試験"
       ]);
 
       const FORM_EXPLANATION_OVERRIDES = {
@@ -28392,24 +28394,68 @@ ${tooltipText(segment, status)}`)}"`
         return `${normalize(vocab?.base || vocab?.surface || "")}|${normalize(vocab?.baseReading || vocab?.reading || "")}`;
       }
 
-      function storyFrequencyInfo(vocab, status = vocabularyStatus(vocab)) {
+      function frequencyBandFromRank(rawRank, sourceNote = "Allgemeiner Frequency-Rank") {
+        const corpusRank = Number(rawRank);
+        if (!Number.isFinite(corpusRank) || corpusRank <= 0) return null;
+        const rounded = Math.max(1, Math.round(corpusRank));
+        if (rounded <= 500) {
+          return { tier: "very-common", rank: 6, label: "Sehr häufig", corpusRank: rounded, note: `${sourceNote}: ungefähr Rang ${rounded}.`, recommendation: "Sehr hoher allgemeiner Lernwert; Mining lohnt sich fast immer." };
+        }
+        if (rounded <= 2000) {
+          return { tier: "common", rank: 5, label: "Häufig", corpusRank: rounded, note: `${sourceNote}: ungefähr Rang ${rounded}.`, recommendation: "Hoher Lernwert für Alltag und Medien." };
+        }
+        if (rounded <= 6000) {
+          return { tier: "medium", rank: 4, label: "Mittelhäufig", corpusRank: rounded, note: `${sourceNote}: ungefähr Rang ${rounded}.`, recommendation: "Meist ein sinnvolles Mining-Wort, besonders bei wiederholtem Kontakt." };
+        }
+        if (rounded <= 15000) {
+          return { tier: "less-common", rank: 2, label: "Eher seltener", corpusRank: rounded, note: `${sourceNote}: ungefähr Rang ${rounded}.`, recommendation: "Nach persönlichem Interesse und Kontext entscheiden." };
+        }
+        return { tier: "rare", rank: 1, label: "Selten", corpusRank: rounded, note: `${sourceNote}: ungefähr Rang ${rounded}.`, recommendation: "Nur minen, wenn das Wort für deine Medien oder Interessen relevant ist." };
+      }
+
+      function generalFrequencyInfo(vocab, status = vocabularyStatus(vocab)) {
         const base = String(vocab?.base || vocab?.surface || "").trim();
+        const entry = status?.entry && typeof status.entry === "object" ? status.entry : {};
+        const importedRank = [
+          vocab?.frequencyRank,
+          vocab?.freqRank,
+          vocab?.lrFrequencyRank,
+          entry?.frequencyRank,
+          entry?.freqRank,
+          entry?.lrFrequencyRank
+        ].map(Number).find(value => Number.isFinite(value) && value > 0);
+
+        if (importedRank) {
+          const result = frequencyBandFromRank(importedRank, "Importierter allgemeiner Frequency-Rank");
+          return { ...result, basis: "corpus-rank" };
+        }
+
         if (status?.sourceType === "core" && status?.level) {
-          return { tier: "core", rank: 6, label: `Core-Level ${status.level}`, note: "Kommt im regulären Core-Pfad vor.", recommendation: "Nicht zusätzlich minen – im Core lernen." };
+          const level = Math.max(1, Number(status.level));
+          const firstRank = (level - 1) * 20 + 1;
+          const lastRank = level * 20;
+          const result = frequencyBandFromRank((firstRank + lastRank) / 2, `Core-2000-Bereich ${firstRank}–${lastRank}`);
+          return {
+            ...result,
+            basis: "core-rank",
+            note: `Allgemeine Core-2000-Einordnung: ungefähr Rang ${firstRank}–${lastRank}.`,
+            recommendation: "Nicht zusätzlich minen – dieses Wort kommt automatisch im Core-Pfad."
+          };
         }
-        if (STORY_SPECIFIC_WORDS.has(base)) {
-          return { tier: "story", rank: 0, label: "Story-/Fachwort", note: "Vor allem für diese Welt oder diesen Einsatz wichtig.", recommendation: "Nur minen, wenn du es persönlich behalten möchtest." };
+
+        if (GENERAL_SPECIAL_OR_PROPER_WORDS.has(base)) {
+          return { tier: "special", rank: 0, label: "Eigenname / Spezialbegriff", basis: "special", note: "Für Eigennamen, fiktionale Begriffe und sehr enge Fachausdrücke ist eine allgemeine Wortfrequenz nicht sinnvoll.", recommendation: "Nur minen, wenn du den Begriff persönlich behalten möchtest." };
         }
-        if (STORY_VERY_COMMON_WORDS.has(base)) {
-          return { tier: "very-common", rank: 5, label: "Sehr häufig", note: "Hoher allgemeiner Lernwert für Alltag und Medien.", recommendation: "Mining ist sinnvoll, falls es nicht im Core steht." };
+        if (GENERAL_VERY_COMMON_WORDS.has(base)) {
+          return { tier: "very-common", rank: 6, label: "Sehr häufig", basis: "general-estimate", note: "Allgemeine Häufigkeit im Japanischen: sehr hoch – unabhängig von dieser Story.", recommendation: "Sehr gutes Mining-Wort, falls es nicht bereits im Core steht." };
         }
-        if (STORY_COMMON_WORDS.has(base)) {
-          return { tier: "common", rank: 4, label: "Häufig", note: "Kommt in vielen Texten oder Gesprächen vor.", recommendation: "Meist ein gutes Mining-Wort." };
+        if (GENERAL_COMMON_WORDS.has(base)) {
+          return { tier: "common", rank: 5, label: "Häufig", basis: "general-estimate", note: "Allgemeine Häufigkeit im Japanischen: hoch; in vielen Gesprächen, Texten oder Medien nützlich.", recommendation: "Meist ein gutes Mining-Wort." };
         }
-        if (STORY_LESS_COMMON_WORDS.has(base)) {
-          return { tier: "less-common", rank: 2, label: "Weniger häufig", note: "Nützlich, aber stärker vom Thema abhängig.", recommendation: "Nach persönlichem Interesse entscheiden." };
+        if (GENERAL_MEDIUM_FREQUENCY_WORDS.has(base)) {
+          return { tier: "medium", rank: 3, label: "Mittelhäufig", basis: "general-estimate", note: "Allgemeine Häufigkeit im Japanischen: mittel; das Wort ist nicht nur für diese Story relevant, aber stärker themenabhängig.", recommendation: "Bei wiederholtem Kontakt oder persönlichem Interesse minen." };
         }
-        return { tier: "unrated", rank: 1, label: "Nicht sicher eingeordnet", note: "Keine belastbare Häufigkeitsstufe in diesem Story-Paket hinterlegt.", recommendation: "Erst den Kontext prüfen und nur bei persönlichem Nutzen minen." };
+        return { tier: "unrated", rank: 1, label: "Allgemein nicht sicher eingeordnet", basis: "unrated", note: "Für dieses Wort ist noch keine verlässliche allgemeine Häufigkeitsstufe hinterlegt. Die Anzahl der Vorkommen in dieser Story wird ausdrücklich nicht verwendet.", recommendation: "Kontext und persönlichen Nutzen prüfen, bevor du es minest." };
       }
 
       function genericMorphologyInfo(segment) {
@@ -28487,10 +28533,10 @@ ${tooltipText(segment, status)}`)}"`
         const budget = Math.min(unique.size, Math.max(1, Math.floor(unique.size * ratio)));
         const candidates = [...unique.entries()]
           .filter(([, item]) => item.status.sourceType !== "core")
-          .map(([key, item]) => ({ key, ...item, frequency: storyFrequencyInfo(item.vocab, item.status) }))
-          .sort((a, b) => b.frequency.rank - a.frequency.rank || b.count - a.count || String(a.vocab.base || "").length - String(b.vocab.base || "").length);
-        const preferred = candidates.filter(item => item.frequency.tier !== "story");
-        const fallback = candidates.filter(item => item.frequency.tier === "story");
+          .map(([key, item]) => ({ key, ...item, frequency: generalFrequencyInfo(item.vocab, item.status) }))
+          .sort((a, b) => b.frequency.rank - a.frequency.rank || Number(a.frequency.corpusRank || Infinity) - Number(b.frequency.corpusRank || Infinity) || String(a.vocab.base || "").length - String(b.vocab.base || "").length);
+        const preferred = candidates.filter(item => item.frequency.tier !== "special");
+        const fallback = candidates.filter(item => item.frequency.tier === "special");
         const chosen = [...preferred, ...fallback].slice(0, budget);
         return { ratio, budget, totalUnique: unique.size, nonCoreCount: candidates.length, recommended: new Set(chosen.map(item => item.key)), recommendedItems: chosen };
       }
@@ -28505,7 +28551,7 @@ ${tooltipText(segment, status)}`)}"`
 
       function renderVocabularyBudgetPanel(scene) {
         const plan = sceneVocabularyPlan(scene);
-        return `<section class="kq-sr-vocab-budget"><div><span class="kq-sr-side-kicker">Aktives Vokabelbudget</span><h3>${plan.recommended.size} empfohlene neue Wörter</h3><p>Maximal etwa ${Math.round(plan.ratio * 100)} % der einzigartigen Vokabeln dieses Abschnitts werden als aktive Mining-Ziele empfohlen. Weitere unbekannte Wörter bleiben als Kontext-Hilfe sichtbar, ohne dass du sie lernen musst.</p></div><div class="kq-sr-budget-numbers"><strong>${plan.recommended.size}</strong><span>von ${plan.totalUnique}</span></div></section>`;
+        return `<section class="kq-sr-vocab-budget"><div><span class="kq-sr-side-kicker">Aktives Vokabelbudget</span><h3>${plan.recommended.size} empfohlene neue Wörter</h3><p>Maximal etwa ${Math.round(plan.ratio * 100)} % der einzigartigen Vokabeln dieses Abschnitts werden als aktive Mining-Ziele empfohlen. Entscheidend ist die <strong>allgemeine Häufigkeit im Japanischen</strong> – nicht, wie oft ein Wort in diesem Kapitel oder in dieser Story vorkommt. Weitere unbekannte Wörter bleiben als Kontext-Hilfe sichtbar.</p></div><div class="kq-sr-budget-numbers"><strong>${plan.recommended.size}</strong><span>von ${plan.totalUnique}</span></div></section>`;
       }
 
       if (!document.getElementById("kqStoryLanguageSupportStyles")) {
@@ -28515,7 +28561,7 @@ ${tooltipText(segment, status)}`)}"`
           .kq-sr-morphology{margin:14px 0;padding:14px;border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border));border-radius:15px;background:color-mix(in srgb,var(--primary) 6%,white)}
           .kq-sr-morphology-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.kq-sr-morphology-head span{font-size:.75rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:var(--primary)}.kq-sr-morphology-head strong{font-size:.94rem}
           .kq-sr-morphology ol{list-style:none;padding:0;margin:0;display:grid;gap:8px}.kq-sr-morphology li{display:grid;grid-template-columns:minmax(90px,.8fr) minmax(110px,.9fr) 1.5fr;gap:8px;align-items:start;padding:9px 10px;border-radius:11px;background:rgba(255,255,255,.8);border:1px solid var(--border)}.kq-sr-morphology li span{font-weight:950;color:var(--text)}.kq-sr-morphology li b{font-size:.78rem;color:var(--primary-dark)}.kq-sr-morphology li p{margin:0;font-size:.84rem;color:var(--muted);line-height:1.4}.kq-sr-morphology-natural,.kq-sr-benefactive-note{margin:10px 0 0!important;padding-top:10px;border-top:1px dashed var(--border);font-size:.86rem;line-height:1.5}
-          .kq-sr-frequency-card{margin:12px 0;padding:12px 13px;border-radius:13px;border:1px solid var(--border);background:#fff}.kq-sr-frequency-card>span{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:.72rem;font-weight:950;background:#f1edff;color:var(--primary-dark)}.kq-sr-frequency-card strong{display:block;margin-top:7px}.kq-sr-frequency-card p{margin:4px 0 0;font-size:.84rem;line-height:1.45;color:var(--muted)}.kq-sr-frequency-card.tier-story>span{background:#f1f1f4;color:#666}.kq-sr-frequency-card.tier-very-common>span,.kq-sr-frequency-card.tier-common>span{background:#e6f7ee;color:#287553}.kq-sr-frequency-card.tier-less-common>span{background:#fff3d5;color:#8a641d}
+          .kq-sr-frequency-card{margin:12px 0;padding:12px 13px;border-radius:13px;border:1px solid var(--border);background:#fff}.kq-sr-frequency-card>span{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:.72rem;font-weight:950;background:#f1edff;color:var(--primary-dark)}.kq-sr-frequency-card strong{display:block;margin-top:7px}.kq-sr-frequency-card p{margin:4px 0 0;font-size:.84rem;line-height:1.45;color:var(--muted)}.kq-sr-frequency-card small{display:block;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font-size:.74rem;font-weight:850;color:var(--primary-dark)}.kq-sr-frequency-card.tier-special>span,.kq-sr-frequency-card.tier-unrated>span{background:#f1f1f4;color:#666}.kq-sr-frequency-card.tier-very-common>span,.kq-sr-frequency-card.tier-common>span{background:#e6f7ee;color:#287553}.kq-sr-frequency-card.tier-medium>span{background:#eaf1ff;color:#41659a}.kq-sr-frequency-card.tier-less-common>span,.kq-sr-frequency-card.tier-rare>span{background:#fff3d5;color:#8a641d}
           .kq-sr-vocab-budget{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;margin:14px 0 18px;padding:16px 18px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(135deg,rgba(255,255,255,.98),color-mix(in srgb,var(--accent) 8%,white))}.kq-sr-vocab-budget h3{margin:3px 0 4px}.kq-sr-vocab-budget p{margin:0;color:var(--muted);line-height:1.5;font-size:.88rem}.kq-sr-budget-numbers{text-align:center;min-width:80px;padding:10px;border-radius:14px;background:white;border:1px solid var(--border)}.kq-sr-budget-numbers strong,.kq-sr-budget-numbers span{display:block}.kq-sr-budget-numbers strong{font-size:1.7rem;color:var(--primary)}.kq-sr-budget-numbers span{font-size:.75rem;color:var(--muted)}
           .kq-sr-unknown-entry[data-learning-role="context"]{opacity:.86;border-style:dashed}.kq-sr-unknown-entry[data-learning-role="recommended"]{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 24%,transparent)}.kq-sr-role-badge{display:inline-flex!important;width:max-content!important;margin-top:5px;padding:3px 7px;border-radius:999px;font-size:.66rem!important;font-weight:950;background:#f1edff;color:var(--primary-dark)}.kq-sr-role-badge.context{background:#f3f2f5;color:#6f6b78}.kq-sr-role-badge.core{background:#e8f0ff;color:#315fa8}.kq-sr-role-badge.recommended{background:#ffe6ef;color:#a43c6a}.kq-sr-role-badge.mining,.kq-sr-role-badge.learning{background:#fff0dc;color:#8d571b}
           @media(max-width:720px){.kq-sr-morphology li{grid-template-columns:1fr}.kq-sr-vocab-budget{grid-template-columns:1fr}.kq-sr-budget-numbers{text-align:left;display:flex;align-items:baseline;gap:6px;width:max-content}}
@@ -28530,7 +28576,7 @@ ${tooltipText(segment, status)}`)}"`
         if (segment.vocab) {
           const vocab = segment.vocab;
           const morphology = morphologyInfo(segment);
-          const frequency = storyFrequencyInfo(vocab, status.vocab);
+          const frequency = generalFrequencyInfo(vocab, status.vocab);
           const role = vocabularyLearningRole(vocab, status.vocab, scene);
           const roleLabel = role === "recommended" ? "Empfohlenes Lernwort" : role === "context" ? "Kontextwort" : role === "core" ? `Core-Level ${status.vocab.level || "?"}` : role === "learning" ? "Wird bereits gelernt" : role === "mining" ? "Im Mining vorgemerkt" : "Bekannt";
           let actions = "";
@@ -28541,7 +28587,7 @@ ${tooltipText(segment, status)}`)}"`
           } else if (!status.vocab.known) {
             actions = `<button type="button" class="ghost" data-sr-mining="${esc(detail.key)}">${role === "recommended" ? "Zum Mining" : "Trotzdem zum Mining"}</button>`;
           }
-          parts.push(`<section class="kq-sr-detail-section"><span class="kq-sr-side-kicker">Vokabel</span><h3>${ruby(vocab.base || segment.text, vocab.baseReading || segment.reading)}</h3><p class="kq-sr-detail-meaning">${esc(vocab.meaning || "")}</p>${vocab.contextMeaning && vocab.contextMeaning !== vocab.meaning ? `<p><strong>Hier:</strong> ${esc(vocab.contextMeaning)}</p>` : ""}${vocab.form ? `<p><strong>Verwendete Form:</strong> ${esc(vocab.form)}</p>` : ""}${renderMorphologyPanel(morphology)}<div class="kq-sr-frequency-card tier-${esc(frequency.tier)}"><span>${esc(frequency.label)}</span><strong>${esc(roleLabel)}</strong><p>${esc(frequency.note)} ${esc(frequency.recommendation)}</p></div><span class="kq-sr-status ${status.vocab.known ? "known" : "unknown"} mastery-${status.vocab.mastery}">${esc(status.vocab.label)}</span><div class="button-row kq-sr-action-row">${status.vocab.known ? "" : `<button type="button" class="secondary" data-sr-known="${esc(detail.key)}">Als bekannt markieren</button>`}${actions}</div></section>`);
+          parts.push(`<section class="kq-sr-detail-section"><span class="kq-sr-side-kicker">Vokabel</span><h3>${ruby(vocab.base || segment.text, vocab.baseReading || segment.reading)}</h3><p class="kq-sr-detail-meaning">${esc(vocab.meaning || "")}</p>${vocab.contextMeaning && vocab.contextMeaning !== vocab.meaning ? `<p><strong>Hier:</strong> ${esc(vocab.contextMeaning)}</p>` : ""}${vocab.form ? `<p><strong>Verwendete Form:</strong> ${esc(vocab.form)}</p>` : ""}${renderMorphologyPanel(morphology)}<div class="kq-sr-frequency-card tier-${esc(frequency.tier)}"><span>${esc(frequency.label)}</span><strong>Allgemeine Häufigkeit im Japanischen</strong><p>${esc(frequency.note)} ${esc(frequency.recommendation)}</p><small>${esc(roleLabel)}</small></div><span class="kq-sr-status ${status.vocab.known ? "known" : "unknown"} mastery-${status.vocab.mastery}">${esc(status.vocab.label)}</span><div class="button-row kq-sr-action-row">${status.vocab.known ? "" : `<button type="button" class="secondary" data-sr-known="${esc(detail.key)}">Als bekannt markieren</button>`}${actions}</div></section>`);
         }
         if (segment.grammar) {
           const grammar = segment.grammar;
@@ -28562,7 +28608,7 @@ ${tooltipText(segment, status)}`)}"`
           const scene = sceneById(activePack(), sceneId);
           const role = vocabularyLearningRole(segment.vocab, record.status, scene);
           const roleLabel = role === "recommended" ? "Lernwort" : role === "context" ? "Kontext" : role === "core" ? `Core ${record.status.level || ""}`.trim() : role === "learning" ? "In Arbeit" : role === "mining" ? "Mining" : "Bekannt";
-          const frequency = storyFrequencyInfo(segment.vocab, record.status);
+          const frequency = generalFrequencyInfo(segment.vocab, record.status);
           return `<button type="button" class="kq-sr-unknown-entry mastery-${record.status.mastery}" data-learning-role="${esc(role)}" data-sr-detail="${esc(key)}"><span>${ruby(segment.vocab.base || segment.text, segment.vocab.baseReading || segment.reading)}</span><strong>${esc(segment.vocab.contextMeaning || segment.vocab.meaning || "")}</strong><small>${esc(record.status.label)}</small><small class="kq-sr-role-badge ${esc(role)}">${esc(roleLabel)} · ${esc(frequency.label)}</small></button>`;
         }
         if (kind === "grammar") {
