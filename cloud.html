@@ -350,9 +350,10 @@
     const STORAGE_KEY = "kotobaQuestDataV3";
     const META_KEY = "kotobaQuestCloudMetaV1";
     const SAVE_DELAY_MS = 800;
+    const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.0"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "cumulative-statistics-and-streak-2";
+    const CLOUD_FEATURE_VERSION = "comprehensive-progress-vault-1";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -394,6 +395,420 @@
     const PARTICLE_PATH_BACKUP_KEY = "kotobaQuestParticlePathBackupV1";
     const PARTICLE_PATH_BACKUP_VERSION = 1;
 
+
+    function progressVaultFactory() {
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const VAULT_KEY = "kotobaQuestProgressVaultV1";
+      const VERSION = 1;
+      const objectValue = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(objectValue(value), key);
+      const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+      const clone = value => {
+        try { return structuredClone(value); }
+        catch { try { return JSON.parse(JSON.stringify(value)); } catch { return value; } }
+      };
+      const normalize = value => String(value || "").normalize("NFKC").toLowerCase().replace(/[\s・･]/g, "");
+      const unionStrings = (left, right) => [...new Set([
+        ...(Array.isArray(left) ? left : []),
+        ...(Array.isArray(right) ? right : [])
+      ].map(value => String(value || "").trim()).filter(Boolean))];
+      const earliest = (...values) => {
+        const valid = values.map(Number).filter(value => Number.isFinite(value) && value > 0);
+        return valid.length ? Math.min(...valid) : null;
+      };
+      const latest = (...values) => {
+        const valid = values.map(Number).filter(value => Number.isFinite(value) && value > 0);
+        return valid.length ? Math.max(...valid) : null;
+      };
+      const parseRaw = raw => {
+        if (!raw) return {};
+        if (typeof raw === "object") return objectValue(raw);
+        try { return objectValue(JSON.parse(String(raw))); } catch { return {}; }
+      };
+      const skillFreshness = value => {
+        const skill = objectValue(value);
+        return [number(skill.lastReviewedAt), number(skill.correct) + number(skill.incorrect), number(skill.stage)];
+      };
+      const chooseSkill = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        if (!Object.keys(a).length) return b;
+        if (!Object.keys(b).length) return a;
+        const af = skillFreshness(a);
+        const bf = skillFreshness(b);
+        if (af[0] !== bf[0]) return af[0] > bf[0] ? a : b;
+        if (af[1] !== bf[1]) return af[1] > bf[1] ? a : b;
+        if (number(a.stage) === 0 && number(b.stage) > 0) return b;
+        return a;
+      };
+      const mergeSkill = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const chosen = chooseSkill(a, b);
+        return {
+          ...b,
+          ...a,
+          stage: Math.max(0, Math.min(9, number(chosen.stage))),
+          dueAt: chosen.dueAt == null ? null : number(chosen.dueAt),
+          correct: Math.max(0, number(a.correct), number(b.correct)),
+          incorrect: Math.max(0, number(a.incorrect), number(b.incorrect)),
+          lastReviewedAt: latest(a.lastReviewedAt, b.lastReviewedAt),
+          rotationIndex: Math.max(0, number(a.rotationIndex), number(b.rotationIndex)),
+          variantIndex: Math.max(0, number(a.variantIndex), number(b.variantIndex))
+        };
+      };
+      const mergePointPath = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const points = {};
+        const aPoints = objectValue(a.points);
+        const bPoints = objectValue(b.points);
+        new Set([...Object.keys(aPoints), ...Object.keys(bPoints)]).forEach(id => {
+          const ap = objectValue(aPoints[id]);
+          const bp = objectValue(bPoints[id]);
+          const skills = {};
+          const aSkills = objectValue(ap.skills);
+          const bSkills = objectValue(bp.skills);
+          new Set([...Object.keys(aSkills), ...Object.keys(bSkills)]).forEach(skillId => {
+            skills[skillId] = mergeSkill(aSkills[skillId], bSkills[skillId]);
+          });
+          points[id] = {
+            ...bp,
+            ...ap,
+            lessonComplete: Boolean(ap.lessonComplete || bp.lessonComplete),
+            lessonCompletedAt: earliest(ap.lessonCompletedAt, bp.lessonCompletedAt),
+            skills
+          };
+        });
+        const aStats = objectValue(a.stats);
+        const bStats = objectValue(b.stats);
+        return {
+          ...b,
+          ...a,
+          version: Math.max(number(a.version), number(b.version)),
+          currentLevel: Math.max(1, number(a.currentLevel), number(b.currentLevel)),
+          levelCompleted: Boolean(a.levelCompleted || b.levelCompleted),
+          points,
+          stats: {
+            ...bStats,
+            ...aStats,
+            lessons: Math.max(0, number(aStats.lessons), number(bStats.lessons), Object.values(points).filter(point => point.lessonComplete).length),
+            reviews: Math.max(0, number(aStats.reviews), number(bStats.reviews)),
+            correct: Math.max(0, number(aStats.correct), number(bStats.correct)),
+            incorrect: Math.max(0, number(aStats.incorrect), number(bStats.incorrect)),
+            lastStudiedAt: latest(aStats.lastStudiedAt, bStats.lastStudiedAt)
+          }
+        };
+      };
+      const mergeStoryProgress = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const completedScenes = unionStrings(b.completedScenes, a.completedScenes);
+        const unlockedRewards = unionStrings(b.unlockedRewards, a.unlockedRewards);
+        const companions = {};
+        const aCompanions = objectValue(a.companions);
+        const bCompanions = objectValue(b.companions);
+        new Set([...Object.keys(aCompanions), ...Object.keys(bCompanions)]).forEach(id => {
+          const left = objectValue(aCompanions[id]);
+          const right = objectValue(bCompanions[id]);
+          companions[id] = { ...right, ...left, unlocked: Boolean(left.unlocked || right.unlocked), bond: Math.max(0, number(left.bond), number(right.bond)) };
+        });
+        const aRead = number(a.lastReadAt);
+        const bRead = number(b.lastReadAt);
+        const newer = aRead >= bRead ? a : b;
+        const older = newer === a ? b : a;
+        const aEnergy = objectValue(a.storyEnergy);
+        const bEnergy = objectValue(b.storyEnergy);
+        const originCandidates = [aEnergy.originActions, bEnergy.originActions].map(Number).filter(value => Number.isFinite(value) && value >= 0);
+        const purchases = {};
+        const aPurchases = objectValue(aEnergy.purchases);
+        const bPurchases = objectValue(bEnergy.purchases);
+        new Set([...Object.keys(aPurchases), ...Object.keys(bPurchases)]).forEach(sceneId => {
+          purchases[sceneId] = Math.max(0, number(aPurchases[sceneId]), number(bPurchases[sceneId]));
+        });
+        const baselineCandidates = [a.baselineActivity, b.baselineActivity].map(Number).filter(value => Number.isFinite(value) && value >= 0);
+        return {
+          ...b,
+          ...a,
+          version: Math.max(number(a.version), number(b.version)),
+          completedScenes,
+          unlockedRewards,
+          companions,
+          avatar: { ...objectValue(older.avatar), ...objectValue(newer.avatar) },
+          storyEnergy: {
+            ...bEnergy,
+            ...aEnergy,
+            version: aEnergy.version || bEnergy.version || "4.0",
+            originActions: originCandidates.length ? Math.min(...originCandidates) : undefined,
+            legacyEnergy: Math.max(0, number(aEnergy.legacyEnergy), number(bEnergy.legacyEnergy)),
+            purchases
+          },
+          baselineActivity: baselineCandidates.length ? Math.min(...baselineCandidates) : 0,
+          lastSceneId: newer.lastSceneId || older.lastSceneId || completedScenes.at(-1) || "",
+          lastReadAt: Math.max(aRead, bRead) || null
+        };
+      };
+      const mergeStoryReader = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const progress = {};
+        const aProgress = objectValue(a.progress);
+        const bProgress = objectValue(b.progress);
+        new Set([...Object.keys(aProgress), ...Object.keys(bProgress)]).forEach(packId => {
+          progress[packId] = mergeStoryProgress(aProgress[packId], bProgress[packId]);
+        });
+        return {
+          ...b,
+          ...a,
+          version: Math.max(number(a.version), number(b.version)),
+          progress,
+          activePackId: a.activePackId || b.activePackId || "kinergy-pro-hero-path",
+          readerSettings: { ...objectValue(b.readerSettings), ...objectValue(a.readerSettings) },
+          lastOpenedAt: latest(a.lastOpenedAt, b.lastOpenedAt)
+        };
+      };
+      const vocabularyKey = item => String(item?.packEntryId || item?.id || `${normalize(item?.word)}|${normalize(item?.reading)}`);
+      const mergeContexts = (left, right) => {
+        const result = [];
+        const seen = new Set();
+        [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])].forEach(context => {
+          if (!context || typeof context !== "object") return;
+          const key = String(context.mediaKey || context.lrImportKey || context.importKey || context.sentence || context.example || JSON.stringify(context));
+          if (seen.has(key)) return;
+          seen.add(key);
+          result.push(context);
+        });
+        return result.slice(-24);
+      };
+      const mergeVocabularyItem = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const aAttempts = Math.max(0, number(a.correct) + number(a.incorrect));
+        const bAttempts = Math.max(0, number(b.correct) + number(b.incorrect));
+        let chosen = a;
+        if (!Object.keys(a).length || bAttempts > aAttempts || (aAttempts === bAttempts && number(a.stage) === 0 && number(b.stage) > 0)) chosen = b;
+        const result = {
+          ...b,
+          ...a,
+          stage: Math.max(0, Math.min(9, number(chosen.stage))),
+          availableAt: chosen.availableAt == null ? null : number(chosen.availableAt),
+          correct: Math.max(0, number(a.correct), number(b.correct)),
+          incorrect: Math.max(0, number(a.incorrect), number(b.incorrect)),
+          guruPassed: Boolean(a.guruPassed || b.guruPassed || number(chosen.stage) >= 5),
+          createdAt: earliest(a.createdAt, b.createdAt) || number(a.createdAt) || number(b.createdAt) || Date.now()
+        };
+        ["meanings", "acceptedMeanings", "synonyms", "meaningAlternatives"].forEach(key => {
+          if (Array.isArray(a[key]) || Array.isArray(b[key])) result[key] = unionStrings(b[key], a[key]);
+        });
+        if (Array.isArray(a.lrContexts) || Array.isArray(b.lrContexts)) result.lrContexts = mergeContexts(b.lrContexts, a.lrContexts);
+        return result;
+      };
+      const compactVocabulary = vocabulary => (Array.isArray(vocabulary) ? vocabulary : []).map(item => {
+        if (item?.sourceType !== "core") return clone(item);
+        const compact = {};
+        ["id","packEntryId","word","reading","sourceType","stage","availableAt","createdAt","correct","incorrect","guruPassed","meanings","lrContexts","lrImportKey","lrMediaKey","lrHasAudio","lrHasImage"].forEach(key => {
+          if (item[key] !== undefined) compact[key] = clone(item[key]);
+        });
+        return compact;
+      });
+      const mergeVocabulary = (current, preserved, currentHadVocabulary) => {
+        const a = Array.isArray(current) ? current : [];
+        const b = Array.isArray(preserved) ? preserved : [];
+        if (!currentHadVocabulary || !a.length) return b.map(clone);
+        const backupMap = new Map(b.map(item => [vocabularyKey(item), item]));
+        const merged = a.map(item => mergeVocabularyItem(item, backupMap.get(vocabularyKey(item))));
+        const currentMining = merged.filter(item => item?.sourceType === "mining").length;
+        const preservedMining = b.filter(item => item?.sourceType === "mining");
+        if (!currentMining && preservedMining.length) {
+          const keys = new Set(merged.map(vocabularyKey));
+          preservedMining.forEach(item => { if (!keys.has(vocabularyKey(item))) merged.push(clone(item)); });
+        }
+        return merged;
+      };
+      const mergeNumericObject = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const result = { ...b, ...a };
+        new Set([...Object.keys(a), ...Object.keys(b)]).forEach(key => {
+          const av = a[key];
+          const bv = b[key];
+          if (av && typeof av === "object" && !Array.isArray(av) || bv && typeof bv === "object" && !Array.isArray(bv)) {
+            result[key] = mergeNumericObject(av, bv);
+            return;
+          }
+          const an = Number(av);
+          const bn = Number(bv);
+          if (Number.isFinite(an) || Number.isFinite(bn)) result[key] = Math.max(Number.isFinite(an) ? an : 0, Number.isFinite(bn) ? bn : 0);
+        });
+        return result;
+      };
+      const mergeMeaningOverrides = (current, preserved) => {
+        const result = { ...objectValue(preserved), ...objectValue(current) };
+        new Set([...Object.keys(objectValue(current)), ...Object.keys(objectValue(preserved))]).forEach(key => {
+          result[key] = unionStrings(objectValue(preserved)[key], objectValue(current)[key]);
+        });
+        return result;
+      };
+      const mergeKnownVocabulary = (current, preserved) => {
+        const a = Array.isArray(current) ? current : [];
+        const b = Array.isArray(preserved) ? preserved : [];
+        // An empty list is the typical signature of an update/default reset. A
+        // non-empty current list remains authoritative so manual removals still work.
+        if (!a.length && b.length) return b.map(clone);
+        if (!a.length) return [];
+        const preservedByKey = new Map(b.map(item => [vocabularyKey(item), item]));
+        return a.map(item => ({ ...objectValue(preservedByKey.get(vocabularyKey(item))), ...objectValue(item) }));
+      };
+      const mergePlacementProgress = (current, preserved, completedLevels = []) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const result = {};
+        new Set([...Object.keys(b), ...Object.keys(a)]).forEach(level => {
+          const left = objectValue(a[level]);
+          const right = objectValue(b[level]);
+          const processedIds = unionStrings(right.processedIds, left.processedIds);
+          const leftOrder = Array.isArray(left.order) ? left.order : [];
+          const rightOrder = Array.isArray(right.order) ? right.order : [];
+          result[level] = {
+            ...right,
+            ...left,
+            order: (leftOrder.length ? leftOrder : rightOrder).map(clone),
+            processedIds,
+            passed: Math.max(0, number(left.passed), number(right.passed)),
+            needsLesson: Math.max(0, number(left.needsLesson), number(right.needsLesson))
+          };
+        });
+        new Set((Array.isArray(completedLevels) ? completedLevels : []).map(String)).forEach(level => delete result[level]);
+        return result;
+      };
+      const mergeWorkshop = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const aEntries = objectValue(a.entries);
+        const bEntries = objectValue(b.entries);
+        const entries = { ...bEntries, ...aEntries };
+        new Set([...Object.keys(aEntries), ...Object.keys(bEntries)]).forEach(id => {
+          const left = objectValue(aEntries[id]);
+          const right = objectValue(bEntries[id]);
+          entries[id] = {
+            ...right,
+            ...left,
+            acceptedMeanings: unionStrings(right.acceptedMeanings, left.acceptedMeanings),
+            correct: Math.max(0, number(left.correct), number(right.correct)),
+            incorrect: Math.max(0, number(left.incorrect), number(right.incorrect)),
+            lastPracticedAt: latest(left.lastPracticedAt, right.lastPracticedAt)
+          };
+        });
+        return { ...b, ...a, entries, totalPractice: mergeNumericObject(a.totalPractice, b.totalPractice) };
+      };
+      const mergeData = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const result = { ...b, ...a };
+        result.vocabulary = mergeVocabulary(a.vocabulary, b.vocabulary, hasOwn(a, "vocabulary"));
+        result.currentLevel = Math.max(1, number(a.currentLevel), number(b.currentLevel));
+        result.xp = Math.max(0, number(a.xp), number(b.xp));
+        result.placementCompletedLevels = [...new Set([...(Array.isArray(b.placementCompletedLevels) ? b.placementCompletedLevels : []), ...(Array.isArray(a.placementCompletedLevels) ? a.placementCompletedLevels : [])].map(Number).filter(Number.isFinite))];
+        if (hasOwn(a, "placementProgress") || hasOwn(b, "placementProgress")) {
+          result.placementProgress = mergePlacementProgress(a.placementProgress, b.placementProgress, result.placementCompletedLevels);
+        }
+        if (hasOwn(a, "grammar") || hasOwn(b, "grammar")) result.grammar = mergePointPath(a.grammar, b.grammar);
+        if (hasOwn(a, "particlePath") || hasOwn(b, "particlePath")) result.particlePath = mergePointPath(a.particlePath, b.particlePath);
+        if (hasOwn(a, "storyReader") || hasOwn(b, "storyReader")) result.storyReader = mergeStoryReader(a.storyReader, b.storyReader);
+        if (hasOwn(a, "knownVocabulary") || hasOwn(b, "knownVocabulary")) result.knownVocabulary = mergeKnownVocabulary(a.knownVocabulary, b.knownVocabulary);
+        if (hasOwn(a, "vocabularyMeaningOverrides") || hasOwn(b, "vocabularyMeaningOverrides")) result.vocabularyMeaningOverrides = mergeMeaningOverrides(a.vocabularyMeaningOverrides, b.vocabularyMeaningOverrides);
+        if (hasOwn(a, "problemWordWorkshop") || hasOwn(b, "problemWordWorkshop")) result.problemWordWorkshop = mergeWorkshop(a.problemWordWorkshop, b.problemWordWorkshop);
+        ["particlePractice", "vocabContextPractice", "studyActivity"].forEach(key => {
+          if (hasOwn(a, key) || hasOwn(b, key)) result[key] = mergeNumericObject(a[key], b[key]);
+        });
+        ["particlePracticeSettings", "vocabContextPracticeSettings", "grammarMiningScan", "studyAnalytics"].forEach(key => {
+          const currentValue = a[key];
+          const preservedValue = b[key];
+          const currentEmptyObject = currentValue && typeof currentValue === "object" && !Array.isArray(currentValue) && !Object.keys(currentValue).length;
+          const preservedNonEmptyObject = preservedValue && typeof preservedValue === "object" && !Array.isArray(preservedValue) && Object.keys(preservedValue).length;
+          if (!hasOwn(a, key) && hasOwn(b, key) || currentEmptyObject && preservedNonEmptyObject) result[key] = clone(preservedValue);
+        });
+        result.progressVaultVersion = VERSION;
+        return result;
+      };
+      const snapshot = source => {
+        const copy = clone(objectValue(source));
+        if (Array.isArray(copy.vocabulary)) copy.vocabulary = compactVocabulary(copy.vocabulary);
+        delete copy.sentenceCache;
+        return copy;
+      };
+      const readLegacyBackups = () => {
+        const restored = {};
+        try {
+          const story = JSON.parse(localStorage.getItem("kotobaQuestStoryProgressBackupV1") || "null");
+          if (story?.storyReader && typeof story.storyReader === "object") restored.storyReader = story.storyReader;
+        } catch {}
+        try {
+          const particles = JSON.parse(localStorage.getItem("kotobaQuestParticlePathBackupV1") || "null");
+          if (particles?.particlePath && typeof particles.particlePath === "object") restored.particlePath = particles.particlePath;
+        } catch {}
+        try {
+          const statistics = JSON.parse(localStorage.getItem("kotobaQuestCumulativeStatsV2") || "null");
+          if (statistics?.studyActivity && typeof statistics.studyActivity === "object") restored.studyActivity = statistics.studyActivity;
+          if (statistics?.studyAnalytics && typeof statistics.studyAnalytics === "object") restored.studyAnalytics = statistics.studyAnalytics;
+        } catch {}
+        return restored;
+      };
+      const readVault = () => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(VAULT_KEY) || "null");
+          return objectValue(parsed?.data);
+        } catch { return {}; }
+      };
+      const writeVault = source => {
+        try {
+          localStorage.setItem(VAULT_KEY, JSON.stringify({ version: VERSION, updatedAtMs: Date.now(), data: snapshot(source) }));
+        } catch (error) {
+          console.warn("Kotoba Quest Fortschritts-Tresor konnte nicht geschrieben werden", error);
+        }
+      };
+      const mergeRaw = (raw, preservedRaw = null) => {
+        const current = parseRaw(raw);
+        const preserved = parseRaw(preservedRaw);
+        const withPrevious = mergeData(current, preserved);
+        const withLegacyBackups = mergeData(withPrevious, readLegacyBackups());
+        const merged = mergeData(withLegacyBackups, readVault());
+        return Object.keys(merged).length ? JSON.stringify(merged) : raw;
+      };
+      const stabilizeRaw = (raw, preservedRaw = null) => {
+        const mergedRaw = mergeRaw(raw, preservedRaw);
+        const merged = parseRaw(mergedRaw);
+        if (Object.keys(merged).length) writeVault(merged);
+        return mergedRaw;
+      };
+      const install = () => {
+        if (Storage.prototype.setItem.__kqProgressVaultGuard) return;
+        const previousSetItem = Storage.prototype.setItem;
+        const initialRaw = localStorage.getItem(STORAGE_KEY);
+        const stabilized = stabilizeRaw(initialRaw);
+        if (stabilized && stabilized !== initialRaw) previousSetItem.call(localStorage, STORAGE_KEY, stabilized);
+        const wrapped = function(key, value) {
+          if (String(key) !== STORAGE_KEY) return previousSetItem.call(this, key, value);
+          let nextValue = value;
+          try {
+            const previousRaw = localStorage.getItem(STORAGE_KEY);
+            nextValue = stabilizeRaw(String(value || "{}"), previousRaw);
+            const merged = parseRaw(nextValue);
+            try {
+              if (typeof data !== "undefined" && data && typeof data === "object") Object.assign(data, merged);
+            } catch {}
+          } catch (error) {
+            console.warn("Kotoba Quest Fortschritts-Tresor konnte einen Schreibvorgang nicht stabilisieren", error);
+          }
+          return previousSetItem.call(this, key, nextValue);
+        };
+        wrapped.__kqProgressVaultGuard = true;
+        wrapped.__kqOriginal = previousSetItem;
+        Storage.prototype.setItem = wrapped;
+      };
+      return { version: VERSION, key: VAULT_KEY, mergeData, mergeRaw, stabilizeRaw, writeVault, readVault, install };
+    }
+
     function objectValue(value) {
       return value && typeof value === "object" && !Array.isArray(value) ? value : {};
     }
@@ -403,14 +818,19 @@
       const right = objectValue(preserved);
       const leftStage = Math.max(0, Math.min(9, Number(left.stage || 0)));
       const rightStage = Math.max(0, Math.min(9, Number(right.stage || 0)));
-      const stage = Math.max(leftStage, rightStage);
-      const dueCandidates = [left.dueAt, right.dueAt].map(Number).filter(Number.isFinite);
+      const leftReviewed = Number(left.lastReviewedAt || 0);
+      const rightReviewed = Number(right.lastReviewedAt || 0);
+      const leftAttempts = Math.max(0, Number(left.correct || 0) + Number(left.incorrect || 0));
+      const rightAttempts = Math.max(0, Number(right.correct || 0) + Number(right.incorrect || 0));
+      const preservedIsNewer = rightReviewed > leftReviewed || (rightReviewed === leftReviewed && rightAttempts > leftAttempts) || (rightReviewed === leftReviewed && rightAttempts === leftAttempts && leftStage === 0 && rightStage > 0);
+      const chosen = preservedIsNewer ? right : left;
+      const stage = preservedIsNewer ? rightStage : leftStage;
       const reviewedCandidates = [left.lastReviewedAt, right.lastReviewedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
       return {
         ...right,
         ...left,
         stage,
-        dueAt: dueCandidates.length ? Math.max(...dueCandidates) : null,
+        dueAt: chosen.dueAt == null ? null : Number(chosen.dueAt),
         correct: Math.max(0, Number(left.correct || 0), Number(right.correct || 0)),
         incorrect: Math.max(0, Number(left.incorrect || 0), Number(right.incorrect || 0)),
         lastReviewedAt: reviewedCandidates.length ? Math.max(...reviewedCandidates) : null
@@ -636,7 +1056,15 @@
       }
     }
 
-    observedLocalRaw = stabilizeCumulativeProgress();
+    const progressVault = progressVaultFactory();
+
+    function stabilizeAllProgress(raw = localStorage.getItem(STORAGE_KEY), preservedRaw = null) {
+      const vaultMerged = progressVault.stabilizeRaw(raw, preservedRaw);
+      const cumulativeMerged = stabilizeCumulativeProgress(vaultMerged);
+      return progressVault.stabilizeRaw(cumulativeMerged, preservedRaw);
+    }
+
+    observedLocalRaw = stabilizeAllProgress();
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -823,12 +1251,19 @@
       const mergeParticleSkill = (current, preserved) => {
         const a = objectValue(current);
         const b = objectValue(preserved);
-        const due = [a.dueAt, b.dueAt].map(Number).filter(Number.isFinite);
+        const aStage = Math.max(0, Math.min(9, Number(a.stage || 0)));
+        const bStage = Math.max(0, Math.min(9, Number(b.stage || 0)));
+        const aReviewed = Number(a.lastReviewedAt || 0);
+        const bReviewed = Number(b.lastReviewedAt || 0);
+        const aAttempts = Math.max(0, Number(a.correct || 0) + Number(a.incorrect || 0));
+        const bAttempts = Math.max(0, Number(b.correct || 0) + Number(b.incorrect || 0));
+        const preservedIsNewer = bReviewed > aReviewed || (bReviewed === aReviewed && bAttempts > aAttempts) || (bReviewed === aReviewed && bAttempts === aAttempts && aStage === 0 && bStage > 0);
+        const chosen = preservedIsNewer ? b : a;
         const reviewed = [a.lastReviewedAt, b.lastReviewedAt].map(Number).filter(value => Number.isFinite(value) && value > 0);
         return {
           ...b, ...a,
-          stage: Math.max(0, Math.min(9, Number(a.stage || 0)), Math.min(9, Number(b.stage || 0))),
-          dueAt: due.length ? Math.max(...due) : null,
+          stage: preservedIsNewer ? bStage : aStage,
+          dueAt: chosen.dueAt == null ? null : Number(chosen.dueAt),
           correct: Math.max(0, Number(a.correct || 0), Number(b.correct || 0)),
           incorrect: Math.max(0, Number(a.incorrect || 0), Number(b.incorrect || 0)),
           lastReviewedAt: reviewed.length ? Math.max(...reviewed) : null
@@ -906,6 +1341,17 @@
         const baselineValues = [a.baselineActivity, b.baselineActivity]
           .map(Number)
           .filter(value => Number.isFinite(value) && value >= 0);
+        const aEnergy = objectValue(a.storyEnergy);
+        const bEnergy = objectValue(b.storyEnergy);
+        const originActions = [aEnergy.originActions, bEnergy.originActions]
+          .map(Number)
+          .filter(value => Number.isFinite(value) && value >= 0);
+        const aPurchases = objectValue(aEnergy.purchases);
+        const bPurchases = objectValue(bEnergy.purchases);
+        const purchases = {};
+        new Set([...Object.keys(aPurchases), ...Object.keys(bPurchases)]).forEach(sceneId => {
+          purchases[sceneId] = Math.max(0, Number(aPurchases[sceneId] || 0), Number(bPurchases[sceneId] || 0));
+        });
         return {
           ...b,
           ...a,
@@ -918,6 +1364,14 @@
             ...aAvatar,
             accent: (currentIsNewer ? aAvatar.accent : bAvatar.accent) || aAvatar.accent || bAvatar.accent || "violet",
             outfit: (currentIsNewer ? aAvatar.outfit : bAvatar.outfit) || aAvatar.outfit || bAvatar.outfit || "basic-casual"
+          },
+          storyEnergy: {
+            ...bEnergy,
+            ...aEnergy,
+            version: aEnergy.version || bEnergy.version || "4.0",
+            originActions: originActions.length ? Math.min(...originActions) : undefined,
+            legacyEnergy: Math.max(0, Number(aEnergy.legacyEnergy || 0), Number(bEnergy.legacyEnergy || 0)),
+            purchases
           },
           baselineActivity: baselineValues.length ? Math.min(...baselineValues) : 0,
           lastSceneId: (currentIsNewer ? a.lastSceneId : b.lastSceneId) || a.lastSceneId || b.lastSceneId || completedScenes.at(-1) || "",
@@ -1052,11 +1506,13 @@
     }
 
     function injectCumulativeStatsGuard(html) {
+      const vaultScript = "<script>window.KotobaQuestProgressVault=(" + progressVaultFactory.toString() + ")();window.KotobaQuestProgressVault.install();<" + "/script>";
       const guardScript = "<script>(" + cumulativeStatsGuardBootstrap.toString() + ")();<" + "/script>";
+      const scripts = `${vaultScript}\n${guardScript}`;
       if (/<head(?:\s[^>]*)?>/i.test(html)) {
-        return html.replace(/<head(?:\s[^>]*)?>/i, match => `${match}\n${guardScript}`);
+        return html.replace(/<head(?:\s[^>]*)?>/i, match => `${match}\n${scripts}`);
       }
-      return `${guardScript}${html}`;
+      return `${scripts}${html}`;
     }
 
     function core2000PackBootstrap() {
@@ -27128,6 +27584,7 @@ function shuffle(values) {
       const STORY_BACKUP_KEY = "kotobaQuestStoryProgressBackupV1";
       const STORY_PERSISTENCE_VERSION = 2;
       const STORY_ENERGY_SYSTEM_VERSION = "4.0"; // Story energy economy pass 4.0
+      const STORY_ENERGY_REPAIR_VERSION = "5.0"; // Restores energy erased by the former max-origin merge.
       const STORY_ACTIONS_PER_ENERGY = 5;
       const STORY_REWARD_INTEGRITY_VERSION = "4.1"; // Only real, available assets can be unlocked.
       const STORY_VISIBILITY_RUNTIME_FIX_VERSION = "4.2"; // Restores the missing dashboard renderer.
@@ -27239,7 +27696,7 @@ function shuffle(values) {
           },
           storyEnergy: {
             version: STORY_ENERGY_SYSTEM_VERSION,
-            originActions: origins.length ? Math.max(...origins) : undefined,
+            originActions: origins.length ? Math.min(...origins) : undefined,
             legacyEnergy: Math.max(0, Number(aEnergy.legacyEnergy || 0), Number(bEnergy.legacyEnergy || 0)),
             purchases
           },
@@ -27460,6 +27917,17 @@ function shuffle(values) {
           if (!normalized) delete energy.purchases[sceneId];
           else energy.purchases[sceneId] = normalized;
         });
+        const recoverableLegacyEnergy = Math.max(0, currentActions - progress.baselineActivity);
+        const looksLikeFormerOriginReset =
+          energy.repairVersion !== STORY_ENERGY_REPAIR_VERSION &&
+          recoverableLegacyEnergy > 0 &&
+          energy.legacyEnergy === 0 &&
+          energy.originActions >= currentActions;
+        if (looksLikeFormerOriginReset) {
+          energy.legacyEnergy = recoverableLegacyEnergy;
+          energy.originActions = currentActions;
+        }
+        energy.repairVersion = STORY_ENERGY_REPAIR_VERSION;
         progress.storyEnergy = energy;
         progress.lastSceneId ||= firstScene(pack)?.id || "";
         progress.lastReadAt ||= null;
@@ -29691,7 +30159,7 @@ ${tooltipText(segment, status)}`)}"`
     });
 
     function readLocalRaw() {
-      const raw = stabilizeCumulativeProgress(localStorage.getItem(STORAGE_KEY));
+      const raw = stabilizeAllProgress(localStorage.getItem(STORAGE_KEY));
       return isValidProgress(raw) ? raw : null;
     }
 
@@ -29819,7 +30287,7 @@ ${tooltipText(segment, status)}`)}"`
 
     async function saveLocalProgressToCloud({ force = false, reason = "automatic" } = {}) {
       if (!currentUser || reconciliationInFlight) return;
-      const raw = stabilizeCumulativeProgress(readLocalRaw());
+      const raw = stabilizeAllProgress(readLocalRaw());
       if (!raw) {
         setStatus("good", "Cloud verbunden", "Noch kein veränderter Spielstand vorhanden.");
         return;
@@ -29854,7 +30322,8 @@ ${tooltipText(segment, status)}`)}"`
           hash,
           updatedAtMs,
           storageKey: STORAGE_KEY,
-          schemaVersion: 1
+          schemaVersion: 2,
+          progressVaultVersion: progressVault.version
         });
 
         writeMeta({
@@ -29903,17 +30372,21 @@ ${tooltipText(segment, status)}`)}"`
     }
 
     function restoreCloudProgress(cloudProgress) {
-      const restoredRaw = stabilizeCumulativeProgress(cloudProgress.raw);
+      const localBeforeRestore = localStorage.getItem(STORAGE_KEY);
+      const restoredRaw = stabilizeAllProgress(cloudProgress.raw, localBeforeRestore);
       localStorage.setItem(STORAGE_KEY, restoredRaw);
+      progressVault.writeVault(JSON.parse(restoredRaw));
+      const cloudWasExpanded = restoredRaw !== cloudProgress.raw;
       writeMeta({
         uid: currentUser.uid,
-        lastSyncedHash: cloudProgress.hash,
+        lastSyncedHash: cloudWasExpanded ? null : cloudProgress.hash,
         lastCloudUpdatedAtMs: cloudProgress.updatedAtMs
       });
       observedLocalRaw = restoredRaw;
       reloadAppDocument();
-      setStatus("good", "Cloudstand geladen", `Wiederhergestellt · ${formatTime()} Uhr`);
-      toast("Dein Cloud-Spielstand wurde wiederhergestellt.");
+      setStatus("good", cloudWasExpanded ? "Cloudstand sicher zusammengeführt" : "Cloudstand geladen", `Wiederhergestellt · ${formatTime()} Uhr`);
+      toast(cloudWasExpanded ? "Cloudstand und geschützter Fortschritt wurden zusammengeführt." : "Dein Cloud-Spielstand wurde wiederhergestellt.");
+      if (cloudWasExpanded) setTimeout(() => saveLocalProgressToCloud({ force: true }), 0);
     }
 
     async function reconcileLocalAndCloud() {
@@ -29922,7 +30395,7 @@ ${tooltipText(segment, status)}`)}"`
       setStatus("busy", "Cloud wird geprüft …", "Lokaler und gesicherter Fortschritt werden verglichen.");
 
       try {
-        const localRaw = stabilizeCumulativeProgress(readLocalRaw());
+        const localRaw = stabilizeAllProgress(readLocalRaw());
         const cloudProgress = await readCloudProgress();
 
         if (!cloudProgress) {
@@ -30055,7 +30528,7 @@ ${tooltipText(segment, status)}`)}"`
     });
 
     setInterval(() => {
-      const raw = stabilizeCumulativeProgress(localStorage.getItem(STORAGE_KEY));
+      const raw = stabilizeAllProgress(localStorage.getItem(STORAGE_KEY));
       if (raw === observedLocalRaw) return;
       observedLocalRaw = raw;
       scheduleCloudSave();
