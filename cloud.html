@@ -18890,6 +18890,294 @@
     }
 
 
+
+    function vocabularyLessonCheckpointBootstrap() {
+      if (window.__KOTOBA_VOCABULARY_LESSON_CHECKPOINT_V25__) return;
+      window.__KOTOBA_VOCABULARY_LESSON_CHECKPOINT_V25__ = true;
+
+      const VOCABULARY_LESSON_CHECKPOINT_VERSION = "2.5";
+      const originalStartLessons = startLessons;
+      const originalRenderLesson = renderLesson;
+
+      function shuffleCheckpoint(values) {
+        const result = [...values];
+        for (let index = result.length - 1; index > 0; index--) {
+          const other = Math.floor(Math.random() * (index + 1));
+          [result[index], result[other]] = [result[other], result[index]];
+        }
+        return result;
+      }
+
+      function initializeLessonCheckpoint() {
+        if (!lessonSession?.items?.length) return null;
+        if (lessonSession.checkpoint?.version === VOCABULARY_LESSON_CHECKPOINT_VERSION) {
+          return lessonSession.checkpoint;
+        }
+
+        const japaneseToGerman = shuffleCheckpoint(
+          lessonSession.items.map(item => ({
+            itemId: item.id,
+            type: "listening",
+            direction: "jp-de",
+            repeated: false
+          }))
+        );
+        const germanToJapanese = shuffleCheckpoint(
+          lessonSession.items.map(item => ({
+            itemId: item.id,
+            type: "production",
+            direction: "de-jp",
+            repeated: false
+          }))
+        );
+
+        lessonSession.phase = "checkpoint";
+        lessonSession.checkpoint = {
+          version: VOCABULARY_LESSON_CHECKPOINT_VERSION,
+          queue: [...japaneseToGerman, ...germanToJapanese],
+          initialQuestionCount: japaneseToGerman.length + germanToJapanese.length,
+          index: 0,
+          correctAnswers: 0,
+          wrongAnswers: 0,
+          feedback: null,
+          locked: false,
+          committed: false,
+          startedAt: Date.now()
+        };
+        return lessonSession.checkpoint;
+      }
+
+      function checkpointItem(question) {
+        return data.vocabulary.find(item => item.id === question?.itemId)
+          || lessonSession?.items?.find(item => item.id === question?.itemId)
+          || null;
+      }
+
+      function checkpointDirectionLabel(question) {
+        return question?.direction === "de-jp"
+          ? "Deutsch → Japanisch"
+          : "Japanisch → Deutsch";
+      }
+
+      function commitLessonCheckpoint() {
+        const checkpoint = lessonSession?.checkpoint;
+        if (!checkpoint || checkpoint.committed) return;
+        checkpoint.committed = true;
+
+        for (const sessionItem of lessonSession.items) {
+          const target = data.vocabulary.find(item => item.id === sessionItem.id);
+          if (!target || Number(target.stage || 0) > 0) continue;
+          target.stage = 1;
+          schedule(target);
+          data.xp += 5;
+        }
+
+        persist();
+        try { renderDashboard(); } catch {}
+        try { renderCore(); } catch {}
+        try { renderMining(); } catch {}
+        try { renderVocabulary(); } catch {}
+      }
+
+      function renderLessonCheckpointCompletion(card) {
+        const checkpoint = lessonSession.checkpoint;
+        commitLessonCheckpoint();
+        const kind = lessonSession.kind;
+        const label = kind === "core" ? "Core" : "Mining";
+        const remaining = getLessonItems(kind).length;
+        const wordCount = lessonSession.items.length;
+
+        card.className = "card study-card";
+        card.innerHTML = `
+          <div class="counter">${label}-Lektion · Lern-Checkpoint bestanden</div>
+          <div class="study-word" style="font-size:4rem">✅</div>
+          <h2>${wordCount} ${wordCount === 1 ? "Vokabel" : "Vokabeln"} in beide Richtungen abgerufen</h2>
+          <p class="muted">
+            Jedes Wort wurde mindestens einmal Japanisch → Deutsch und Deutsch → Japanisch korrekt beantwortet.
+            Erst jetzt beginnt die SRS-Wartezeit: Das erste Review erscheint ${data.demoMode ? "in etwa 10 Sekunden" : "in 4 Stunden"}.
+            ${checkpoint.wrongAnswers
+              ? `${checkpoint.wrongAnswers} nicht korrekte ${checkpoint.wrongAnswers === 1 ? "Antwort wurde" : "Antworten wurden"} vor dem Abschluss erneut abgefragt.`
+              : "Alle Antworten waren direkt korrekt."}
+          </p>
+          <div class="button-row" style="justify-content:center;margin-top:18px">
+            ${remaining ? `<button class="primary" id="lessonMore">Weitere ${Math.min(5, remaining)} lernen</button>` : ""}
+            <button class="secondary" id="lessonDone">Für jetzt beenden</button>
+          </div>`;
+        document.getElementById("lessonMore")?.addEventListener("click", () => startLessons(kind));
+        document.getElementById("lessonDone")?.addEventListener("click", () => switchView("dashboard"));
+        focusFirstEnabledAction("lessonMore", "lessonDone");
+      }
+
+      function advanceLessonCheckpoint() {
+        const checkpoint = lessonSession?.checkpoint;
+        if (!checkpoint) return;
+        checkpoint.index += 1;
+        checkpoint.feedback = null;
+        checkpoint.locked = false;
+        renderLesson();
+      }
+
+      function gradeLessonCheckpoint(question, item, answer) {
+        const checkpoint = lessonSession?.checkpoint;
+        if (!checkpoint || !question || !item) return;
+        const result = evaluateAnswer(question, item, answer);
+
+        if (result.status === "wrongType" || result.status === "romajiLeftover") {
+          checkpoint.feedback = {
+            kind: "warning",
+            retry: true,
+            correct: false,
+            message: result.status === "romajiLeftover"
+              ? "In der japanischen Antwort ist noch ein lateinischer Buchstabe übrig. Korrigiere die Eingabe; das zählt nicht als Fehler."
+              : question.type === "listening"
+                ? "Gesucht ist die deutsche Bedeutung, nicht die japanische Lesung. Versuche es direkt noch einmal."
+                : "Gesucht ist das japanische Wort, nicht die deutsche Bedeutung. Versuche es direkt noch einmal."
+          };
+          checkpoint.locked = false;
+          renderLesson();
+          return;
+        }
+
+        if (result.status === "correct") {
+          checkpoint.correctAnswers += 1;
+          checkpoint.index += 1;
+          checkpoint.feedback = null;
+          checkpoint.locked = false;
+          renderLesson();
+          return;
+        }
+
+        checkpoint.wrongAnswers += 1;
+        checkpoint.queue.push({ ...question, repeated: true });
+        checkpoint.feedback = {
+          kind: result.status === "close" ? "warning" : "bad",
+          retry: false,
+          correct: false,
+          message: result.status === "close"
+            ? `Fast richtig. Gesucht war: ${result.expected}. Diese Richtung wird am Ende noch einmal abgefragt.`
+            : `Leider nicht richtig. Gesucht war: ${result.expected}. Diese Richtung wird am Ende noch einmal abgefragt.`
+        };
+        checkpoint.locked = true;
+        renderLesson();
+      }
+
+      function renderLessonCheckpoint(card) {
+        const checkpoint = initializeLessonCheckpoint();
+        if (!checkpoint) return;
+
+        if (checkpoint.index >= checkpoint.queue.length) {
+          renderLessonCheckpointCompletion(card);
+          return;
+        }
+
+        const question = checkpoint.queue[checkpoint.index];
+        const item = checkpointItem(question);
+        if (!item) {
+          checkpoint.index += 1;
+          renderLesson();
+          return;
+        }
+
+        const remaining = Math.max(0, checkpoint.queue.length - checkpoint.index);
+        const initialDone = Math.min(checkpoint.index, checkpoint.initialQuestionCount);
+        const roundText = question.repeated
+          ? "Fehlerwiederholung"
+          : question.direction === "jp-de"
+            ? "Runde 1 von 2"
+            : "Runde 2 von 2";
+
+        renderQuestionCard(card, question, item, {
+          counter: `Lern-Checkpoint · ${roundText} · ${checkpointDirectionLabel(question)} · ${remaining} offen`,
+          feedback: checkpoint.feedback,
+          locked: checkpoint.locked,
+          submitHandler: answer => gradeLessonCheckpoint(question, item, answer),
+          nextHandler: advanceLessonCheckpoint
+        });
+
+        const progress = document.createElement("div");
+        progress.className = "lesson-checkpoint-progress";
+        progress.innerHTML = `
+          <div class="progress-track" aria-label="Fortschritt des Lern-Checkpoints">
+            <div class="progress-fill" style="width:${Math.round((initialDone / Math.max(1, checkpoint.initialQuestionCount)) * 100)}%"></div>
+          </div>
+          <span class="small muted">${checkpoint.correctAnswers} korrekte Abrufe · Erst nach allen ${checkpoint.initialQuestionCount} Richtungen startet die Vier-Stunden-Wartezeit.</span>`;
+        card.appendChild(progress);
+      }
+
+      startLessons = function(kind) {
+        originalStartLessons(kind);
+        if (!lessonSession) return;
+        lessonSession.phase = "learn";
+        lessonSession.checkpoint = null;
+      };
+
+      renderLesson = function() {
+        const card = document.getElementById("lessonCard");
+        if (!card) return;
+
+        if (
+          lessonSession?.items?.length &&
+          (lessonSession.phase === "checkpoint" || lessonSession.index >= lessonSession.items.length)
+        ) {
+          renderLessonCheckpoint(card);
+          return;
+        }
+
+        originalRenderLesson();
+        if (
+          lessonSession?.items?.length &&
+          lessonSession.index === lessonSession.items.length - 1 &&
+          lessonSession.revealed
+        ) {
+          const button = document.getElementById("lessonNext");
+          if (button) button.textContent = "Zum Lern-Checkpoint";
+        }
+      };
+
+      document.addEventListener("click", event => {
+        const button = event.target.closest?.("#lessonNext");
+        if (!button) return;
+        if (!document.getElementById("lessons")?.classList.contains("active")) return;
+        if (!lessonSession?.items?.length || lessonSession.phase === "checkpoint") return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        lessonSession.index += 1;
+        lessonSession.revealed = false;
+        if (lessonSession.index >= lessonSession.items.length) {
+          lessonSession.phase = "checkpoint";
+        }
+        renderLesson();
+      }, true);
+
+      document.addEventListener("keydown", event => {
+        if (event.key !== "Enter" || event.repeat || event.isComposing) return;
+        if (!document.getElementById("lessons")?.classList.contains("active")) return;
+        const input = document.getElementById("answerInput");
+        if (input && !input.disabled) return;
+        const next = document.getElementById("nextQuestion");
+        if (!next || next.disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+        next.click();
+      });
+
+      const style = document.createElement("style");
+      style.textContent = `
+        .lesson-checkpoint-progress {
+          width: min(560px, 100%);
+          margin: 18px auto 0;
+        }
+        .lesson-checkpoint-progress .progress-track { margin: 0 0 8px; }
+        .lesson-checkpoint-progress span { display: block; line-height: 1.45; }
+      `;
+      document.head.appendChild(style);
+
+      window.KotobaQuestVocabularyLessonCheckpoint = {
+        version: VOCABULARY_LESSON_CHECKPOINT_VERSION
+      };
+    }
+
     function learningHubBootstrap() {
       if (window.__KOTOBA_LEARNING_HUB_V4__) return;
       window.__KOTOBA_LEARNING_HUB_V4__ = true;
@@ -29311,6 +29599,7 @@ ${tooltipText(segment, status)}`)}"`
 
     function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
+      const vocabularyLessonCheckpointScript = "<script>(" + vocabularyLessonCheckpointBootstrap.toString() + ")();<" + "/script>";
       const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
       const learningHubScript = "<script>(" + learningHubBootstrap.toString() + ")();<" + "/script>";
       const languageReactorScript = "<script>(" + languageReactorMiningBootstrap.toString() + ")();<" + "/script>";
@@ -29324,7 +29613,7 @@ ${tooltipText(segment, status)}`)}"`
   const storyReaderScript = "<script>(" + storyReaderBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
       const interfaceScript = "<script>(" + interfaceReorganizationBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}`;
+      const enhancementScripts = `${grammarScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
