@@ -19052,16 +19052,18 @@
               return;
             }
             list.innerHTML = items.map(item => `
-              <div class="vocab-row">
+              <div class="vocab-row" data-vocab-id="${esc(item.id)}">
                 <div class="vocab-jp" data-vocab-word>${esc(item.word)}</div>
                 <div class="vocab-meta">
                   <strong>${esc((item.meanings || []).join(", "))}</strong>
                   <span>${esc(item.reading || "")} · ${esc(typeof formatNext === "function" ? formatNext(item) : "")}</span>
-                  ${item.collection ? `<span>Quelle: ${esc(item.collection)}</span>` : ""}
+                  ${item?.lrSource?.title ? `<span>🎬 ${esc(item.lrSource.platformLabel || item.lrSource.platform || "Language Reactor")} · ${esc(item.lrSource.title)}</span>` : item.collection ? `<span>Quelle: ${esc(item.collection)}</span>` : ""}
+                  ${item.lrHasAudio || item.lrHasImage ? `<span>${item.lrHasAudio ? "🔊 Originalaudio" : ""}${item.lrHasAudio && item.lrHasImage ? " · " : ""}${item.lrHasImage ? "🖼️ Szenenbild" : ""} lokal gespeichert</span>` : ""}
                 </div>
                 <div style="display:grid;gap:7px;justify-items:end">
                   <span class="type-badge mining">Mining</span>
                   <span class="badge">${esc(typeof stageName === "function" ? stageName(item.stage) : "")}</span>
+                  ${item.lrHasAudio ? `<button type="button" class="ghost" data-kq-lr-audio-key="${esc(item.lrMediaKey || item.lrImportKey || "")}" style="padding:7px 10px">🔊 Satz</button>` : ""}
                   <button class="ghost delete-vocab" data-id="${esc(item.id)}" style="padding:7px 10px">Löschen</button>
                 </div>
               </div>`).join("");
@@ -19416,6 +19418,16 @@
           .replace(/\s+/g, " ");
       }
 
+      function katakanaToHiragana(value) {
+        return String(value || "").normalize("NFKC").replace(/[\u30a1-\u30f6]/g, character =>
+          String.fromCharCode(character.charCodeAt(0) - 0x60)
+        );
+      }
+
+      function normalizeReading(value) {
+        return katakanaToHiragana(value).replace(/\s+/g, "").trim();
+      }
+
       function containsJapanese(value) {
         return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]/.test(String(value || ""));
       }
@@ -19488,6 +19500,75 @@
         }
       }
 
+      const MEDIA_DB_NAME = "kotobaQuestLocalMediaV1";
+      const MEDIA_STORE_NAME = "languageReactor";
+
+      function openMediaDatabase() {
+        return new Promise((resolve, reject) => {
+          if (!window.indexedDB) {
+            reject(new Error("IndexedDB wird von diesem Browser nicht unterstützt."));
+            return;
+          }
+          const request = indexedDB.open(MEDIA_DB_NAME, 1);
+          request.onupgradeneeded = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains(MEDIA_STORE_NAME)) {
+              database.createObjectStore(MEDIA_STORE_NAME, { keyPath: "key" });
+            }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error || new Error("Lokaler Medienspeicher konnte nicht geöffnet werden."));
+        });
+      }
+
+      async function putMedia(record) {
+        if (!record?.key || (!record.audioDataURL && !record.imageDataURL)) return false;
+        const database = await openMediaDatabase();
+        try {
+          await new Promise((resolve, reject) => {
+            const transaction = database.transaction(MEDIA_STORE_NAME, "readwrite");
+            transaction.objectStore(MEDIA_STORE_NAME).put(record);
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error || new Error("Medium konnte nicht gespeichert werden."));
+            transaction.onabort = () => reject(transaction.error || new Error("Medienspeicherung wurde abgebrochen."));
+          });
+          return true;
+        } finally {
+          database.close();
+        }
+      }
+
+      async function getMedia(key) {
+        if (!key) return null;
+        const database = await openMediaDatabase();
+        try {
+          return await new Promise((resolve, reject) => {
+            const transaction = database.transaction(MEDIA_STORE_NAME, "readonly");
+            const request = transaction.objectStore(MEDIA_STORE_NAME).get(String(key));
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error || new Error("Medium konnte nicht geladen werden."));
+          });
+        } finally {
+          database.close();
+        }
+      }
+
+      async function storeCandidateMedia(candidate) {
+        const media = candidate?.media || {};
+        if (!media.audioDataURL && !media.imageDataURL) return false;
+        return putMedia({
+          key: candidate.importKey,
+          audioDataURL: media.audioDataURL || "",
+          imageDataURL: media.imageDataURL || "",
+          audioSource: media.audioSource || "",
+          outputFormat: media.outputFormat || "",
+          source: candidate.source || {},
+          sentence: candidate.example || "",
+          translation: candidate.exampleTranslation || "",
+          savedAt: Date.now()
+        });
+      }
+
       function stableHash(value) {
         let hash = 2166136261;
         const input = String(value || "");
@@ -19532,11 +19613,11 @@
       }
 
       function readingFromTokens(tokens) {
-        return tokens.map(token => {
+        return normalizeReading(tokens.map(token => {
           const form = token?.form || {};
           const lemma = token?.lemma || {};
           return String(form.translit || lemma.translit || form.text || lemma.text || "");
-        }).join("").replace(/\s+/g, "").trim();
+        }).join(""));
       }
 
       function contextWordToken(item) {
@@ -19575,7 +19656,26 @@
           source,
           collection,
           movieId: reference.movieId == null ? "" : String(reference.movieId),
-          subtitleIndex: reference.subtitleIndex == null ? "" : String(reference.subtitleIndex)
+          subtitleIndex: reference.subtitleIndex == null ? "" : String(reference.subtitleIndex),
+          startTimeMs: Number.isFinite(Number(reference.startTime_ms)) ? Number(reference.startTime_ms) : null,
+          endTimeMs: Number.isFinite(Number(reference.endTime_ms)) ? Number(reference.endTime_ms) : null,
+          url: reference.url ? String(reference.url) : ""
+        };
+      }
+
+      function mediaInfo(item, phrase) {
+        const audioDataURL = /^data:audio\//i.test(String(item?.audio?.dataURL || ""))
+          ? String(item.audio.dataURL)
+          : "";
+        const imageCandidate = phrase?.thumb_prev?.dataURL || phrase?.thumb_next?.dataURL || "";
+        const imageDataURL = /^data:image\//i.test(String(imageCandidate || ""))
+          ? String(imageCandidate)
+          : "";
+        return {
+          audioDataURL,
+          imageDataURL,
+          audioSource: String(item?.audio?.source || ""),
+          outputFormat: String(item?.audio?.outputFormat || "")
         };
       }
 
@@ -19613,8 +19713,8 @@
         const wordObject = useLemma ? token.lemma : item?.word || token?.lemma || token?.form || {};
         const surfaceObject = item?.word || token?.form || wordObject;
         const word = String(wordObject?.text || surfaceObject?.text || "").trim();
-        let reading = String(wordObject?.translit || surfaceObject?.translit || "").replace(/\s+/g, "").trim();
-        if (!reading && isKanaOnly(word)) reading = word;
+        let reading = normalizeReading(wordObject?.translit || surfaceObject?.translit || "");
+        if (!reading && isKanaOnly(word)) reading = normalizeReading(word);
         const meanings = cleanStrings(item?.wordTranslationsArr);
         const source = sourceInfo(phrase);
         const example = phraseText(phrase);
@@ -19644,6 +19744,7 @@
           source,
           timeModified: Number(item?.timeModified_ms || 0),
           frequencyRank: item?.freqRank == null ? null : Number(item.freqRank),
+          media: mediaInfo(item, phrase),
           importKey: `lr-${stableHash(keySeed)}`,
           selected: false,
           action: "skip",
@@ -19660,7 +19761,8 @@
         const translation = phraseTranslation(phrase);
         const tokens = phraseTokens(phrase);
         let reading = readingFromTokens(tokens);
-        if (!reading && isKanaOnly(word)) reading = word;
+        if (!reading && isKanaOnly(word)) reading = normalizeReading(word);
+        reading = normalizeReading(reading);
         const source = sourceInfo(phrase);
         const tags = cleanStrings(item?.tags);
         const keySeed = [
@@ -19685,6 +19787,7 @@
           source,
           timeModified: Number(item?.timeModified_ms || 0),
           frequencyRank: item?.freqRank == null ? null : Number(item.freqRank),
+          media: mediaInfo(item, phrase),
           importKey: `lr-${stableHash(keySeed)}`,
           selected: false,
           action: "skip",
@@ -19709,7 +19812,8 @@
       }
 
       function enrichFromMatch(candidate, match) {
-        if (!candidate.reading && match?.reading) candidate.reading = String(match.reading);
+        if (!candidate.reading && match?.reading) candidate.reading = normalizeReading(match.reading);
+        candidate.reading = normalizeReading(candidate.reading);
         if (!candidate.meanings.length) {
           const meanings = Array.isArray(match?.meanings)
             ? match.meanings
@@ -19758,10 +19862,13 @@
         }
         if (miningMatch) {
           candidate.action = "mergeMining";
-          candidate.selected = Boolean(candidate.example || candidate.tags.length) && !history.has(candidate.importKey);
+          const hasMedia = Boolean(candidate.media?.audioDataURL || candidate.media?.imageDataURL);
+          candidate.selected = hasMedia || (Boolean(candidate.example || candidate.tags.length) && !history.has(candidate.importKey));
           candidate.match = miningMatch;
           candidate.status = history.has(candidate.importKey)
-            ? "Dieser Language-Reactor-Eintrag wurde schon verarbeitet"
+            ? hasMedia
+              ? "Schon im Mining · Originalaudio und Szenenbild werden lokal ergänzt"
+              : "Dieser Language-Reactor-Eintrag wurde schon verarbeitet"
             : "Schon im Mining · neuer Kontext wird ergänzt";
           candidate.statusKind = "existing";
           return candidate;
@@ -19915,7 +20022,7 @@
               <label>Lesung<input type="text" data-lr-reading="${index}" value="${esc(candidate.reading)}" placeholder="かな" /></label>
               <label>Bedeutung<input type="text" data-lr-meanings="${index}" value="${esc(candidate.meanings.join(", "))}" placeholder="deutsche Bedeutung" /></label>
               ${candidate.example ? `<div class="kq-lr-context"><span>${esc(candidate.example)}</span>${candidate.exampleTranslation ? `<small>${esc(candidate.exampleTranslation)}</small>` : ""}</div>` : ""}
-              <small class="kq-lr-source">${esc(candidate.source.source)}${candidate.tags.length ? ` · Tags: ${esc(candidate.tags.join(", "))}` : ""}</small>
+              <small class="kq-lr-source">${esc(candidate.source.source)}${candidate.tags.length ? ` · Tags: ${esc(candidate.tags.join(", "))}` : ""}${candidate.media?.audioDataURL ? " · 🔊 Originalaudio" : ""}${candidate.media?.imageDataURL ? " · 🖼️ Szenenbild" : ""}</small>
             </div>
             <div class="kq-lr-status"><span class="kq-lr-badge ${candidate.statusKind}">${statusLabel(candidate)}</span><small>${esc(candidate.status)}</small></div>
           </div>`).join("");
@@ -19931,7 +20038,7 @@
       function updateCandidate(index, field, value) {
         const candidate = candidates[index];
         if (!candidate) return;
-        if (field === "reading") candidate.reading = String(value || "").trim();
+        if (field === "reading") candidate.reading = normalizeReading(value);
         if (field === "meanings") candidate.meanings = cleanStrings(String(value || "").split(/[,;\n]/));
         const previousSelection = candidate.selected;
         classifyCandidate(candidate);
@@ -19987,6 +20094,14 @@
           source: candidate.source.source || "Language Reactor",
           title: candidate.source.title || "",
           platform: candidate.source.platform || "",
+          movieId: candidate.source.movieId || "",
+          subtitleIndex: candidate.source.subtitleIndex || "",
+          startTimeMs: candidate.source.startTimeMs,
+          endTimeMs: candidate.source.endTimeMs,
+          sourceUrl: candidate.source.url || "",
+          mediaKey: candidate.importKey,
+          hasAudio: Boolean(candidate.media?.audioDataURL),
+          hasImage: Boolean(candidate.media?.imageDataURL),
           tags: [...candidate.tags],
           importedAt: Date.now(),
           lrImportKey: candidate.importKey
@@ -20006,13 +20121,17 @@
         const tags = new Set([...(Array.isArray(target.lrTags) ? target.lrTags : []), ...candidate.tags]);
         target.lrTags = [...tags];
         target.lrLastImportedAt = Date.now();
+        target.lrMediaKey = candidate.importKey;
+        target.lrHasAudio = Boolean(candidate.media?.audioDataURL) || Boolean(target.lrHasAudio);
+        target.lrHasImage = Boolean(candidate.media?.imageDataURL) || Boolean(target.lrHasImage);
+        if (candidate.source?.title) target.collection = candidate.source.collection;
         return !duplicate;
       }
 
       function addMiningCandidate(candidate) {
         const payload = {
           word: candidate.word,
-          reading: candidate.reading || candidate.word,
+          reading: normalizeReading(candidate.reading || candidate.word),
           meanings: candidate.meanings,
           sourceType: "mining",
           level: 1,
@@ -20046,6 +20165,9 @@
         card.lrSource = candidate.source;
         card.lrTimeModified = candidate.timeModified;
         card.lrFrequencyRank = candidate.frequencyRank;
+        card.lrMediaKey = candidate.importKey;
+        card.lrHasAudio = Boolean(candidate.media?.audioDataURL);
+        card.lrHasImage = Boolean(candidate.media?.imageDataURL);
         card.lrContexts = candidate.example ? [contextRecord(candidate)] : [];
         vocabularyItems().push(card);
         return card;
@@ -20056,7 +20178,7 @@
         const entry = {
           id: `known-${candidate.importKey}`,
           word: candidate.word,
-          reading: candidate.reading || candidate.word,
+          reading: normalizeReading(candidate.reading || candidate.word),
           meaning: candidate.meanings.join(", "),
           source: candidate.source.collection,
           example: candidate.example,
@@ -20064,14 +20186,19 @@
           createdAt: candidate.timeModified || Date.now(),
           lrImportKey: candidate.importKey,
           lrTags: [...candidate.tags],
-          lrItemType: candidate.lrItemType
+          lrItemType: candidate.lrItemType,
+          lrSource: candidate.source,
+          lrMediaKey: candidate.importKey,
+          lrHasAudio: Boolean(candidate.media?.audioDataURL),
+          lrHasImage: Boolean(candidate.media?.imageDataURL),
+          lrContexts: candidate.example ? [contextRecord(candidate)] : []
         };
         pool.push(entry);
         try { currentData().knownVocabulary = pool; } catch {}
         return entry;
       }
 
-      function performImport() {
+      async function performImport() {
         classifyAll();
         const selected = candidates.filter(candidate => candidate.selected && !candidate.incomplete);
         if (!selected.length) return;
@@ -20081,6 +20208,8 @@
           addedMining: 0,
           addedKnown: 0,
           merged: 0,
+          mediaSaved: 0,
+          mediaFailed: 0,
           skipped: 0
         };
 
@@ -20099,6 +20228,14 @@
             history.add(candidate.importKey);
           } else {
             summary.skipped += 1;
+          }
+          if (candidate.media?.audioDataURL || candidate.media?.imageDataURL) {
+            try {
+              if (await storeCandidateMedia(candidate)) summary.mediaSaved += 1;
+            } catch (error) {
+              summary.mediaFailed += 1;
+              console.warn("Language-Reactor-Medium konnte nicht lokal gespeichert werden", error);
+            }
           }
         }
 
@@ -20119,7 +20256,7 @@
         const feedback = document.getElementById("kqLrFeedback");
         if (feedback) {
           feedback.className = "kq-lr-feedback good";
-          feedback.textContent = `Import abgeschlossen: ${summary.addedMining} neue Mining-Karten, ${summary.addedKnown} bekannte Wörter und ${summary.merged} ergänzte Kontexte. Core-Dubletten und bereits vorhandene Einträge wurden nicht doppelt angelegt.`;
+          feedback.textContent = `Import abgeschlossen: ${summary.addedMining} neue Mining-Karten, ${summary.addedKnown} bekannte Wörter, ${summary.merged} ergänzte Kontexte und ${summary.mediaSaved} lokale Medienpakete. Core-Dubletten wurden nicht doppelt angelegt.${summary.mediaFailed ? ` ${summary.mediaFailed} Medien konnten wegen des lokalen Browserspeichers nicht gesichert werden.` : ""}`;
         }
       }
 
@@ -20132,7 +20269,7 @@
         const feedback = document.getElementById("kqLrFeedback");
         if (feedback) {
           feedback.className = "kq-lr-feedback";
-          feedback.textContent = "Exportdateien werden nur lokal im Browser verarbeitet. Audio- und Bilddaten werden bewusst nicht in den Cloud-Spielstand übernommen.";
+          feedback.textContent = "Exportdateien werden lokal verarbeitet. Originalaudio und ein Szenenbild werden – sofern vorhanden – separat im lokalen Browserspeicher abgelegt und vergrößern den Cloud-Spielstand nicht.";
         }
         renderPreview();
       }
@@ -20156,7 +20293,7 @@
             <div><strong>Orange / Learning</strong><span>Neue Einträge werden Mining-Karten.</span></div>
             <div><strong>Known</strong><span>Wandert ins Archiv „Bekannte Vokabeln“.</span></div>
             <div><strong>Schon im Core</strong><span>Wird erkannt und nicht doppelt angelegt.</span></div>
-            <div><strong>Schon im Mining</strong><span>Ein neuer Satzkontext wird ergänzt.</span></div>
+            <div><strong>Schon im Mining</strong><span>Kontext, Serienquelle und vorhandene Medien werden ergänzt.</span></div>
           </div>
           <label class="kq-lr-dropzone" id="kqLrDropzone" tabindex="0">
             <input id="kqLrFileInput" type="file" accept=".json,application/json" hidden />
@@ -20164,7 +20301,7 @@
             <strong>JSON-Datei hier ablegen</strong>
             <span>oder klicken, um den Language-Reactor-Export auszuwählen</span>
           </label>
-          <div class="kq-lr-feedback" id="kqLrFeedback">Exportdateien werden nur lokal im Browser verarbeitet. Audio- und Bilddaten werden bewusst nicht in den Cloud-Spielstand übernommen.</div>
+          <div class="kq-lr-feedback" id="kqLrFeedback">Exportdateien werden lokal verarbeitet. Originalaudio und ein Szenenbild werden – sofern vorhanden – separat im lokalen Browserspeicher abgelegt und vergrößern den Cloud-Spielstand nicht.</div>
           <div class="small muted" id="kqLrLastImport"></div>
           <div class="kq-lr-preview" id="kqLrPreview" hidden>
             <div class="kq-lr-preview-head">
@@ -20227,6 +20364,14 @@
         card.querySelector("#kqLrDiscard")?.addEventListener("click", resetPreview);
         renderLastImport();
       }
+
+      window.KotobaQuestLanguageReactorMediaStore = {
+        get: getMedia,
+        put: putMedia,
+        storeCandidate: storeCandidateMedia,
+        databaseName: MEDIA_DB_NAME,
+        storeName: MEDIA_STORE_NAME
+      };
 
       window.KotobaQuestLanguageReactorImport = {
         parsePayload: payload => { parsePayload(payload); return candidates.map(item => ({ ...item, original: undefined })); },
@@ -21727,6 +21872,256 @@
       installThemePicker();
       applyTheme(readTheme());
       scheduleEnhancement();
+    }
+
+
+    function languageReactorMediaExperienceBootstrap() {
+      if (window.__KOTOBA_LANGUAGE_REACTOR_MEDIA_V2__) return;
+      window.__KOTOBA_LANGUAGE_REACTOR_MEDIA_V2__ = true;
+      // Language Reactor media-rich mining pass 2.0
+
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const activeAudio = new Set();
+
+      function esc(value) {
+        try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
+        return String(value ?? "")
+          .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+      }
+
+      function sourceData() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+      }
+
+      function toHiragana(value) {
+        return String(value || "").normalize("NFKC").replace(/[\u30a1-\u30f6]/g, character =>
+          String.fromCharCode(character.charCodeAt(0) - 0x60)
+        );
+      }
+
+      function normalizeImportedReadings() {
+        const source = sourceData();
+        let changed = false;
+        const normalizeEntry = entry => {
+          if (!entry || !(entry.lrImportKey || entry.lrSource || String(entry.collection || "").includes("Language Reactor"))) return;
+          for (const field of ["reading", "baseReading"]) {
+            if (!entry[field]) continue;
+            const normalized = toHiragana(entry[field]);
+            if (normalized !== entry[field]) {
+              entry[field] = normalized;
+              changed = true;
+            }
+          }
+        };
+        (Array.isArray(source.vocabulary) ? source.vocabulary : []).forEach(normalizeEntry);
+        (Array.isArray(source.knownVocabulary) ? source.knownVocabulary : []).forEach(normalizeEntry);
+        if (!changed) return;
+        try {
+          if (typeof saveData === "function") saveData();
+          else localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
+        } catch (error) {
+          console.warn("Language-Reactor-Lesungen konnten nicht migriert werden", error);
+        }
+      }
+
+      function vocabularyEntry(id) {
+        const items = Array.isArray(sourceData().vocabulary) ? sourceData().vocabulary : [];
+        return items.find(item => String(item?.id || "") === String(id || "")) || null;
+      }
+
+      function sourceMeta(item) {
+        const context = Array.isArray(item?.lrContexts) ? item.lrContexts[item.lrContexts.length - 1] : null;
+        const source = item?.lrSource || {};
+        return {
+          platform: String(source.platform || context?.platform || "").toUpperCase(),
+          platformLabel: String(source.platformLabel || context?.platform || "Language Reactor"),
+          title: String(source.title || context?.title || item?.collection || "").replace(/^Language Reactor\s*·\s*/i, ""),
+          movieId: String(source.movieId || context?.movieId || ""),
+          startTimeMs: Number.isFinite(Number(source.startTimeMs ?? context?.startTimeMs)) ? Number(source.startTimeMs ?? context?.startTimeMs) : null,
+          url: String(source.url || context?.sourceUrl || "")
+        };
+      }
+
+      function mediaKey(item) {
+        return String(item?.lrMediaKey || item?.lrImportKey || item?.lrContexts?.find?.(context => context?.mediaKey)?.mediaKey || "");
+      }
+
+      function sourceUrl(meta) {
+        const seconds = Number.isFinite(meta.startTimeMs) ? Math.max(0, Math.floor(meta.startTimeMs / 1000)) : 0;
+        if (meta.platform === "YOUTUBE" && meta.movieId) {
+          return `https://www.youtube.com/watch?v=${encodeURIComponent(meta.movieId)}${seconds ? `&t=${seconds}s` : ""}`;
+        }
+        if (meta.platform === "NETFLIX" && meta.movieId) return `https://www.netflix.com/watch/${encodeURIComponent(meta.movieId)}`;
+        if (meta.url && /^https?:\/\//i.test(meta.url)) return meta.url;
+        return "";
+      }
+
+      async function getMedia(key) {
+        try { return await window.KotobaQuestLanguageReactorMediaStore?.get?.(key); }
+        catch (error) {
+          console.warn("Lokale Language-Reactor-Medien konnten nicht geladen werden", error);
+          return null;
+        }
+      }
+
+      async function playMedia(key, button = null) {
+        if (!key || activeAudio.has(key)) return;
+        const media = await getMedia(key);
+        if (!media?.audioDataURL) {
+          try { if (typeof toast === "function") toast("Für diese Karte ist auf diesem Gerät kein Originalaudio gespeichert. Importiere den Language-Reactor-Export hier erneut."); } catch {}
+          return;
+        }
+        activeAudio.add(key);
+        button?.classList.add("playing");
+        try {
+          const audio = new Audio(media.audioDataURL);
+          await new Promise((resolve, reject) => {
+            audio.addEventListener("ended", resolve, { once: true });
+            audio.addEventListener("error", reject, { once: true });
+            audio.play().catch(reject);
+          });
+        } catch (error) {
+          console.warn("Originalaudio konnte nicht abgespielt werden", error);
+        } finally {
+          activeAudio.delete(key);
+          button?.classList.remove("playing");
+        }
+      }
+
+      async function mediaPanelMarkup(item) {
+        if (!item || !(item.lrImportKey || item.lrSource || item.lrContexts?.length)) return "";
+        const meta = sourceMeta(item);
+        const key = mediaKey(item);
+        const media = key ? await getMedia(key) : null;
+        const url = sourceUrl(meta);
+        const title = meta.title || "Language-Reactor-Kontext";
+        const platform = meta.platformLabel || meta.platform || "Language Reactor";
+        const hasAudio = Boolean(media?.audioDataURL || item.lrHasAudio);
+        const hasImage = Boolean(media?.imageDataURL || item.lrHasImage);
+        return `<aside class="kq-lr-card-media" data-kq-lr-media-key="${esc(key)}">
+          ${media?.imageDataURL ? `<img class="kq-lr-scene-image" src="${esc(media.imageDataURL)}" alt="Szenenbild aus ${esc(title)}" />` : ""}
+          <div class="kq-lr-media-copy">
+            <span class="kq-lr-source-label">🎬 ${esc(platform)}</span>
+            <strong>${esc(title)}</strong>
+            <small>${hasAudio || hasImage ? `${hasAudio ? "Originalaudio" : ""}${hasAudio && hasImage ? " · " : ""}${hasImage ? "Szenenbild" : ""} lokal auf diesem Gerät` : "Quelle aus dem Language-Reactor-Import"}</small>
+          </div>
+          <div class="kq-lr-media-actions">
+            ${hasAudio ? `<button type="button" class="secondary" data-kq-lr-audio-key="${esc(key)}">🔊 Originalsatz</button>` : ""}
+            ${url ? `<a class="ghost kq-lr-source-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Zur Quelle ↗</a>` : ""}
+          </div>
+        </aside>`;
+      }
+
+      async function enhanceCard(container, item) {
+        if (!container || !item) return;
+        container.querySelector(".kq-lr-card-media")?.remove();
+        const markup = await mediaPanelMarkup(item);
+        if (!markup || !container.isConnected) return;
+        const holder = document.createElement("div");
+        holder.innerHTML = markup;
+        const panel = holder.firstElementChild;
+        const actionRow = container.querySelector(":scope > .button-row:last-of-type, #reviewAnswerForm, .review-form, form:last-of-type");
+        if (actionRow) actionRow.before(panel);
+        else container.appendChild(panel);
+      }
+
+      function currentLessonItem() {
+        try { return lessonSession?.items?.[lessonSession.index] || null; } catch { return null; }
+      }
+
+      function enhanceMiningList() {
+        document.querySelectorAll("#vocabList .vocab-row[data-vocab-id]").forEach(row => {
+          const item = vocabularyEntry(row.dataset.vocabId);
+          if (!item) return;
+          const readingNode = row.querySelector(".vocab-meta span");
+          if (readingNode && item.reading) {
+            const next = String(readingNode.textContent || "").split(" · ").slice(1).join(" · ");
+            readingNode.textContent = `${toHiragana(item.reading)}${next ? ` · ${next}` : ""}`;
+          }
+        });
+      }
+
+      document.addEventListener("click", event => {
+        const audioButton = event.target.closest("[data-kq-lr-audio-key]");
+        if (audioButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          playMedia(audioButton.dataset.kqLrAudioKey || "", audioButton);
+        }
+      });
+
+      try {
+        const originalRenderLesson = renderLesson;
+        if (typeof originalRenderLesson === "function" && !originalRenderLesson.__kqLrMediaWrapped) {
+          const wrapped = function(...args) {
+            const result = originalRenderLesson.apply(this, args);
+            setTimeout(() => {
+              const item = currentLessonItem();
+              const container = document.getElementById("lessonCard") || document.getElementById("lessonContextPanel")?.closest(".study-card") || document.getElementById("lessonContextPanel");
+              enhanceCard(container, item);
+            }, 0);
+            return result;
+          };
+          wrapped.__kqLrMediaWrapped = true;
+          renderLesson = wrapped;
+        }
+      } catch {}
+
+      try {
+        const originalRenderQuestionCard = renderQuestionCard;
+        if (typeof originalRenderQuestionCard === "function" && !originalRenderQuestionCard.__kqLrMediaWrapped) {
+          const wrapped = function(card, question, item, options) {
+            const result = originalRenderQuestionCard.apply(this, arguments);
+            setTimeout(() => enhanceCard(card, item), 0);
+            return result;
+          };
+          wrapped.__kqLrMediaWrapped = true;
+          renderQuestionCard = wrapped;
+        }
+      } catch {}
+
+      try {
+        const originalRenderVocabulary = renderVocabulary;
+        if (typeof originalRenderVocabulary === "function" && !originalRenderVocabulary.__kqLrMediaWrapped) {
+          const wrapped = function(...args) {
+            const result = originalRenderVocabulary.apply(this, args);
+            setTimeout(enhanceMiningList, 0);
+            return result;
+          };
+          wrapped.__kqLrMediaWrapped = true;
+          renderVocabulary = wrapped;
+        }
+      } catch {}
+
+      const style = document.createElement("style");
+      style.id = "kotobaLanguageReactorMediaStyles";
+      style.textContent = `
+        .kq-lr-card-media{width:min(720px,100%);display:grid;grid-template-columns:minmax(0,120px) 1fr auto;align-items:center;gap:13px;margin:18px auto 0;padding:12px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(135deg,var(--kq-wash,#f5f0ff),white);text-align:left}
+        .kq-lr-scene-image{width:120px;aspect-ratio:16/9;object-fit:cover;border-radius:11px;border:1px solid var(--border);background:#eee}
+        .kq-lr-media-copy{display:grid;gap:3px;min-width:0}.kq-lr-media-copy strong{overflow-wrap:anywhere}.kq-lr-media-copy small{color:var(--muted);line-height:1.35}
+        .kq-lr-source-label{color:var(--primary-dark);font-size:.7rem;font-weight:950;letter-spacing:.06em;text-transform:uppercase}
+        .kq-lr-media-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}.kq-lr-media-actions button,.kq-lr-source-link{padding:9px 11px;border-radius:10px;font-size:.78rem;font-weight:850;text-decoration:none;white-space:nowrap}
+        [data-kq-lr-audio-key].playing{opacity:.65;pointer-events:none}
+        @media(max-width:720px){.kq-lr-card-media{grid-template-columns:92px 1fr}.kq-lr-scene-image{width:92px}.kq-lr-media-actions{grid-column:1/-1;justify-content:flex-start}}
+        @media(max-width:480px){.kq-lr-card-media{grid-template-columns:1fr}.kq-lr-scene-image{width:100%;max-height:190px}.kq-lr-media-actions{grid-column:1}}
+      `;
+      document.head.appendChild(style);
+
+      normalizeImportedReadings();
+      setTimeout(() => {
+        enhanceMiningList();
+        const item = currentLessonItem();
+        if (item) enhanceCard(document.getElementById("lessonCard") || document.getElementById("lessonContextPanel"), item);
+      }, 0);
+
+      window.KotobaQuestLanguageReactorMedia = {
+        refresh: () => { normalizeImportedReadings(); enhanceMiningList(); },
+        enhanceCard,
+        play: playMedia,
+        get: getMedia
+      };
     }
 
     function learningInsightsBootstrap() {
@@ -26869,6 +27264,7 @@
       const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
       const learningHubScript = "<script>(" + learningHubBootstrap.toString() + ")();<" + "/script>";
       const languageReactorScript = "<script>(" + languageReactorMiningBootstrap.toString() + ")();<" + "/script>";
+      const languageReactorMediaScript = "<script>(" + languageReactorMediaExperienceBootstrap.toString() + ")();<" + "/script>";
       const learningInsightsScript = "<script>(" + learningInsightsBootstrap.toString() + ")();<" + "/script>";
       const contextPracticeScript = "<script>(" + contextVocabularyPracticeBootstrap.toString() + ")();<" + "/script>";
       const particleWorkshopScript = "<script>(" + particleWorkshopBootstrap.toString() + ")();<" + "/script>";
@@ -26876,7 +27272,7 @@
       const problemWorkshopScript = "<script>(" + problemWordWorkshopBootstrap.toString() + ")();<" + "/script>";
       const storyReaderScript = "<script>(" + storyReaderBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${storyReaderScript}\n${pastelFuriganaScript}`;
+      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${storyReaderScript}\n${pastelFuriganaScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
