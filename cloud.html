@@ -27772,6 +27772,746 @@ ${tooltipText(segment, status)}`)}"`
       };
     }
 
+    function interfaceReorganizationBootstrap() {
+      if (window.__KQ_INFORMATION_ARCHITECTURE_V4__) return;
+      window.__KQ_INFORMATION_ARCHITECTURE_V4__ = true;
+    
+      const VERSION = "4.0";
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const MAIN_GROUPS = [
+        { id: "overview", label: "Übersicht" },
+        { id: "learning", label: "Lernen" },
+        { id: "practice", label: "Üben" },
+        { id: "story", label: "Story" },
+        { id: "mining", label: "Mining" },
+        { id: "progress", label: "Fortschritt" }
+      ];
+      const STAGES = [
+        { stage: 0, short: "Neu", long: "Neu" },
+        { stage: 1, short: "A1", long: "Apprentice 1" },
+        { stage: 2, short: "A2", long: "Apprentice 2" },
+        { stage: 3, short: "A3", long: "Apprentice 3" },
+        { stage: 4, short: "A4", long: "Apprentice 4" },
+        { stage: 5, short: "G1", long: "Guru 1" },
+        { stage: 6, short: "G2", long: "Guru 2" },
+        { stage: 7, short: "M", long: "Master" },
+        { stage: 8, short: "E", long: "Erleuchtet" },
+        { stage: 9, short: "✓", long: "Abgeschlossen" }
+      ];
+    
+      let activeGroup = "overview";
+      let learningTab = "vocabulary";
+      let progressTab = "statistics";
+      let refreshQueued = false;
+    
+      function esc(value) {
+        try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+    
+      function sourceData() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+      }
+    
+      function notify(message) {
+        try { if (typeof toast === "function") return toast(message); } catch {}
+        console.info(message);
+      }
+    
+      function clampStage(value) {
+        return Math.max(0, Math.min(9, Math.floor(Number(value || 0))));
+      }
+    
+      function activeVocabulary() {
+        const source = sourceData();
+        const currentLevel = Math.max(1, Number(source.currentLevel || 1));
+        return (Array.isArray(source.vocabulary) ? source.vocabulary : []).filter(item => {
+          if (!item) return false;
+          if (item.sourceType === "mining") return true;
+          if (item.sourceType !== "core") return Number(item.stage || 0) > 0;
+          return Number(item.level || 0) <= currentLevel || Number(item.stage || 0) > 0 || Boolean(item.guruPassed);
+        });
+      }
+    
+      function grammarProgress() {
+        try {
+          const points = window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.();
+          return Array.isArray(points) ? points : [];
+        } catch { return []; }
+      }
+    
+      function particleProgress() {
+        try {
+          const points = window.KotobaQuestParticlePath?.getProgress?.();
+          return Array.isArray(points) ? points : [];
+        } catch { return []; }
+      }
+    
+      function grammarStage(point) {
+        if (!point?.lessonComplete) return 0;
+        const stages = (point.skills || []).map(skill => clampStage(skill?.stage));
+        return stages.length ? Math.min(...stages) : 1;
+      }
+    
+      function particleStage(point) {
+        if (!point?.lessonComplete) return 0;
+        if (Number.isFinite(Number(point.stage))) return clampStage(point.stage);
+        const stages = (point.skills || []).map(skill => clampStage(skill?.stage));
+        return stages.length ? Math.min(...stages) : 1;
+      }
+    
+      function distribution(items, getStage) {
+        const counts = Object.fromEntries(STAGES.map(entry => [entry.stage, 0]));
+        for (const item of items) counts[clampStage(getStage(item))] += 1;
+        return counts;
+      }
+    
+      function vocabDistribution() {
+        return distribution(activeVocabulary(), item => item?.stage);
+      }
+    
+      function grammarDistribution() {
+        return distribution(grammarProgress(), grammarStage);
+      }
+    
+      function particleDistribution() {
+        return distribution(particleProgress(), particleStage);
+      }
+    
+      function stageGrid(counts, compact = false) {
+        return `<div class="kq-ia-stage-grid${compact ? " compact" : ""}">${STAGES.map(entry => `
+          <div class="kq-ia-stage-cell stage-${entry.stage}" title="${esc(entry.long)}">
+            <span>${esc(entry.short)}</span><strong>${Number(counts?.[entry.stage] || 0)}</strong>
+          </div>`).join("")}</div>`;
+      }
+    
+      function summaryBuckets(counts) {
+        const apprentice = [1,2,3,4].reduce((sum, stage) => sum + Number(counts?.[stage] || 0), 0);
+        const guru = [5,6].reduce((sum, stage) => sum + Number(counts?.[stage] || 0), 0);
+        return {
+          newCount: Number(counts?.[0] || 0),
+          apprentice,
+          guru,
+          master: Number(counts?.[7] || 0),
+          enlightened: Number(counts?.[8] || 0),
+          completed: Number(counts?.[9] || 0)
+        };
+      }
+    
+      function countDueVocabulary(kind) {
+        try { return typeof getDueItems === "function" ? getDueItems(kind).length : 0; } catch { return 0; }
+      }
+    
+      function countLessonsVocabulary(kind) {
+        try { return typeof getLessonItems === "function" ? getLessonItems(kind).length : 0; } catch { return 0; }
+      }
+    
+      function countDueGrammar() {
+        try { return window.KotobaQuestGrammarSupportApi?.getDueItems?.().length || 0; } catch { return 0; }
+      }
+    
+      function countDueParticles() {
+        try { return window.KotobaQuestParticlePath?.getDueItems?.().length || 0; } catch { return 0; }
+      }
+    
+      function setGroup(group) {
+        activeGroup = MAIN_GROUPS.some(item => item.id === group) ? group : "overview";
+        try { sessionStorage.setItem("kqActiveMainGroup", activeGroup); } catch {}
+        updateNavigationState();
+        renderContextBar();
+      }
+    
+      function inferGroup(viewName) {
+        if (viewName === "dashboard") return "overview";
+        if (["learningCenter", "core", "grammar", "grammarLesson", "grammarReview", "lessons", "reviews", "placement"].includes(viewName)) return "learning";
+        if (["practiceCenter", "vocabPractice", "problemWords"].includes(viewName)) return "practice";
+        if (viewName === "particlePractice") return ["learning", "practice"].includes(activeGroup) ? activeGroup : "learning";
+        if (viewName === "storyReader") return "story";
+        if (["mining", "vocabulary"].includes(viewName)) return "mining";
+        if (["progressCenter", "statistics", "archive"].includes(viewName)) return "progress";
+        return activeGroup;
+      }
+    
+      function safeSwitch(viewName, group = "") {
+        if (group) setGroup(group);
+        try { switchView(viewName); } catch (error) { console.warn("View konnte nicht geöffnet werden", viewName, error); }
+        scheduleRefresh();
+      }
+    
+      function ensureViews() {
+        const main = document.querySelector("main");
+        if (!main) return;
+        const before = document.getElementById("placement") || null;
+        const definitions = [
+          ["learningCenter", "kqLearningCenterRoot"],
+          ["practiceCenter", "kqPracticeCenterRoot"],
+          ["progressCenter", "kqProgressCenterRoot"]
+        ];
+        for (const [id, rootId] of definitions) {
+          if (document.getElementById(id)) continue;
+          const section = document.createElement("section");
+          section.id = id;
+          section.className = "view kq-ia-center-view";
+          section.innerHTML = `<div id="${rootId}"></div>`;
+          main.insertBefore(section, before);
+        }
+        if (!document.getElementById("kqContextNav")) {
+          const context = document.createElement("div");
+          context.id = "kqContextNav";
+          context.className = "kq-ia-context-nav";
+          context.hidden = true;
+          main.prepend(context);
+        }
+      }
+    
+      function installStyles() {
+        if (document.getElementById("kqInformationArchitectureStyles")) return;
+        const style = document.createElement("style");
+        style.id = "kqInformationArchitectureStyles";
+        style.textContent = `
+          .topbar .nav { align-items:center; }
+          .topbar .nav [data-kq-main-group] { white-space:nowrap; }
+          .kq-ia-center-view { padding-bottom:20px; }
+          .kq-ia-shell { max-width:1180px; margin:0 auto; display:grid; gap:14px; }
+          .kq-ia-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:14px; }
+          .kq-ia-heading h2,.kq-ia-heading p { margin:0; }
+          .kq-ia-heading p { margin-top:5px; color:var(--muted); }
+          .kq-ia-tabs { display:flex; gap:8px; padding:6px; border:1px solid var(--border); background:rgba(255,255,255,.88); border-radius:16px; width:max-content; max-width:100%; overflow-x:auto; }
+          .kq-ia-tabs button { flex:0 0 auto; padding:10px 15px; border-radius:11px; background:transparent; color:var(--muted); font-weight:900; }
+          .kq-ia-tabs button.active { color:white; background:var(--primary); box-shadow:0 7px 18px color-mix(in srgb,var(--primary) 28%,transparent); }
+          .kq-ia-main-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr); gap:14px; align-items:start; }
+          .kq-ia-card { min-width:0; }
+          .kq-ia-status-line { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0; padding:12px 14px; border-radius:14px; background:color-mix(in srgb,var(--primary) 6%,white); border:1px solid var(--border); }
+          .kq-ia-status-line strong { font-size:1.5rem; color:var(--primary); }
+          .kq-ia-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; }
+          .kq-ia-stage-card h3 { margin:0 0 4px; }
+          .kq-ia-stage-card > p { margin:0 0 12px; color:var(--muted); }
+          .kq-ia-stage-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:7px; }
+          .kq-ia-stage-cell { min-width:0; padding:9px 7px; text-align:center; border-radius:12px; border:1px solid var(--border); background:#fff; }
+          .kq-ia-stage-cell span,.kq-ia-stage-cell strong { display:block; }
+          .kq-ia-stage-cell span { font-size:.74rem; color:var(--muted); font-weight:900; }
+          .kq-ia-stage-cell strong { margin-top:2px; font-size:1.13rem; }
+          .kq-ia-stage-cell.stage-1,.kq-ia-stage-cell.stage-2,.kq-ia-stage-cell.stage-3,.kq-ia-stage-cell.stage-4 { background:#fff3f7; }
+          .kq-ia-stage-cell.stage-5,.kq-ia-stage-cell.stage-6 { background:#f4efff; }
+          .kq-ia-stage-cell.stage-7 { background:#fff7dd; }
+          .kq-ia-stage-cell.stage-8 { background:#edf8ff; }
+          .kq-ia-stage-cell.stage-9 { background:#eaf8f0; }
+          .kq-ia-domain-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+          .kq-ia-domain-card { padding:17px; border-radius:18px; background:var(--panel); border:1px solid var(--border); box-shadow:var(--shadow); min-width:0; }
+          .kq-ia-domain-card h3 { margin:0; }
+          .kq-ia-domain-card p { margin:5px 0 12px; color:var(--muted); min-height:2.6em; }
+          .kq-ia-domain-card .kq-ia-stage-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; }
+          .kq-ia-domain-card .kq-ia-stage-cell { padding:6px 4px; border-radius:9px; }
+          .kq-ia-domain-card .kq-ia-stage-cell strong { font-size:.95rem; }
+          .kq-ia-context-nav { position:sticky; top:94px; z-index:8; display:flex; align-items:center; gap:8px; width:max-content; max-width:100%; margin:0 auto 14px; padding:7px; overflow-x:auto; border:1px solid var(--border); border-radius:16px; background:rgba(255,255,255,.93); backdrop-filter:blur(16px); box-shadow:0 8px 24px rgba(41,36,58,.09); }
+          .kq-ia-context-nav[hidden] { display:none!important; }
+          .kq-ia-context-nav button { flex:0 0 auto; padding:9px 13px; border-radius:10px; color:var(--muted); background:transparent; font-weight:850; }
+          .kq-ia-context-nav button.active { color:white; background:var(--primary); }
+          .kq-ia-practice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+          .kq-ia-practice-card { display:flex; flex-direction:column; min-height:205px; }
+          .kq-ia-practice-card h3 { margin:0; }
+          .kq-ia-practice-card p { color:var(--muted); line-height:1.45; }
+          .kq-ia-practice-card .button-row { margin-top:auto; }
+          .kq-ia-coming { border-style:dashed; opacity:.88; }
+          .kq-ia-coming-badge { display:inline-flex; width:max-content; padding:6px 9px; border-radius:999px; background:#f2eff8; color:var(--muted); font-size:.74rem; font-weight:900; }
+          .kq-ia-dashboard-srs { margin:14px 0; }
+          .kq-ia-dashboard-srs .section-title { margin-bottom:10px; }
+          .kq-ia-mining-nav { position:sticky; top:94px; z-index:7; display:flex; flex-wrap:wrap; gap:8px; margin-bottom:13px; padding:8px; border-radius:15px; background:rgba(255,255,255,.92); border:1px solid var(--border); backdrop-filter:blur(14px); }
+          .kq-ia-mining-nav button { padding:9px 13px; border-radius:10px; background:#f5f1fb; color:var(--primary-dark); font-weight:850; }
+          .kq-ia-compact-note { margin:0; padding:11px 13px; border-radius:13px; background:#faf8ff; border:1px solid var(--border); color:var(--muted); }
+          @media(max-width:900px){
+            .kq-ia-main-grid,.kq-ia-domain-grid { grid-template-columns:1fr; }
+            .kq-ia-practice-grid { grid-template-columns:1fr; }
+            .kq-ia-context-nav,.kq-ia-mining-nav { top:82px; }
+          }
+          @media(max-width:620px){
+            .kq-ia-heading { align-items:flex-start; flex-direction:column; }
+            .kq-ia-stage-grid { grid-template-columns:repeat(5,minmax(46px,1fr)); overflow-x:auto; }
+            .kq-ia-domain-card .kq-ia-stage-grid { grid-template-columns:repeat(5,minmax(42px,1fr)); }
+            .kq-ia-actions .primary,.kq-ia-actions .secondary,.kq-ia-actions .ghost { flex:1 1 145px; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    
+      function installNavigation() {
+        const nav = document.querySelector(".topbar .nav, .nav");
+        if (!nav) return;
+        const signature = [...nav.querySelectorAll("[data-kq-main-group]")].map(button => button.dataset.kqMainGroup).join("|");
+        const expected = MAIN_GROUPS.map(item => item.id).join("|");
+        const extraChildren = [...nav.children].filter(child => !child.matches?.("[data-kq-main-group]") && child.id !== "kqPastelThemePicker");
+        if (signature === expected && !extraChildren.length) {
+          updateNavigationState();
+          return;
+        }
+        const themePicker = document.getElementById("kqPastelThemePicker");
+        themePicker?.remove();
+        nav.innerHTML = "";
+        for (const item of MAIN_GROUPS) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.kqMainGroup = item.id;
+          button.textContent = item.label;
+          button.addEventListener("click", () => {
+            if (item.id === "overview") safeSwitch("dashboard", "overview");
+            else if (item.id === "learning") openLearning(learningTab);
+            else if (item.id === "practice") openPracticeCenter();
+            else if (item.id === "story") { setGroup("story"); window.KotobaQuestStoryReader?.open?.(); }
+            else if (item.id === "mining") safeSwitch("mining", "mining");
+            else if (item.id === "progress") openProgress(progressTab);
+          });
+          nav.appendChild(button);
+        }
+        if (themePicker) nav.appendChild(themePicker);
+        nav.dataset.kqIaVersion = VERSION;
+        updateNavigationState();
+      }
+    
+      function updateNavigationState() {
+        document.querySelectorAll("[data-kq-main-group]").forEach(button => {
+          button.classList.toggle("active", button.dataset.kqMainGroup === activeGroup);
+        });
+      }
+    
+      function openLearning(tab = "vocabulary") {
+        learningTab = ["vocabulary", "grammar", "particles"].includes(tab) ? tab : "vocabulary";
+        setGroup("learning");
+        safeSwitch("learningCenter");
+        renderLearningCenter();
+      }
+    
+      function openPracticeCenter() {
+        setGroup("practice");
+        safeSwitch("practiceCenter");
+        renderPracticeCenter();
+      }
+    
+      function openProgress(tab = "statistics") {
+        progressTab = tab === "archive" ? "archive" : "statistics";
+        setGroup("progress");
+        safeSwitch("progressCenter");
+        renderProgressCenter();
+      }
+    
+      function launchVocabLessons() {
+        const source = sourceData();
+        const level = Math.max(1, Number(source.currentLevel || 1));
+        let placementOpen = false;
+        try { placementOpen = typeof placementDone === "function" ? !placementDone(level) : false; } catch {}
+        const lessons = countLessonsVocabulary("core");
+        setGroup("learning");
+        if (placementOpen) { try { startPlacement(); return; } catch {} }
+        if (lessons) { try { startLessons("core"); return; } catch {} }
+        safeSwitch("core", "learning");
+      }
+    
+      function launchVocabReviews() {
+        setGroup("learning");
+        try { startReviews("core"); } catch { safeSwitch("core", "learning"); }
+      }
+    
+      function launchGrammar() {
+        setGroup("learning");
+        try { window.KotobaQuestGrammarSupportApi?.openGrammarView?.("grammar"); } catch { safeSwitch("grammar", "learning"); }
+        scheduleRefresh();
+      }
+    
+      function launchGrammarReviews() {
+        setGroup("learning");
+        try { window.KotobaQuestGrammarSupportApi?.startReviewSession?.(false); } catch { launchGrammar(); }
+        scheduleRefresh();
+      }
+    
+      function launchParticlePath() {
+        setGroup("learning");
+        try { window.KotobaQuestParticlePath?.open?.(); } catch { safeSwitch("particlePractice", "learning"); }
+        scheduleRefresh();
+      }
+    
+      function launchParticleReviews() {
+        setGroup("learning");
+        try { window.KotobaQuestParticlePath?.startReviews?.(); } catch { launchParticlePath(); }
+        scheduleRefresh();
+      }
+    
+      function learningPanelData() {
+        const source = sourceData();
+        const vocabItems = activeVocabulary();
+        const vocabCounts = vocabDistribution();
+        const grammarItems = grammarProgress();
+        const grammarCounts = grammarDistribution();
+        const particleItems = particleProgress();
+        const particleCounts = particleDistribution();
+        const knownCount = Array.isArray(source.knownVocabulary) ? source.knownVocabulary.length : 0;
+        return {
+          vocabulary: {
+            title: "Vokabeln",
+            subtitle: `Aktiver Lernpool: ${vocabItems.length} Wörter`,
+            due: countDueVocabulary("core") + countDueVocabulary("mining"),
+            lessons: countLessonsVocabulary("core") + countLessonsVocabulary("mining"),
+            counts: vocabCounts,
+            extra: `${knownCount} zusätzlich als bekannt markiert`
+          },
+          grammar: {
+            title: "Grammatik",
+            subtitle: `${grammarItems.filter(item => item.lessonComplete).length} von ${grammarItems.length || 40} Lektionen abgeschlossen`,
+            due: countDueGrammar(),
+            lessons: grammarItems.filter(item => !item.lessonComplete).length,
+            counts: grammarCounts,
+            extra: `${summaryBuckets(grammarCounts).guru + summaryBuckets(grammarCounts).master + summaryBuckets(grammarCounts).enlightened + summaryBuckets(grammarCounts).completed} auf Guru oder höher`
+          },
+          particles: {
+            title: "Partikel",
+            subtitle: `${particleItems.filter(item => item.lessonComplete).length} von ${particleItems.length || 32} Lektionen abgeschlossen`,
+            due: countDueParticles(),
+            lessons: particleItems.filter(item => !item.lessonComplete).length,
+            counts: particleCounts,
+            extra: `${summaryBuckets(particleCounts).guru + summaryBuckets(particleCounts).master + summaryBuckets(particleCounts).enlightened + summaryBuckets(particleCounts).completed} auf Guru oder höher`
+          }
+        };
+      }
+    
+      function renderLearningCenter() {
+        const root = document.getElementById("kqLearningCenterRoot");
+        if (!root) return;
+        const all = learningPanelData();
+        const panel = all[learningTab];
+        const bucket = summaryBuckets(panel.counts);
+        const tabButtons = [
+          ["vocabulary", "Vokabeln"],
+          ["grammar", "Grammatik"],
+          ["particles", "Partikel"]
+        ];
+        let actionHtml = "";
+        if (learningTab === "vocabulary") {
+          actionHtml = `
+            <button class="primary" id="kqIaLearnPrimary">${panel.due ? "Reviews starten" : panel.lessons ? "Lektionen starten" : "Vokabelpfad öffnen"}</button>
+            <button class="secondary" id="kqIaLearnOpen">Vokabelübersicht</button>
+            <button class="ghost" id="kqIaProblemWords">Problemwort-Werkstatt</button>`;
+        } else if (learningTab === "grammar") {
+          actionHtml = `
+            <button class="primary" id="kqIaLearnPrimary">${panel.due ? "Reviews starten" : "Grammatikpfad öffnen"}</button>
+            <button class="secondary" id="kqIaLearnOpen">Alle Grammatiklektionen</button>`;
+        } else {
+          actionHtml = `
+            <button class="primary" id="kqIaLearnPrimary">${panel.due ? "Reviews starten" : "Partikelpfad öffnen"}</button>
+            <button class="secondary" id="kqIaLearnOpen">Alle Partikellektionen</button>`;
+        }
+    
+        root.innerHTML = `<div class="kq-ia-shell">
+          <div class="kq-ia-heading"><div><h2>Lernen</h2><p>Neue Inhalte und reguläre SRS-Wiederholungen – fachlich an einem Ort.</p></div></div>
+          <div class="kq-ia-tabs">${tabButtons.map(([id,label]) => `<button type="button" data-kq-learning-tab="${id}" class="${id === learningTab ? "active" : ""}">${label}</button>`).join("")}</div>
+          <div class="kq-ia-main-grid">
+            <article class="card kq-ia-card">
+              <span class="muted small">${esc(panel.subtitle)}</span>
+              <h2 style="margin:5px 0 0">${esc(panel.title)}</h2>
+              <div class="kq-ia-status-line"><div><span class="muted small">Jetzt fällig</span><strong>${panel.due}</strong></div><div><span class="muted small">Noch nicht gelernt</span><strong>${panel.lessons}</strong></div></div>
+              <p class="kq-ia-compact-note">${esc(panel.extra)}</p>
+              <div class="kq-ia-actions">${actionHtml}</div>
+            </article>
+            <article class="card kq-ia-stage-card">
+              <h3>SRS-Verteilung</h3><p>Jede Stufe auf einen Blick, ohne die ausführlichen Statistiken öffnen zu müssen.</p>
+              ${stageGrid(panel.counts)}
+              <div class="small muted" style="margin-top:10px">Apprentice ${bucket.apprentice} · Guru ${bucket.guru} · Master+ ${bucket.master + bucket.enlightened + bucket.completed}</div>
+            </article>
+          </div>
+        </div>`;
+    
+        root.querySelectorAll("[data-kq-learning-tab]").forEach(button => button.addEventListener("click", () => {
+          learningTab = button.dataset.kqLearningTab;
+          renderLearningCenter();
+        }));
+        root.querySelector("#kqIaLearnPrimary")?.addEventListener("click", () => {
+          if (learningTab === "vocabulary") panel.due ? launchVocabReviews() : launchVocabLessons();
+          else if (learningTab === "grammar") panel.due ? launchGrammarReviews() : launchGrammar();
+          else panel.due ? launchParticleReviews() : launchParticlePath();
+        });
+        root.querySelector("#kqIaLearnOpen")?.addEventListener("click", () => {
+          if (learningTab === "vocabulary") safeSwitch("core", "learning");
+          else if (learningTab === "grammar") launchGrammar();
+          else launchParticlePath();
+        });
+        root.querySelector("#kqIaProblemWords")?.addEventListener("click", () => {
+          setGroup("learning");
+          window.KotobaQuestProblemWorkshop?.open?.();
+          scheduleRefresh();
+        });
+      }
+    
+      function renderPracticeCenter() {
+        const root = document.getElementById("kqPracticeCenterRoot");
+        if (!root) return;
+        root.innerHTML = `<div class="kq-ia-shell">
+          <div class="kq-ia-heading"><div><h2>Üben</h2><p>Freiwilliges Training verändert keine SRS-Stufen. Alle wichtigen Disziplinen sind direkt erreichbar.</p></div></div>
+          <div class="kq-ia-practice-grid">
+            <article class="card kq-ia-practice-card">
+              <span class="mode-icon">🎧</span><h3>Vokabeln und Sätze</h3><p>Listening, Übersetzen, Formen und vollständige Sätze mit automatisch überprüfbaren Antworten.</p>
+              <div class="button-row"><button class="primary" id="kqIaPracticeVocab">Vokabeltraining starten</button></div>
+            </article>
+            <article class="card kq-ia-practice-card">
+              <span class="mode-icon">🧩</span><h3>Partikel</h3><p>Nur bereits gelernte Partikel, neue Beispielsätze, deutsche Zielübersetzung und konkrete Fehlererklärungen.</p>
+              <div class="button-row"><button class="primary" id="kqIaPracticeParticles">Partikel üben</button></div>
+            </article>
+            <article class="card kq-ia-practice-card">
+              <span class="mode-icon">🧠</span><h3>Problemfälle</h3><p>Gezieltes Training für hartnäckige und leicht verwechselbare Vokabeln mit deinen Mnemonics.</p>
+              <div class="button-row"><button class="secondary" id="kqIaPracticeProblems">Problemfälle trainieren</button></div>
+            </article>
+            <article class="card kq-ia-practice-card kq-ia-coming">
+              <span class="kq-ia-coming-badge">Nächster Ausbau</span><h3>Grammatik und gemischtes Training</h3><p>Eine gemeinsame, automatisch bewertete Engine für Grammatik, Partikel, Vokabeln und Listening wird hier ergänzt. Sie wird erst aktiviert, wenn offene Antworten zuverlässig geprüft werden können.</p>
+              <div class="button-row"><button class="ghost" id="kqIaPracticeGrammar">Bis dahin Grammatikpfad öffnen</button></div>
+            </article>
+          </div>
+        </div>`;
+        root.querySelector("#kqIaPracticeVocab")?.addEventListener("click", () => {
+          setGroup("practice");
+          window.KotobaQuestContextPractice?.open?.();
+          scheduleRefresh();
+        });
+        root.querySelector("#kqIaPracticeParticles")?.addEventListener("click", () => {
+          setGroup("practice");
+          window.KotobaQuestParticlePractice?.open?.();
+          scheduleRefresh();
+        });
+        root.querySelector("#kqIaPracticeProblems")?.addEventListener("click", () => {
+          setGroup("practice");
+          window.KotobaQuestProblemWorkshop?.open?.();
+          scheduleRefresh();
+        });
+        root.querySelector("#kqIaPracticeGrammar")?.addEventListener("click", launchGrammar);
+      }
+    
+      function archiveSummary() {
+        const source = sourceData();
+        const vocab = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        const guruVocab = vocab.filter(item => clampStage(item?.stage) >= 5 || item?.guruPassed).length;
+        const known = Array.isArray(source.knownVocabulary) ? source.knownVocabulary.length : 0;
+        const grammarGuru = grammarProgress().filter(item => grammarStage(item) >= 5).length;
+        const particleGuru = particleProgress().filter(item => particleStage(item) >= 5).length;
+        return { guruVocab, known, grammarGuru, particleGuru };
+      }
+    
+      function renderProgressCenter() {
+        const root = document.getElementById("kqProgressCenterRoot");
+        if (!root) return;
+        const summary = archiveSummary();
+        root.innerHTML = `<div class="kq-ia-shell">
+          <div class="kq-ia-heading"><div><h2>Fortschritt</h2><p>Ausführliche Statistiken und gefestigte Inhalte, ohne die Hauptnavigation zu überladen.</p></div></div>
+          <div class="kq-ia-tabs">
+            <button type="button" data-kq-progress-tab="statistics" class="${progressTab === "statistics" ? "active" : ""}">Statistiken</button>
+            <button type="button" data-kq-progress-tab="archive" class="${progressTab === "archive" ? "active" : ""}">Archiv</button>
+          </div>
+          ${progressTab === "statistics" ? `
+            <div class="kq-ia-domain-grid">
+              <article class="kq-ia-domain-card"><h3>Vokabeln</h3><p>Aktiver Lernpool nach SRS-Stufe.</p>${stageGrid(vocabDistribution(), true)}</article>
+              <article class="kq-ia-domain-card"><h3>Grammatik</h3><p>Gesamtstand der vier Skills je Grammatikpunkt.</p>${stageGrid(grammarDistribution(), true)}</article>
+              <article class="kq-ia-domain-card"><h3>Partikel</h3><p>Lernpfad und Partikel-SRS gemeinsam.</p>${stageGrid(particleDistribution(), true)}</article>
+            </div>
+            <article class="card"><div class="section-title"><div><h3>Ausführliche Auswertung</h3><p>Lernzeit, Genauigkeit, Aktivität und schwierige Inhalte.</p></div><button class="primary" id="kqIaOpenStatistics">Statistiken öffnen</button></div></article>` : `
+            <div class="kq-ia-domain-grid">
+              <article class="kq-ia-domain-card"><h3>Vokabeln auf Guru+</h3><p>Core und Mining</p><strong style="font-size:2rem;color:var(--primary)">${summary.guruVocab}</strong></article>
+              <article class="kq-ia-domain-card"><h3>Als bekannt markiert</h3><p>Manueller Bekannt-Pool</p><strong style="font-size:2rem;color:var(--primary)">${summary.known}</strong></article>
+              <article class="kq-ia-domain-card"><h3>Grammatik und Partikel</h3><p>${summary.grammarGuru} Grammatikpunkte · ${summary.particleGuru} Partikelpunkte auf Guru+</p><strong style="font-size:2rem;color:var(--primary)">${summary.grammarGuru + summary.particleGuru}</strong></article>
+            </div>
+            <article class="card"><div class="section-title"><div><h3>Gefestigte Inhalte durchsuchen</h3><p>Vokabeln, bekannte Wörter und Grammatik.</p></div><button class="primary" id="kqIaOpenArchive">Archiv öffnen</button></div></article>`}
+        </div>`;
+        root.querySelectorAll("[data-kq-progress-tab]").forEach(button => button.addEventListener("click", () => {
+          progressTab = button.dataset.kqProgressTab;
+          renderProgressCenter();
+        }));
+        root.querySelector("#kqIaOpenStatistics")?.addEventListener("click", () => {
+          setGroup("progress");
+          safeSwitch("statistics");
+          try { renderStatistics(); } catch {}
+        });
+        root.querySelector("#kqIaOpenArchive")?.addEventListener("click", () => {
+          setGroup("progress");
+          safeSwitch("archive");
+          try { renderArchive(); } catch {}
+        });
+      }
+    
+      function dashboardDomainCard(title, tab, counts) {
+        const bucket = summaryBuckets(counts);
+        return `<article class="kq-ia-domain-card" data-kq-dashboard-domain="${tab}" role="button" tabindex="0">
+          <h3>${esc(title)}</h3><p>Apprentice ${bucket.apprentice} · Guru ${bucket.guru} · Master+ ${bucket.master + bucket.enlightened + bucket.completed}</p>${stageGrid(counts, true)}
+        </article>`;
+      }
+    
+      function installDashboardDistribution() {
+        const root = document.getElementById("kqLearningDashboard");
+        if (!root) return;
+        let section = document.getElementById("kqIaDashboardSrs");
+        if (!section) {
+          section = document.createElement("section");
+          section.id = "kqIaDashboardSrs";
+          section.className = "kq-ia-dashboard-srs";
+          const hero = root.querySelector(".kq-dashboard-hero");
+          if (hero) hero.after(section); else root.prepend(section);
+        }
+        section.innerHTML = `<div class="section-title"><div><h2>SRS-Verteilung</h2><p>Die exakten Stufen deines aktiven Lernpools.</p></div><button class="ghost" id="kqIaDashboardLearning">Lernen öffnen</button></div>
+          <div class="kq-ia-domain-grid">
+            ${dashboardDomainCard("Vokabeln", "vocabulary", vocabDistribution())}
+            ${dashboardDomainCard("Grammatik", "grammar", grammarDistribution())}
+            ${dashboardDomainCard("Partikel", "particles", particleDistribution())}
+          </div>`;
+        section.querySelector("#kqIaDashboardLearning")?.addEventListener("click", () => openLearning("vocabulary"));
+        section.querySelectorAll("[data-kq-dashboard-domain]").forEach(card => {
+          const open = () => openLearning(card.dataset.kqDashboardDomain);
+          card.addEventListener("click", open);
+          card.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
+        });
+      }
+    
+      function installMiningQuickNav() {
+        const section = document.getElementById("mining");
+        if (!section) return;
+        let nav = document.getElementById("kqIaMiningNav");
+        if (!nav) {
+          nav = document.createElement("div");
+          nav.id = "kqIaMiningNav";
+          nav.className = "kq-ia-mining-nav";
+          nav.innerHTML = `<button type="button" data-kq-mining-jump="import">Language Reactor</button><button type="button" data-kq-mining-jump="manual">Manuell hinzufügen</button><button type="button" data-kq-mining-jump="collection">Sammlung</button>`;
+          section.prepend(nav);
+          nav.addEventListener("click", event => {
+            const button = event.target.closest("[data-kq-mining-jump]");
+            if (!button) return;
+            const type = button.dataset.kqMiningJump;
+            let target = null;
+            if (type === "import") target = document.getElementById("kqLanguageReactorImport");
+            if (type === "manual") target = section.querySelector("form") || section.querySelector(".grid-two article");
+            if (type === "collection") target = document.getElementById("vocabList") || section.querySelector(".vocab-list");
+            target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+          });
+        }
+      }
+    
+      function renderContextBar() {
+        const bar = document.getElementById("kqContextNav");
+        if (!bar) return;
+        const activeView = document.querySelector("main .view.active")?.id || "";
+        const hubViews = ["dashboard", "learningCenter", "practiceCenter", "progressCenter", "storyReader", "mining"];
+        if (hubViews.includes(activeView) || !["learning", "practice", "progress"].includes(activeGroup)) {
+          bar.hidden = true;
+          bar.innerHTML = "";
+          return;
+        }
+        bar.hidden = false;
+        if (activeGroup === "learning") {
+          const active = activeView === "core" ? "vocabulary" : activeView.startsWith("grammar") ? "grammar" : activeView === "particlePractice" ? "particles" : "";
+          bar.innerHTML = `<button data-kq-context="learning-home">Lernübersicht</button><button data-kq-context="vocabulary" class="${active === "vocabulary" ? "active" : ""}">Vokabeln</button><button data-kq-context="grammar" class="${active === "grammar" ? "active" : ""}">Grammatik</button><button data-kq-context="particles" class="${active === "particles" ? "active" : ""}">Partikel</button>`;
+        } else if (activeGroup === "practice") {
+          const active = activeView === "vocabPractice" ? "vocab-practice" : activeView === "problemWords" ? "problems" : activeView === "particlePractice" ? "particle-practice" : "";
+          bar.innerHTML = `<button data-kq-context="practice-home">Übungsübersicht</button><button data-kq-context="vocab-practice" class="${active === "vocab-practice" ? "active" : ""}">Vokabeln</button><button data-kq-context="particle-practice" class="${active === "particle-practice" ? "active" : ""}">Partikel</button><button data-kq-context="problems" class="${active === "problems" ? "active" : ""}">Problemfälle</button>`;
+        } else {
+          const active = activeView === "statistics" ? "statistics" : activeView === "archive" ? "archive" : "";
+          bar.innerHTML = `<button data-kq-context="progress-home">Fortschrittsübersicht</button><button data-kq-context="statistics" class="${active === "statistics" ? "active" : ""}">Statistiken</button><button data-kq-context="archive" class="${active === "archive" ? "active" : ""}">Archiv</button>`;
+        }
+        bar.querySelectorAll("[data-kq-context]").forEach(button => button.addEventListener("click", () => {
+          const action = button.dataset.kqContext;
+          if (action === "learning-home") openLearning(learningTab);
+          else if (action === "vocabulary") safeSwitch("core", "learning");
+          else if (action === "grammar") launchGrammar();
+          else if (action === "particles") launchParticlePath();
+          else if (action === "practice-home") openPracticeCenter();
+          else if (action === "vocab-practice") { setGroup("practice"); window.KotobaQuestContextPractice?.open?.(); }
+          else if (action === "particle-practice") { setGroup("practice"); window.KotobaQuestParticlePractice?.open?.(); }
+          else if (action === "problems") { setGroup("practice"); window.KotobaQuestProblemWorkshop?.open?.(); }
+          else if (action === "progress-home") openProgress(progressTab);
+          else if (action === "statistics") { setGroup("progress"); safeSwitch("statistics"); try { renderStatistics(); } catch {} }
+          else if (action === "archive") { setGroup("progress"); safeSwitch("archive"); try { renderArchive(); } catch {} }
+        }));
+      }
+    
+      function wrapFunction(name, after) {
+        try {
+          const original = eval(name);
+          if (typeof original !== "function" || original.__kqIaWrapped) return;
+          const wrapped = function(...args) {
+            const result = original.apply(this, args);
+            try { after?.(...args); } catch (error) { console.warn(`KQ UI refresh after ${name} failed`, error); }
+            return result;
+          };
+          wrapped.__kqIaWrapped = true;
+          eval(`${name} = wrapped`);
+        } catch {}
+      }
+    
+      function wrapSwitchView() {
+        try {
+          const original = switchView;
+          if (typeof original !== "function" || original.__kqIaWrapped) return;
+          const wrapped = function(viewName) {
+            const result = original.apply(this, arguments);
+            setGroup(inferGroup(viewName));
+            if (viewName === "learningCenter") renderLearningCenter();
+            if (viewName === "practiceCenter") renderPracticeCenter();
+            if (viewName === "progressCenter") renderProgressCenter();
+            if (viewName === "dashboard") installDashboardDistribution();
+            if (viewName === "mining") installMiningQuickNav();
+            renderContextBar();
+            return result;
+          };
+          wrapped.__kqIaWrapped = true;
+          switchView = wrapped;
+        } catch {}
+      }
+    
+      function refresh() {
+        ensureViews();
+        installStyles();
+        const activeViewBeforeRefresh = document.querySelector("main .view.active")?.id || "dashboard";
+        activeGroup = inferGroup(activeViewBeforeRefresh);
+        installNavigation();
+        installDashboardDistribution();
+        installMiningQuickNav();
+        renderContextBar();
+        const activeView = document.querySelector("main .view.active")?.id;
+        if (activeView === "learningCenter") renderLearningCenter();
+        if (activeView === "practiceCenter") renderPracticeCenter();
+        if (activeView === "progressCenter") renderProgressCenter();
+      }
+    
+      function scheduleRefresh() {
+        if (refreshQueued) return;
+        refreshQueued = true;
+        requestAnimationFrame(() => {
+          refreshQueued = false;
+          refresh();
+        });
+      }
+    
+      try { activeGroup = sessionStorage.getItem("kqActiveMainGroup") || "overview"; } catch {}
+      ensureViews();
+      installStyles();
+      wrapSwitchView();
+      ["renderAll", "renderDashboard", "renderDashboardHub", "renderCore", "renderGrammarOverview", "renderStatistics", "renderArchive", "renderMining"].forEach(name => wrapFunction(name, scheduleRefresh));
+      refresh();
+      setTimeout(refresh, 100);
+      setTimeout(refresh, 500);
+      setInterval(() => {
+        const nav = document.querySelector(".topbar .nav, .nav");
+        const expected = MAIN_GROUPS.map(item => item.id).join("|");
+        const actual = nav ? [...nav.querySelectorAll("[data-kq-main-group]")].map(button => button.dataset.kqMainGroup).join("|") : "";
+        const extras = nav ? [...nav.children].filter(child => !child.matches?.("[data-kq-main-group]") && child.id !== "kqPastelThemePicker") : [];
+        if (actual !== expected || extras.length) installNavigation();
+        if (document.getElementById("dashboard")?.classList.contains("active")) installDashboardDistribution();
+      }, 1200);
+    
+      window.KotobaQuestInterface = {
+        version: VERSION,
+        openLearning,
+        openPractice: openPracticeCenter,
+        openProgress,
+        refresh
+      };
+    }
+
     function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const vocabularyScript = "<script>(" + vocabularyExperienceBootstrap.toString() + ")();<" + "/script>";
@@ -27785,7 +28525,8 @@ ${tooltipText(segment, status)}`)}"`
       const problemWorkshopScript = "<script>(" + problemWordWorkshopBootstrap.toString() + ")();<" + "/script>";
       const storyReaderScript = "<script>(" + storyReaderBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${storyReaderScript}\n${pastelFuriganaScript}`;
+      const interfaceScript = "<script>(" + interfaceReorganizationBootstrap.toString() + ")();<" + "/script>";
+      const enhancementScripts = `${grammarScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
