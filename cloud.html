@@ -1678,7 +1678,7 @@
       if (document.getElementById("grammar")) return;
 
       const STORAGE_KEY = "kotobaQuestDataV3";
-      const GRAMMAR_VERSION = 5;
+      const GRAMMAR_VERSION = 6;
       const SKILLS = [
         { id: "meaning", label: "Verstehen", icon: "💡" },
         { id: "form", label: "Form bilden", icon: "🧩" },
@@ -1708,6 +1708,33 @@
           subtitle: "Eine Fähigkeit, ein Verhalten oder ein Zustand verändert sich",
           color: "#6c63d9",
           summary: "ようになる blickt auf das Ergebnis einer Veränderung: Etwas, das früher nicht möglich oder nicht üblich war, ist inzwischen möglich beziehungsweise zu einem neuen Verhalten geworden.",
+          deepDive: {
+            family: "よう-Familie · Ergebnis einer Entwicklung",
+            core: "Der entscheidende Baustein ist なる: Ein Zustand wird neu erreicht. ようになる beschreibt deshalb nicht bloß einen Wunsch, Plan oder Versuch, sondern eine Veränderung, die inzwischen eingetreten ist oder als Entwicklung eintreten wird.",
+            lens: [
+              { label: "Blickrichtung", value: "vom früheren Zustand zum neuen Ergebnis" },
+              { label: "Kontrolle", value: "bewusste Übung kann der Grund sein, steht aber nicht im Satz" },
+              { label: "Leitfrage", value: "Was ist inzwischen möglich oder üblich geworden?" }
+            ],
+            variants: [
+              { pattern: "Potentialform + ようになる", use: "Eine Fähigkeit wird möglich.", example: "日本語が話せるようになりました。", translation: "Ich kann inzwischen Japanisch sprechen." },
+              { pattern: "Wörterbuchform + ようになる", use: "Ein Verhalten wird zur neuen Gewohnheit.", example: "毎朝走るようになりました。", translation: "Ich gehe inzwischen jeden Morgen laufen." },
+              { pattern: "ない-Form + ようになる", use: "Ein Nicht-Tun wird zum neuen Verhalten.", example: "遅刻しないようになりました。", translation: "Ich komme inzwischen nicht mehr zu spät." }
+            ],
+            decision: [
+              { question: "Ist die Fähigkeit oder Gewohnheit bereits entstanden?", choose: "ようになる", why: "Du berichtest das erreichte Ergebnis einer Veränderung." },
+              { question: "Geht es nur um deine bewusste Bemühung?", choose: "ようにする", why: "Dann steht die Steuerung im Vordergrund, nicht das erreichte Ergebnis." },
+              { question: "Wurde die Handlung von außen beschlossen?", choose: "ことになる", why: "Dann handelt es sich um eine Entscheidung oder Folge der Umstände." }
+            ],
+            pitfalls: [
+              "Bei Fähigkeiten steht meist die Potentialform vor ようになる: 話す → 話せるようになる.",
+              "ようになる bedeutet nicht automatisch, dass die Person die Veränderung bewusst geplant hat.",
+              "Nicht mit ようだ verwechseln: ようだ bedeutet „es scheint“, ようになる bedeutet „es wird so“ beziehungsweise „es kommt dazu“.",
+              "Ein einzelnes erfolgreiches Ereignis ist noch keine typische ようになる-Veränderung; meist geht es um Fähigkeit, Gewohnheit oder neuen Zustand."
+            ],
+            sourceLabel: "Game Gengo: ようになる / ようにする",
+            sourceUrl: "https://www.game-gengo.com/pages/jlpt-n4-grammar-list"
+          },
           formation: [
             {
               label: "Wörterbuchform",
@@ -1784,6 +1811,34 @@
           subtitle: "Bewusste Bemühung oder selbst gewählte Gewohnheit",
           color: "#bf5ea8",
           summary: "ようにする richtet den Blick nicht auf ein bereits eingetretenes Ergebnis, sondern auf die bewusste Absicht: Du sorgst aktiv dafür, etwas zu tun oder zu vermeiden. ようにしている beschreibt diese Bemühung als fortlaufende Gewohnheit.",
+          deepDive: {
+            family: "よう-Familie · bewusste Steuerung",
+            core: "Der entscheidende Baustein ist する: Die Person sorgt aktiv dafür, dass ein Verhalten eintritt oder vermieden wird. Das Ergebnis ist nicht garantiert; im Mittelpunkt stehen Bemühung, Vorsatz und wiederholte Selbststeuerung.",
+            lens: [
+              { label: "Blickrichtung", value: "auf die bewusste Anstrengung oder Routine" },
+              { label: "Kontrolle", value: "die handelnde Person versucht, das Verhalten zu steuern" },
+              { label: "Leitfrage", value: "Worauf achte ich bewusst?" }
+            ],
+            variants: [
+              { pattern: "Wörterbuchform + ようにする", use: "Sich bemühen oder sicherstellen, etwas zu tun.", example: "毎日復習するようにします。", translation: "Ich werde darauf achten, jeden Tag zu wiederholen." },
+              { pattern: "ない-Form + ようにする", use: "Sich bemühen, etwas zu vermeiden.", example: "夜更かししないようにします。", translation: "Ich werde darauf achten, nicht lange wach zu bleiben." },
+              { pattern: "〜ようにしている", use: "Eine fortlaufende bewusste Gewohnheit.", example: "毎日日本語を読むようにしています。", translation: "Ich versuche, jeden Tag Japanisch zu lesen." },
+              { pattern: "〜ようにしてください", use: "Andere bitten, auf etwas zu achten.", example: "忘れないようにしてください。", translation: "Bitte achten Sie darauf, es nicht zu vergessen." }
+            ],
+            decision: [
+              { question: "Geht es um eine Bemühung, deren Erfolg nicht sicher ist?", choose: "ようにする", why: "Die Person steuert ihr Verhalten bewusst." },
+              { question: "Ist die Veränderung bereits erreicht?", choose: "ようになる", why: "Dann berichtest du das Ergebnis statt der Bemühung." },
+              { question: "Triffst du jetzt eine klare persönliche Entscheidung?", choose: "ことにする", why: "ことにする markiert den Entschluss; ようにする betont das anschließende Bemühen." }
+            ],
+            pitfalls: [
+              "ようにする heißt nicht, dass das Ziel bereits erreicht wurde.",
+              "ようにしている ist keine neutrale Beschreibung einer Gewohnheit; es klingt nach bewusster Pflege oder Selbstdisziplin.",
+              "Bei einem einmaligen, klaren Entschluss passt häufig ことにする besser als ようにする.",
+              "Die negative Form steht vor ようにする: 食べないようにする, nicht 食べるなくようにする."
+            ],
+            sourceLabel: "Game Gengo: ようにする / ようになる",
+            sourceUrl: "https://www.game-gengo.com/pages/jlpt-n4-grammar-list"
+          },
           formation: [
             {
               label: "Wörterbuchform",
@@ -1860,6 +1915,34 @@
           subtitle: "Eine Entscheidung, Regel oder Folge entsteht außerhalb des Sprechers",
           color: "#3f8abf",
           summary: "ことになる berichtet ein Ergebnis, das durch andere Personen, Regeln oder äußere Umstände festgelegt wurde. Der Sprecher stellt es nicht als seine eigene freie Entscheidung dar.",
+          deepDive: {
+            family: "こと-Familie · äußere Festlegung oder resultierende Folge",
+            core: "こと macht die Handlung zu einer „Sache“ oder einem Sachverhalt; なる sagt, dass dieser Sachverhalt zustande kommt. Die Form lässt die entscheidende Instanz im Hintergrund: Regeln, andere Personen, ein Plan oder die Umstände führen zum Ergebnis.",
+            lens: [
+              { label: "Blickrichtung", value: "auf das festgelegte oder resultierende Ergebnis" },
+              { label: "Kontrolle", value: "nicht als persönliche freie Entscheidung dargestellt" },
+              { label: "Leitfrage", value: "Wer oder was hat das so festgelegt beziehungsweise dazu geführt?" }
+            ],
+            variants: [
+              { pattern: "Wörterbuchform + ことになる", use: "Eine Handlung wird von außen beschlossen oder ergibt sich.", example: "来月、大阪へ転勤することになりました。", translation: "Es wurde festgelegt, dass ich nächsten Monat nach Osaka versetzt werde." },
+              { pattern: "ない-Form + ことになる", use: "Es wird beschlossen oder ergibt sich, dass etwas nicht geschieht.", example: "今年は大会を開かないことになりました。", translation: "Es wurde beschlossen, das Turnier dieses Jahr nicht abzuhalten." },
+              { pattern: "〜ことになっている", use: "Eine bestehende Regel, Vereinbarung oder feste Planung.", example: "ここでは靴を脱ぐことになっています。", translation: "Hier gilt die Regel, die Schuhe auszuziehen." },
+              { pattern: "条件 + ことになる", use: "Eine logische oder unvermeidbare Folge.", example: "今出なければ、遅刻することになります。", translation: "Wenn wir jetzt nicht gehen, werden wir zu spät kommen." }
+            ],
+            decision: [
+              { question: "Kam die Festlegung durch Firma, Schule, Regel, Plan oder Umstände?", choose: "ことになる", why: "Die Entscheidung wird als äußerlich oder unpersönlich präsentiert." },
+              { question: "Hast du selbst entschieden?", choose: "ことにする", why: "Dann übernimmst du die Entscheidung ausdrücklich als eigenen Entschluss." },
+              { question: "Hat sich eine Fähigkeit oder Gewohnheit entwickelt?", choose: "ようになる", why: "Dann geht es um eine Zustandsveränderung, nicht um eine Festlegung." }
+            ],
+            pitfalls: [
+              "Auch wenn das Subjekt „ich“ ist, kann ことになる stehen: Entscheidend ist, wer oder was die Situation festgelegt hat.",
+              "ことになっている bezeichnet häufig eine bereits geltende Regel oder Vereinbarung, nicht einen gerade neu gefassten Beschluss.",
+              "ことになる kann auch „es läuft darauf hinaus“ bedeuten; eine konkrete entscheidende Person muss nicht vorhanden sein.",
+              "Nicht jedes なる ist ようになる: ことになる betrifft Sachverhalte und Entscheidungen, ようになる Fähigkeiten, Gewohnheiten oder Zustände."
+            ],
+            sourceLabel: "Game Gengo: ことになる / ことにする",
+            sourceUrl: "https://www.game-gengo.com/pages/jlpt-n4-grammar-list"
+          },
           formation: [
             {
               label: "Wörterbuchform",
@@ -1936,6 +2019,34 @@
           subtitle: "Der Sprecher trifft selbst eine Entscheidung",
           color: "#2b9a78",
           summary: "ことにする stellt eine Entscheidung als eigenen Entschluss dar. Mit ことにしている wird daraus eine selbst gesetzte, wiederholt geltende Regel oder Gewohnheit.",
+          deepDive: {
+            family: "こと-Familie · persönliche Entscheidung",
+            core: "こと macht die geplante Handlung zu einem Sachverhalt; にする bedeutet hier, diesen Sachverhalt als eigene Wahl festzulegen. Die Form markiert den Entschluss, nicht automatisch seine erfolgreiche Umsetzung.",
+            lens: [
+              { label: "Blickrichtung", value: "auf den eigenen Entschluss" },
+              { label: "Kontrolle", value: "der Sprecher oder die genannte Person entscheidet selbst" },
+              { label: "Leitfrage", value: "Was habe ich für mich beschlossen?" }
+            ],
+            variants: [
+              { pattern: "Wörterbuchform + ことにする", use: "Sich entscheiden, etwas zu tun.", example: "毎日三十分勉強することにしました。", translation: "Ich habe beschlossen, jeden Tag dreißig Minuten zu lernen." },
+              { pattern: "ない-Form + ことにする", use: "Sich entscheiden, etwas nicht zu tun.", example: "今日はゲームをしないことにしました。", translation: "Ich habe beschlossen, heute nicht zu spielen." },
+              { pattern: "〜ことにしている", use: "Eine selbst gesetzte feste Regel.", example: "日曜日は仕事をしないことにしています。", translation: "Ich habe für mich die Regel, sonntags nicht zu arbeiten." },
+              { pattern: "〜ことにしよう", use: "Gemeinsamen oder inneren Entschluss vorschlagen.", example: "今日はここまでにすることにしよう。", translation: "Beschließen wir, es für heute hierbei zu belassen." }
+            ],
+            decision: [
+              { question: "Wird gerade eine persönliche Wahl getroffen?", choose: "ことにする", why: "Der Entschluss selbst ist die zentrale Information." },
+              { question: "Ist es eine fremde oder institutionelle Festlegung?", choose: "ことになる", why: "Dann wird die Entscheidung nicht als eigene Wahl dargestellt." },
+              { question: "Geht es um ein fortlaufendes Bemühen statt um den Entschluss?", choose: "ようにする", why: "ようにする betont die aktive Umsetzung und Selbststeuerung." }
+            ],
+            pitfalls: [
+              "ことにした sagt nur, dass die Entscheidung gefallen ist; die Handlung muss noch nicht ausgeführt worden sein.",
+              "ことにしている klingt nach einer selbst gesetzten Regel, während ようにしている stärker die fortlaufende Bemühung betont.",
+              "Bei einer Entscheidung durch andere Personen oder äußere Umstände ist ことになる natürlicher.",
+              "Vor ことにする steht die Wörterbuch- oder ない-Form, nicht die ます-Form."
+            ],
+            sourceLabel: "Game Gengo: ことにする / ことになる",
+            sourceUrl: "https://www.game-gengo.com/pages/jlpt-n4-grammar-list"
+          },
           formation: [
             {
               label: "Wörterbuchform",
@@ -2012,6 +2123,34 @@
           subtitle: "Eine Handlung oder Eigenschaft besteht nicht mehr",
           color: "#df8237",
           summary: "なくなる beschreibt eine eingetretene negative Veränderung: Jemand tut etwas nicht mehr oder eine Eigenschaft beziehungsweise Zugehörigkeit ist nicht mehr vorhanden.",
+          deepDive: {
+            family: "なる-Familie · negativer Zustand tritt ein",
+            core: "なくなる besteht aus einer negativen Form und なる. Der Satz berichtet ein eingetretenes Ergebnis: Eine Handlung findet nicht mehr statt oder eine Eigenschaft beziehungsweise Zuordnung gilt nicht mehr.",
+            lens: [
+              { label: "Blickrichtung", value: "vom früheren Vorhandensein zum jetzigen Nicht-mehr" },
+              { label: "Kontrolle", value: "Grund und Absicht bleiben offen" },
+              { label: "Leitfrage", value: "Was geschieht oder gilt inzwischen nicht mehr?" }
+            ],
+            variants: [
+              { pattern: "Verb: ない → なくなる", use: "Eine Handlung hört auf oder findet nicht mehr gewöhnlich statt.", example: "テレビを見なくなりました。", translation: "Ich schaue inzwischen kein Fernsehen mehr." },
+              { pattern: "i-Adjektiv: くない → くなくなる", use: "Eine Eigenschaft gilt nicht mehr beziehungsweise ihr negativer Zustand entsteht.", example: "痛くなくなりました。", translation: "Es tut nicht mehr weh." },
+              { pattern: "na-Adjektiv/Nomen: ではない → ではなくなる", use: "Eine Rolle, Zuordnung oder Eigenschaft gilt nicht mehr.", example: "ここは静かではなくなりました。", translation: "Hier ist es nicht mehr ruhig." },
+              { pattern: "無くなる als eigenes Verb", use: "Ein Gegenstand oder Vorrat verschwindet beziehungsweise geht aus.", example: "お金がなくなりました。", translation: "Das Geld ist weg beziehungsweise aufgebraucht." }
+            ],
+            decision: [
+              { question: "Berichtest du schlicht, dass etwas nicht mehr geschieht?", choose: "なくなる", why: "Die eingetretene Veränderung steht im Vordergrund." },
+              { question: "Berichtest du, dass Nicht-Tun zu einer neuen Verhaltensweise wurde?", choose: "ないようになる", why: "Diese Form betrachtet das Nicht-Tun stärker als entwickeltes Verhalten." },
+              { question: "Bemühst du dich bewusst, etwas zu vermeiden?", choose: "ないようにする", why: "Dann geht es um Steuerung, nicht um ein bereits erreichtes Ergebnis." }
+            ],
+            pitfalls: [
+              "Vなくなる und Vないようにする sind nicht dasselbe: Ergebnis versus bewusste Bemühung.",
+              "Bei i-Adjektiven entsteht die doppelte Form aus くない + なる: 怖くない → 怖くなくなる.",
+              "なくなる kann auch das eigenständige Verb 無くなる „verschwinden/ausgehen“ sein; der Satzbau und Kontext zeigen die Bedeutung.",
+              "Vないようになる ist möglich, klingt aber häufig verhaltensorientierter; Vなくなる ist die direktere Aussage „nicht mehr tun“."
+            ],
+            sourceLabel: "Game-Gengo-Systematik ergänzt: negative Veränderung mit なる",
+            sourceUrl: "https://www.game-gengo.com/pages/jlpt-n4-grammar-list"
+          },
           formation: [
             {
               label: "Verb",
@@ -17235,6 +17374,41 @@
         .grammar-kicker { color:var(--primary); text-transform:uppercase; letter-spacing:.1em; font-size:.76rem; font-weight:950; }
         .grammar-study-card h2 { margin:8px 0 9px; font-size:clamp(1.55rem,4vw,2.35rem); }
         .grammar-explanation { color:var(--muted); line-height:1.65; font-size:1.02rem; }
+        .grammar-deep-intro { display:grid; gap:13px; margin:16px 0 18px; }
+        .grammar-deep-core { padding:15px 16px; border-radius:15px; border:1px solid var(--border); background:linear-gradient(135deg,#faf8ff,#fff); line-height:1.62; }
+        .grammar-deep-core strong { display:block; margin-bottom:5px; color:var(--primary-dark); }
+        .grammar-lens-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+        .grammar-lens-card { padding:12px; border-radius:13px; border:1px solid var(--border); background:white; }
+        .grammar-lens-card span,.grammar-lens-card strong { display:block; }
+        .grammar-lens-card span { margin-bottom:5px; color:var(--muted); font-size:.7rem; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+        .grammar-lens-card strong { font-size:.88rem; line-height:1.45; }
+        .grammar-decision-shell { display:grid; gap:16px; }
+        .grammar-variant-grid { display:grid; gap:10px; }
+        .grammar-variant-card { padding:14px; border-radius:14px; border:1px solid var(--border); background:#faf8ff; }
+        .grammar-variant-pattern { display:inline-flex; padding:5px 8px; border-radius:9px; color:white; font-weight:950; }
+        .grammar-variant-card p { margin:9px 0 7px; line-height:1.5; }
+        .grammar-variant-example { padding:10px 11px; border-radius:11px; background:white; border:1px solid var(--border); }
+        .grammar-variant-example strong,.grammar-variant-example span { display:block; }
+        .grammar-variant-example strong { font-size:1rem; line-height:1.55; }
+        .grammar-variant-example span { margin-top:3px; color:var(--muted); font-size:.84rem; }
+        .grammar-decision-grid { display:grid; gap:9px; }
+        .grammar-decision-card { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:13px; border:1px solid var(--border); border-radius:13px; background:white; }
+        .grammar-decision-card strong,.grammar-decision-card span { display:block; }
+        .grammar-decision-card span { margin-top:4px; color:var(--muted); font-size:.84rem; line-height:1.45; }
+        .grammar-decision-answer { padding:7px 10px; border-radius:10px; color:white; font-weight:950; white-space:nowrap; }
+        .grammar-family-map { overflow:auto; border:1px solid var(--border); border-radius:15px; background:white; }
+        .grammar-family-row { display:grid; grid-template-columns:minmax(150px,.8fr) minmax(210px,1.2fr) minmax(220px,1.4fr); gap:10px; align-items:center; padding:12px 13px; border-bottom:1px solid var(--border); }
+        .grammar-family-row:last-child { border-bottom:0; }
+        .grammar-family-row.current { background:#f2edff; box-shadow:inset 5px 0 0 var(--primary); }
+        .grammar-family-form { font-weight:950; }
+        .grammar-family-example { color:#4d4267; font-weight:850; }
+        .grammar-family-meaning { color:var(--muted); font-size:.84rem; line-height:1.45; }
+        .grammar-pitfall-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+        .grammar-pitfall-list li { padding:11px 12px 11px 38px; border-radius:12px; background:#fff8eb; border:1px solid #efd9aa; line-height:1.5; position:relative; }
+        .grammar-pitfall-list li::before { content:"!"; position:absolute; left:12px; top:10px; display:grid; place-items:center; width:18px; height:18px; border-radius:50%; color:white; background:#c9852f; font-size:.72rem; font-weight:950; }
+        .grammar-source-link { display:inline-flex; align-items:center; gap:7px; width:max-content; max-width:100%; padding:9px 12px; border-radius:11px; color:var(--primary-dark); background:#eee8ff; font-size:.82rem; font-weight:900; text-decoration:none; }
+        .grammar-source-link:hover { transform:translateY(-1px); }
+        @media (max-width:680px) { .grammar-lens-grid { grid-template-columns:1fr; } .grammar-decision-card { grid-template-columns:1fr; } .grammar-decision-answer { width:max-content; } .grammar-family-row { min-width:690px; } }
         .grammar-form-list { display:grid; gap:13px; margin:18px 0; }
         .grammar-form-item { padding:15px; border-radius:16px; background:#faf8ff; border:1px solid var(--border); }
         .grammar-form-head { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
@@ -17895,12 +18069,15 @@
       function renderLesson() {
         const card = document.getElementById("grammarLessonCard");
         if (!card || !lessonPoint) return;
-        const steps = 4;
+        const hasDeepDive = Boolean(lessonPoint.deepDive);
+        const steps = hasDeepDive ? 5 : 4;
+        const activeRecallStep = steps - 1;
         const stepper = `<div class="grammar-stepper">${Array.from({ length: steps }, (_, index) => `<span class="${index <= lessonStep ? "done" : ""}"></span>`).join("")}</div>`;
         const commonHead = `${stepper}<div class="grammar-kicker">Grammatik-Level ${Number(lessonPoint.level || 1)} · ${escapeHtml(lessonPoint.title)}</div>`;
 
         if (lessonStep === 0) {
           card.innerHTML = `${commonHead}<h2>${escapeHtml(lessonPoint.subtitle)}</h2><p class="grammar-explanation">${escapeHtml(lessonPoint.summary)}</p>
+            ${renderGrammarDeepIntro(lessonPoint)}
             <div class="grammar-example-list">${renderExample(lessonPoint.formation[0], lessonPoint.color)}</div>
             <div class="button-row"><button class="ghost" id="grammarLessonBackOverview">Zur Übersicht</button><button class="primary" id="grammarLessonNext">Alle Bildungsformen ansehen</button></div>`;
         } else if (lessonStep === 1) {
@@ -17909,8 +18086,12 @@
             <div class="button-row"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Unterschied verstehen</button></div>`;
         } else if (lessonStep === 2) {
           card.innerHTML = `${commonHead}<h2>Unterschied im direkten Vergleich</h2>${renderContrast(lessonPoint.contrast, lessonPoint.color)}
-            <div class="button-row" style="margin-top:16px"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Selbst abrufen</button></div>`;
-        } else {
+            <div class="button-row" style="margin-top:16px"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">${hasDeepDive ? "Entscheidungsweg ansehen" : "Selbst abrufen"}</button></div>`;
+        } else if (hasDeepDive && lessonStep === 3) {
+          card.innerHTML = `${commonHead}<h2>Formen sicher auswählen</h2><p class="grammar-explanation">Hier werden die Anwendungen nicht nur übersetzt, sondern nach Ergebnis, Kontrolle und Entscheidungsquelle getrennt. Nutze die Fragen wie einen kleinen Entscheidungsbaum.</p>
+            ${renderGrammarDeepDecision(lessonPoint)}
+            <div class="button-row" style="margin-top:16px"><button class="ghost" id="grammarLessonPrev">Zurück</button><button class="primary" id="grammarLessonNext">Jetzt selbst abrufen</button></div>`;
+        } else if (lessonStep === activeRecallStep) {
           const model = lessonPoint.checkpoint.models[0];
           card.innerHTML = `${commonHead}<h2>Aktiver Abruf</h2><p class="grammar-explanation">Formuliere den Satz selbst. Du kannst Romaji tippen; die Eingabe wird unmittelbar in Hiragana umgewandelt.</p>
             <div class="grammar-review-prompt">${escapeHtml(lessonPoint.checkpoint.cue)}</div>
@@ -17940,7 +18121,7 @@
         attachGrammarSupportActions(card);
         document.getElementById("grammarLessonBackOverview")?.addEventListener("click", () => openGrammarView("grammar"));
         document.getElementById("grammarLessonPrev")?.addEventListener("click", () => { lessonStep = Math.max(0, lessonStep - 1); lessonChecked = false; renderLesson(); });
-        document.getElementById("grammarLessonNext")?.addEventListener("click", () => { lessonStep = Math.min(3, lessonStep + 1); renderLesson(); });
+        document.getElementById("grammarLessonNext")?.addEventListener("click", () => { lessonStep = Math.min(steps - 1, lessonStep + 1); renderLesson(); });
       }
 
       function renderExample(example, color = "#6c63d9") {
@@ -17954,6 +18135,55 @@
           <div class="grammar-form-rule">${escapeHtml(item.rule)}</div>
           <div class="grammar-example-list" style="margin-bottom:0">${renderExample(item, color)}</div>
         </div>`;
+      }
+
+      function renderGrammarDeepIntro(point) {
+        const dive = point?.deepDive;
+        if (!dive) return "";
+        const lenses = Array.isArray(dive.lens) ? dive.lens : [];
+        return `<section class="grammar-deep-intro">
+          <div class="grammar-deep-core" style="border-left:5px solid ${point.color || "#6c63d9"}">
+            <strong>${escapeHtml(dive.family || "Kernidee")}</strong>
+            ${escapeHtml(dive.core || "")}
+          </div>
+          ${lenses.length ? `<div class="grammar-lens-grid">${lenses.map(item => `<div class="grammar-lens-card"><span>${escapeHtml(item.label || "")}</span><strong>${escapeHtml(item.value || "")}</strong></div>`).join("")}</div>` : ""}
+        </section>`;
+      }
+
+      function renderGrammarDeepDecision(point) {
+        const dive = point?.deepDive;
+        if (!dive) return "";
+        const variants = Array.isArray(dive.variants) ? dive.variants : [];
+        const decisions = Array.isArray(dive.decision) ? dive.decision : [];
+        const pitfalls = Array.isArray(dive.pitfalls) ? dive.pitfalls : [];
+        const color = point.color || "#6c63d9";
+        const familyRows = [
+          { id:"you-ni-naru", form:"〜ようになる", example:"話せるようになる", meaning:"Eine Fähigkeit, Gewohnheit oder ein Zustand ist neu entstanden." },
+          { id:"you-ni-suru", form:"〜ようにする", example:"毎日話すようにする", meaning:"Jemand bemüht sich bewusst oder achtet darauf, das Verhalten zu steuern." },
+          { id:"koto-ni-naru", form:"〜ことになる", example:"話すことになる", meaning:"Die Handlung wird von außen festgelegt oder ergibt sich aus den Umständen." },
+          { id:"koto-ni-suru", form:"〜ことにする", example:"話すことにする", meaning:"Jemand trifft selbst die Entscheidung, die Handlung zu tun." },
+          { id:"naku-naru", form:"〜なくなる", example:"話さなくなる", meaning:"Die Handlung findet nicht mehr statt; ein negativer Zustand ist eingetreten." }
+        ];
+        return `<section class="grammar-decision-shell">
+          <div>
+            <h3>Verwendungen sauber auseinanderhalten</h3>
+            <div class="grammar-variant-grid">${variants.map(item => `<article class="grammar-variant-card">
+              <span class="grammar-variant-pattern" style="background:${color}">${escapeHtml(item.pattern || "")}</span>
+              <p>${escapeHtml(item.use || "")}</p>
+              <div class="grammar-variant-example"><strong>${escapeHtml(item.example || "")}</strong><span>${escapeHtml(item.translation || "")}</span></div>
+            </article>`).join("")}</div>
+          </div>
+          <div>
+            <h3>Welche Form brauche ich?</h3>
+            <div class="grammar-decision-grid">${decisions.map(item => `<div class="grammar-decision-card"><div><strong>${escapeHtml(item.question || "")}</strong><span>${escapeHtml(item.why || "")}</span></div><div class="grammar-decision-answer" style="background:${color}">${escapeHtml(item.choose || "")}</div></div>`).join("")}</div>
+          </div>
+          <div>
+            <h3>Die fünf Formen als gemeinsame Familie</h3>
+            <div class="grammar-family-map">${familyRows.map(row => `<div class="grammar-family-row ${row.id === point.id ? "current" : ""}"><div class="grammar-family-form">${escapeHtml(row.form)}</div><div class="grammar-family-example">${escapeHtml(row.example)}</div><div class="grammar-family-meaning">${escapeHtml(row.meaning)}</div></div>`).join("")}</div>
+          </div>
+          ${pitfalls.length ? `<div><h3>Typische Verwechslungen</h3><ul class="grammar-pitfall-list">${pitfalls.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+          ${dive.sourceUrl ? `<a class="grammar-source-link" href="${escapeHtml(dive.sourceUrl)}" target="_blank" rel="noopener noreferrer">🎮 ${escapeHtml(dive.sourceLabel || "Game-Gengo-Referenz öffnen")}</a>` : ""}
+        </section>`;
       }
 
       function renderContrast(contrast, color) {
@@ -28945,7 +29175,7 @@ ${tooltipText(segment, status)}`)}"`
             <img src="${selectedImage}" alt="${esc(selectedAlt)}">
             <span class="kq-sr-avatar-equipped">${esc(selectedLabel)}</span>
           </div>
-          <div class="kq-sr-avatar-copy"><span class="kq-sr-side-kicker">Dein Charakter</span><h2>${esc(avatar.heroName || "Kinergy")}</h2><p>${esc(avatar.name || "Luca")} · ${esc(avatar.role || "Pro Hero")}</p><p class="kq-sr-avatar-note">Das Basic-Casual-Outfit bleibt dein Standardset. Nach Abschluss von Kapitel 1 wird der vollständige Kinergy Hero Suit dauerhaft freigeschaltet und kann hier jederzeit an- oder ausgezogen werden.</p><div class="kq-sr-avatar-controls"><label>Energie-Akzent<select data-sr-avatar-accent><option value="violet" ${accent === "violet" ? "selected" : ""}>Violett</option><option value="crimson" ${accent === "crimson" ? "selected" : ""}>Dunkelrot</option><option value="mint" ${accent === "mint" ? "selected" : ""}>Energiemint</option></select></label></div><div class="kq-sr-wardrobe-heading"><strong>Kleiderschrank</strong><span>Outfit-Sets werden durch die Geschichte freigeschaltet.</span></div><div class="kq-sr-outfit-grid">${outfits}</div></div>
+          <div class="kq-sr-avatar-copy"><span class="kq-sr-side-kicker">Dein Charakter</span><h2>${esc(avatar.heroName || "Kinergy")}</h2><p>${esc(avatar.name || "Luca")} · ${esc(avatar.role || "Pro Hero")}</p><p class="kq-sr-avatar-note">Das Basic-Casual-Outfit bleibt dein Standardset. Nach „DynaRiot – Erste Begegnung“, der ersten Story-Szene nach dem Prolog, wird der vollständige Kinergy Hero Suit dauerhaft freigeschaltet und kann hier jederzeit an- oder ausgezogen werden.</p><div class="kq-sr-avatar-controls"><label>Energie-Akzent<select data-sr-avatar-accent><option value="violet" ${accent === "violet" ? "selected" : ""}>Violett</option><option value="crimson" ${accent === "crimson" ? "selected" : ""}>Dunkelrot</option><option value="mint" ${accent === "mint" ? "selected" : ""}>Energiemint</option></select></label></div><div class="kq-sr-wardrobe-heading"><strong>Kleiderschrank</strong><span>Outfit-Sets werden durch die Geschichte freigeschaltet.</span></div><div class="kq-sr-outfit-grid">${outfits}</div></div>
         </article>`;
       }
 
