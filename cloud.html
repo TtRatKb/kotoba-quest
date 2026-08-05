@@ -22571,7 +22571,7 @@
             <div class="kq-practice-type">${question.type === "meaning" ? "Verstehen" : question.type === "production" ? "Produzieren" : question.type === "listening" ? "Listening" : question.type === "cloze" ? "Kontextlücke" : "Unterscheiden"}</div>
             <h2>${instruction}</h2>
             <div class="kq-problem-prompt">${prompt}</div>
-            ${question.type === "distinguish" ? `<div class="kq-choice-list">${options.map((option, index) => `<button type="button" data-choice-index="${index}" class="${practice.selectedOption === index ? "selected" : ""}"><span>${index + 1}</span>${esc(option.label)}</button>`).join("")}</div>` : `<form id="kqProblemAnswerForm" class="review-form"><input id="kqProblemAnswer" autocomplete="off" placeholder="Antwort eingeben …" ${feedback ? "disabled" : ""}/><button class="primary" type="submit" ${feedback ? "disabled" : ""}>Prüfen</button></form>`}
+            ${question.type === "distinguish" ? `<div class="kq-choice-list">${options.map((option, index) => `<button type="button" data-choice-index="${index}" class="${practice.selectedOption === index ? "selected" : ""}"><span>${index + 1}</span>${esc(option.label)}</button>`).join("")}</div>` : `<form id="kqProblemAnswerForm" class="review-form"><input id="kqProblemAnswer" autocomplete="off" placeholder="${question.type === "production" || question.type === "cloze" ? "Japanisches Wort oder Lesung …" : "Antwort eingeben …"}" ${question.type === "production" || question.type === "cloze" ? 'inputmode="latin" lang="ja" data-kq-kana-input' : ""} ${feedback ? "disabled" : ""}/><button class="primary" type="submit" ${feedback ? "disabled" : ""}>Prüfen</button></form>`}
             ${feedback ? `<div class="feedback ${feedback.correct ? "good" : "bad"}"><strong>${feedback.correct ? "Richtig" : "Noch nicht"}</strong><div>${esc(feedback.message)}</div></div>
               ${!feedback.correct ? `<div class="kq-mnemonic-reveal"><span>Dein Gedächtnisanker</span>${mnemonic ? `<p>${esc(mnemonic)}</p>` : `<p>Noch kein passender Anker gespeichert. Öffne das Wort nach der Runde in der Werkstatt.</p>`}${entry.story ? `<p><strong>Szene:</strong> ${esc(entry.story)}</p>` : ""}${entry.imageCue ? `<div class="kq-mnemonic-emoji">${esc(entry.imageCue)}</div>` : ""}</div>` : ""}
               <div class="button-row kq-practice-next-row">${!feedback.correct && (question.type === "meaning" || question.type === "listening") ? `<button class="ghost" id="kqAcceptProblemSynonym" type="button">Meine Übersetzung als Synonym speichern</button>` : ""}${!feedback.correct ? `<button class="ghost" id="kqProblemTypo" type="button">Nur vertippt</button>` : ""}<button class="primary" id="kqProblemNext" type="button">Weiter</button></div>` : ""}
@@ -22645,11 +22645,18 @@
           state.totalPractice.incorrect = Math.max(0, Number(state.totalPractice.incorrect || 0)) + 1;
           practice.results.incorrect++;
           const expected = expectedFor(question, item).join(" / ");
-          practice.feedback = { correct: false, answer, message: `Gesucht war: ${expected}. Das Wort kommt später in dieser Runde noch einmal.` };
+          const reason = question.type === "meaning" || question.type === "listening" || question.type === "distinguish"
+            ? `„${answer}“ ist hier nicht als Bedeutung dieses Wortes gespeichert.`
+            : `„${answer}“ stimmt weder mit dem japanischen Wort noch mit seiner Lesung überein.`;
+          practice.feedback = { correct: false, answer, message: `${reason} Richtig wäre: ${expected}. Das Wort kommt später in dieser Runde erneut.` };
           const insertAt = Math.min(practice.questions.length, practice.index + 4);
           practice.questions.splice(insertAt, 0, { ...question, repeated: true, options: undefined });
         }
         persistWorkshop();
+        if (correct) {
+          nextPracticeQuestion();
+          return;
+        }
         renderPractice();
       }
 
@@ -25686,7 +25693,10 @@
         }
         const label = question.resultKind === "correct" ? "Richtig" : question.resultKind === "close" ? "Fast richtig" : "Falsch";
         const kind = question.resultKind === "correct" ? "good" : question.resultKind === "close" ? "warning" : "bad";
-        return `<div class="feedback ${kind}"><strong>${label}</strong>${question.mode === "form" ? `<span>Antwort: ${ruby(answer,question.spec.formTarget?.form?.reading || "")}</span>` : ""}</div>
+        const explanation = question.resultKind === "correct" ? "" : question.mode === "form"
+          ? `<span>Deine Eingabe stimmt noch nicht vollständig mit der erwarteten grammatischen Form überein. Richtig ist ${ruby(answer,question.spec.formTarget?.form?.reading || "")}; vergleiche besonders Endung und Anschlussform.</span>`
+          : `<span>Deine Antwort weicht in Bedeutung oder Satzbau vom Ziel ab. Vergleiche sie mit dem vollständigen Modellsatz und seiner Übersetzung.</span>`;
+        return `<div class="feedback ${kind}"><strong>${label}</strong>${explanation}${question.resultKind === "correct" && question.mode === "form" ? `<span>Antwort: ${ruby(answer,question.spec.formTarget?.form?.reading || "")}</span>` : ""}</div>
           ${revealedSentence(question.spec)}
           <div class="button-row" style="justify-content:center;margin-top:14px"><button class="primary" id="kqPracticeNext" type="button">${session.index >= session.questions.length - 1 ? "Auswertung" : "Weiter"}</button></div>
           <p class="small muted kq-keyboard-tip">Enter = weiter</p>`;
@@ -25765,12 +25775,13 @@
           question.userAnswer = answer;
           const evaluation = answerMatches(question,answer);
           if (evaluation.kind === "manual") { question.selfRating=true; renderPractice(); }
-          else if (evaluation.kind === "correct" || evaluation.kind === "close") { question.answered=true; question.resultKind=evaluation.kind; recordResult(question,evaluation.kind); renderPractice(); }
+          else if (evaluation.kind === "correct") { question.answered=true; question.resultKind="correct"; recordResult(question,"correct"); advance(); }
+          else if (evaluation.kind === "close") { question.answered=true; question.resultKind="close"; recordResult(question,"close"); renderPractice(); }
           else { question.pendingDecision=true; renderPractice(); }
         });
 
         root.querySelector("#kqPracticeAudio")?.addEventListener("click",() => playPracticeAudio(question));
-        root.querySelector("#kqPracticeTypo")?.addEventListener("click",() => { question.pendingDecision=false; question.answered=true; question.resultKind="correct"; recordResult(question,"correct"); renderPractice(); });
+        root.querySelector("#kqPracticeTypo")?.addEventListener("click",() => { question.pendingDecision=false; question.answered=true; question.resultKind="correct"; recordResult(question,"correct"); advance(); });
         root.querySelector("#kqPracticeWrong")?.addEventListener("click",() => { question.pendingDecision=false; question.answered=true; question.resultKind="incorrect"; recordResult(question,"incorrect"); renderPractice(); });
         root.querySelector("#kqPracticeRateGood")?.addEventListener("click",() => rateManual(question,"correct"));
         root.querySelector("#kqPracticeRateClose")?.addEventListener("click",() => rateManual(question,"close"));
@@ -26695,6 +26706,10 @@ function shuffle(values) {
             repeated: true,
             repeatCount: Number(entry.repeatCount || 0) + 1
           });
+        }
+        if (correct) {
+          nextQuestion();
+          return;
         }
         renderPractice();
       }
@@ -27804,6 +27819,7 @@ function shuffle(values) {
         if(!reviewSession||reviewSession.feedback)return;
         const q=reviewSession.questions[reviewSession.index];reviewSession.feedback={correct,entered};reviewSession.results[correct?"good":"bad"]++;
         if(!reviewSession.practiceOnly){const s=pointState(q.point.id).skills[q.skill.id],now=Date.now();s.lastReviewedAt=now;if(correct){s.correct++;s.stage=Math.min(9,Math.max(1,s.stage+1));s.dueAt=s.stage>=9?null:now+STAGES[s.stage].delay;state.stats.correct++;}else{s.incorrect++;s.stage=Math.max(1,s.stage-1);s.dueAt=now+30*60*1000;state.stats.incorrect++;}state.stats.reviews++;state.stats.lastStudiedAt=now;persist({activity:true});}
+        if(correct){nextReview();return;}
         renderReview();
       }
       function nextReview(){if(!reviewSession)return;reviewSession.index++;reviewSession.feedback=null;renderReview();}
@@ -28212,6 +28228,12 @@ function shuffle(values) {
           energy.originActions = currentActions;
         }
         energy.repairVersion = STORY_ENERGY_REPAIR_VERSION;
+        if (energy.ledgerMigrationVersion !== "6.0") {
+          const unconvertedActions = Math.max(0, currentActions - Math.max(0, Number(energy.originActions || 0)));
+          energy.legacyEnergy += Math.floor(unconvertedActions / STORY_ACTIONS_PER_ENERGY);
+          energy.originActions = currentActions;
+          energy.ledgerMigrationVersion = "6.0";
+        }
         progress.storyEnergy = energy;
         progress.lastSceneId ||= firstScene(pack)?.id || "";
         progress.lastReadAt ||= null;
@@ -28224,24 +28246,16 @@ function shuffle(values) {
       }
     
       function storyEnergySummary(progress = activeProgress()) {
+        const external = window.KotobaQuestStoryEnergy?.summary?.(progress);
+        if (external) return external;
         if (!progress) return { available: 0, earned: 0, spent: 0, actionsIntoNext: 0, actionsNeeded: STORY_ACTIONS_PER_ENERGY };
         const energy = progress.storyEnergy && typeof progress.storyEnergy === "object"
           ? progress.storyEnergy
-          : { originActions: currentActivityCount(), legacyEnergy: 0, purchases: {} };
-        const actionDelta = Math.max(0, currentActivityCount() - Math.max(0, Number(energy.originActions || 0)));
-        const earnedFromLearning = Math.floor(actionDelta / STORY_ACTIONS_PER_ENERGY);
-        const earned = Math.max(0, Number(energy.legacyEnergy || 0)) + earnedFromLearning;
+          : { legacyEnergy: 0, purchases: {} };
+        const earned = Math.max(0, Number(energy.legacyEnergy || 0));
         const purchases = energy.purchases && typeof energy.purchases === "object" ? energy.purchases : {};
         const spent = Object.values(purchases).reduce((sum, cost) => sum + Math.max(0, Number(cost || 0)), 0);
-        const actionsIntoNext = actionDelta % STORY_ACTIONS_PER_ENERGY;
-        return {
-          available: Math.max(0, earned - spent),
-          earned,
-          spent,
-          actionsIntoNext,
-          actionsNeeded: actionsIntoNext === 0 ? STORY_ACTIONS_PER_ENERGY : STORY_ACTIONS_PER_ENERGY - actionsIntoNext,
-          purchases
-        };
+        return { available: Math.max(0, earned - spent), earned, spent, actionsIntoNext: 0, actionsNeeded: STORY_ACTIONS_PER_ENERGY, purchases };
       }
 
       function storyCharge(progress = activeProgress()) {
@@ -28259,6 +28273,8 @@ function shuffle(values) {
         const requirements = scene.unlock || {};
         if (Array.isArray(requirements.completed) && requirements.completed.some(id => !completed.has(id))) return false;
         if (Array.isArray(requirements.rewards) && requirements.rewards.some(id => !progress.unlockedRewards.includes(id))) return false;
+        const extended = window.KotobaQuestStoryEnergy?.requirementsMet?.(requirements);
+        if (extended && !extended.ok) return false;
         return true;
       }
 
@@ -29051,8 +29067,10 @@ ${tooltipText(segment, status)}`)}"`
           const current = purchased ? cost : Math.min(storyCharge(progress), cost);
           lines.push(`<li class="${purchased || current >= cost ? "done" : ""}">${purchased || current >= cost ? "✓" : "○"} ${current}/${cost} Story-Energie</li>`);
         }
+        const extendedLines = window.KotobaQuestStoryEnergy?.requirementLines?.(requirements) || [];
+        lines.push(...extendedLines);
         return lines.length
-          ? `<ul>${lines.join("")}</ul><small class="kq-sr-energy-rule">Je ${STORY_ACTIONS_PER_ENERGY} gespeicherte Lernaktionen = 1 Story-Energie.</small>`
+          ? `<ul>${lines.join("")}</ul><small class="kq-sr-energy-rule">Story-Energie und Lernziele werden dauerhaft gespeichert. Details findest du über die ⚡-Anzeige.</small>`
           : "";
       }
     
@@ -29170,7 +29188,7 @@ ${tooltipText(segment, status)}`)}"`
           return `<div class="kq-sr-outfit-choice ${locked ? "locked" : "collected"}" aria-disabled="true">${body}</div>`;
         }).join("");
         return `<article class="card kq-sr-avatar-card">
-          <div class="kq-sr-avatar-stage ${esc(accent)}" aria-label="${esc(selectedAlt)}">
+          <div class="kq-sr-avatar-stage ${esc(accent)} ${selectedItem.id === "kinergy-hero-suit" ? "hero-suit-equipped" : ""}" aria-label="${esc(selectedAlt)}">
             <div class="kq-sr-avatar-aura"></div>
             <img src="${selectedImage}" alt="${esc(selectedAlt)}">
             <span class="kq-sr-avatar-equipped">${esc(selectedLabel)}</span>
@@ -29242,19 +29260,10 @@ ${tooltipText(segment, status)}`)}"`
       }
 
       function renderEnergyGuide(progress, expanded = false) {
+        const external = window.KotobaQuestStoryEnergy?.renderGuide?.(progress, expanded);
+        if (external) return external;
         const energy = storyEnergySummary(progress);
-        const percent = Math.round((energy.actionsIntoNext / STORY_ACTIONS_PER_ENERGY) * 100);
-        return `<details class="card kq-sr-energy-guide" ${expanded ? "open" : ""}>
-          <summary><span>⚡</span><div><strong>So sammelst du Story-Energie</strong><small>${energy.available} verfügbar · ${energy.actionsIntoNext}/${STORY_ACTIONS_PER_ENERGY} bis zum nächsten Punkt</small></div></summary>
-          <div class="kq-sr-energy-guide-body">
-            <p><strong>Je ${STORY_ACTIONS_PER_ENERGY} gespeicherte Lernaktionen erhältst du 1 Story-Energie.</strong> Die Energie verfällt nicht und kann über Tage oder Wochen angespart werden.</p>
-            <div class="kq-sr-energy-action-grid">
-              <span>✓ beantwortete SRS-Aufgaben</span><span>✓ neue Vokabel-, Grammatik- und Partikellektionen</span><span>✓ automatisch bewertete freie Übungen</span><span>✓ Kontext-, Listening- und Problemworttraining</span>
-            </div>
-            <div class="kq-sr-energy-meter"><i><b style="width:${percent}%"></b></i><span>Noch ${energy.actionsNeeded} Lernaktion${energy.actionsNeeded === 1 ? "" : "en"} bis zur nächsten Energie.</span></div>
-            <p class="small muted">Storylesen selbst erzeugt keine neue Energie. Ein Abschnitt kostet seine Energie nur beim ersten Freischalten; erneutes Lesen ist kostenlos.</p>
-          </div>
-        </details>`;
+        return `<details class="card kq-sr-energy-guide" ${expanded ? "open" : ""}><summary><span>⚡</span><div><strong>Story-Energie</strong><small>${energy.available} verfügbar</small></div></summary></details>`;
       }
 
       function renderLockedScene(pack, progress, scene) {
@@ -29267,7 +29276,7 @@ ${tooltipText(segment, status)}`)}"`
             <span class="kq-sr-lock-icon">🔒</span>
             <span class="kq-sr-side-kicker">${esc(scene.chapter || "Nächster Abschnitt")}</span>
             <h1>Dieser Storyabschnitt ist noch gesperrt</h1>
-            <p>${prerequisitesOkay ? `Dir fehlen noch ${missing} Story-Energie, bevor du „${esc(scene.title)}“ lesen kannst.` : "Schließe zuerst den vorherigen Storyabschnitt ab."}</p>
+            <p>${prerequisitesOkay ? `Dir fehlen noch ${missing} Story-Energie, bevor du „${esc(scene.title)}“ lesen kannst.` : "Erfülle zuerst die unten aufgeführten Story- und Lernvoraussetzungen."}</p>
             ${requirementLabel(scene, progress)}
             <div class="kq-sr-locked-energy"><strong>${energy.available}</strong><span>Story-Energie verfügbar</span></div>
             <button type="button" class="primary" data-sr-library>Zurück zum Story-Dashboard</button>
@@ -29283,8 +29292,9 @@ ${tooltipText(segment, status)}`)}"`
         const suggested = nextUnfinished || sceneById(pack, progress.lastSceneId) || firstScene(pack);
         const completeCount = progress.completedScenes.filter(id => sceneById(pack, id)).length;
         const percent = Math.round((completeCount / Math.max(1, pack.scenes.length)) * 100);
+        const nextPrerequisitesOkay = nextUnfinished ? scenePrerequisitesMet(nextUnfinished, pack, progress) : true;
         const topButton = nextUnfinished
-          ? `<button type="button" class="primary" ${nextReady ? `data-sr-scene="${esc(nextUnfinished.id)}"` : "disabled"}>${nextReady ? "Weiterlesen" : `Noch ${Math.max(0, sceneEnergyCost(nextUnfinished) - energy.available)} Energie benötigt`}</button>`
+          ? `<button type="button" class="primary" ${nextReady ? `data-sr-scene="${esc(nextUnfinished.id)}"` : "disabled"}>${nextReady ? "Weiterlesen" : nextPrerequisitesOkay ? `Noch ${Math.max(0, sceneEnergyCost(nextUnfinished) - energy.available)} Energie benötigt` : "Lernziele noch nicht erfüllt"}</button>`
           : `<button type="button" class="primary" data-sr-scene="${esc(suggested?.id || firstScene(pack)?.id || "")}">Letzten Abschnitt öffnen</button>`;
         return `<div class="kq-sr-home">
           ${renderStoryRecovery(pack, progress)}
@@ -29655,6 +29665,11 @@ ${tooltipText(segment, status)}`)}"`
           .kq-sr-avatar-stage:before{content:"";position:absolute;z-index:0;width:78%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.96) 0 37%,color-mix(in srgb,var(--sr-accent) 32%,transparent) 58%,transparent 72%);filter:blur(2px)}
           .kq-sr-avatar-stage img{background:transparent!important;filter:drop-shadow(0 14px 18px rgba(48,37,65,.18))}
           .kq-sr-avatar-stage .kq-sr-avatar-aura{z-index:1;inset:12% 3% 2%;background:radial-gradient(circle,color-mix(in srgb,var(--sr-accent) 46%,transparent),transparent 66%);filter:blur(15px);opacity:.88}
+          .kq-sr-avatar-stage.hero-suit-equipped{background:linear-gradient(155deg,#17161d,#07070a 62%,#17131c);border-color:color-mix(in srgb,var(--sr-accent) 48%,#25212c);box-shadow:0 20px 40px rgba(15,10,20,.34),inset 0 0 0 1px rgba(255,255,255,.08)}
+          .kq-sr-avatar-stage.hero-suit-equipped:before{display:none}
+          .kq-sr-avatar-stage.hero-suit-equipped .kq-sr-avatar-aura{display:none}
+          .kq-sr-avatar-stage.hero-suit-equipped img{object-fit:contain;object-position:center;background:#09090c!important;filter:drop-shadow(0 13px 20px rgba(0,0,0,.42))}
+          .kq-sr-avatar-stage.hero-suit-equipped .kq-sr-avatar-equipped{background:rgba(12,10,15,.78);border-color:rgba(255,255,255,.15);color:#fff}
           .kq-sr-avatar-equipped{background:color-mix(in srgb,var(--sr-accent) 84%,#292633);border-color:color-mix(in srgb,var(--sr-accent) 65%,white);box-shadow:0 7px 18px color-mix(in srgb,var(--sr-accent) 28%,transparent)}
           .kq-sr-avatar-controls select{border:2px solid color-mix(in srgb,var(--sr-accent) 50%,var(--border));box-shadow:0 0 0 4px color-mix(in srgb,var(--sr-accent) 10%,transparent)}
           @media(max-width:900px){.kq-sr-sentence-row{grid-template-columns:1fr;gap:15px}.kq-sr-sentence-support{padding-top:14px;border-top:1px dashed var(--border)}}
@@ -30148,7 +30163,11 @@ ${tooltipText(segment, status)}`)}"`
         const correctValue = task.type === "meaning" ? primaryMeaning(item) : task.type === "reading" ? readingOf(item) : item.word;
         const correct = normalize(selected) === normalize(correctValue);
         recordEncounter(item, task.type, correct, task);
-        session.feedback = { correct, selected, correctValue };
+        if (correct) {
+          nextTask();
+          return;
+        }
+        session.feedback = { correct: false, selected, correctValue };
         renderSession();
       }
     
@@ -30156,13 +30175,18 @@ ${tooltipText(segment, status)}`)}"`
         if (!session || session.feedback) return;
         const task = currentTask();
         const item = session.map.get(task.key);
-        const typed = normalize(value);
+        const converted = window.KotobaQuestJapaneseInput?.toHiragana?.(value, true) ?? value;
+        const typed = normalize(converted);
         const accepted = [item.word, readingOf(item)].map(normalize).filter(Boolean);
         const correct = selfRating == null ? Boolean(typed && accepted.includes(typed)) : Boolean(selfRating);
         recordEncounter(item, "production", correct, task);
+        if (correct) {
+          nextTask();
+          return;
+        }
         session.feedback = {
-          correct,
-          selected: value || (correct ? "selbst als gewusst bewertet" : "noch unsicher"),
+          correct: false,
+          selected: converted || "noch unsicher",
           correctValue: `${item.word}（${readingOf(item)}）`
         };
         renderSession();
@@ -30232,14 +30256,21 @@ ${tooltipText(segment, status)}`)}"`
     
       function feedbackHtml(task, item) {
         const feedback = session.feedback;
-        if (!feedback) return "";
+        if (!feedback || feedback.correct) return "";
         const context = contextOf(item);
-        return `<div class="kq-res-feedback ${feedback.correct ? "good" : "bad"}">
-          <div class="kq-res-feedback-icon">${feedback.correct ? "✨" : "↻"}</div>
-          <div><strong>${feedback.correct ? "Resonanz verstärkt" : "Noch nicht stabil – kommt gleich noch einmal"}</strong>
-          <p>${feedback.correct
-            ? `${ruby(item.word, readingOf(item))} bedeutet <b>${esc(primaryMeaning(item))}</b>.`
-            : `Richtig ist <b>${ruby(item.word, readingOf(item))}</b> – ${esc(primaryMeaning(item))}.`}</p>
+        const selectedText = feedback.selected ? `Deine Antwort war <b>${esc(feedback.selected)}</b>. ` : "";
+        const reason = task.type === "meaning"
+          ? `${selectedText}Gesucht war die allgemeine Bedeutung <b>${esc(primaryMeaning(item))}</b>.`
+          : task.type === "reading"
+            ? `${selectedText}Die Lesung von ${esc(item.word)} ist <b>${esc(readingOf(item))}</b>.`
+            : task.type === "context"
+              ? `${selectedText}In diesem Satz passt <b>${esc(item.word)}</b>, weil es hier „${esc(primaryMeaning(item))}“ ausdrückt.`
+              : `${selectedText}Akzeptiert werden das Wort <b>${esc(item.word)}</b> oder seine Lesung <b>${esc(readingOf(item))}</b>.`;
+        return `<div class="kq-res-feedback bad">
+          <div class="kq-res-feedback-icon">↻</div>
+          <div><strong>Noch nicht stabil – das Wort kommt später erneut</strong>
+          <p>${reason}</p>
+          <p>Richtig: <b>${ruby(item.word, readingOf(item))}</b> – ${esc(primaryMeaning(item))}.</p>
           ${context.sentence ? `<small>${esc(context.sentence)}${context.translation ? ` · ${esc(context.translation)}` : ""}</small>` : ""}</div>
         </div>
         <div class="button-row kq-res-next"><button class="primary" id="kqResNext">Weiter</button></div>`;
@@ -30300,7 +30331,7 @@ ${tooltipText(segment, status)}`)}"`
             <span class="kq-res-direction">${esc(taskLabel(task))}${task.retry ? " · Wiederbegegnung" : ""}</span>
             <div class="kq-res-prompt">${prompt}</div>
             <p>${esc(hint)}</p>
-            <div class="kq-res-choice-grid">${session.currentChoices.map((choice, index) => `<button type="button" data-kq-res-choice="${index}" ${session.feedback ? "disabled" : ""}><span>${String.fromCharCode(65 + index)}</span><strong>${esc(choice)}</strong></button>`).join("")}</div>
+            <div class="kq-res-choice-grid">${session.currentChoices.map((choice, index) => `<button type="button" data-kq-res-choice="${index}" ${session.feedback ? "disabled" : ""}><span>${index + 1}</span><strong>${esc(choice)}</strong></button>`).join("")}</div>
             ${task.type !== "context" ? `<button type="button" class="ghost" id="kqResAudio">🔊 Klang anhören</button>` : ""}
           </div>${feedbackHtml(task, item)}`;
         }
@@ -30341,6 +30372,9 @@ ${tooltipText(segment, status)}`)}"`
         root.querySelector("#kqResUnsure")?.addEventListener("click", () => answerProduction("", false));
         if (task.type === "intro") setTimeout(() => playItem(item, false), 150);
         if (task.type === "production" && !session.productionRevealed && !session.feedback) setTimeout(() => root.querySelector("#kqResProductionInput")?.focus(), 0);
+        if (task.type === "production" && !session.productionRevealed && !session.feedback) {
+          setTimeout(() => window.KotobaQuestJapaneseInput?.attach?.(root.querySelector("#kqResProductionInput")), 0);
+        }
       }
     
       function renderSummary(preparedNow) {
@@ -31007,7 +31041,18 @@ ${tooltipText(segment, status)}`)}"`
     
       function launchVocabReviews() {
         setGroup("learning");
-        try { startReviews("core"); } catch { safeSwitch("core", "learning"); }
+        const coreDue = countDueVocabulary("core");
+        const miningDue = countDueVocabulary("mining");
+        try {
+          if (coreDue) startReviews("core");
+          else if (miningDue) startReviews("mining");
+          else safeSwitch("core", "learning");
+        } catch { safeSwitch("core", "learning"); }
+      }
+
+      function launchMiningReviews() {
+        setGroup("learning");
+        try { startReviews("mining"); } catch { safeSwitch("mining", "learning"); }
       }
     
       function launchGrammar() {
@@ -31047,6 +31092,8 @@ ${tooltipText(segment, status)}`)}"`
           vocabulary: {
             title: "Vokabeln",
             subtitle: `Aktiver Lernpool: ${vocabItems.length} Wörter`,
+            coreDue: countDueVocabulary("core"),
+            miningDue: countDueVocabulary("mining"),
             due: countDueVocabulary("core") + countDueVocabulary("mining"),
             lessons: countLessonsVocabulary("core") + countLessonsVocabulary("mining"),
             counts: vocabCounts,
@@ -31085,7 +31132,9 @@ ${tooltipText(segment, status)}`)}"`
         let actionHtml = "";
         if (learningTab === "vocabulary") {
           actionHtml = `
-            <button class="primary" id="kqIaLearnPrimary">${panel.due ? "Reviews starten" : panel.lessons ? "Lektionen starten" : "Vokabelpfad öffnen"}</button>
+            <button class="primary" id="kqIaCoreReviews" ${panel.coreDue ? "" : "disabled"}>Core-Reviews (${panel.coreDue})</button>
+            <button class="primary" id="kqIaMiningReviews" ${panel.miningDue ? "" : "disabled"}>Mining-Reviews (${panel.miningDue})</button>
+            <button class="secondary" id="kqIaLearnPrimary">${panel.lessons ? "Neue Vokabellektionen" : "Vokabelpfad öffnen"}</button>
             <button class="secondary" id="kqIaLearnOpen">Vokabelübersicht</button>
             <button class="ghost" id="kqIaProblemWords">Problemwort-Werkstatt</button>`;
         } else if (learningTab === "grammar") {
@@ -31121,8 +31170,10 @@ ${tooltipText(segment, status)}`)}"`
           learningTab = button.dataset.kqLearningTab;
           renderLearningCenter();
         }));
+        root.querySelector("#kqIaCoreReviews")?.addEventListener("click", launchVocabReviews);
+        root.querySelector("#kqIaMiningReviews")?.addEventListener("click", launchMiningReviews);
         root.querySelector("#kqIaLearnPrimary")?.addEventListener("click", () => {
-          if (learningTab === "vocabulary") panel.due ? launchVocabReviews() : launchVocabLessons();
+          if (learningTab === "vocabulary") launchVocabLessons();
           else if (learningTab === "grammar") panel.due ? launchGrammarReviews() : launchGrammar();
           else panel.due ? launchParticleReviews() : launchParticlePath();
         });
@@ -31406,6 +31457,450 @@ ${tooltipText(segment, status)}`)}"`
       };
     }
 
+
+    function storyEnergyLedgerBootstrap() {
+      if (window.__KOTOBA_STORY_ENERGY_LEDGER_V2__) return;
+      window.__KOTOBA_STORY_ENERGY_LEDGER_V2__ = true;
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const VERSION = 2;
+      const REVIEW_TARGET = 5;
+      const CORE_WORD_TARGET = 20;
+      let syncing = false;
+      let lastSignature = "";
+
+      const objectValue = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      const number = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+      const esc = value => String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+      function sourceData() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+      }
+      function saveSource(source) {
+        try {
+          if (typeof data !== "undefined" && data && typeof data === "object" && data !== source) Object.assign(data, source);
+          if (typeof saveData === "function") saveData();
+          else localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
+        } catch { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); } catch {} }
+      }
+      function vocabularySnapshot(source) {
+        const items = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        const attempts = kind => items.filter(item => item?.sourceType === kind).reduce((sum,item) => sum + number(item.correct) + number(item.incorrect), 0);
+        const coreStarted = items.filter(item => item?.sourceType === "core" && (number(item.stage) > 0 || item.guruPassed)).length;
+        return { coreReviews: attempts("core"), miningReviews: attempts("mining"), coreStarted };
+      }
+      function grammarSnapshot() {
+        try {
+          const points = window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.() || [];
+          return {
+            grammarReviews: points.reduce((sum,point) => sum + (point.skills || []).reduce((skillSum,skill) => skillSum + number(skill.correct) + number(skill.incorrect), 0), 0),
+            grammarLessons: points.filter(point => point.lessonComplete).length
+          };
+        } catch { return { grammarReviews:0, grammarLessons:0 }; }
+      }
+      function particleSnapshot(source) {
+        let points = [];
+        try { points = window.KotobaQuestParticlePath?.getProgress?.() || []; } catch {}
+        return {
+          particleReviews: number(source.particlePath?.stats?.reviews),
+          particleLessons: points.filter(point => point.lessonComplete).length || Object.values(objectValue(source.particlePath?.points)).filter(point => point?.lessonComplete).length
+        };
+      }
+      function snapshot(source = sourceData()) {
+        return {
+          ...vocabularySnapshot(source),
+          ...grammarSnapshot(),
+          ...particleSnapshot(source),
+          resonanceSessions: number(source.resonanceTraining?.totals?.sessions),
+          contextSessions: number(source.vocabContextPractice?.sessions),
+          particlePracticeSessions: number(source.particlePractice?.sessions),
+          problemAnswers: number(source.problemWordWorkshop?.totalPractice?.correct) + number(source.problemWordWorkshop?.totalPractice?.incorrect)
+        };
+      }
+      function defaultLedger(current) {
+        return {
+          version: VERSION,
+          totalEarned: 0,
+          pendingReviews: [],
+          coreWordsIntoNext: 0,
+          seen: { ...current },
+          history: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+      }
+      function ensureLedger(source, current = snapshot(source)) {
+        let ledger = objectValue(source.storyEnergyLedger);
+        if (number(ledger.version) < VERSION || !ledger.seen) {
+          ledger = { ...defaultLedger(current), ...ledger, version: VERSION, seen: { ...current, ...objectValue(ledger.seen) } };
+          ledger.pendingReviews = Array.isArray(ledger.pendingReviews) ? ledger.pendingReviews.slice(-4) : [];
+          ledger.history = Array.isArray(ledger.history) ? ledger.history.slice(-80) : [];
+          ledger.totalEarned = number(ledger.totalEarned);
+          ledger.coreWordsIntoNext = number(ledger.coreWordsIntoNext) % CORE_WORD_TARGET;
+          source.storyEnergyLedger = ledger;
+        }
+        return ledger;
+      }
+      function addHistory(ledger, type, amount, label, details = "") {
+        ledger.totalEarned += amount;
+        ledger.history.push({ at: Date.now(), type, amount, label, details });
+        ledger.history = ledger.history.slice(-80);
+      }
+      function domainLabel(key) {
+        return ({ coreReviews:"Core-Vokabel", miningReviews:"Mining", grammarReviews:"Grammatik", particleReviews:"Partikel" })[key] || key;
+      }
+      function sync({ silent = false } = {}) {
+        if (syncing) return summary();
+        syncing = true;
+        try {
+          const source = sourceData();
+          const current = snapshot(source);
+          const hadLedger = number(source.storyEnergyLedger?.version) >= VERSION && Boolean(source.storyEnergyLedger?.seen);
+          const ledger = ensureLedger(source, current);
+          const previous = objectValue(ledger.seen);
+          let changed = !hadLedger;
+          let awarded = 0;
+
+          for (const key of ["coreReviews","miningReviews","grammarReviews","particleReviews"]) {
+            const delta = Math.max(0, number(current[key]) - number(previous[key]));
+            for (let index = 0; index < delta; index++) ledger.pendingReviews.push(domainLabel(key));
+            if (delta) changed = true;
+          }
+          while (ledger.pendingReviews.length >= REVIEW_TARGET) {
+            const group = ledger.pendingReviews.splice(0, REVIEW_TARGET);
+            const counts = group.reduce((result,label) => { result[label] = (result[label] || 0) + 1; return result; }, {});
+            const details = Object.entries(counts).map(([label,count]) => `${count}× ${label}`).join(" · ");
+            addHistory(ledger, "reviews", 1, "5 SRS-Reviews abgeschlossen", details);
+            awarded += 1;
+            changed = true;
+          }
+
+          for (const [key,label] of [["grammarLessons","Neue Grammatiklektion"],["particleLessons","Neue Partikellektion"]]) {
+            const delta = Math.max(0, number(current[key]) - number(previous[key]));
+            for (let i=0; i<delta; i++) addHistory(ledger, key, 1, label);
+            if (delta) { awarded += delta; changed = true; }
+          }
+
+          const coreDelta = Math.max(0, number(current.coreStarted) - number(previous.coreStarted));
+          if (coreDelta) {
+            ledger.coreWordsIntoNext += coreDelta;
+            while (ledger.coreWordsIntoNext >= CORE_WORD_TARGET) {
+              ledger.coreWordsIntoNext -= CORE_WORD_TARGET;
+              addHistory(ledger, "coreWords", 1, "20 neue Core-Wörter begonnen");
+              awarded += 1;
+            }
+            changed = true;
+          }
+
+          for (const [key,label] of [
+            ["resonanceSessions","Resonanztraining abgeschlossen"],
+            ["contextSessions","Freie Vokabel-/Satzrunde abgeschlossen"],
+            ["particlePracticeSessions","Freie Partikelrunde abgeschlossen"]
+          ]) {
+            const delta = Math.max(0, number(current[key]) - number(previous[key]));
+            for (let i=0; i<delta; i++) addHistory(ledger, key, 1, label);
+            if (delta) { awarded += delta; changed = true; }
+          }
+
+          ledger.seen = { ...current };
+          if (changed) ledger.updatedAt = Date.now();
+          source.storyEnergyLedger = ledger;
+          const signature = JSON.stringify([ledger.totalEarned,ledger.pendingReviews.length,ledger.coreWordsIntoNext]);
+          if (changed || signature !== lastSignature) {
+            lastSignature = signature;
+            if (changed) saveSource(source);
+            updateUi();
+          }
+          if (awarded && !silent) {
+            try { if (typeof toast === "function") toast(`⚡ ${awarded} Story-Energie erhalten`); } catch {}
+          }
+          return summary();
+        } finally { syncing = false; }
+      }
+      function activeStoryProgress() {
+        const source = sourceData();
+        const reader = objectValue(source.storyReader);
+        const packId = reader.activePackId || "kinergy-pro-hero-path";
+        return objectValue(objectValue(reader.progress)[packId]);
+      }
+      function summary(progress = activeStoryProgress()) {
+        const source = sourceData();
+        const ledger = ensureLedger(source);
+        const energy = objectValue(progress?.storyEnergy);
+        const purchases = objectValue(energy.purchases);
+        const spent = Object.values(purchases).reduce((sum,value) => sum + number(value), 0);
+        const legacy = number(energy.legacyEnergy);
+        const earned = legacy + number(ledger.totalEarned);
+        const pending = Array.isArray(ledger.pendingReviews) ? ledger.pendingReviews.length : 0;
+        return {
+          available: Math.max(0, earned - spent),
+          earned,
+          spent,
+          actionsIntoNext: pending,
+          actionsNeeded: REVIEW_TARGET - pending,
+          pendingReviews: [...(ledger.pendingReviews || [])],
+          coreWordsIntoNext: number(ledger.coreWordsIntoNext),
+          ledger,
+          purchases
+        };
+      }
+      function absoluteProgress() {
+        const source = sourceData();
+        const current = snapshot(source);
+        return {
+          currentLevel: number(source.currentLevel) || 1,
+          coreReviews: current.coreReviews,
+          miningReviews: current.miningReviews,
+          grammarReviews: current.grammarReviews,
+          particleReviews: current.particleReviews,
+          anyReviews: current.coreReviews + current.miningReviews + current.grammarReviews + current.particleReviews,
+          grammarLessons: current.grammarLessons,
+          particleLessons: current.particleLessons,
+          coreWordsStarted: current.coreStarted,
+          resonanceSessions: current.resonanceSessions
+        };
+      }
+      function requirementChecks(requirements = {}) {
+        const progress = absoluteProgress();
+        const checks = [];
+        const add = (label,current,needed) => { if (number(needed) > 0) checks.push({ label, current:number(current), needed:number(needed), done:number(current) >= number(needed) }); };
+        add("Core-Level", progress.currentLevel, requirements.minCoreLevel);
+        const reviews = objectValue(requirements.reviewTotals);
+        add("Core-Reviews insgesamt", progress.coreReviews, reviews.core);
+        add("Mining-Reviews insgesamt", progress.miningReviews, reviews.mining);
+        add("Grammatik-Reviews insgesamt", progress.grammarReviews, reviews.grammar);
+        add("Partikel-Reviews insgesamt", progress.particleReviews, reviews.particles);
+        add("SRS-Reviews insgesamt", progress.anyReviews, reviews.any);
+        const lessons = objectValue(requirements.lessonTotals);
+        add("Grammatiklektionen", progress.grammarLessons, lessons.grammar);
+        add("Partikellektionen", progress.particleLessons, lessons.particles);
+        add("begonnene Core-Wörter", progress.coreWordsStarted, requirements.minCoreWordsStarted);
+        add("Resonanzrunden", progress.resonanceSessions, requirements.minResonanceSessions);
+        return checks;
+      }
+      function requirementsMet(requirements = {}) {
+        const checks = requirementChecks(requirements);
+        return { ok: checks.every(check => check.done), checks };
+      }
+      function requirementLines(requirements = {}) {
+        return requirementChecks(requirements).map(check => `<li class="${check.done ? "done" : ""}">${check.done ? "✓" : "○"} ${esc(check.label)}: ${check.current}/${check.needed}</li>`);
+      }
+      function renderGuide(progress = activeStoryProgress(), expanded = false) {
+        const info = summary(progress);
+        const pending = info.pendingReviews.length;
+        const percent = Math.round(pending / REVIEW_TARGET * 100);
+        const domains = info.pendingReviews.length ? info.pendingReviews.join(" · ") : "Noch keine Reviews in diesem Paket";
+        return `<details class="card kq-sr-energy-guide" ${expanded ? "open" : ""}>
+          <summary><span>⚡</span><div><strong>Story-Energie: ${info.available} verfügbar</strong><small>${pending}/${REVIEW_TARGET} SRS-Reviews bis zur nächsten Energie</small></div></summary>
+          <div class="kq-sr-energy-guide-body">
+            <p><strong>Dein Fortschritt ist dauerhaft gespeichert und wird nicht am Tagesende zurückgesetzt.</strong></p>
+            <div class="kq-sr-energy-action-grid">
+              <span>5 Core-, Mining-, Grammatik- oder Partikel-Reviews = +1 ⚡</span>
+              <span>neue Grammatiklektion = +1 ⚡</span>
+              <span>neue Partikellektion = +1 ⚡</span>
+              <span>20 neu begonnene Core-Wörter = +1 ⚡</span>
+              <span>abgeschlossene Resonanzrunde = +1 ⚡</span>
+              <span>abgeschlossene freie Vokabel- oder Partikelrunde = +1 ⚡</span>
+            </div>
+            <div class="kq-sr-energy-meter"><i><b style="width:${percent}%"></b></i><span>${pending}/${REVIEW_TARGET}: ${esc(domains)}. Noch ${REVIEW_TARGET-pending} Review${REVIEW_TARGET-pending === 1 ? "" : "s"}.</span></div>
+            <p class="small muted">Bisher verdient: ${info.earned} · für Storyabschnitte ausgegeben: ${info.spent}. Storylesen selbst erzeugt keine Energie; erneutes Lesen kostet nichts.</p>
+          </div>
+        </details>`;
+      }
+      function recentHistoryHtml() {
+        const history = [...(summary().ledger.history || [])].reverse().slice(0,8);
+        if (!history.length) return `<div class="kq-energy-empty">Noch keine neue Energie seit der Umstellung verdient. Dein bisheriger Bestand bleibt erhalten.</div>`;
+        return `<div class="kq-energy-history">${history.map(item => `<div><span>+${number(item.amount)} ⚡</span><p><strong>${esc(item.label)}</strong>${item.details ? `<small>${esc(item.details)}</small>` : ""}</p><time>${new Intl.DateTimeFormat("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(item.at))}</time></div>`).join("")}</div>`;
+      }
+      function open() {
+        sync();
+        document.getElementById("kqStoryEnergyOverlay")?.remove();
+        const info = summary();
+        const overlay = document.createElement("div");
+        overlay.id = "kqStoryEnergyOverlay";
+        overlay.className = "kq-energy-overlay";
+        overlay.innerHTML = `<div class="kq-energy-modal" role="dialog" aria-modal="true" aria-labelledby="kqEnergyTitle">
+          <button class="kq-energy-close" type="button" aria-label="Schließen">×</button>
+          <div class="kq-energy-head"><span>⚡</span><div><small>Story-Energie</small><h2 id="kqEnergyTitle">${info.available} verfügbar</h2><p>${info.earned} verdient · ${info.spent} ausgegeben</p></div></div>
+          ${renderGuide(activeStoryProgress(), true)}
+          <section><h3>Letzte Energie-Gutschriften</h3>${recentHistoryHtml()}</section>
+          <section class="kq-energy-future"><h3>Story-Ziele ab Kapitel 2</h3><p>Künftige Szenen können neben Energie auch transparente Voraussetzungen verlangen, etwa Core-Level, bestimmte Review-Anzahlen oder abgeschlossene Grammatik- und Partikellektionen. Der Fortschritt dafür wird bereits dauerhaft mitgezählt.</p></section>
+        </div>`;
+        const close = () => overlay.remove();
+        overlay.addEventListener("click", event => { if (event.target === overlay || event.target.closest(".kq-energy-close")) close(); });
+        document.addEventListener("keydown", function escape(event){ if(event.key === "Escape"){close();document.removeEventListener("keydown",escape);} });
+        document.body.appendChild(overlay);
+      }
+      function installStyles() {
+        if (document.getElementById("kqStoryEnergyLedgerStyles")) return;
+        const style = document.createElement("style");
+        style.id = "kqStoryEnergyLedgerStyles";
+        style.textContent = `
+          .kq-energy-pill{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--border);border-radius:999px;background:linear-gradient(135deg,var(--kq-wash,#f4efff),white);color:var(--primary-dark);font-weight:950;white-space:nowrap;box-shadow:0 5px 14px var(--kq-glow,rgba(90,60,150,.1))}.kq-energy-pill small{font-size:.68rem;color:var(--muted);font-weight:800}.kq-energy-pill:hover{transform:translateY(-1px)}
+          .kq-energy-overlay{position:fixed;z-index:100000;inset:0;display:grid;place-items:center;padding:20px;background:rgba(26,21,35,.55);backdrop-filter:blur(7px)}.kq-energy-modal{position:relative;width:min(820px,100%);max-height:min(90vh,900px);overflow:auto;padding:24px;border-radius:24px;background:var(--panel,#fff);box-shadow:0 30px 90px rgba(20,14,30,.34)}.kq-energy-close{position:absolute;right:16px;top:14px;width:38px;height:38px;border:0;border-radius:50%;background:var(--kq-wash,#f4efff);color:var(--text);font-size:1.6rem}.kq-energy-head{display:flex;align-items:center;gap:15px;padding-right:45px}.kq-energy-head>span{display:grid;place-items:center;width:62px;height:62px;border-radius:20px;background:var(--kq-wash,#f4efff);font-size:2rem}.kq-energy-head h2,.kq-energy-head p{margin:2px 0}.kq-energy-head small{color:var(--muted);font-weight:900}.kq-energy-modal .kq-sr-energy-guide{margin:20px 0}.kq-energy-modal section{margin-top:20px}.kq-energy-history{display:grid;gap:8px}.kq-energy-history>div{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:11px 13px;border:1px solid var(--border);border-radius:13px;background:var(--kq-card-soft,#faf8ff)}.kq-energy-history>div>span{font-weight:950;color:var(--primary-dark)}.kq-energy-history p,.kq-energy-history strong,.kq-energy-history small{display:block;margin:0}.kq-energy-history small,.kq-energy-history time{color:var(--muted);font-size:.75rem}.kq-energy-empty,.kq-energy-future{padding:14px;border-radius:14px;background:var(--kq-wash,#f4efff);color:var(--muted)}
+          .kq-energy-dashboard{margin:16px 0}.kq-energy-dashboard-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.kq-energy-dashboard-grid>div{display:grid;gap:3px;padding:12px;border-radius:13px;background:var(--kq-wash,#f4efff);text-align:center}.kq-energy-dashboard-grid strong{font-size:1.5rem;color:var(--primary)}.kq-energy-dashboard-grid small{color:var(--muted)}
+          @media(max-width:720px){.kq-energy-history>div{grid-template-columns:auto 1fr}.kq-energy-history time{grid-column:2}.kq-energy-dashboard-grid{grid-template-columns:1fr 1fr}.kq-energy-pill small{display:none}}
+        `;
+        document.head.appendChild(style);
+      }
+      function updateUi() {
+        installStyles();
+        const info = summary();
+        let pill = document.getElementById("kqStoryEnergyPill");
+        const topbar = document.querySelector(".topbar");
+        if (topbar && !pill) {
+          pill = document.createElement("button");
+          pill.id = "kqStoryEnergyPill";
+          pill.type = "button";
+          pill.className = "kq-energy-pill";
+          pill.addEventListener("click", open);
+          topbar.appendChild(pill);
+        }
+        if (pill) {
+          const pillSignature = `${info.available}|${info.actionsIntoNext}`;
+          if (pill.dataset.energySignature !== pillSignature) {
+            pill.dataset.energySignature = pillSignature;
+            pill.innerHTML = `⚡ <span>${info.available}</span><small>${info.actionsIntoNext}/${REVIEW_TARGET} Reviews</small>`;
+          }
+        }
+
+        const dashboard = document.getElementById("kqLearningDashboard");
+        if (dashboard) {
+          let card = document.getElementById("kqStoryEnergyDashboard");
+          if (!card) {
+            card = document.createElement("article");
+            card.id = "kqStoryEnergyDashboard";
+            card.className = "card kq-energy-dashboard";
+            const hero = dashboard.querySelector(".kq-dashboard-hero");
+            if (hero) hero.after(card); else dashboard.prepend(card);
+            card.addEventListener("click", event => { if(event.target.closest("button")) open(); });
+          }
+          const cardSignature = `${info.available}|${info.actionsIntoNext}|${info.coreWordsIntoNext}|${info.earned}`;
+          if (card.dataset.energySignature !== cardSignature) {
+            card.dataset.energySignature = cardSignature;
+            card.innerHTML = `<div class="section-title"><div><h3>⚡ Story-Energie</h3><p>Transparent gespeichert: gemischte SRS-Reviews zählen gemeinsam.</p></div><button class="secondary" type="button">Details und Regeln</button></div><div class="kq-energy-dashboard-grid"><div><strong>${info.available}</strong><small>verfügbar</small></div><div><strong>${info.actionsIntoNext}/${REVIEW_TARGET}</strong><small>Reviews im Paket</small></div><div><strong>${info.coreWordsIntoNext}/${CORE_WORD_TARGET}</strong><small>neue Core-Wörter</small></div><div><strong>${info.earned}</strong><small>insgesamt verdient</small></div></div>`;
+          }
+        }
+      }
+
+      installStyles();
+      window.KotobaQuestStoryEnergy = { version:VERSION, sync, summary, renderGuide, open, requirementsMet, requirementLines, absoluteProgress, updateUi };
+      setTimeout(() => { sync(); updateUi(); }, 250);
+      setInterval(() => sync(), 900);
+      new MutationObserver(() => updateUi()).observe(document.documentElement,{childList:true,subtree:true});
+    }
+
+
+    function systemInteractionConsistencyBootstrap() {
+      if (window.__KOTOBA_SYSTEM_INTERACTION_V2__) return;
+      window.__KOTOBA_SYSTEM_INTERACTION_V2__ = true;
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const MAP = {
+        kya:"きゃ",kyu:"きゅ",kyo:"きょ",gya:"ぎゃ",gyu:"ぎゅ",gyo:"ぎょ",sha:"しゃ",shu:"しゅ",sho:"しょ",sya:"しゃ",syu:"しゅ",syo:"しょ",ja:"じゃ",ji:"じ",ju:"じゅ",jo:"じょ",jya:"じゃ",jyu:"じゅ",jyo:"じょ",cha:"ちゃ",chu:"ちゅ",cho:"ちょ",cya:"ちゃ",cyu:"ちゅ",cyo:"ちょ",nya:"にゃ",nyu:"にゅ",nyo:"にょ",hya:"ひゃ",hyu:"ひゅ",hyo:"ひょ",bya:"びゃ",byu:"びゅ",byo:"びょ",pya:"ぴゃ",pyu:"ぴゅ",pyo:"ぴょ",mya:"みゃ",myu:"みゅ",myo:"みょ",rya:"りゃ",ryu:"りゅ",ryo:"りょ",she:"しぇ",che:"ちぇ",je:"じぇ",tsa:"つぁ",tsi:"つぃ",tse:"つぇ",tso:"つぉ",fa:"ふぁ",fi:"ふぃ",fe:"ふぇ",fo:"ふぉ",fyu:"ふゅ",ti:"てぃ",di:"でぃ",wi:"うぃ",we:"うぇ",va:"ゔぁ",vi:"ゔぃ",vu:"ゔ",ve:"ゔぇ",vo:"ゔぉ",shi:"し",chi:"ち",tsu:"つ",dzu:"づ",ka:"か",ki:"き",ku:"く",ke:"け",ko:"こ",ga:"が",gi:"ぎ",gu:"ぐ",ge:"げ",go:"ご",sa:"さ",si:"し",su:"す",se:"せ",so:"そ",za:"ざ",zi:"じ",zu:"ず",ze:"ぜ",zo:"ぞ",ta:"た",te:"て",to:"と",da:"だ",de:"で",do:"ど",na:"な",ni:"に",nu:"ぬ",ne:"ね",no:"の",ha:"は",hi:"ひ",hu:"ふ",fu:"ふ",he:"へ",ho:"ほ",ba:"ば",bi:"び",bu:"ぶ",be:"べ",bo:"ぼ",pa:"ぱ",pi:"ぴ",pu:"ぷ",pe:"ぺ",po:"ぽ",ma:"ま",mi:"み",mu:"む",me:"め",mo:"も",ya:"や",yu:"ゆ",yo:"よ",ra:"ら",ri:"り",ru:"る",re:"れ",ro:"ろ",wa:"わ",wo:"を",xa:"ぁ",xi:"ぃ",xu:"ぅ",xe:"ぇ",xo:"ぉ",xya:"ゃ",xyu:"ゅ",xyo:"ょ",xtsu:"っ",ltsu:"っ",a:"あ",i:"い",u:"う",e:"え",o:"お"
+      };
+      const KEYS = Object.keys(MAP).sort((a,b)=>b.length-a.length);
+      function convertRun(run, finalize=false) {
+        const source=String(run||"").toLowerCase();let result="",index=0;
+        while(index<source.length){const tail=source.slice(index),first=tail[0];
+          if(tail.startsWith("n'")){result+="ん";index+=2;continue;}
+          if(first==="n"){
+            if(tail.length===1){result+=finalize?"ん":"n";index++;continue;}
+            if(tail.startsWith("nn")){if(tail.length===2&&!finalize){result+="nn";index+=2;continue;}result+="ん";index+=tail.length===2?2:1;continue;}
+            if(!/[aeiouy]/.test(tail[1])){result+="ん";index++;continue;}
+          }
+          if(tail.length>=2&&tail[0]===tail[1]&&/[bcdfghjklmpqrstvwxyz]/.test(first)&&first!=="n"){result+="っ";index++;continue;}
+          const key=KEYS.find(candidate=>tail.startsWith(candidate));
+          if(key){result+=MAP[key];index+=key.length;}else{result+=source[index];index++;}
+        }
+        return result;
+      }
+      function toHiragana(value, finalize=false) {
+        const source=String(value||"");
+        return source.replace(/[A-Za-z']+/g,(run,offset)=>convertRun(run,finalize||offset+run.length<source.length));
+      }
+      function shouldAttach(element) {
+        if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return false;
+        if (["search","email","password","url","number"].includes(element.type)) return false;
+        if (element.closest(".kq-lr-import, #kqLanguageReactorImport") && !element.matches('[lang="ja"],[data-kq-kana-input]')) return false;
+        const id=element.id||"", placeholder=(element.placeholder||"").toLowerCase();
+        if (/search|filter|meaning|deutsch|übersetzung/.test(`${id} ${placeholder}`) && !/japan|lesung|partikel|kana|romaji/.test(`${id} ${placeholder}`)) return false;
+        if (element.matches('[lang="ja"],[data-kq-kana-input]')) return true;
+        if (!element.matches('[inputmode="latin"]')) return false;
+        return /japan|lesung|partikel|kana|romaji|japanischer|japanische|passende japanische form|dein japanischer satz/i.test(`${id} ${placeholder}`);
+      }
+      function attach(element) {
+        if (!shouldAttach(element) || element.dataset.kqGlobalKana === "1") return;
+        element.dataset.kqGlobalKana="1";element.lang="ja";element.spellcheck=false;element.autocapitalize="off";
+        element.addEventListener("input",()=>{const start=element.selectionStart??element.value.length;const prefix=element.value.slice(0,start);const convertedPrefix=toHiragana(prefix,false);const converted=toHiragana(element.value,false);if(converted!==element.value){element.value=converted;element.setSelectionRange?.(convertedPrefix.length,convertedPrefix.length);}});
+        const finalize=()=>{const converted=toHiragana(element.value,true);if(converted!==element.value){element.value=converted;element.setSelectionRange?.(converted.length,converted.length);}};
+        element.addEventListener("blur",finalize);element.form?.addEventListener("submit",finalize,true);
+      }
+      function refreshInputs(root=document) { root.querySelectorAll?.('input,textarea').forEach(attach); }
+      window.KotobaQuestJapaneseInput={toHiragana,attach,refresh:refreshInputs};
+
+      function visible(button){return button && !button.disabled && button.offsetParent!==null && getComputedStyle(button).visibility!=="hidden";}
+      function activeChoiceButtons(){
+        const selectors=['[data-kq-res-choice]','[data-pp-choice]','[data-choice-index]','.kq-choice-list button','.kq-res-choice-grid button'];
+        for(const selector of selectors){const buttons=[...document.querySelectorAll(selector)].filter(visible);if(buttons.length)return buttons;}
+        return [];
+      }
+      function continueButton(){
+        for(const id of ['kqResNext','kqProblemNext','kqParticleNext','kqPpReviewNext','kqPracticeNext','grammarNextLesson','grammarLessonComplete','grammarLessonNext','kqPpNext']){
+          const button=document.getElementById(id);if(visible(button))return button;
+        }
+        return null;
+      }
+      document.addEventListener("keydown",event=>{
+        if(event.isComposing||event.repeat||event.ctrlKey||event.metaKey||event.altKey)return;
+        const target=event.target;
+        if(/^[1-4]$/.test(event.key) && !(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)){
+          const button=activeChoiceButtons()[Number(event.key)-1];if(button){event.preventDefault();event.stopImmediatePropagation();button.click();return;}
+        }
+        if(event.key!=="Enter"||event.shiftKey)return;
+        if(target instanceof HTMLTextAreaElement && !target.matches('[lang="ja"],[data-kq-kana-input]'))return;
+        if(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement){
+          if(shouldAttach(target)){target.value=toHiragana(target.value,true);target.dispatchEvent(new Event("input",{bubbles:true}));}
+          if(target.form){event.preventDefault();event.stopImmediatePropagation();target.form.requestSubmit?.();return;}
+        }
+        const next=continueButton();if(next){event.preventDefault();event.stopImmediatePropagation();next.click();return;}
+        const intro=document.getElementById("kqResIntroNext");if(visible(intro)){event.preventDefault();event.stopImmediatePropagation();intro.click();}
+      },true);
+
+      function sourceData(){try{if(typeof data!=="undefined"&&data&&typeof data==="object")return data;}catch{}try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")||{};}catch{return{};}}
+      function dueVocab(kind){
+        const now=Date.now();const items=Array.isArray(sourceData().vocabulary)?sourceData().vocabulary:[];
+        return items.filter(item=>item?.sourceType===kind&&Number(item.stage||0)>0&&Number(item.stage||0)<9&&item.availableAt!=null&&Number(item.availableAt)<=now).length;
+      }
+      function dueGrammar(){try{return (window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.()||[]).reduce((sum,point)=>sum+(point.skills||[]).filter(skill=>Number(skill.stage||0)>0&&Number(skill.stage||0)<9&&skill.dueAt!=null&&Number(skill.dueAt)<=Date.now()).length,0);}catch{return 0;}}
+      function dueParticles(){try{return (window.KotobaQuestParticlePath?.getProgress?.()||[]).reduce((sum,point)=>sum+(point.skills||[]).filter(skill=>Number(skill.stage||0)>0&&Number(skill.stage||0)<9&&skill.dueAt!=null&&Number(skill.dueAt)<=Date.now()).length,0);}catch{return 0;}}
+      function launch(kind){
+        try{
+          if(kind==="core"||kind==="mining"){if(typeof startReviews==="function")startReviews(kind);return;}
+          if(kind==="grammar"){window.KotobaQuestGrammarSupportApi?.startReviewSession?.(false);return;}
+          if(kind==="particles"){window.KotobaQuestParticlePath?.startReviews?.();return;}
+        }catch{}
+      }
+      function dueCardHtml(){const counts={core:dueVocab("core"),mining:dueVocab("mining"),grammar:dueGrammar(),particles:dueParticles()};return `<div class="kq-review-queue-grid">${[["core","Core-Vokabeln","🌱"],["mining","Mining-Vokabeln","🎬"],["grammar","Grammatik","🧱"],["particles","Partikel","🧩"]].map(([id,label,icon])=>`<button type="button" data-kq-review-queue="${id}" ${counts[id] ? "" : "disabled"}><span>${icon}</span><strong>${counts[id]}</strong><small>${label} fällig</small></button>`).join("")}</div>`;}
+      function installReviewVisibility(){
+        if(!document.getElementById("kqReviewQueueStyles")){const style=document.createElement("style");style.id="kqReviewQueueStyles";style.textContent=`.kq-review-queue{margin:16px 0}.kq-review-queue-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kq-review-queue-grid button{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'icon count' 'label label';align-items:center;gap:3px 10px;padding:13px;border:1px solid var(--border);border-radius:14px;background:white;color:var(--text);text-align:left}.kq-review-queue-grid button:not(:disabled):hover{border-color:var(--primary);transform:translateY(-1px)}.kq-review-queue-grid button>span{grid-area:icon;font-size:1.5rem}.kq-review-queue-grid button>strong{grid-area:count;color:var(--primary);font-size:1.8rem}.kq-review-queue-grid button>small{grid-area:label;color:var(--muted)}.kq-review-queue-grid button:disabled{opacity:.55}.kq-mining-review-card{border-top:6px solid var(--accent)}@media(max-width:720px){.kq-review-queue-grid{grid-template-columns:1fr 1fr}}`;document.head.appendChild(style);}
+        const dashboard=document.getElementById("kqLearningDashboard");
+        if(dashboard){let section=document.getElementById("kqReviewQueueDashboard");if(!section){section=document.createElement("section");section.id="kqReviewQueueDashboard";section.className="card kq-review-queue";const hero=dashboard.querySelector(".kq-dashboard-hero");if(hero)hero.after(section);else dashboard.prepend(section);}const queueSignature=`${dueVocab("core")}|${dueVocab("mining")}|${dueGrammar()}|${dueParticles()}`;if(section.dataset.queueSignature!==queueSignature){section.dataset.queueSignature=queueSignature;section.innerHTML=`<div class="section-title"><div><h3>Heute fällige Reviews</h3><p>Core, Mining, Grammatik und Partikel werden getrennt sichtbar angezeigt.</p></div></div>${dueCardHtml()}`;section.querySelectorAll('[data-kq-review-queue]').forEach(button=>button.addEventListener("click",()=>launch(button.dataset.kqReviewQueue)));}}
+        const practice=document.getElementById("kqPracticeCenterRoot");
+        const grid=practice?.querySelector(".kq-ia-practice-grid");
+        if(grid){let card=document.getElementById("kqMiningReviewPracticeCard");if(!card){card=document.createElement("article");card.id="kqMiningReviewPracticeCard";card.className="card kq-ia-practice-card kq-mining-review-card";grid.prepend(card);}const miningDue=dueVocab("mining");const miningSignature=String(miningDue);if(card.dataset.miningSignature!==miningSignature){card.dataset.miningSignature=miningSignature;card.innerHTML=`<span class="mode-icon">🎬</span><h3>Mining-Reviews</h3><p><strong>${miningDue}</strong> Mining-Wörter sind aktuell fällig. Sie sind hier direkt erreichbar, ohne den Umweg über die Mining-Sammlung.</p><div class="button-row"><button class="primary" type="button" ${miningDue?"":"disabled"}>Mining-Reviews starten</button></div>`;card.querySelector("button")?.addEventListener("click",()=>launch("mining"));}}
+        const mining=document.getElementById("mining");
+        const miningNav=document.getElementById("kqIaMiningNav");
+        if(miningNav){let button=document.getElementById("kqMiningReviewQuickButton");if(!button){button=document.createElement("button");button.id="kqMiningReviewQuickButton";button.type="button";button.addEventListener("click",()=>launch("mining"));miningNav.prepend(button);}const miningDue=dueVocab("mining");const miningLabel=`Mining-Reviews (${miningDue})`;if(button.textContent!==miningLabel)button.textContent=miningLabel;if(button.disabled===Boolean(miningDue))button.disabled=!miningDue;}
+      }
+      function autoAdvanceCorrect(){
+        const pairs=[['.feedback.good','#kqProblemNext'],['.kq-particle-feedback.good','#kqParticleNext'],['.kq-pp-review.good','#kqPpReviewNext']];
+        for(const [feedbackSelector,nextSelector] of pairs){const feedback=document.querySelector(feedbackSelector);const next=document.querySelector(nextSelector);if(feedback&&visible(next)&&!next.dataset.kqAutoAdvanced){next.dataset.kqAutoAdvanced="1";setTimeout(()=>{if(document.contains(next))next.click();},70);}}
+      }
+      let queued=false;function refresh(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;refreshInputs();installReviewVisibility();autoAdvanceCorrect();window.KotobaQuestStoryEnergy?.sync?.();});}
+      new MutationObserver(refresh).observe(document.documentElement,{childList:true,subtree:true});
+      setInterval(refresh,1200);refresh();
+      window.KotobaQuestInteraction={version:2,refresh,launchReview:launch};
+    }
+
     function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const vocabularyLessonCheckpointScript = "<script>(" + vocabularyLessonCheckpointBootstrap.toString() + ")();<" + "/script>";
@@ -31419,11 +31914,13 @@ ${tooltipText(segment, status)}`)}"`
       const particlePathScript = "<script>(" + particlePathBootstrap.toString() + ")();<" + "/script>";
       const problemWorkshopScript = "<script>(" + problemWordWorkshopBootstrap.toString() + ")();<" + "/script>";
       const resonanceTrainingScript = "<script>(" + resonanceTrainingBootstrap.toString() + ")();<" + "/script>";
+      const storyEnergyScript = "<script>(" + storyEnergyLedgerBootstrap.toString() + ")();<" + "/script>";
       // Story reward integrity pass 4.1
   const storyReaderScript = "<script>(" + storyReaderBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
       const interfaceScript = "<script>(" + interfaceReorganizationBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}`;
+      const interactionScript = "<script>(" + systemInteractionConsistencyBootstrap.toString() + ")();<" + "/script>";
+      const enhancementScripts = `${grammarScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
