@@ -353,7 +353,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "resonance-training-1";
+    const CLOUD_FEATURE_VERSION = "grammar-roundup-performance-fix-1";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -32621,8 +32621,14 @@ ${tooltipText(segment, status)}`)}"`
         const entry = document.getElementById("kqN4RecapEntry");
         if (entry) {
           const known = allKnownCount();
-          entry.innerHTML = `<div class="section-title"><div><p class="eyebrow">Eigenes Paket · N4-Voraussetzungen</p><h2>🧭 N4-Standorttest</h2><p>N4 erscheint nicht als zweiter linearer Lektionspfad. ${CORE_POINTS.length} Grundlagen werden in gemischten, unangekündigten Prüfaufgaben bestätigt; nur echte Lücken öffnen Reparaturlektionen.</p></div><button class="primary" type="button" id="kqN4EntryOpen">Standorttest öffnen</button></div><div class="kq-n4-progress"><span style="width:${Math.round(known/CORE_POINTS.length*100)}%"></span></div><p class="small muted">${known}/${CORE_POINTS.length} sicher bestätigt · ${provisionalCount()} frühere Einstufungen noch zu bestätigen · ${activeRepairs().length} Reparaturen offen</p>`;
-          entry.querySelector("#kqN4EntryOpen")?.addEventListener("click", open);
+          const provisional = provisionalCount();
+          const repairs = activeRepairs().length;
+          const signature = `${known}|${provisional}|${repairs}|${CORE_POINTS.length}`;
+          if (entry.dataset.n4Signature !== signature) {
+            entry.dataset.n4Signature = signature;
+            entry.innerHTML = `<div class="section-title"><div><p class="eyebrow">Eigenes Paket · N4-Voraussetzungen</p><h2>🧭 N4-Standorttest</h2><p>N4 erscheint nicht als zweiter linearer Lektionspfad. ${CORE_POINTS.length} Grundlagen werden in gemischten, unangekündigten Prüfaufgaben bestätigt; nur echte Lücken öffnen Reparaturlektionen.</p></div><button class="primary" type="button" id="kqN4EntryOpen">Standorttest öffnen</button></div><div class="kq-n4-progress"><span style="width:${Math.round(known/CORE_POINTS.length*100)}%"></span></div><p class="small muted">${known}/${CORE_POINTS.length} sicher bestätigt · ${provisional} frühere Einstufungen noch zu bestätigen · ${repairs} Reparaturen offen</p>`;
+            entry.querySelector("#kqN4EntryOpen")?.addEventListener("click", open);
+          }
         }
         const dash = document.getElementById("grammarDashboardCard");
         if (dash && !document.getElementById("kqN4DashboardButton")) {
@@ -32992,11 +32998,17 @@ ${tooltipText(segment, status)}`)}"`
         }
       });
 
+      // Performance fix: do not write the complete save state during app startup and
+      // do not observe every DOM mutation. The former implementation could create a
+      // self-triggering render loop because addEntryCards() changes the observed DOM.
       ensureView();
-      persist();
-      setTimeout(addEntryCards, 200);
-      setTimeout(addEntryCards, 700);
-      new MutationObserver(addEntryCards).observe(document.documentElement, {childList:true,subtree:true});
+      addEntryCards();
+      setTimeout(addEntryCards, 250);
+      setTimeout(addEntryCards, 1200);
+      document.addEventListener("click", event => {
+        if (event.target?.closest?.('[data-view="grammar"]')) setTimeout(addEntryCards, 0);
+      }, {passive:true});
+      window.addEventListener("pageshow", () => setTimeout(addEntryCards, 0), {passive:true});
       window.KotobaQuestN4Recap = {
         version:VERSION,
         open,
