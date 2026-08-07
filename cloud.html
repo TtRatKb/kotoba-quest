@@ -487,6 +487,7 @@
           ...a,
           version: Math.max(number(a.version), number(b.version)),
           currentLevel: Math.max(1, number(a.currentLevel), number(b.currentLevel)),
+          highestUnlockedLevel: Math.max(1, number(a.highestUnlockedLevel), number(b.highestUnlockedLevel), number(a.currentLevel), number(b.currentLevel)),
           levelCompleted: Boolean(a.levelCompleted || b.levelCompleted),
           points,
           stats: {
@@ -1678,7 +1679,7 @@
       if (document.getElementById("grammar")) return;
 
       const STORAGE_KEY = "kotobaQuestDataV3";
-      const GRAMMAR_VERSION = 14;
+      const GRAMMAR_VERSION = 15;
       const SKILLS = [
         { id: "meaning", label: "Verstehen", icon: "💡" },
         { id: "form", label: "Form bilden", icon: "🧩" },
@@ -17854,6 +17855,7 @@
         return {
           version: GRAMMAR_VERSION,
           currentLevel: 1,
+          highestUnlockedLevel: 1,
           levelCompleted: false,
           points: Object.fromEntries(POINTS.map(point => [
             point.id,
@@ -17871,6 +17873,17 @@
         if (!value || typeof value !== "object") return base;
         const previousVersion = Math.max(0, Number(value.version || 0));
         base.currentLevel = Math.max(1, Number(value.currentLevel || 1));
+        // Bis Version 14 war currentLevel nur nach vollständigem Guru-1-Abschluss
+        // erreichbar. Deshalb ist es ein sicherer Migrationsanker: Ein bereits
+        // erreichter Level darf durch die neue, lockerere Progression niemals
+        // wieder gesperrt werden.
+        base.highestUnlockedLevel = Math.max(
+          1,
+          Math.min(
+            GRAMMAR_LEVELS[GRAMMAR_LEVELS.length - 1]?.id || 1,
+            Number(value.highestUnlockedLevel || value.currentLevel || 1)
+          )
+        );
         base.levelCompleted = Boolean(value.levelCompleted);
         for (const point of POINTS) {
           const oldPoint = value.points?.[point.id];
@@ -17942,6 +17955,8 @@
         return POINTS.filter(point => point.track !== "N4-Recap" && Number(point.level || 1) === Number(levelId));
       }
 
+      // Guru bleibt der langfristige Mastery-Status. Er ist bewusst NICHT mehr
+      // die Eintrittskarte zum nächsten N3-Level.
       function levelIsComplete(levelId) {
         const points = levelPoints(levelId);
         return Boolean(points.length) && points.every(point =>
@@ -17954,20 +17969,81 @@
         return Boolean(points.length) && points.every(point => grammarState.points[point.id].lessonComplete);
       }
 
+      function levelProgressionStats(levelId) {
+        const points = levelPoints(levelId);
+        const totalSkills = Math.max(1, points.length * SKILLS.length);
+        const learnedLessons = points.filter(point => grammarState.points[point.id].lessonComplete).length;
+        // Stage 2 bedeutet: Die Fähigkeit wurde nach der Lektion mindestens einmal
+        // in einer echten SRS-Review erfolgreich bestätigt. Das ist früh genug für
+        // Lernfluss, aber deutlich mehr als bloßes Durchklicken der Erklärung.
+        const confirmedSkills = points.reduce((sum, point) => sum + SKILLS.filter(skill =>
+          Number(grammarState.points[point.id]?.skills?.[skill.id]?.stage || 0) >= 2
+        ).length, 0);
+        const confirmedPoints = points.filter(point => SKILLS.some(skill =>
+          Number(grammarState.points[point.id]?.skills?.[skill.id]?.stage || 0) >= 2
+        )).length;
+        const requiredConfirmedSkills = Math.max(1, Math.ceil(totalSkills * 0.5));
+        const lessonsComplete = Boolean(points.length) && learnedLessons === points.length;
+        const coverageComplete = Boolean(points.length) && confirmedPoints === points.length;
+        const ready = lessonsComplete && coverageComplete && confirmedSkills >= requiredConfirmedSkills;
+        const lessonRatio = points.length ? learnedLessons / points.length : 0;
+        const skillRatio = Math.min(1, confirmedSkills / requiredConfirmedSkills);
+        const coverageRatio = points.length ? confirmedPoints / points.length : 0;
+        const readinessPercent = Math.round((lessonRatio * 0.5 + skillRatio * 0.35 + coverageRatio * 0.15) * 100);
+        return {
+          points,
+          totalSkills,
+          learnedLessons,
+          confirmedSkills,
+          confirmedPoints,
+          requiredConfirmedSkills,
+          lessonsComplete,
+          coverageComplete,
+          ready,
+          readinessPercent
+        };
+      }
+
+      function levelIsReadyForNext(levelId) {
+        return levelProgressionStats(levelId).ready;
+      }
+
+      function levelWasAdvanced(levelId) {
+        const level = Number(levelId || 1);
+        const highest = Math.max(1, Number(grammarState.highestUnlockedLevel || grammarState.currentLevel || 1));
+        const lastLevel = GRAMMAR_LEVELS[GRAMMAR_LEVELS.length - 1]?.id || 1;
+        return level < highest || (level === lastLevel && Boolean(grammarState.levelCompleted));
+      }
+
       function isGrammarLevelUnlocked(levelId) {
         const level = Number(levelId || 1);
-        if (level <= 1) return true;
-        return GRAMMAR_LEVELS.filter(item => item.id < level).every(item => levelIsComplete(item.id));
+        return level <= Math.max(1, Number(grammarState.highestUnlockedLevel || grammarState.currentLevel || 1));
       }
 
       function currentGrammarLevel() {
-        const available = GRAMMAR_LEVELS.find(level => !levelIsComplete(level.id));
-        return available?.id || GRAMMAR_LEVELS[GRAMMAR_LEVELS.length - 1]?.id || 1;
+        const lastLevel = GRAMMAR_LEVELS[GRAMMAR_LEVELS.length - 1]?.id || 1;
+        return Math.max(1, Math.min(lastLevel, Number(grammarState.highestUnlockedLevel || grammarState.currentLevel || 1)));
       }
 
       function updateLevelCompletion() {
-        grammarState.currentLevel = currentGrammarLevel();
-        grammarState.levelCompleted = GRAMMAR_LEVELS.every(level => levelIsComplete(level.id));
+        const lastLevel = GRAMMAR_LEVELS[GRAMMAR_LEVELS.length - 1]?.id || 1;
+        grammarState.highestUnlockedLevel = Math.max(
+          1,
+          Math.min(lastLevel, Number(grammarState.highestUnlockedLevel || grammarState.currentLevel || 1))
+        );
+        // Fortschritt ist dauerhaft: Sobald ein Level einmal freigeschaltet wurde,
+        // können spätere Fehler in Reviews es nicht wieder verriegeln.
+        while (
+          grammarState.highestUnlockedLevel < lastLevel &&
+          levelIsReadyForNext(grammarState.highestUnlockedLevel)
+        ) {
+          grammarState.highestUnlockedLevel++;
+        }
+        grammarState.currentLevel = grammarState.highestUnlockedLevel;
+        grammarState.levelCompleted = Boolean(
+          grammarState.levelCompleted ||
+          (grammarState.highestUnlockedLevel >= lastLevel && levelIsReadyForNext(lastLevel))
+        );
       }
 
       function stageName(stage) {
@@ -18246,23 +18322,26 @@
         const learnedCurrent = currentPoints.filter(point => grammarState.points[point.id].lessonComplete).length;
         const guruCurrent = currentPoints.reduce((sum, point) => sum + SKILLS.filter(skill => grammarState.points[point.id].skills[skill.id].stage >= 5).length, 0);
         const totalCurrentSkills = Math.max(1, currentPoints.length * SKILLS.length);
-        const currentProgress = Math.round((guruCurrent / totalCurrentSkills) * 100);
+        const currentReadiness = levelProgressionStats(currentLevelId);
+        const currentProgress = currentReadiness.readinessPercent;
         const learnedAll = learnedPoints().length;
         const guruAll = guruSkillCount();
         const totalAllSkills = n3Points.length * SKILLS.length;
         const nextPoint = n3Points.find((point, index) => !grammarState.points[point.id].lessonComplete && isPointUnlocked(index));
         const overview = document.getElementById("grammarOverviewContent");
         if (!overview) return;
-        const completedLevels = GRAMMAR_LEVELS.filter(level => levelIsComplete(level.id));
-        const lockedLevels = GRAMMAR_LEVELS.filter(level => !levelIsComplete(level.id) && level.id !== currentLevelId);
+        const completedLevels = GRAMMAR_LEVELS.filter(level => levelWasAdvanced(level.id));
+        const masteredLevels = GRAMMAR_LEVELS.filter(level => levelIsComplete(level.id));
+        const lockedLevels = GRAMMAR_LEVELS.filter(level => !isGrammarLevelUnlocked(level.id));
         const roadmap = GRAMMAR_LEVELS.map(level => {
-          const complete = levelIsComplete(level.id);
+          const ready = levelWasAdvanced(level.id);
+          const mastered = levelIsComplete(level.id);
           const current = level.id === currentLevelId && !grammarState.levelCompleted;
           const unlocked = isGrammarLevelUnlocked(level.id);
-          return `<div class="grammar-roadmap-chip ${complete ? "complete" : current ? "current" : unlocked ? "" : "locked"}"><strong>${complete ? "✓" : current ? "▶" : "🔒"} Level ${level.id}</strong><span>${escapeHtml(level.title)}</span></div>`;
+          return `<div class="grammar-roadmap-chip ${ready ? "complete" : current ? "current" : unlocked ? "" : "locked"}"><strong>${mastered ? "★" : ready ? "✓" : current ? "▶" : "🔒"} Level ${level.id}</strong><span>${escapeHtml(level.title)}</span></div>`;
         }).join("");
 
-        const currentSection = grammarState.levelCompleted ? "" : `<section class="grammar-level-section grammar-path-now"><div class="section-title grammar-level-heading"><div><p class="eyebrow">Aktuelles N3-Level</p><h2>Level ${currentLevel.id} · ${escapeHtml(currentLevel.title)}</h2><p>${escapeHtml(currentLevel.description)}</p></div><div class="grammar-level-meta"><span class="grammar-badge ${levelIsComplete(currentLevel.id) ? "ready" : ""}">${levelIsComplete(currentLevel.id) ? "Abgeschlossen" : `${learnedCurrent}/${currentPoints.length} Lektionen · ${currentProgress}%`}</span></div></div><div class="grammar-point-list">${currentPoints.map(point => renderPointCard(point, n3Points.findIndex(item => item.id === point.id))).join("")}</div></section>`;
+        const currentSection = grammarState.levelCompleted ? "" : `<section class="grammar-level-section grammar-path-now"><div class="section-title grammar-level-heading"><div><p class="eyebrow">Aktuelles N3-Level</p><h2>Level ${currentLevel.id} · ${escapeHtml(currentLevel.title)}</h2><p>${escapeHtml(currentLevel.description)}</p></div><div class="grammar-level-meta"><span class="grammar-badge ${currentReadiness.ready ? "ready" : ""}">${currentReadiness.ready ? "Bereit fürs nächste Level" : `${learnedCurrent}/${currentPoints.length} Lektionen · ${currentReadiness.confirmedSkills}/${currentReadiness.requiredConfirmedSkills} Bestätigungen`}</span></div></div><div class="grammar-point-list">${currentPoints.map(point => renderPointCard(point, n3Points.findIndex(item => item.id === point.id))).join("")}</div></section>`;
 
         const waitingForReviews = !nextPoint && !grammarState.levelCompleted && levelLessonsComplete(currentLevel.id);
         const actionClass = due ? "due" : nextPoint ? "learn" : "";
@@ -18272,17 +18351,17 @@
           : nextPoint
             ? `Als Nächstes: ${escapeHtml(nextPoint.title)}`
             : grammarState.levelCompleted
-              ? "N3-Grammatikpfad abgeschlossen"
-              : "Nächstes Level wartet auf deine SRS-Festigung";
+              ? "N3-Lernpfad durchlaufen"
+              : "Noch eine erste Festigung bis zum nächsten Level";
         const actionText = due
-          ? "Fällige Wiederholungen haben Vorrang, damit der Lernpfad nicht nur neue Grammatik stapelt. Danach kannst du direkt mit der nächsten Lektion weitermachen."
+          ? "Fällige Wiederholungen haben Vorrang, damit der Lernpfad nicht nur neue Grammatik stapelt. Guru ist für den Levelaufstieg aber nicht mehr nötig."
           : nextPoint
             ? `${escapeHtml(nextPoint.subtitle)} · Die nächste Lektion ist bereits freigeschaltet.`
             : grammarState.levelCompleted
-              ? "Alle enthaltenen N3-Level und Teilfähigkeiten sind mindestens auf Guru 1 gefestigt."
+              ? "Alle 51 N3-Level wurden durchlaufen. Guru, Master und höhere Stufen bleiben dein langfristiges SRS-Festigungsziel."
               : waitingForReviews
-                ? `${nextDueLabel()} · Sobald alle Teilfähigkeiten des aktuellen Levels Guru 1 erreichen, wird das nächste Level automatisch freigeschaltet.`
-                : "Der nächste Schritt wird automatisch freigeschaltet, sobald die Voraussetzungen erfüllt sind.";
+                ? `${nextDueLabel()} · Für Level ${Math.min(currentLevel.id + 1, GRAMMAR_LEVELS.length)} brauchst du ${currentReadiness.requiredConfirmedSkills} erste erfolgreiche SRS-Bestätigungen, verteilt über alle ${currentReadiness.points.length} Grammatikpunkte. Aktuell: ${currentReadiness.confirmedSkills}/${currentReadiness.requiredConfirmedSkills} Bestätigungen und ${currentReadiness.confirmedPoints}/${currentReadiness.points.length} Punkte einmal bestätigt. Guru ist nicht erforderlich.`
+                : "Lerne zuerst alle Grammatikpunkte dieses Levels. Danach genügt eine überschaubare erste SRS-Festigung statt Guru 1 auf allen vier Skills.";
 
         const lessonButton = `<button class="${due ? "secondary" : "primary"}" id="grammarNextLesson" ${nextPoint ? "" : "disabled"}>${nextPoint ? "Nächste Lektion" : grammarState.levelCompleted ? "N3 abgeschlossen" : "Nächste Lektion noch gesperrt"}</button>`;
         const reviewButton = `<button class="${due ? "primary" : "secondary"}" id="grammarStartReview" ${due ? "" : "disabled"}>${due ? `${due} Review${due === 1 ? "" : "s"} starten` : nextDueAt() ? nextDueLabel() : "Noch keine Reviews"}</button>`;
@@ -18292,15 +18371,15 @@
           <div class="grammar-overview-grid">
             <article class="card grammar-hero">
               <p class="eyebrow">N3 · progressiver Lernpfad</p>
-              <h2>${grammarState.levelCompleted ? "N3 ist vollständig gefestigt." : `Level ${currentLevel.id}: ${escapeHtml(currentLevel.title)}`}</h2>
+              <h2>${grammarState.levelCompleted ? "N3-Lernpfad vollständig durchlaufen." : `Level ${currentLevel.id}: ${escapeHtml(currentLevel.title)}`}</h2>
               <p>Hier lernst du N3 Schritt für Schritt. Nur dein aktuelles Level ist offen sichtbar; alles Weitere bleibt kompakt in der Roadmap.</p>
             </article>
             <article class="card level-card">
               <span class="muted small">Aktuelles N3-Level</span>
               <div class="level-number">${currentLevel.id}</div>
               <div class="progress-track"><div class="progress-fill" style="width:${currentProgress}%"></div></div>
-              <div class="small muted">${guruCurrent} von ${totalCurrentSkills} Teilfähigkeiten auf Guru 1</div>
-              <div class="level-detail"><strong>${levelIsComplete(currentLevel.id) ? "Level abgeschlossen" : `${learnedCurrent} von ${currentPoints.length} Lektionen gelernt`}</strong><span class="small muted">${levelLessonsComplete(currentLevel.id) && !levelIsComplete(currentLevel.id) ? "Alle Lektionen gelernt · jetzt entscheidet das SRS." : "Lektionen werden innerhalb des Levels nacheinander freigeschaltet."}</span></div>
+              <div class="small muted">${currentReadiness.confirmedSkills}/${currentReadiness.requiredConfirmedSkills} erste SRS-Bestätigungen · ${guruCurrent}/${totalCurrentSkills} Teilfähigkeiten bereits Guru</div>
+              <div class="level-detail"><strong>${currentReadiness.ready ? "Level-Readiness erreicht" : `${learnedCurrent} von ${currentPoints.length} Lektionen gelernt`}</strong><span class="small muted">${levelLessonsComplete(currentLevel.id) && !currentReadiness.ready ? "Alle Lektionen gelernt · jetzt reicht eine erste, breit verteilte SRS-Bestätigung. Guru ist langfristige Festigung, keine Schranke mehr." : "Lektionen werden innerhalb des Levels nacheinander freigeschaltet."}</span></div>
             </article>
           </div>
           <div id="grammarN3PrimaryBlock" class="grammar-primary-block">
@@ -18310,14 +18389,14 @@
             </section>
             ${currentSection}
           </div>
-          <div class="grammar-stats"><div class="grammar-stat"><strong>${n3Points.length - learnedAll}</strong><span>offene N3-Lektionen</span></div><div class="grammar-stat"><strong>${due}</strong><span>fällige N3-Reviews</span></div><div class="grammar-stat"><strong>${completedLevels.length}/${GRAMMAR_LEVELS.length}</strong><span>Level abgeschlossen</span></div><div class="grammar-stat"><strong>${Math.round(guruAll / Math.max(1,totalAllSkills) * 100)}%</strong><span>N3-Gesamtfortschritt</span></div></div>
+          <div class="grammar-stats"><div class="grammar-stat"><strong>${n3Points.length - learnedAll}</strong><span>offene N3-Lektionen</span></div><div class="grammar-stat"><strong>${due}</strong><span>fällige N3-Reviews</span></div><div class="grammar-stat"><strong>${completedLevels.length}/${GRAMMAR_LEVELS.length}</strong><span>Level-Readiness erreicht</span></div><div class="grammar-stat"><strong>${Math.round(guruAll / Math.max(1,totalAllSkills) * 100)}%</strong><span>langfristig auf Guru</span></div></div>
           ${renderN3CoreCompletionPanel()}
-          <details class="card grammar-package-details"><summary>N3-Roadmap · ${completedLevels.length}/${GRAMMAR_LEVELS.length} Level abgeschlossen</summary><div class="grammar-roadmap-compact" style="margin-top:12px">${roadmap}</div><p class="small muted" style="margin-bottom:0">${lockedLevels.length} spätere Level bleiben bewusst kompakt, bis sie an der Reihe sind.</p></details>`;
+          <details class="card grammar-package-details"><summary>N3-Roadmap · ${completedLevels.length}/${GRAMMAR_LEVELS.length} Level durchlaufen · ${masteredLevels.length} komplett Guru</summary><div class="grammar-roadmap-compact" style="margin-top:12px">${roadmap}</div><p class="small muted" style="margin-bottom:0">✓ = für den Lernpfad ausreichend gefestigt · ★ = alle vier Skills aller Punkte mindestens Guru 1 · ${lockedLevels.length} spätere Level sind noch nicht freigeschaltet.</p></details>`;
 
         document.getElementById("grammarNextLesson")?.addEventListener("click", () => {
           if (nextPoint) startLesson(nextPoint.id);
           else if (grammarState.levelCompleted) notify("Der N3-Pfad ist abgeschlossen.");
-          else notify("Das nächste Level wird nach Guru 1 im aktuellen Level freigeschaltet.");
+          else notify("Für das nächste Level reicht eine erste SRS-Festigung – Guru 1 ist nicht mehr erforderlich.");
         });
         document.getElementById("grammarStartReview")?.addEventListener("click", () => startReviewSession(false));
         overview.querySelectorAll("[data-grammar-lesson]").forEach(button => button.addEventListener("click", () => startLesson(button.dataset.grammarLesson)));
@@ -18372,7 +18451,7 @@
         const n3Total = POINTS.filter(point => point.track !== "N4-Recap").length;
         status.textContent = due ? `${due} N3-Grammatik-Reviews fällig` : `N3-Level ${levelId} · ${learned} von ${n3Total} Lektionen gelernt`;
         detail.textContent = grammarState.levelCompleted
-          ? "Alle derzeit enthaltenen Grammatiklevel sind abgeschlossen."
+          ? "Alle derzeit enthaltenen Grammatiklevel wurden durchlaufen; das SRS festigt sie unabhängig weiter bis Guru, Master und darüber hinaus."
           : due
             ? "Verstehen, alle Bildungsformen, Hören und Abrufen werden getrennt wiederholt."
             : learned
@@ -18571,6 +18650,7 @@
       let reviewCurrent = null;
       let reviewRevealed = false;
       let reviewPracticeOnly = false;
+      let reviewStartLevel = 1;
       let reviewResults = { good: 0, close: 0, bad: 0 };
       let reviewSentenceHistory = new Map();
 
@@ -18761,6 +18841,7 @@
           }
         }
         reviewPracticeOnly = practiceOnly;
+        reviewStartLevel = currentGrammarLevel();
         reviewSentenceHistory = new Map();
         reviewQueue = shuffle(baseItems).slice(0, 20).map(item => makeReviewItem(item.pointId, item.skillId, practiceOnly));
         reviewIndex = 0;
@@ -18984,10 +19065,30 @@
 
       function renderReviewSummary() {
         const card = document.getElementById("grammarReviewCard");
-        card.innerHTML = `<div class="grammar-kicker">Session abgeschlossen</div><h2>${reviewPracticeOnly ? "Freie Übungsrunde beendet" : "Grammatik-Reviews gespeichert"}</h2>
+        updateLevelCompletion();
+        const levelAfter = currentGrammarLevel();
+        const unlockedNewLevel = !reviewPracticeOnly && levelAfter > reviewStartLevel;
+        const n3Points = POINTS.filter(point => point.track !== "N4-Recap");
+        const nextPoint = n3Points.find((point, index) => !grammarState.points[point.id].lessonComplete && isPointUnlocked(index));
+        const heading = unlockedNewLevel
+          ? `Level ${levelAfter} freigeschaltet!`
+          : grammarState.levelCompleted && !reviewPracticeOnly
+            ? "N3-Lernpfad vollständig durchlaufen!"
+            : reviewPracticeOnly
+              ? "Freie Übungsrunde beendet"
+              : "Grammatik-Reviews gespeichert";
+        const flowNote = unlockedNewLevel
+          ? `Deine erste SRS-Festigung in Level ${reviewStartLevel} reicht jetzt für den Lernfortschritt. Die alten Grammatikpunkte bleiben trotzdem ganz normal im SRS und können später Guru, Master und höher erreichen.`
+          : grammarState.levelCompleted && !reviewPracticeOnly
+            ? "Alle N3-Level sind jetzt für den Lernpfad durchlaufen. Die langfristige Festigung läuft unabhängig davon im SRS weiter."
+            : reviewPracticeOnly
+              ? "Diese freiwillige Runde hat deine SRS-Stufen nicht verändert."
+              : "Richtige Antworten wurden hochgestuft. Fast richtige Antworten werden nach einer Stunde, falsche nach dreißig Minuten wieder fällig. Guru bleibt ein langfristiges Festigungsziel und blockiert keine neuen Level mehr.";
+        card.innerHTML = `<div class="grammar-kicker">Session abgeschlossen</div><h2>${heading}</h2>
           <div class="grammar-stats"><div class="grammar-stat"><strong>${reviewResults.good}</strong><span>Richtig</span></div><div class="grammar-stat"><strong>${reviewResults.close}</strong><span>Fast richtig</span></div><div class="grammar-stat"><strong>${reviewResults.bad}</strong><span>Falsch</span></div><div class="grammar-stat"><strong>${dueItems().length}</strong><span>Jetzt noch fällig</span></div></div>
-          <p class="grammar-explanation">${reviewPracticeOnly ? "Diese freiwillige Runde hat deine SRS-Stufen nicht verändert." : "Richtige Antworten wurden hochgestuft. Fast richtige Antworten werden nach einer Stunde, falsche nach dreißig Minuten wieder fällig. Innerhalb derselben Session gibt es keine Sofortwiederholung."}</p>
-          <div class="button-row"><button class="primary" id="grammarSummaryBack">Zur Grammatik-Übersicht</button>${dueItems().length ? `<button class="secondary" id="grammarSummaryContinue">Weitere Reviews</button>` : ""}</div>`;
+          <p class="grammar-explanation">${flowNote}</p>
+          <div class="button-row">${unlockedNewLevel && nextPoint ? `<button class="primary" id="grammarSummaryNextLesson">Level ${levelAfter} starten</button>` : `<button class="primary" id="grammarSummaryBack">Zur Grammatik-Übersicht</button>`}${dueItems().length ? `<button class="secondary" id="grammarSummaryContinue">Weitere Reviews</button>` : ""}${unlockedNewLevel && nextPoint ? `<button class="ghost" id="grammarSummaryBack">Zur Übersicht</button>` : ""}</div>`;
+        document.getElementById("grammarSummaryNextLesson")?.addEventListener("click", () => startLesson(nextPoint.id));
         document.getElementById("grammarSummaryBack")?.addEventListener("click", () => openGrammarView("grammar"));
         document.getElementById("grammarSummaryContinue")?.addEventListener("click", () => startReviewSession(false));
         updateGrammarDashboard();
