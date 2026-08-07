@@ -353,7 +353,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "n4-adaptive-quality-audit-2";
+    const CLOUD_FEATURE_VERSION = "smart-review-v1-vocab-mix";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -28867,14 +28867,13 @@ function shuffle(values) {
           ? state.readerSettings
           : {};
         state.readerSettings.showAllTranslations = Boolean(state.readerSettings.showAllTranslations);
-        const validReaderModes = new Set(["learn", "focus", "immersion", "shadow", "custom"]);
+        const validReaderModes = new Set(["learn", "focus", "immersion", "shadow"]);
         state.readerSettings.mode = validReaderModes.has(state.readerSettings.mode) ? state.readerSettings.mode : "learn";
         const presetDefaults = {
           learn: { showFurigana:true, showSupportCards:true, highlightMode:"all", showTooltips:true },
           focus: { showFurigana:false, showSupportCards:true, highlightMode:"unknown", showTooltips:true },
           immersion: { showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false },
-          shadow: { showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false },
-          custom: { showFurigana:true, showSupportCards:true, highlightMode:"all", showTooltips:true }
+          shadow: { showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false }
         };
         const preset = presetDefaults[state.readerSettings.mode] || presetDefaults.learn;
         if (typeof state.readerSettings.showFurigana !== "boolean") state.readerSettings.showFurigana = preset.showFurigana;
@@ -29383,96 +29382,6 @@ function shuffle(values) {
         if (!reading || !/[\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]/.test(String(surface || ""))) return esc(surface);
         return `<ruby>${esc(surface)}<rt>${esc(reading)}</rt></ruby>`;
       }
-
-      const STORY_READER_2_VERSION = "2.0";
-      const STORY_READER_PRESETS = {
-        learn: { label:"Lernen", icon:"🌸", showFurigana:true, showSupportCards:true, highlightMode:"all", showTooltips:true },
-        focus: { label:"Fokus", icon:"🎯", showFurigana:false, showSupportCards:true, highlightMode:"unknown", showTooltips:true },
-        immersion: { label:"Immersion", icon:"🌙", showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false },
-        shadow: { label:"Shadowing", icon:"🎧", showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false }
-      };
-
-      function applyReaderPreset(mode, { persistChange = true, rerender = true } = {}) {
-        const preset = STORY_READER_PRESETS[mode] || STORY_READER_PRESETS.learn;
-        state.readerSettings.mode = STORY_READER_PRESETS[mode] ? mode : "learn";
-        state.readerSettings.showFurigana = preset.showFurigana;
-        state.readerSettings.showSupportCards = preset.showSupportCards;
-        state.readerSettings.highlightMode = preset.highlightMode;
-        state.readerSettings.showTooltips = preset.showTooltips;
-        state.readerSettings.showAllTranslations = false;
-        openTranslations.clear();
-        detailTarget = null;
-        if (persistChange) persist();
-        if (rerender) renderStory();
-      }
-
-      function cycleHighlightMode() {
-        const modes = ["all", "unknown", "off"];
-        const current = modes.indexOf(state.readerSettings.highlightMode);
-        state.readerSettings.highlightMode = modes[(current + 1 + modes.length) % modes.length];
-        state.readerSettings.mode = "custom";
-        persist();
-        renderStory();
-      }
-
-      function sentencePlainText(sentence) {
-        return (sentence?.segments || []).map(segment => String(segment?.text || "")).join("").trim();
-      }
-
-      let storySpeechRun = 0;
-      function speakStoryText(text, { rate = 0.84, repeat = 1 } = {}) {
-        const spoken = String(text || "").trim();
-        if (!spoken || !("speechSynthesis" in window)) {
-          notify("Die Browserstimme ist auf diesem Gerät nicht verfügbar.");
-          return;
-        }
-        const run = ++storySpeechRun;
-        window.speechSynthesis.cancel();
-        const play = remaining => {
-          if (run !== storySpeechRun || remaining <= 0) return;
-          const utterance = new SpeechSynthesisUtterance(spoken);
-          utterance.lang = "ja-JP";
-          utterance.rate = Math.max(0.55, Math.min(1.05, Number(rate || 0.84)));
-          const voices = window.speechSynthesis.getVoices();
-          utterance.voice = voices.find(voice => String(voice.lang || "").toLowerCase().startsWith("ja")) || null;
-          utterance.onend = () => {
-            if (run !== storySpeechRun || remaining <= 1) return;
-            setTimeout(() => play(remaining - 1), 520);
-          };
-          window.speechSynthesis.speak(utterance);
-        };
-        play(Math.max(1, Number(repeat || 1)));
-      }
-
-      function stopStorySpeech() {
-        storySpeechRun += 1;
-        try { window.speechSynthesis?.cancel?.(); } catch {}
-      }
-
-      function readerModeClass() {
-        const mode = STORY_READER_PRESETS[state.readerSettings.mode] ? state.readerSettings.mode : "custom";
-        return [
-          `mode-${mode}`,
-          state.readerSettings.showFurigana ? "furigana-on" : "furigana-off",
-          state.readerSettings.showSupportCards ? "support-on" : "support-off",
-          `highlight-${state.readerSettings.highlightMode || "all"}`,
-          state.readerSettings.showTooltips ? "tooltips-on" : "tooltips-off"
-        ].join(" ");
-      }
-
-      function readerPresetControls() {
-        const mode = state.readerSettings.mode;
-        const highlightLabel = state.readerSettings.highlightMode === "all" ? "Alle Statusfarben" : state.readerSettings.highlightMode === "unknown" ? "Nur Lernbedarf" : "Farben aus";
-        return `<section class="kq-sr-reader-controls" aria-label="Story Reader 2.0 Einstellungen">
-          <div class="kq-sr-reader-controls-head"><div><span class="kq-sr-side-kicker">Story Reader 2.0</span><strong>Wie viel Hilfe möchtest du?</strong></div><small>Einstellungen werden gespeichert.</small></div>
-          <div class="kq-sr-reader-presets">${Object.entries(STORY_READER_PRESETS).map(([id,preset]) => `<button type="button" class="${mode === id ? "active" : ""}" data-sr-reader-preset="${id}"><span>${preset.icon}</span><b>${preset.label}</b></button>`).join("")}</div>
-          <div class="kq-sr-reader-toggles">
-            <button type="button" class="ghost ${state.readerSettings.showFurigana ? "active" : ""}" data-sr-toggle-furigana>ふ Furigana ${state.readerSettings.showFurigana ? "an" : "aus"}</button>
-            <button type="button" class="ghost ${state.readerSettings.showSupportCards ? "active" : ""}" data-sr-toggle-support>🗂 Satzkarten ${state.readerSettings.showSupportCards ? "an" : "aus"}</button>
-            <button type="button" class="ghost" data-sr-cycle-highlight>🎨 ${esc(highlightLabel)}</button>
-          </div>
-        </section>`;
-      }
     
       function tooltipText(segment, status) {
         const lines = [];
@@ -29511,12 +29420,9 @@ function shuffle(values) {
         const classes = ["kq-sr-token"];
         if (tracked) classes.push("interactive", status.unknown ? "unknown" : "known", `mastery-${status.mastery}`);
         else if (segment.gloss) classes.push("interactive", "language-help");
-        const tip = state.readerSettings.showTooltips
-          ? ` data-sr-tip="${esc(`${tracked ? status.masteryLabel : "Sprachbaustein"}
-${tooltipText(segment, status)}`)}"`
-          : "";
         const attrs = interactive
-          ? `tabindex="0" role="button" ${tracked ? `data-sr-mastery="${esc(status.mastery)}"` : `data-sr-mastery="context"`} data-sr-detail="${esc(detailKey(context.sceneId, context.blockIndex, context.sentenceIndex, context.segmentIndex))}"${tip}`
+          ? `tabindex="0" role="button" ${tracked ? `data-sr-mastery="${esc(status.mastery)}"` : `data-sr-mastery="context"`} data-sr-detail="${esc(detailKey(context.sceneId, context.blockIndex, context.sentenceIndex, context.segmentIndex))}" data-sr-tip="${esc(`${tracked ? status.masteryLabel : "Sprachbaustein"}
+${tooltipText(segment, status)}`)}"`
           : "";
         return `<span class="${classes.join(" ")}" ${attrs}>${ruby(segment.text, segment.reading)}</span>`;
       }
@@ -29973,7 +29879,6 @@ ${tooltipText(segment, status)}`)}"`
         if (detailTarget && String(detailTarget).startsWith(detailPrefix)) {
           return `<aside class="kq-sr-sentence-support detail-open"><div id="kqSrDetailPanel">${renderDetailPanel(resolveDetail(detailTarget))}</div></aside>`;
         }
-        if (!state.readerSettings.showSupportCards) return "";
         const items = unknownItemsInSentence(sentence, context);
         const scene = sceneById(activePack(), context.sceneId);
         const vocabularyGroups = { recommended: [], core: [], active: [], context: [] };
@@ -30017,9 +29922,7 @@ ${tooltipText(segment, status)}`)}"`
       function renderSentence(sentence, context) {
         const translationKey = `${context.sceneId}:${context.blockIndex}:${context.sentenceIndex}`;
         const translated = state.readerSettings.showAllTranslations || openTranslations.has(translationKey);
-        const shadow = state.readerSettings.mode === "shadow";
-        const audioControls = `<div class="kq-sr-sentence-audio"><button type="button" class="ghost" data-sr-audio="${context.blockIndex}:${context.sentenceIndex}" title="Japanischen Satz abspielen">🔊 ${shadow ? "Hören" : "Audio"}</button><button type="button" class="ghost" data-sr-audio-slow="${context.blockIndex}:${context.sentenceIndex}" title="Langsamer abspielen">🐢 ${shadow ? "Langsam" : "0,72×"}</button>${shadow ? `<button type="button" class="ghost" data-sr-audio-repeat="${context.blockIndex}:${context.sentenceIndex}" title="Zweimal mit kurzer Pause abspielen">↻ 2×</button>` : ""}</div>`;
-        return `<div class="kq-sr-sentence-row" data-sr-sentence-row="${context.blockIndex}-${context.sentenceIndex}"><article class="kq-sr-sentence" data-sr-sentence="${context.blockIndex}-${context.sentenceIndex}"><div class="kq-sr-sentence-head">${audioControls}<button type="button" class="kq-sr-translation-toggle" data-sr-translation="${context.blockIndex}:${context.sentenceIndex}">${translated ? "Übersetzung ausblenden" : "Übersetzung prüfen"}</button></div><div class="kq-sr-japanese">${sentence.segments.map((segment, segmentIndex) => renderSegment(segment, { ...context, segmentIndex })).join("")}</div><p class="kq-sr-translation" ${translated ? "" : "hidden"}>${esc(sentence.translation)}</p>${shadow ? `<p class="kq-sr-shadow-cue">Hören → mitsprechen → noch einmal hören. Die Übersetzung bleibt bewusst optional.</p>` : ""}</article>${renderSentenceSupport(sentence, context)}</div>`;
+        return `<div class="kq-sr-sentence-row" data-sr-sentence-row="${context.blockIndex}-${context.sentenceIndex}"><article class="kq-sr-sentence" data-sr-sentence="${context.blockIndex}-${context.sentenceIndex}"><div class="kq-sr-japanese">${sentence.segments.map((segment, segmentIndex) => renderSegment(segment, { ...context, segmentIndex })).join("")}</div><button type="button" class="kq-sr-translation-toggle" data-sr-translation="${context.blockIndex}:${context.sentenceIndex}">${translated ? "Übersetzung ausblenden" : "Satz übersetzen"}</button><p class="kq-sr-translation" ${translated ? "" : "hidden"}>${esc(sentence.translation)}</p></article>${renderSentenceSupport(sentence, context)}</div>`;
       }
     
       function sceneMasterySummary(scene) {
@@ -30075,30 +29978,20 @@ ${tooltipText(segment, status)}`)}"`
           : next
             ? "Mit „Abschnitt beenden“ wird dein Fortschritt gespeichert und du gelangst direkt zum nächsten Abschnitt – oder zu seiner Sperrseite."
             : "Mit „Path beenden“ wird dein Fortschritt gespeichert und du kehrst zum Story-Dashboard zurück.";
-        const mode = STORY_READER_PRESETS[state.readerSettings.mode] || null;
-        const modeNote = state.readerSettings.mode === "immersion"
-          ? "Immersion: Hilfen sind aus dem Lesefluss entfernt. Wörter und Grammatik bleiben anklickbar, falls du doch etwas nachschlagen möchtest."
-          : state.readerSettings.mode === "shadow"
-            ? "Shadowing: Höre jeden Satz, sprich ihn nach und nutze die langsame oder doppelte Wiedergabe. Übersetzung und Hilfen bleiben optional."
-            : state.readerSettings.mode === "focus"
-              ? "Fokus: Furigana sind aus; farbig bleiben nur Inhalte, die noch nicht sicher auf Guru oder höher sind."
-              : `${totalUnknown ? `${totalUnknown} aktuell nicht sichere Inhalte werden im Lernmodus direkt unterstützt.` : "Alle annotierten Inhalte gelten derzeit als bekannt."} Übersetzungen bleiben zunächst verdeckt.`;
-        return `<div class="kq-sr-reader-shell ${readerModeClass()}" data-sr-reader-version="${STORY_READER_2_VERSION}">
+        return `<div class="kq-sr-reader-shell">
           <div class="kq-sr-reader-main">
             <div class="kq-sr-scene-toolbar">
               <div><span>${esc(scene.chapter || pack.title)}</span><h2>${esc(scene.title)}</h2><p>${esc(scene.subtitle || "")}</p></div>
               <div class="button-row"><button type="button" class="ghost" data-sr-all-translations>${state.readerSettings.showAllTranslations ? "Alle Übersetzungen aus" : "Alle Übersetzungen an"}</button><button type="button" class="ghost" data-sr-library>Story-Pfad</button></div>
             </div>
-            ${readerPresetControls()}
-            <div class="kq-sr-reader-note"><span>${mode?.icon || "⚙️"}</span><div><strong>${esc(mode?.label || "Eigene Reader-Einstellungen")}</strong><p>${esc(modeNote)}</p></div></div>
+            <div class="kq-sr-reader-note"><span>ふ</span><div><strong>Furigana bleiben immer sichtbar.</strong><p>${totalUnknown ? `${totalUnknown} aktuell unbekannte Inhalte werden direkt neben dem jeweiligen Satz erklärt. Nur ein begrenzter Teil wird als aktives Mining-Ziel empfohlen; die übrigen Wörter dienen zunächst nur dem Textverständnis.` : "Alle annotierten Inhalte gelten derzeit als bekannt; ihre Bedeutungen bleiben bis zum Hover oder Antippen verborgen."}</p></div></div>
             ${renderMasteryPanel(mastery)}
             ${renderVocabularyBudgetPanel(scene)}
             <div class="kq-sr-story-text">${scene.blocks.map((block, blockIndex) => `<section class="kq-sr-text-block">${block.heading ? `<h3>${esc(block.heading)}</h3>` : ""}${block.sentences.map((sentence, sentenceIndex) => renderSentence(sentence, { sceneId: scene.id, blockIndex, sentenceIndex })).join("")}</section>`).join("")}</div>
-            <div class="kq-sr-scene-end"><p>${completed ? "Dieser Abschnitt ist bereits abgeschlossen. Du kannst ihn jederzeit erneut lesen." : completionCopy}</p><div class="button-row"><button type="button" class="ghost" data-sr-reread-immersion>🌙 Ohne Hilfen nochmal lesen</button>${prev ? `<button type="button" class="ghost" data-sr-scene="${esc(prev.id)}">Zurück</button>` : ""}${completed ? (next ? `<button type="button" class="secondary" ${nextUnlocked ? `data-sr-scene="${esc(next.id)}"` : "disabled"}>Nächster Abschnitt</button>` : `<button type="button" class="secondary" data-sr-library>Story-Dashboard</button>`) : `<button type="button" class="primary" data-sr-complete="${esc(scene.id)}">${esc(completionLabel)}</button>`}</div></div>
+            <div class="kq-sr-scene-end"><p>${completed ? "Dieser Abschnitt ist bereits abgeschlossen. Du kannst ihn jederzeit erneut lesen." : completionCopy}</p><div class="button-row">${prev ? `<button type="button" class="ghost" data-sr-scene="${esc(prev.id)}">Zurück</button>` : ""}${completed ? (next ? `<button type="button" class="secondary" ${nextUnlocked ? `data-sr-scene="${esc(next.id)}"` : "disabled"}>Nächster Abschnitt</button>` : `<button type="button" class="secondary" data-sr-library>Story-Dashboard</button>`) : `<button type="button" class="primary" data-sr-complete="${esc(scene.id)}">${esc(completionLabel)}</button>`}</div></div>
           </div>
         </div>`;
       }
-
       function requirementLabel(scene, progress) {
         const requirements = scene.unlock || {};
         const lines = [];
@@ -30535,37 +30428,6 @@ ${tooltipText(segment, status)}`)}"`
           renderStory();
         }));
         root.querySelectorAll("[data-sr-detail-close]").forEach(button => button.addEventListener("click", () => { detailTarget = null; renderStory(); }));
-        root.querySelectorAll("[data-sr-reader-preset]").forEach(button => button.addEventListener("click", () => applyReaderPreset(button.dataset.srReaderPreset)));
-        root.querySelectorAll("[data-sr-toggle-furigana]").forEach(button => button.addEventListener("click", () => {
-          state.readerSettings.showFurigana = !state.readerSettings.showFurigana;
-          state.readerSettings.mode = "custom";
-          persist();
-          renderStory();
-        }));
-        root.querySelectorAll("[data-sr-toggle-support]").forEach(button => button.addEventListener("click", () => {
-          state.readerSettings.showSupportCards = !state.readerSettings.showSupportCards;
-          state.readerSettings.mode = "custom";
-          detailTarget = null;
-          persist();
-          renderStory();
-        }));
-        root.querySelectorAll("[data-sr-cycle-highlight]").forEach(button => button.addEventListener("click", cycleHighlightMode));
-        root.querySelectorAll("[data-sr-reread-immersion]").forEach(button => button.addEventListener("click", () => {
-          applyReaderPreset("immersion", { rerender:false });
-          renderStory();
-          requestAnimationFrame(() => document.querySelector(".kq-sr-story-text")?.scrollIntoView?.({ behavior:"smooth", block:"start" }));
-        }));
-        const playSentenceFromButton = (button, options) => {
-          const pack = activePack();
-          const scene = sceneById(pack, activeSceneId);
-          const raw = button.dataset.srAudio || button.dataset.srAudioSlow || button.dataset.srAudioRepeat || "";
-          const [blockIndex, sentenceIndex] = raw.split(":").map(Number);
-          const sentence = scene?.blocks?.[blockIndex]?.sentences?.[sentenceIndex];
-          if (sentence) speakStoryText(sentencePlainText(sentence), options);
-        };
-        root.querySelectorAll("[data-sr-audio]").forEach(button => button.addEventListener("click", () => playSentenceFromButton(button, { rate:0.84, repeat:1 })));
-        root.querySelectorAll("[data-sr-audio-slow]").forEach(button => button.addEventListener("click", () => playSentenceFromButton(button, { rate:0.72, repeat:1 })));
-        root.querySelectorAll("[data-sr-audio-repeat]").forEach(button => button.addEventListener("click", () => playSentenceFromButton(button, { rate:0.78, repeat:2 })));
         root.querySelectorAll("[data-sr-translation]").forEach(button => button.addEventListener("click", () => {
           const pack = activePack();
           const scene = sceneById(pack, activeSceneId);
@@ -30841,29 +30703,6 @@ ${tooltipText(segment, status)}`)}"`
           .kq-sr-mastery-panel>p{margin:10px 0 0;color:var(--muted);font-size:.78rem;line-height:1.45}
         `;
         document.head.append(masteryStyle);
-
-        const reader2Style = document.createElement("style");
-        reader2Style.id = "kqStoryReader2Styles";
-        reader2Style.textContent = `
-          .kq-sr-reader-controls{display:grid;gap:12px;margin:0 0 14px;padding:15px 16px;border:1px solid var(--border);border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--kq-wash,#f4efff) 74%,white),white)}
-          .kq-sr-reader-controls-head{display:flex;align-items:end;justify-content:space-between;gap:14px}.kq-sr-reader-controls-head>div{display:grid;gap:3px}.kq-sr-reader-controls-head>div>strong{font-size:1rem}.kq-sr-reader-controls-head small{color:var(--muted)}
-          .kq-sr-reader-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.kq-sr-reader-presets button{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1px solid var(--border);border-radius:12px;background:white;color:var(--text);font-weight:850}.kq-sr-reader-presets button.active{border-color:var(--primary);background:var(--primary);color:white;box-shadow:0 7px 20px color-mix(in srgb,var(--primary) 22%,transparent)}.kq-sr-reader-presets button span{font-size:1.05rem}
-          .kq-sr-reader-toggles{display:flex;flex-wrap:wrap;gap:8px}.kq-sr-reader-toggles button{font-size:.78rem}.kq-sr-reader-toggles button.active{border-color:color-mix(in srgb,var(--primary) 44%,var(--border));background:color-mix(in srgb,var(--primary) 8%,white);color:var(--primary-dark)}
-          .kq-sr-sentence-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:5px}.kq-sr-sentence-audio{display:flex;flex-wrap:wrap;gap:6px}.kq-sr-sentence-audio button{padding:5px 8px;font-size:.72rem}.kq-sr-shadow-cue{margin:10px 0 0;color:var(--muted);font-size:.76rem;font-style:italic}
-          .kq-sr-reader-shell.furigana-off .kq-sr-japanese ruby rt{display:none!important}
-          .kq-sr-reader-shell.highlight-unknown .kq-sr-token.mastery-guru,.kq-sr-reader-shell.highlight-unknown .kq-sr-token.mastery-mastered{--sr-mastery-bg:transparent!important;--sr-mastery-line:transparent!important;--sr-mastery-text:var(--muted)!important}
-          .kq-sr-reader-shell.highlight-off .kq-sr-token.interactive{--sr-mastery-bg:transparent!important;--sr-mastery-line:transparent!important;--sr-mastery-text:var(--muted)!important;box-shadow:none!important;background:transparent!important}.kq-sr-reader-shell.highlight-off .kq-sr-token.language-help{border-bottom-color:transparent!important}
-          .kq-sr-reader-shell.highlight-off .kq-sr-token.interactive:hover,.kq-sr-reader-shell.highlight-off .kq-sr-token.interactive:focus{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 6%,transparent)!important}
-          .kq-sr-reader-shell.tooltips-off .kq-sr-token.interactive:after{display:none!important}
-          .kq-sr-reader-shell.support-off .kq-sr-sentence-row{grid-template-columns:minmax(0,1fr)}
-          .kq-sr-reader-shell.mode-immersion .kq-sr-mastery-panel,.kq-sr-reader-shell.mode-immersion .kq-sr-vocab-budget,.kq-sr-reader-shell.mode-shadow .kq-sr-mastery-panel,.kq-sr-reader-shell.mode-shadow .kq-sr-vocab-budget{display:none}
-          .kq-sr-reader-shell.mode-immersion .kq-sr-reader-note,.kq-sr-reader-shell.mode-shadow .kq-sr-reader-note{background:color-mix(in srgb,var(--panel) 92%,var(--primary) 4%)}
-          .kq-sr-reader-shell.mode-immersion .kq-sr-japanese{font-size:clamp(1.28rem,2.6vw,1.7rem);line-height:2.15}
-          .kq-sr-reader-shell.mode-shadow .kq-sr-japanese{font-size:clamp(1.35rem,2.8vw,1.82rem);line-height:2.25}.kq-sr-reader-shell.mode-shadow .kq-sr-sentence{padding:8px 0}.kq-sr-reader-shell.mode-shadow .kq-sr-sentence-audio button{padding:8px 11px;font-size:.8rem}
-          .kq-sr-reader-shell.mode-immersion .kq-sr-translation-toggle,.kq-sr-reader-shell.mode-shadow .kq-sr-translation-toggle{opacity:.62;font-size:.75rem}.kq-sr-reader-shell.mode-immersion .kq-sr-translation-toggle:hover,.kq-sr-reader-shell.mode-shadow .kq-sr-translation-toggle:hover{opacity:1}
-          @media(max-width:760px){.kq-sr-reader-presets{grid-template-columns:1fr 1fr}.kq-sr-reader-controls-head{align-items:flex-start;flex-direction:column}.kq-sr-sentence-head{align-items:flex-start;flex-direction:column}.kq-sr-sentence-audio{width:100%}}
-        `;
-        document.head.append(reader2Style);
       }
     
       document.addEventListener("keydown", event => {
@@ -35182,6 +35021,518 @@ ${tooltipText(segment, status)}`)}"`
   window.KotobaQuestQuestDashboard = { version:VERSION, refresh:scheduleRender, getTarget:storyTarget, buildSession:buildSessionPlan, getActiveSession:activeSessionInfo, startSession, endSession, replanSession };
 }
 
+function vocabularyReviewMixBootstrap() {
+  if (window.__KOTOBA_VOCAB_REVIEW_MIX_V1__) return;
+  window.__KOTOBA_VOCAB_REVIEW_MIX_V1__ = true;
+  const VERSION = "1.0";
+
+  function shuffled(values) {
+    const result = [...values];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  }
+
+  function spreadQuestions(questions) {
+    const pool = shuffled((questions || []).map((question, index) => ({ ...question, __mixIndex:index })));
+    if (pool.length < 3) return pool.map(({__mixIndex, ...question}) => question);
+    const uniqueItems = new Set(pool.map(question => String(question.itemId || ""))).size;
+    const desiredGap = Math.max(1, Math.min(6, Math.floor(uniqueItems / 2)));
+    const lastPosition = new Map();
+    const result = [];
+
+    while (pool.length) {
+      const position = result.length;
+      let candidates = pool.filter(question => {
+        const previous = lastPosition.get(String(question.itemId || ""));
+        return previous == null || position - previous > desiredGap;
+      });
+      if (!candidates.length) {
+        const previousItem = result.length ? String(result[result.length - 1].itemId || "") : null;
+        candidates = pool.filter(question => String(question.itemId || "") !== previousItem);
+      }
+      if (!candidates.length) candidates = pool;
+
+      // Prefer the item that has been absent longest; randomize ties.
+      const ranked = shuffled(candidates).sort((left, right) => {
+        const l = lastPosition.has(String(left.itemId || "")) ? lastPosition.get(String(left.itemId || "")) : -9999;
+        const r = lastPosition.has(String(right.itemId || "")) ? lastPosition.get(String(right.itemId || "")) : -9999;
+        return l - r;
+      });
+      const chosen = ranked[0];
+      const index = pool.indexOf(chosen);
+      pool.splice(index, 1);
+      lastPosition.set(String(chosen.itemId || ""), position);
+      result.push(chosen);
+    }
+
+    return result.map(({__mixIndex, ...question}) => question);
+  }
+
+  try {
+    if (typeof startReviews === "function" && !startReviews.__kqMixedDirections) {
+      const originalStartReviews = startReviews;
+      const replacement = function(kind) {
+        const output = originalStartReviews.apply(this, arguments);
+        try {
+          if (reviewSession?.questions?.length > 1 && (kind === "core" || kind === "mining")) {
+            reviewSession.questions = spreadQuestions(reviewSession.questions);
+            reviewSession.reviewMixVersion = VERSION;
+          }
+        } catch (error) {
+          console.warn("Vokabel-Review konnte nicht neu gemischt werden", error);
+        }
+        return output;
+      };
+      replacement.__kqMixedDirections = true;
+      replacement.__kqOriginal = originalStartReviews;
+      startReviews = replacement;
+    }
+  } catch (error) {
+    console.warn("Vokabel-Review-Mix konnte nicht installiert werden", error);
+  }
+
+  window.KotobaQuestVocabularyReviewMix = { version:VERSION, spreadQuestions };
+}
+
+function smartReviewBootstrap() {
+  if (window.__KOTOBA_SMART_REVIEW_V1__) return;
+  window.__KOTOBA_SMART_REVIEW_V1__ = true;
+
+  const VERSION = "1.0";
+  const STORAGE_KEY = "kotobaQuestDataV3";
+  const MAX_EVENTS = 160;
+  let renderQueued = false;
+  let wrappedGrade = false;
+
+  const esc = value => String(value ?? "")
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+
+  function sourceData() {
+    try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+  }
+
+  function state() {
+    const source = sourceData();
+    if (!source.smartReview || typeof source.smartReview !== "object" || Array.isArray(source.smartReview)) {
+      source.smartReview = { version:VERSION, vocabDirections:{}, events:[], lastOpenedAt:null };
+    }
+    source.smartReview.version = VERSION;
+    source.smartReview.vocabDirections = source.smartReview.vocabDirections && typeof source.smartReview.vocabDirections === "object"
+      ? source.smartReview.vocabDirections : {};
+    source.smartReview.events = Array.isArray(source.smartReview.events) ? source.smartReview.events.slice(-MAX_EVENTS) : [];
+    return source.smartReview;
+  }
+
+  function persistSmart() {
+    const source = sourceData();
+    source.smartReview = state();
+    try {
+      if (typeof data !== "undefined" && data && typeof data === "object") data.smartReview = source.smartReview;
+      if (typeof saveData === "function") saveData();
+      else localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
+    } catch (error) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); } catch {}
+      console.warn("Smart Review konnte nicht gespeichert werden", error);
+    }
+    scheduleRender();
+  }
+
+  function ensureVocabRecord(item) {
+    const s = state();
+    const id = String(item?.id || "");
+    if (!id) return null;
+    const previous = s.vocabDirections[id] || {};
+    s.vocabDirections[id] = {
+      id,
+      word:String(item?.word || previous.word || ""),
+      reading:String(item?.reading || previous.reading || ""),
+      sourceType:String(item?.sourceType || previous.sourceType || "core"),
+      level:Number(item?.level || previous.level || 0),
+      listening:{ correct:Math.max(0,Number(previous.listening?.correct||0)), incorrect:Math.max(0,Number(previous.listening?.incorrect||0)), close:Math.max(0,Number(previous.listening?.close||0)), lastWrongAt:previous.listening?.lastWrongAt||null },
+      production:{ correct:Math.max(0,Number(previous.production?.correct||0)), incorrect:Math.max(0,Number(previous.production?.incorrect||0)), close:Math.max(0,Number(previous.production?.close||0)), lastWrongAt:previous.production?.lastWrongAt||null },
+      updatedAt:Number(previous.updatedAt || Date.now())
+    };
+    return s.vocabDirections[id];
+  }
+
+  function recordVocabAnswer(item, questionType, status) {
+    if (!item?.id || !["listening","production"].includes(questionType)) return;
+    if (!["correct","incorrect","close"].includes(status)) return;
+    const record = ensureVocabRecord(item);
+    if (!record) return;
+    const bucket = record[questionType];
+    bucket[status] = Math.max(0, Number(bucket[status] || 0)) + 1;
+    if (status === "incorrect") bucket.lastWrongAt = Date.now();
+    record.updatedAt = Date.now();
+    const s = state();
+    s.events.push({ at:Date.now(), area:"vocab", id:String(item.id), skill:questionType, status });
+    s.events = s.events.slice(-MAX_EVENTS);
+    persistSmart();
+  }
+
+  function undoVocabError(itemId, questionType) {
+    const s = state();
+    const record = s.vocabDirections?.[String(itemId || "")];
+    if (!record || !record[questionType]) return;
+    record[questionType].incorrect = Math.max(0, Number(record[questionType].incorrect || 0) - 1);
+    for (let i = s.events.length - 1; i >= 0; i--) {
+      const event = s.events[i];
+      if (event.area === "vocab" && event.id === String(itemId) && event.skill === questionType && event.status === "incorrect") {
+        s.events.splice(i, 1);
+        break;
+      }
+    }
+    persistSmart();
+  }
+
+  function installVocabTracking() {
+    if (wrappedGrade) return;
+    try {
+      if (typeof gradeReview !== "function" || typeof evaluateAnswer !== "function") return;
+      if (gradeReview.__kqSmartReviewTracked) { wrappedGrade = true; return; }
+      const originalGradeReview = gradeReview;
+      const replacement = function(question, item, answer) {
+        let result = null;
+        try { result = evaluateAnswer(question, item, answer); } catch {}
+        const output = originalGradeReview.apply(this, arguments);
+        try {
+          if (result?.status === "correct") recordVocabAnswer(item, question?.type, "correct");
+          else if (result?.status === "incorrect") recordVocabAnswer(item, question?.type, "incorrect");
+          else if (result?.status === "close") recordVocabAnswer(item, question?.type, "close");
+        } catch (error) { console.warn("Smart-Review-Vokabeltracking fehlgeschlagen", error); }
+        return output;
+      };
+      replacement.__kqSmartReviewTracked = true;
+      replacement.__kqOriginal = originalGradeReview;
+      gradeReview = replacement;
+      wrappedGrade = true;
+    } catch {}
+  }
+
+  document.addEventListener("click", event => {
+    const veto = event.target?.closest?.("[data-vocab-veto]");
+    if (!veto) return;
+    try {
+      const feedback = reviewSession?.feedback;
+      if (feedback?.sessionType === "review" && feedback?.itemId && feedback?.questionType) {
+        const id = feedback.itemId;
+        const type = feedback.questionType;
+        setTimeout(() => undoVocabError(id, type), 0);
+      }
+    } catch {}
+  }, true);
+
+  function rate(correct, incorrect) {
+    const attempts = Math.max(0, Number(correct || 0)) + Math.max(0, Number(incorrect || 0));
+    return attempts ? Math.max(0, Number(incorrect || 0)) / attempts : 0;
+  }
+
+  function vocabularyById(id) {
+    const items = Array.isArray(sourceData()?.vocabulary) ? sourceData().vocabulary : [];
+    return items.find(item => String(item?.id || "") === String(id || "")) || null;
+  }
+
+  function vocabDiagnoses() {
+    const diagnoses = [];
+    const tracked = state().vocabDirections || {};
+    const candidateMap = new Map();
+    try {
+      for (const row of window.KotobaQuestProblemWorkshop?.getCandidates?.() || []) {
+        const id = String(row?.item?.id || "");
+        if (id) candidateMap.set(id, row);
+      }
+    } catch {}
+
+    for (const record of Object.values(tracked)) {
+      const item = vocabularyById(record.id);
+      if (!item || Number(item.stage || 0) <= 0) continue;
+      const listening = record.listening || {};
+      const production = record.production || {};
+      const lRate = rate(listening.correct, listening.incorrect);
+      const pRate = rate(production.correct, production.incorrect);
+      const lWeak = Number(listening.incorrect || 0) >= 2 || (Number(listening.correct||0)+Number(listening.incorrect||0) >= 4 && lRate >= .3);
+      const pWeak = Number(production.incorrect || 0) >= 2 || (Number(production.correct||0)+Number(production.incorrect||0) >= 4 && pRate >= .3);
+      if (!lWeak && !pWeak) continue;
+
+      const meaning = Array.isArray(item.meanings) ? item.meanings[0] : item.meaning || item.productionCue || "";
+      let title = `${item.word} · Abruf noch instabil`;
+      let detail = "Das Wort zeigt wiederholte Fehler in mehreren Abrufrichtungen.";
+      let skill = "both";
+      if (pWeak && !lWeak) {
+        title = `${item.word} · aktiver Abruf`;
+        detail = `Japanisch → Deutsch sitzt deutlich besser als Deutsch → Japanisch. Die japanische Form fällt dir noch nicht zuverlässig aktiv ein.`;
+        skill = "production";
+      } else if (lWeak && !pWeak) {
+        title = `${item.word} · Bedeutung erkennen`;
+        detail = `Die aktive Form ist vergleichsweise stabiler, aber beim Erkennen von ${item.word} rutscht die Bedeutung noch weg.`;
+        skill = "listening";
+      }
+      const candidate = candidateMap.get(String(item.id));
+      const key = candidate?.item?.key || `vocab:${item.id}`;
+      diagnoses.push({
+        key:`vocab:${item.id}:${skill}`, area:"vocab", icon:"🈶", title,
+        detail:`${detail}${meaning ? ` · ${meaning}` : ""}`,
+        score:75 + Math.max(Number(listening.incorrect||0),Number(production.incorrect||0))*10 + Math.max(lRate,pRate)*30,
+        meta:`${Number(listening.incorrect||0)} Fehler J→D · ${Number(production.incorrect||0)} Fehler D→J`,
+        launch:() => {
+          try { window.KotobaQuestProblemWorkshop?.mark?.(key); } catch {}
+          try { return window.KotobaQuestProblemWorkshop?.startPractice?.([key]); } catch {}
+          window.KotobaQuestProblemWorkshop?.open?.(key);
+        }
+      });
+    }
+
+    // Existing problem words remain useful before directional tracking has gathered enough new data.
+    try {
+      for (const row of window.KotobaQuestProblemWorkshop?.getCandidates?.() || []) {
+        if (!row?.active || diagnoses.some(d => d.key.startsWith(`vocab:${row.item?.id}:`))) continue;
+        const item = row.item || {};
+        diagnoses.push({
+          key:`vocab-problem:${item.id || item.key}`, area:"vocab", icon:"🧠",
+          title:`${item.word || "Vokabel"} · hartnäckiges Wort`,
+          detail:(row.reasons || []).join(" · ") || "Dieses Wort fällt im bisherigen SRS wiederholt auf.",
+          meta:`${Number(row.incorrect||0)} SRS-Fehler${row.workshopIncorrect ? ` · ${row.workshopIncorrect} Werkstattfehler` : ""}`,
+          score:60 + Number(row.score || 0),
+          launch:() => window.KotobaQuestProblemWorkshop?.startPractice?.([item.key])
+        });
+      }
+    } catch {}
+    return diagnoses;
+  }
+
+  function grammarDiagnoses() {
+    const diagnoses = [];
+    let points = [];
+    try { points = window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.() || []; } catch {}
+    for (const point of points) {
+      if (!point?.lessonComplete) continue;
+      const weak = (point.skills || []).map(skill => {
+        const attempts = Number(skill.correct||0) + Number(skill.incorrect||0);
+        const errorRate = attempts ? Number(skill.incorrect||0)/attempts : 0;
+        return { ...skill, attempts, errorRate };
+      }).filter(skill => Number(skill.incorrect||0) >= 2 || (skill.attempts >= 4 && skill.errorRate >= .3));
+      if (!weak.length) continue;
+      const weakIds = new Set(weak.map(skill => skill.id));
+      const recognitionWeak = weakIds.has("meaning") || weakIds.has("listening");
+      const productionWeak = weakIds.has("form") || weakIds.has("production");
+      let detail;
+      if (productionWeak && !recognitionWeak) detail = "Du erkennst die Struktur vergleichsweise sicher, aber Bildung bzw. aktive Produktion ist deutlich schwächer.";
+      else if (recognitionWeak && !productionWeak) detail = "Die Form lässt sich eher produzieren als zuverlässig im Kontext deuten. Hier lohnt sich Bedeutungs- und Hörkontexttraining.";
+      else detail = "Mehrere Teilfähigkeiten derselben Grammatikstruktur zeigen wiederholte Fehler. Eine fokussierte Mischrunde ist sinnvoll.";
+      const worst = Math.max(...weak.map(skill => Number(skill.incorrect||0)));
+      diagnoses.push({
+        key:`grammar:${point.id}`, area:"grammar", icon:"🧱", title:`${point.title} · gezielt festigen`, detail,
+        meta:weak.map(skill => `${skill.label || skill.id}: ${skill.incorrect} Fehler`).join(" · "),
+        score:72 + worst*9 + Math.max(...weak.map(skill=>skill.errorRate))*25,
+        launch:() => window.KotobaQuestGrammarSupportApi?.startReviewSession?.(true, point.id)
+      });
+    }
+    return diagnoses;
+  }
+
+  function particleDiagnoses() {
+    const diagnoses = [];
+    const grouped = new Map();
+    try {
+      for (const item of window.KotobaQuestParticlePath?.getConfusions?.() || []) {
+        const expected = String(item.expected || "");
+        const entered = String(item.entered || "");
+        if (!expected || !entered) continue;
+        const pair = [expected, entered].sort((a,b)=>a.localeCompare(b,"ja"));
+        const key = pair.join(" ↔ ");
+        const previous = grouped.get(key) || { a:pair[0], b:pair[1], count:0, directions:[] };
+        previous.count += Math.max(0, Number(item.count || 0));
+        previous.directions.push(`${expected}→${entered}`);
+        grouped.set(key, previous);
+      }
+    } catch {}
+    for (const pair of grouped.values()) {
+      if (pair.count < 2) continue;
+      diagnoses.push({
+        key:`particle:${pair.a}:${pair.b}`, area:"particles", icon:"⚖️",
+        title:`${pair.a} ↔ ${pair.b} · Kontrastproblem`,
+        detail:"Kotoba Quest hat dieselben beiden Beziehungen wiederholt gegeneinander verwechselt gesehen. Das ist ein echtes Kontrastmuster, nicht nur eine einzelne falsche Antwort.",
+        meta:`${pair.count} Verwechslungen · ${[...new Set(pair.directions)].join(" / ")}`,
+        score:92 + pair.count*8,
+        launch:() => window.KotobaQuestParticlePath?.startContrastTraining?.()
+      });
+    }
+    return diagnoses;
+  }
+
+  function n4Diagnoses() {
+    const diagnoses = [];
+    const api = window.KotobaQuestN4Recap;
+    if (!api?.getCatalog || !api?.getPointStatus) return diagnoses;
+    try {
+      for (const item of api.getCatalog() || []) {
+        if (item?.aliasOf || item?.active === false) continue;
+        const status = api.getPointStatus(item.id);
+        if (status?.status !== "repair" || status?.repairComplete) continue;
+        diagnoses.push({
+          key:`n4:${item.id}`, area:"n4", icon:"🧭", title:`${item.title} · N4-Reparaturlücke`,
+          detail:"Dieser Punkt wurde erst nach mehreren echten Fehlern über verschiedene Nachweisarten als Reparaturlücke eingestuft.",
+          meta:`${Number(status.wrong||0)} Fehler · ${Number(status.passedKinds||0)}/${Number(status.requiredKinds||5)} Nachweisarten bestanden`,
+          score:115 + Number(status.wrong||0)*5,
+          launch:() => api.openRepair?.(item.id)
+        });
+      }
+    } catch {}
+    return diagnoses;
+  }
+
+  function diagnoses() {
+    return [...n4Diagnoses(), ...particleDiagnoses(), ...grammarDiagnoses(), ...vocabDiagnoses()]
+      .sort((a,b) => Number(b.score||0)-Number(a.score||0));
+  }
+
+  function areaLabel(area) {
+    return ({vocab:"Vokabeln",grammar:"Grammatik",particles:"Partikel",n4:"N4"})[area] || area;
+  }
+
+  function severity(score) {
+    if (score >= 115) return "high";
+    if (score >= 88) return "medium";
+    return "low";
+  }
+
+  function ensureStyles() {
+    if (document.getElementById("kqSmartReviewStyles")) return;
+    const style = document.createElement("style");
+    style.id = "kqSmartReviewStyles";
+    style.textContent = `
+      .kq-smart-hero{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;margin-bottom:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--kq-wash,#f4efff) 80%,white),white)}
+      .kq-smart-hero h2{margin:4px 0 9px;font-size:clamp(1.8rem,4vw,2.65rem)}.kq-smart-hero p{color:var(--muted);line-height:1.55}.kq-smart-hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}.kq-smart-hero-stats span{display:grid;place-content:center;text-align:center;padding:13px;border:1px solid var(--border);border-radius:14px;background:white}.kq-smart-hero-stats strong{font-size:1.7rem;color:var(--primary)}.kq-smart-hero-stats small{color:var(--muted)}
+      .kq-smart-route{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}.kq-smart-route article{position:relative;padding:15px;border:1px solid var(--border);border-radius:16px;background:white}.kq-smart-route article>span{font-size:1.5rem}.kq-smart-route h3{margin:8px 0 5px;font-size:1rem}.kq-smart-route p{margin:0;color:var(--muted);font-size:.8rem;line-height:1.4}.kq-smart-route button{width:100%;margin-top:12px}
+      .kq-smart-list{display:grid;gap:10px}.kq-smart-row{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border:1px solid var(--border);border-left:5px solid var(--primary);border-radius:15px;background:white}.kq-smart-row.medium{border-left-color:#d69435}.kq-smart-row.high{border-left-color:var(--bad)}.kq-smart-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:var(--kq-wash,#f4efff);font-size:1.25rem}.kq-smart-copy{display:grid;gap:3px}.kq-smart-copy>span{color:var(--primary-dark);font-size:.7rem;font-weight:950;text-transform:uppercase;letter-spacing:.06em}.kq-smart-copy strong{font-size:1rem}.kq-smart-copy p{margin:0;color:var(--muted);font-size:.82rem;line-height:1.45}.kq-smart-copy small{color:var(--muted);font-size:.72rem}.kq-smart-empty{text-align:center;padding:38px}.kq-smart-empty>div{font-size:3.5rem}.kq-smart-empty p{max-width:650px;margin:8px auto 18px;color:var(--muted);line-height:1.5}
+      .kq-smart-teaser{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin:16px 0;background:linear-gradient(120deg,color-mix(in srgb,var(--kq-wash,#f4efff) 72%,white),white)}.kq-smart-teaser>span{font-size:2rem}.kq-smart-teaser h3,.kq-smart-teaser p{margin:0}.kq-smart-teaser p{margin-top:4px;color:var(--muted)}.kq-smart-teaser em{font-style:normal;color:var(--primary-dark);font-weight:900}
+      @media(max-width:800px){.kq-smart-hero{grid-template-columns:1fr}.kq-smart-route{grid-template-columns:1fr}.kq-smart-row{grid-template-columns:42px 1fr}.kq-smart-row>button{grid-column:2;width:100%}.kq-smart-teaser{grid-template-columns:auto 1fr}.kq-smart-teaser>button{grid-column:2;width:100%}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureView() {
+    ensureStyles();
+    if (!document.getElementById("smartReview")) {
+      const view = document.createElement("section");
+      view.id = "smartReview";
+      view.className = "view";
+      view.innerHTML = `<div id="kqSmartReviewRoot"></div>`;
+      const main = document.querySelector("main");
+      main?.appendChild(view);
+    }
+    const nav = document.querySelector(".nav");
+    if (nav && !document.getElementById("kqSmartReviewNav")) {
+      const button = document.createElement("button");
+      button.id = "kqSmartReviewNav";
+      button.type = "button";
+      button.dataset.view = "smartReview";
+      button.textContent = "🧠 Smart Review";
+      button.addEventListener("click", open);
+      nav.appendChild(button);
+    }
+  }
+
+  function open() {
+    ensureView();
+    state().lastOpenedAt = Date.now();
+    persistSmart();
+    try { switchView("smartReview"); }
+    catch {
+      document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === "smartReview"));
+    }
+    document.querySelectorAll(".nav button").forEach(button => button.classList.toggle("active", button.id === "kqSmartReviewNav"));
+    render();
+  }
+
+  function launch(index) {
+    const all = diagnoses();
+    const target = all[Number(index || 0)];
+    if (!target) return;
+    try { target.launch?.(); } catch (error) { console.warn("Smart-Review-Fokus konnte nicht gestartet werden", error); }
+  }
+
+  function render() {
+    ensureView();
+    const root = document.getElementById("kqSmartReviewRoot");
+    if (!root) return;
+    const all = diagnoses();
+    const top = all.slice(0,3);
+    const counts = {vocab:0,grammar:0,particles:0,n4:0};
+    all.forEach(item => { if (counts[item.area] != null) counts[item.area]++; });
+    const trackedWords = Object.keys(state().vocabDirections || {}).length;
+    root.innerHTML = `
+      <article class="card kq-smart-hero">
+        <div><p class="eyebrow">🧠 Persönliches Trainingszentrum</p><h2>Smart Review</h2><p>Kotoba Quest sucht nicht einfach nach „schlechten Themen“, sondern nach wiederholbaren Mustern: aktive vs. passive Vokabelrichtung, schwache Grammatik-Teilfähigkeiten, konkrete Partikelverwechslungen und echte N4-Reparaturlücken. Ein einzelner Ausrutscher reicht nicht.</p><div class="button-row"><button class="primary" id="kqSmartStart" ${top.length ? "" : "disabled"}>${top.length ? "Wichtigsten Fokus starten" : "Gerade kein Reparaturfokus"}</button><button class="secondary" id="kqSmartRefresh">Neu analysieren</button></div></div>
+        <div class="kq-smart-hero-stats"><span><strong>${all.length}</strong><small>aktive Muster</small></span><span><strong>${counts.vocab}</strong><small>Vokabeln</small></span><span><strong>${counts.grammar + counts.n4}</strong><small>Grammatik/N4</small></span><span><strong>${counts.particles}</strong><small>Partikelkontraste</small></span></div>
+      </article>
+      ${top.length ? `<div class="section-title"><div><h2>Deine nächste Reparaturroute</h2><p>Maximal drei Schwerpunkte gleichzeitig – damit Smart Review nicht selbst zum Grind wird.</p></div></div><div class="kq-smart-route">${top.map((item,index)=>`<article><span>${item.icon}</span><h3>${esc(item.title)}</h3><p>${esc(item.detail)}</p><button type="button" class="${index===0?"primary":"secondary"}" data-smart-launch="${index}">Trainieren</button></article>`).join("")}</div>` : ""}
+      <div class="section-title"><div><h2>Erkannte Muster</h2><p>Nur wiederholte oder statistisch auffällige Probleme werden hier gesammelt.</p></div><span class="small muted">${trackedWords} Vokabeln richtungsspezifisch beobachtet</span></div>
+      ${all.length ? `<div class="kq-smart-list">${all.slice(0,12).map((item,index)=>`<article class="kq-smart-row ${severity(item.score)}"><span class="kq-smart-icon">${item.icon}</span><div class="kq-smart-copy"><span>${esc(areaLabel(item.area))}</span><strong>${esc(item.title)}</strong><p>${esc(item.detail)}</p><small>${esc(item.meta || "")}</small></div><button type="button" class="secondary" data-smart-launch="${index}">Gezielt üben</button></article>`).join("")}</div>` : `<article class="card kq-smart-empty"><div>✨</div><h2>Keine belastbare Schwäche erkannt</h2><p>Das heißt nicht, dass alles gemeistert ist – nur, dass aktuell kein wiederholtes Fehlermuster stark genug ist, um zusätzlich zum normalen SRS eine Reparaturrunde zu rechtfertigen.</p><button class="secondary" id="kqSmartBack">Zurück zum Dashboard</button></article>`}
+    `;
+    root.querySelector("#kqSmartStart")?.addEventListener("click", () => launch(0));
+    root.querySelector("#kqSmartRefresh")?.addEventListener("click", render);
+    root.querySelector("#kqSmartBack")?.addEventListener("click", () => { try { switchView("dashboard"); } catch {} });
+    root.querySelectorAll("[data-smart-launch]").forEach(button => button.addEventListener("click", () => launch(button.dataset.smartLaunch)));
+  }
+
+  function renderDashboardTeaser() {
+    ensureView();
+    const all = diagnoses();
+    const dashboard = document.getElementById("dashboard");
+    if (!dashboard) return;
+    let card = document.getElementById("kqSmartReviewTeaser");
+    if (!card) {
+      card = document.createElement("article");
+      card.id = "kqSmartReviewTeaser";
+      card.className = "card kq-smart-teaser";
+      const quest = document.getElementById("kqQuestDashboard");
+      const host = document.getElementById("kqLearningDashboard") || dashboard;
+      if (quest?.parentElement) quest.insertAdjacentElement("afterend", card); else host.prepend(card);
+    }
+    const top = all[0];
+    const signature = `${all.length}|${top?.key || "none"}|${Math.round(Number(top?.score || 0))}`;
+    if (card.dataset.smartSignature === signature) return;
+    card.dataset.smartSignature = signature;
+    card.innerHTML = `<span>🧠</span><div><h3>Smart Review</h3><p>${top ? `<em>${all.length} Muster erkannt.</em> Wichtigster Fokus: ${esc(top.title)}.` : "Aktuell kein wiederholtes Fehlermuster – normales SRS reicht gerade aus."}</p></div><button type="button" class="${top ? "primary" : "secondary"}">${top ? "Trainingszentrum öffnen" : "Analyse ansehen"}</button>`;
+    card.querySelector("button")?.addEventListener("click", open);
+  }
+
+  function scheduleRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      installVocabTracking();
+      ensureView();
+      if (document.getElementById("smartReview")?.classList.contains("active")) render();
+      renderDashboardTeaser();
+    });
+  }
+
+  installVocabTracking();
+  ensureView();
+  scheduleRender();
+  setTimeout(scheduleRender, 350);
+  setTimeout(scheduleRender, 1300);
+  setInterval(() => {
+    installVocabTracking();
+    if (document.getElementById("dashboard")?.classList.contains("active") || document.getElementById("smartReview")?.classList.contains("active")) scheduleRender();
+  }, 3000);
+  window.addEventListener("storage", event => { if (event.key === STORAGE_KEY) scheduleRender(); });
+  const observer = new MutationObserver(mutations => {
+    if (mutations.some(m => (m.target?.id === "dashboard" || m.target?.closest?.("#dashboard")) && !m.target?.closest?.("#kqSmartReviewTeaser"))) scheduleRender();
+  });
+  observer.observe(document.body, {childList:true,subtree:true});
+
+  window.KotobaQuestSmartReview = { version:VERSION, open, analyze:diagnoses, refresh:scheduleRender, getState:() => state() };
+}
+
         function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const n4RecapScript = "<script>(" + n4AdaptiveRecapBootstrap.toString() + ")();<" + "/script>";
@@ -35203,7 +35554,9 @@ ${tooltipText(segment, status)}`)}"`
       const interfaceScript = "<script>(" + interfaceReorganizationBootstrap.toString() + ")();<" + "/script>";
       const interactionScript = "<script>(" + systemInteractionConsistencyBootstrap.toString() + ")();<" + "/script>";
       const questDashboardScript = "<script>(" + questDashboardBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}`;
+      const vocabularyReviewMixScript = "<script>(" + vocabularyReviewMixBootstrap.toString() + ")();<" + "/script>";
+      const smartReviewScript = "<script>(" + smartReviewBootstrap.toString() + ")();<" + "/script>";
+      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${smartReviewScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
