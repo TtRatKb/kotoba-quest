@@ -26485,7 +26485,7 @@
     function particleWorkshopBootstrap() {
       if (window.__KOTOBA_PARTICLE_WORKSHOP_V1__) return;
       window.__KOTOBA_PARTICLE_WORKSHOP_V1__ = true;
-      const PARTICLE_WORKSHOP_PATH_GATE_VERSION = "3.0";
+      const PARTICLE_WORKSHOP_PATH_GATE_VERSION = "4.0";
 
       const STORAGE_KEY = "kotobaQuestDataV3";
       const CATEGORY_META = {
@@ -26611,6 +26611,23 @@
           "Wer ist gekommen? – Herr/Frau Tanaka ist gekommen.",
           "Die Frage fragt gezielt nach dem unbekannten Subjekt. Die neue, fokussierte Antwort steht deshalb mit が.",
           { wrong: { "は": "は würde Tanaka zum bereits gesetzten Thema machen. Hier wird aber gerade erst beantwortet, wer gekommen ist." } }),
+        Q("b-contrast-wa", "basics", "は",
+          [["私","わたし"],["は",""],["コーヒー",""] ,["を",""],["飲みます","のみます"],["が",""],["妹","いもうと"]],
+          [["お茶","おちゃ"],["を",""],["飲みます","のみます"],["。",""]],
+          "Ich trinke Kaffee, meine jüngere Schwester dagegen Tee.",
+          "妹 wird hier bewusst dem bereits genannten 私 gegenübergestellt. は setzt dieses zweite Thema kontrastiv: ‚was meine Schwester angeht / dagegen meine Schwester‘.",
+          { wrong: { "が": "が könnte 妹 als fokussiertes Subjekt markieren, aber der Satz baut ausdrücklich einen Kontrast zwischen 私 und 妹 auf. Dafür ist は die Zielstruktur." } }),
+        Q("b-direction-e", "basics", "へ",
+          [["明日","あした"],["京都","きょうと"]],
+          [["向かいます","むかいます"],["。",""]],
+          "Morgen mache ich mich in Richtung Kyoto auf.",
+          "へ hebt bei Bewegungsverben besonders die Richtung hervor. に kann bei einem konkreten Ziel ebenfalls natürlich sein; in dieser Aufgabe wird へ als Richtungsstruktur geübt.",
+          { accepted: ["へ", "に"], acceptedNote: "に ist hier ebenfalls natürlich und wurde deshalb als richtig akzeptiert. へ rückt die Richtung der Bewegung etwas stärker in den Vordergrund.", wrong: { "で": "で markiert einen Handlungsort oder ein Mittel, nicht die Bewegungsrichtung." } }),
+        Q("b-question-ka", "basics", "か",
+          [["明日","あした"],["来ます","きます"]],
+          [["。",""]],
+          "Kommst du morgen?",
+          "か markiert am Satzende eine direkte Frage. Der Aussagesatz 明日来ます wird dadurch zur Frage 明日来ますか。"),
         Q("b-object-o", "basics", "を",
           [["私","わたし"],["は",""] ,["音楽","おんがく"]],
           [["聞きます","ききます"],["。",""]],
@@ -26979,6 +26996,19 @@
         "に対して": ["nitaishite-target"],
         "として": ["toshite-role"],
 
+        // Advanced transfer extensions. These are not separate mandatory path
+        // lessons: they open once the closest already-taught particle relation
+        // is secure enough to make the workshop example a meaningful transfer.
+        "において": ["de-action"],
+        "に向かって": ["e-direction"],
+        "に関して": ["nitsuite-topic"],
+        "に応じて": ["nitaishite-target"],
+        "に加えて": ["nimo-addition"],
+        "に比べて": ["nitaishite-target"],
+        "に沿って": ["nimotozuite-basis"],
+        "に代わって": ["toshite-role"],
+        "を通じて": ["niyotte-means"],
+
         // Transparent combinations and attributive variants unlock once their
         // already taught components/base form are complete.
         "までは": ["made-limit", "wa-topic"],
@@ -27098,6 +27128,7 @@ function shuffle(values) {
           incorrect: Math.max(0, Number(raw.incorrect || 0)),
           repeated: Math.max(0, Number(raw.repeated || 0)),
           byParticle: raw.byParticle && typeof raw.byParticle === "object" ? { ...raw.byParticle } : {},
+          confusions: raw.confusions && typeof raw.confusions === "object" ? { ...raw.confusions } : {},
           lastPracticedAt: raw.lastPracticedAt || null
         };
       }
@@ -27232,6 +27263,12 @@ function shuffle(values) {
           .slice(0, 6);
       }
 
+      function confusionPairs(stats = statsFor()) {
+        return Object.entries(stats.confusions || {}).map(([key,count]) => { const [expected,entered] = key.split("|||"); return { expected, entered, count: Math.max(0, Number(count || 0)) }; })
+          .filter(item => item.expected && item.entered && item.expected !== item.entered && item.count > 0)
+          .sort((a,b) => b.count - a.count).slice(0,8);
+      }
+
       function buildQueue(settings) {
         const pool = selectedQuestions(settings);
         const stats = statsFor();
@@ -27293,7 +27330,7 @@ function shuffle(values) {
         return entry ? QUESTIONS.find(question => question.id === entry.id) : null;
       }
 
-      function recordAttempt(question, correct, repeated) {
+      function recordAttempt(question, correct, repeated, entered = "") {
         const source = sourceData();
         const stats = statsFor(source);
         stats.attempts += 1;
@@ -27305,6 +27342,10 @@ function shuffle(values) {
         perParticle.attempts = Math.max(0, Number(perParticle.attempts || 0)) + 1;
         perParticle.incorrect = Math.max(0, Number(perParticle.incorrect || 0)) + (correct ? 0 : 1);
         stats.byParticle[question.expected] = perParticle;
+        if (!correct && entered && entered !== question.expected) {
+          const key = `${question.expected}|||${entered}`;
+          stats.confusions[key] = Math.max(0, Number(stats.confusions[key] || 0)) + 1;
+        }
         source.particlePractice = stats;
         recordStudyAction(source);
         saveSource(source);
@@ -27317,7 +27358,9 @@ function shuffle(values) {
         const question = currentQuestion();
         const entry = currentQueueEntry();
         const entered = normalizeAnswer(input.value);
-        const correct = entered === normalizeAnswer(question.expected);
+        const accepted = (Array.isArray(question.accepted) && question.accepted.length ? question.accepted : [question.expected])
+          .map(normalizeAnswer);
+        const correct = accepted.includes(entered);
         session.answer = entered;
         session.feedback = {
           correct,
@@ -27328,7 +27371,7 @@ function shuffle(values) {
         session.stats.correct += correct ? 1 : 0;
         session.stats.incorrect += correct ? 0 : 1;
         if (entry.repeated) session.stats.repeated += 1;
-        recordAttempt(question, correct, entry.repeated);
+        recordAttempt(question, correct, entry.repeated, entered);
 
         if (!correct && session.settings.repeatWrong && Number(entry.repeatCount || 0) < 2) {
           const insertAt = Math.min(session.queue.length, session.index + 3 + Math.floor(Math.random() * 3));
@@ -27338,10 +27381,9 @@ function shuffle(values) {
             repeatCount: Number(entry.repeatCount || 0) + 1
           });
         }
-        if (correct) {
-          nextQuestion();
-          return;
-        }
+        // Always show the reasoning before moving on. This is especially
+        // important for contrasts: a correct answer is only useful when the
+        // learner also sees why the neighbouring particle would change the meaning.
         renderPractice();
       }
 
@@ -27358,6 +27400,12 @@ function shuffle(values) {
         const question = currentQuestion();
         const perParticle = stats.byParticle[question.expected];
         if (perParticle) perParticle.incorrect = Math.max(0, Number(perParticle.incorrect || 0) - 1);
+        const entered = String(session.feedback.entered || "");
+        const confusionKey = `${question.expected}|||${entered}`;
+        if (stats.confusions?.[confusionKey]) {
+          stats.confusions[confusionKey] = Math.max(0, Number(stats.confusions[confusionKey] || 0) - 1);
+          if (!stats.confusions[confusionKey]) delete stats.confusions[confusionKey];
+        }
         source.particlePractice = stats;
         saveSource(source);
         renderPractice();
@@ -27401,6 +27449,7 @@ function shuffle(values) {
         const settings = settingsFor(source);
         const stats = statsFor(source);
         const difficult = difficultParticles(stats);
+        const confusions = confusionPairs(stats);
         const accuracy = stats.attempts ? Math.round(stats.correct / stats.attempts * 100) : 0;
         const completedLessons = completedParticleLessons(source);
         const locked = lockedParticles(source);
@@ -27409,7 +27458,7 @@ function shuffle(values) {
             <div>
               <p class="eyebrow">Freie Vertiefung zu deinem Partikelpfad</p>
               <h2>Partikel-Werkstatt</h2>
-              <p>Geübt werden ausschließlich Partikel, deren Lektionen du bereits abgeschlossen hast. Jede Aufgabe verwendet einen eigenen Beispielsatz mit deutscher Übersetzung – nicht den Satz aus der Lektion.</p>
+              <p>Geübt werden Partikel, deren Lektionen du bereits abgeschlossen hast, plus passende Transfer-Erweiterungen, sobald ihre Grundbeziehung gelernt ist. Jede Aufgabe verwendet einen eigenen Beispielsatz mit deutscher Übersetzung – nicht den Satz aus der Lektion.</p>
             </div>
           </div>
           <div class="kq-particle-home-grid">
@@ -27458,14 +27507,16 @@ function shuffle(values) {
               </div>
             </article>
             <article class="card">
-              <h3>Noch schwierige Partikel</h3>
-              ${difficult.length
-                ? `<div class="kq-particle-difficult">${difficult.map(item => `<span><b>${esc(item.particle)}</b><small>${item.incorrect} von ${item.attempts} falsch</small></span>`).join("")}</div>`
-                : `<div class="empty">Nach einigen Antworten erscheinen hier deine persönlichen Problemkombinationen.</div>`}
+              <h3>Fehlerdiagnose</h3>
+              ${confusions.length
+                ? `<p class="small muted">Erwartet → eingesetzt. So erkennt Kotoba Quest echte Verwechslungsmuster statt nur eine niedrige Trefferquote.</p><div class="kq-particle-difficult">${confusions.map(item => `<span><b>${esc(item.expected)} → ${esc(item.entered)}</b><small>${item.count}× verwechselt</small></span>`).join("")}</div><button class="secondary" id="kqParticleContrastFocus" type="button" style="margin-top:12px">⚖️ Diese Kontraste trainieren</button>`
+                : difficult.length
+                  ? `<div class="kq-particle-difficult">${difficult.map(item => `<span><b>${esc(item.particle)}</b><small>${item.incorrect} von ${item.attempts} falsch</small></span>`).join("")}</div>`
+                  : `<div class="empty">Nach einigen Antworten erscheinen hier deine persönlichen Verwechslungspaare.</div>`}
             </article>
           </div>
           <article class="card kq-particle-locked-card">
-            <div class="section-title" style="margin-bottom:10px"><div><h3>Gesperrte Partikelübungen</h3><p>Diese Aufgaben öffnen sich automatisch durch den Partikel-Lernpfad.</p></div><strong>${locked.length}</strong></div>
+            <div class="section-title" style="margin-bottom:10px"><div><h3>Gesperrte Partikelübungen</h3><p>Diese Aufgaben öffnen sich automatisch durch den Partikel-Lernpfad. Spätere feste Verbindungen erscheinen als Transfer-Erweiterungen nach einer verwandten Lektion und sind keine zusätzlichen Pflichtlektionen.</p></div><strong>${locked.length}</strong></div>
             ${locked.length
               ? `<div class="kq-particle-locked-list">${locked.map(item => `<span title="${esc(item.reason)}"><b>🔒 ${esc(item.particle)}</b><small>${esc(item.reason)}</small></span>`).join("")}</div>`
               : `<div class="empty">Alle vorhandenen freien Partikelübungen sind freigeschaltet.</div>`}
@@ -27474,6 +27525,7 @@ function shuffle(values) {
         document.getElementById("kqParticleLength")?.addEventListener("change", persistSettingsFromUi);
         document.getElementById("kqParticleRepeatWrong")?.addEventListener("change", persistSettingsFromUi);
         document.getElementById("kqParticleStart")?.addEventListener("click", startSession);
+        document.getElementById("kqParticleContrastFocus")?.addEventListener("click", () => window.KotobaQuestParticlePath?.startContrastTraining?.());
         updateStartAvailability();
       }
 
@@ -27505,9 +27557,10 @@ function shuffle(values) {
             <div class="kq-particle-translation">${esc(question.translation)}</div>
             ${feedback ? `
               <div class="kq-particle-feedback ${feedback.correct ? "good" : "bad"}">
-                <h3>${feedback.typo ? "Als Tippfehler gewertet" : feedback.correct ? `Richtig: ${esc(question.expected)}` : `Nicht ganz: ${esc(feedback.entered || "—")} → ${esc(question.expected)}`}</h3>
+                <h3>${feedback.typo ? "Als Tippfehler gewertet" : feedback.correct ? `Richtig: ${esc(feedback.entered || question.expected)}${feedback.entered && normalizeAnswer(feedback.entered) !== normalizeAnswer(question.expected) ? ` · Zielstruktur: ${esc(question.expected)}` : ""}` : `Nicht ganz: ${esc(feedback.entered || "—")} → ${esc(question.expected)}`}</h3>
                 ${!feedback.correct ? `<div class="kq-particle-explanation-block"><strong>Warum deine Antwort hier nicht passt</strong><p>${esc(feedback.wrongExplanation)}</p></div>` : ""}
-                <div class="kq-particle-explanation-block"><strong>Warum ${esc(question.expected)} richtig ist</strong><p>${esc(question.why)}</p></div>
+                ${feedback.correct && feedback.entered && normalizeAnswer(feedback.entered) !== normalizeAnswer(question.expected) && question.acceptedNote ? `<div class="kq-particle-explanation-block"><strong>Auch diese Antwort ist natürlich</strong><p>${esc(question.acceptedNote)}</p></div>` : ""}
+                <div class="kq-particle-explanation-block"><strong>Warum ${esc(question.expected)} die Zielstruktur ist</strong><p>${esc(question.why)}</p></div>
                 ${question.breakdown ? `<div class="kq-particle-breakdown"><strong>Aufbau:</strong> ${esc(question.breakdown)}</div>` : ""}
                 <details class="kq-particle-rule"><summary>Grundregel zu ${esc(question.expected)}</summary><p>${esc(PARTICLE_RULES[question.expected] || question.why)}</p></details>
                 <button class="icon-audio kq-particle-audio" id="kqParticleAudio" type="button" title="Vollständigen Satz anhören">🔊</button>
@@ -27714,7 +27767,7 @@ function shuffle(values) {
       window.__kotobaParticlePathInstalled = true;
     
       const KEY = typeof STORAGE_KEY !== "undefined" ? STORAGE_KEY : "kotobaQuestDataV3";
-      const VERSION = 1;
+      const VERSION = 2;
       const STAGES = [
         { name: "Neu", delay: 0 },
         { name: "Apprentice 1", delay: 4 * 60 * 60 * 1000 },
@@ -27742,6 +27795,40 @@ function shuffle(values) {
         { id: 7, title: "Richtung, Quelle und Bezug", subtitle: "への・からの・について・にとって" },
         { id: 8, title: "Formelle Beziehungen und Rollen", subtitle: "によって・に基づいて・に対して・として" }
       ];
+      const CONTRAST_NEIGHBORS = {
+        "wa-topic": ["ga-subject", "mo-addition"],
+        "ga-subject": ["wa-topic", "o-object"],
+        "o-object": ["ga-subject", "de-action"],
+        "no-link": ["deno-link", "heno-link", "karano-link"],
+        "ni-target": ["de-action", "e-direction", "niwa-contrast"],
+        "de-action": ["ni-target", "dewa-contrast", "niyotte-means"],
+        "e-direction": ["ni-target", "hewa-contrast"],
+        "to-partner": ["ya-examples", "towa-contrast"],
+        "kara-source": ["made-limit", "karamo-addition"],
+        "made-limit": ["kara-source", "madeni-deadline"],
+        "mo-addition": ["wa-topic", "demo-even", "nimo-addition"],
+        "ya-examples": ["to-partner"],
+        "dake-only": ["shika-negative", "demo-even"],
+        "shika-negative": ["dake-only"],
+        "demo-even": ["dake-only", "mo-addition"],
+        "ka-question": ["to-partner"],
+        "niwa-contrast": ["ni-target", "dewa-contrast", "nimo-addition"],
+        "dewa-contrast": ["de-action", "niwa-contrast"],
+        "towa-contrast": ["to-partner", "niwa-contrast"],
+        "hewa-contrast": ["e-direction", "niwa-contrast"],
+        "nimo-addition": ["ni-target", "niwa-contrast", "mo-addition"],
+        "karamo-addition": ["kara-source", "mo-addition"],
+        "madeni-deadline": ["made-limit", "ni-target"],
+        "deno-link": ["de-action", "no-link", "heno-link"],
+        "heno-link": ["e-direction", "no-link", "deno-link"],
+        "karano-link": ["kara-source", "no-link"],
+        "nitsuite-topic": ["nitotte-perspective", "nitaishite-target"],
+        "nitotte-perspective": ["nitsuite-topic", "nitaishite-target"],
+        "niyotte-means": ["nimotozuite-basis", "de-action", "nitsuite-topic"],
+        "nimotozuite-basis": ["niyotte-means"],
+        "nitaishite-target": ["nitsuite-topic", "nitotte-perspective"],
+        "toshite-role": ["nitotte-perspective", "niyotte-means"]
+      };
     
       const R = (surface, reading = "") => [surface, reading];
       const E = (before, after, de, note = "") => ({ before, after, de, note });
@@ -28083,6 +28170,32 @@ function shuffle(values) {
           ],
           { distractors: ["にとって", "について", "によって"], wrong: { "にとって": "にとって würde eine Perspektive markieren. Hier geht es um die Rolle oder Eigenschaft, in der jemand bzw. etwas gilt." } })
       ];
+
+      // Dedicated, unambiguous contrast cases. These are intentionally separate
+      // from the ordinary lesson examples so the learner is never punished for
+      // a particle that would also be natural in the original sentence.
+      const CONTRAST_CASES = [
+        { id:"ni-vs-de-existence", pointId:"ni-target", before:[R("机","つくえ"),R("の"),R("上","うえ")], after:[R("本","ほん"),R("が"),R("あります")], de:"Auf dem Tisch liegt ein Buch.", choices:["に","で"], why:"Bei ある・いる markiert に den Ort, an dem etwas existiert. で wäre der Ort einer aktiven Handlung." },
+        { id:"de-vs-ni-action", pointId:"de-action", before:[R("図書館","としょかん")], after:[R("勉強します","べんきょうします")], de:"Ich lerne in der Bibliothek.", choices:["で","に"], why:"Lernen ist eine Handlung, die an diesem Ort stattfindet: dafür steht で. に wäre Ziel- oder Existenzort." },
+        { id:"ni-vs-e-time", pointId:"ni-target", before:[R("九時","くじ")], after:[R("授業","じゅぎょう"),R("が"),R("始まります","はじまります")], de:"Der Unterricht beginnt um neun Uhr.", choices:["に","へ"], why:"Ein genauer Zeitpunkt wird mit に markiert. へ kann nur eine Richtung ausdrücken." },
+        { id:"to-vs-ya-complete", pointId:"to-partner", before:[R("りんご" )], after:[R("みかん"),R("を"),R("買いました","かいました"),R("。これで全部です")], de:"Ich kaufte Äpfel und Mandarinen. Das ist alles.", choices:["と","や"], why:"と listet vollständig auf. Der Zusatz „Das ist alles“ macht klar, dass keine weiteren Beispiele offenbleiben." },
+        { id:"ya-vs-to-examples", pointId:"ya-examples", before:[R("机","つくえ"),R("の"),R("上","うえ"),R("に"),R("本","ほん")], after:[R("ノート"),R("など"),R("が"),R("あります")], de:"Auf dem Tisch liegen Bücher, Hefte und Ähnliches.", choices:["や","と"], why:"や nennt Beispiele und lässt weitere Elemente offen; など bestätigt diese offene Aufzählung." },
+        { id:"kara-vs-made-start", pointId:"kara-source", before:[R("授業","じゅぎょう"),R("は"),R("九時","くじ")], after:[R("始まります","はじまります")], de:"Der Unterricht beginnt um neun Uhr.", choices:["から","まで"], why:"から markiert den Ausgangspunkt. まで wäre der Endpunkt." },
+        { id:"made-vs-kara-end", pointId:"made-limit", before:[R("五時","ごじ")], after:[R("働きます","はたらきます")], de:"Ich arbeite bis fünf Uhr.", choices:["まで","から"], why:"まで zeigt, dass die Handlung bis zu diesem Zeitpunkt andauert. から würde den Beginn markieren." },
+        { id:"dake-vs-shika-positive", pointId:"dake-only", before:[R("今日","きょう"),R("は"),R("水","みず")], after:[R("飲みました","のみました")], de:"Heute habe ich nur Wasser getrunken.", choices:["だけ","しか"], why:"だけ kann neutral mit einer positiven Verbform stehen. しか verlangt eine Negation." },
+        { id:"shika-vs-dake-negative", pointId:"shika-negative", before:[R("日本語","にほんご"),R("を"),R("少し","すこし")], after:[R("話せません","はなせません")], de:"Ich kann nur ein wenig Japanisch sprechen.", choices:["しか","だけ"], why:"しか verbindet sich zwingend mit einer negativen Form und bedeutet zusammen „nur / nichts außer“.'".replace("'","") },
+        { id:"made-vs-madeni-duration", pointId:"made-limit", before:[R("五時","ごじ")], after:[R("働きます","はたらきます")], de:"Ich arbeite bis fünf Uhr.", choices:["まで","までに"], why:"まで beschreibt eine Handlung, die bis zum Endpunkt andauert. までに wäre eine Deadline für einen Abschluss." },
+        { id:"madeni-vs-made-deadline", pointId:"madeni-deadline", before:[R("明日","あした")], after:[R("レポート"),R("を"),R("出して","だして"),R("ください")], de:"Bitte reichen Sie den Bericht bis spätestens morgen ein.", choices:["までに","まで"], why:"までに setzt eine Frist: Bis morgen muss das Einreichen abgeschlossen sein. まで würde das Andauern einer Handlung bis morgen beschreiben." },
+        { id:"niwa-vs-dewa-existence", pointId:"niwa-contrast", before:[R("この",""),R("町","まち")], after:[R("大きな","おおきな"),R("公園","こうえん"),R("が"),R("あります")], de:"In dieser Stadt gibt es dagegen einen großen Park.", choices:["には","では"], why:"には baut auf に als Existenzort auf und fügt は als Kontrast hinzu. では würde einen Handlungs- oder Geltungsrahmen kontrastieren." },
+        { id:"dewa-vs-niwa-frame", pointId:"dewa-contrast", before:[R("日本","にほん")], after:[R("四月","しがつ"),R("に"),R("新学期","しんがっき"),R("が"),R("始まります","はじまります")], de:"In Japan beginnt das Schuljahr dagegen im April.", choices:["では","には"], why:"Die Aussage gilt innerhalb des gesellschaftlichen/örtlichen Rahmens Japan: で + は = では. には wäre eher Ziel, Bezug oder Existenzort." },
+        { id:"nimo-vs-niwa-addition", pointId:"nimo-addition", before:[R("休日","きゅうじつ")], after:[R("六時","ろくじ"),R("に"),R("起きます","おきます")], de:"Auch an freien Tagen stehe ich um sechs Uhr auf.", choices:["にも","には"], why:"にも bedeutet hier „auch an“: に markiert den Zeitpunkt/Bezug, も fügt einen weiteren Fall hinzu. には würde diesen Bezug kontrastieren." },
+        { id:"nitsuite-vs-nitotte-topic", pointId:"nitsuite-topic", before:[R("日本","にほん"),R("の"),R("教育","きょういく")], after:[R("研究して","けんきゅうして"),R("います")], de:"Ich forsche über das japanische Bildungssystem.", choices:["について","にとって"], why:"について markiert den Gegenstand einer Untersuchung. にとって markiert die Perspektive einer Bewertung." },
+        { id:"nitotte-vs-nitsuite-perspective", pointId:"nitotte-perspective", before:[R("子供","こども")], after:[R("遊ぶ","あそぶ"),R("時間","じかん"),R("は"),R("大切","たいせつ"),R("です")], de:"Für Kinder ist Zeit zum Spielen wichtig.", choices:["にとって","について"], why:"にとって markiert, aus wessen Sicht etwas wichtig ist. について würde Kinder nur zum Gesprächsthema machen." },
+        { id:"niyotte-vs-nimotozuite-cause", pointId:"niyotte-means", before:[R("大雨","おおあめ")], after:[R("電車","でんしゃ"),R("が"),R("止まりました","とまりました")], de:"Wegen des starken Regens hielten die Züge an.", choices:["によって","に基づいて"], why:"によって kann eine formelle Ursache markieren. に基づいて bedeutet „auf Grundlage von“ und passt zu Regeln, Daten oder Beweisen." },
+        { id:"nimotozuite-vs-niyotte-basis", pointId:"nimotozuite-basis", before:[R("データ")], after:[R("結果","けっか"),R("を"),R("分析しました","ぶんせきしました")], de:"Wir analysierten die Ergebnisse auf Grundlage der Daten.", choices:["に基づいて","によって"], why:"に基づいて nennt ausdrücklich die Grundlage, an der sich die Analyse orientiert. によって wäre eher Mittel, Ursache oder Urheber." },
+        { id:"nitaishite-vs-nitotte-target", pointId:"nitaishite-target", before:[R("客","きゃく")], after:[R("丁寧に","ていねいに"),R("対応して","たいおうして"),R("ください")], de:"Bitte verhalten Sie sich der Kundschaft gegenüber höflich.", choices:["に対して","にとって"], why:"に対して markiert das Gegenüber/Ziel einer Haltung. にとって würde die Kundschaft zur Perspektive einer Bewertung machen." },
+        { id:"toshite-vs-nitotte-role", pointId:"toshite-role", before:[R("通訳","つうやく")], after:[R("会議","かいぎ"),R("に"),R("参加しました","さんかしました")], de:"Ich nahm als Dolmetscherin an der Besprechung teil.", choices:["として","にとって"], why:"として beschreibt die Rolle, in der jemand handelt. にとって beschreibt eine Perspektive, nicht eine Rolle." }
+      ];
     
       const PARTICLE_RULES = Object.fromEntries(POINTS.map(point => [point.particle, point.summary]));
       const VOCAB = {
@@ -28149,10 +28262,12 @@ function shuffle(values) {
             });
           });
         }
+        const rawConfusions = raw?.stats?.confusions && typeof raw.stats.confusions === "object" ? raw.stats.confusions : {};
+        const confusions = Object.fromEntries(Object.entries(rawConfusions).map(([key,value]) => [key, Math.max(0, Number(value || 0))]).filter(([,value]) => value > 0));
         return {
           version: VERSION,
           points,
-          stats: { lessons: Math.max(legacyLessonCount, Object.values(points).filter(point => point.lessonComplete).length), reviews: Math.max(0, Number(raw?.stats?.reviews || 0)), correct: Math.max(0, Number(raw?.stats?.correct || 0)), incorrect: Math.max(0, Number(raw?.stats?.incorrect || 0)), lastStudiedAt: raw?.stats?.lastStudiedAt || null }
+          stats: { lessons: Math.max(legacyLessonCount, Object.values(points).filter(point => point.lessonComplete).length), reviews: Math.max(0, Number(raw?.stats?.reviews || 0)), correct: Math.max(0, Number(raw?.stats?.correct || 0)), incorrect: Math.max(0, Number(raw?.stats?.incorrect || 0)), confusions, lastStudiedAt: raw?.stats?.lastStudiedAt || null }
         };
       }
       function dateKey(value = Date.now()) {
@@ -28332,6 +28447,51 @@ function shuffle(values) {
         return rule ? `「${entered}」hat normalerweise diese Funktion: ${rule} Diese Beziehung passt hier jedoch nicht. Erwartet wird 「${point.particle}」: ${point.summary}` : `「${entered}」passt hier nicht zur beschriebenen Beziehung. Erwartet wird 「${point.particle}」: ${point.summary}`;
       }
       function shuffle(values) { const result=[...values]; for(let i=result.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[result[i],result[j]]=[result[j],result[i]];} return result; }
+      function learnedPoint(point) { return Boolean(point && pointState(point.id)?.lessonComplete); }
+      function pointByParticle(particle) { return POINTS.find(point => point.particle === particle) || null; }
+      function contrastPoints(point) {
+        const ids = CONTRAST_NEIGHBORS[point?.id] || [];
+        return ids.map(id => POINTS.find(candidate => candidate.id === id)).filter(candidate => candidate && learnedPoint(candidate));
+      }
+      function recordConfusion(expected, entered) {
+        const right = String(expected || "").trim(), wrong = String(entered || "").trim();
+        if (!right || !wrong || right === wrong || !pointByParticle(wrong)) return;
+        state.stats.confusions ||= {};
+        const key = `${right}|||${wrong}`;
+        state.stats.confusions[key] = Math.max(0, Number(state.stats.confusions[key] || 0)) + 1;
+      }
+      function combinedConfusions() {
+        const totals = {};
+        const add = (raw = {}) => Object.entries(raw || {}).forEach(([key,value]) => { totals[key] = Math.max(0, Number(totals[key] || 0)) + Math.max(0, Number(value || 0)); });
+        add(state.stats.confusions);
+        add(sourceData().particlePractice?.confusions);
+        return Object.entries(totals).map(([key,count]) => { const [expected,entered] = key.split("|||"); return { expected, entered, count }; })
+          .filter(item => item.expected && item.entered && item.expected !== item.entered && learnedPoint(pointByParticle(item.expected)))
+          .sort((a,b) => b.count - a.count || a.expected.localeCompare(b.expected));
+      }
+      function contrastTrainingItems() {
+        const result = [], seen = new Set();
+        for (const pair of combinedConfusions()) {
+          const point = pointByParticle(pair.expected);
+          if (point && learnedPoint(point) && CONTRAST_CASES.some(item => item.pointId === point.id) && !seen.has(point.id)) { result.push({ point, skill: SKILLS.find(skill => skill.id === "contrast") }); seen.add(point.id); }
+          if (result.length >= 10) break;
+        }
+        if (result.length < 6) {
+          const candidates = POINTS.filter(point => learnedPoint(point) && CONTRAST_CASES.some(item => item.pointId === point.id));
+          for (const point of shuffle(candidates)) {
+            if (seen.has(point.id)) continue;
+            result.push({ point, skill: SKILLS.find(skill => skill.id === "contrast") }); seen.add(point.id);
+            if (result.length >= 10) break;
+          }
+        }
+        return result;
+      }
+      function startContrastTraining() {
+        const items = contrastTrainingItems();
+        if (!items.length) { notify("Lerne zuerst mindestens zwei verwandte Partikel, dann kann das Kontrasttraining starten."); return; }
+        reviewSession = { practiceOnly:true, mode:"contrast", questions:items.map(item=>buildReviewQuestion(item,true)), index:0, feedback:null, results:{good:0,bad:0}, level:null };
+        viewMode="review"; showTab("path"); renderReview();
+      }
     
       function installShell() {
         const section = document.getElementById("particlePractice");
@@ -28365,10 +28525,13 @@ function shuffle(values) {
         const due=dueItems(), levelNow=currentLevel();
         const completed=POINTS.filter(point=>pointState(point.id).lessonComplete).length;
         const guru=POINTS.filter(point=>pointStage(point)>=5).length;
-        el.innerHTML=`<div class="kq-pp-hero card"><div><span class="eyebrow">Partikel-Lernpfad</span><h2>Partikel verstehen, unterscheiden und sicher einsetzen</h2><p>Jede Partikel erhält eine eigene Lektion mit Bedeutung, Satzfunktion, Kontrasten, Furigana und Vokabelhilfen. Danach werden drei Fähigkeiten getrennt im SRS wiederholt.</p><div class="button-row"><button class="primary" id="kqPpContinue">Lernpfad fortsetzen</button><button class="secondary" id="kqPpReviews" ${due.length?"":"disabled"}>${due.length} Reviews starten</button><button class="ghost" id="kqPpFree">Freie Übungen</button></div></div><div class="kq-pp-hero-stats"><span><strong>${completed}/${POINTS.length}</strong><small>Lektionen</small></span><span><strong>${guru}</strong><small>auf Guru</small></span><span><strong>${due.length}</strong><small>jetzt fällig</small></span><span><strong>${esc(nextDueText())}</strong><small>nächstes Review</small></span></div></div>
+        const confusions=combinedConfusions().slice(0,6), contrastCount=contrastTrainingItems().length;
+        el.innerHTML=`<div class="kq-pp-hero card"><div><span class="eyebrow">Partikel-Lernpfad</span><h2>Partikel verstehen, unterscheiden und sicher einsetzen</h2><p>Neue Level werden durch abgeschlossene Lektionen freigeschaltet – nicht durch Guru. Das SRS festigt langfristig drei getrennte Fähigkeiten; das Kontrasttraining nimmt sich gezielt deine persönlichen Verwechslungen vor.</p><div class="button-row"><button class="primary" id="kqPpContinue">Lernpfad fortsetzen</button><button class="secondary" id="kqPpReviews" ${due.length?"":"disabled"}>${due.length} Reviews starten</button><button class="secondary" id="kqPpContrast" ${contrastCount?"":"disabled"}>⚖️ Problem-Kontraste</button><button class="ghost" id="kqPpFree">Freie Übungen</button></div></div><div class="kq-pp-hero-stats"><span><strong>${completed}/${POINTS.length}</strong><small>Lektionen</small></span><span><strong>${guru}</strong><small>langfristig Guru</small></span><span><strong>${due.length}</strong><small>jetzt fällig</small></span><span><strong>${esc(nextDueText())}</strong><small>nächstes Review</small></span></div></div>
+          ${confusions.length?`<article class="card kq-pp-confusion-card"><div><span class="eyebrow">Fehlerdiagnose</span><h3>Diese Beziehungen verwechselst du gerade</h3><p>Die Pfeile zeigen: erwartet → von dir eingesetzt. Kotoba Quest gewichtet diese Paare im Kontrasttraining stärker.</p></div><div class="kq-pp-confusion-list">${confusions.map(item=>`<span><b>${esc(item.expected)} → ${esc(item.entered)}</b><small>${item.count}× verwechselt</small></span>`).join("")}</div></article>`:""}
           <div class="kq-pp-levels">${LEVELS.map(level=>renderLevel(level,levelNow)).join("")}</div>`;
         document.getElementById("kqPpContinue")?.addEventListener("click",()=>{const next=POINTS.find(point=>isLevelUnlocked(point.level)&&!pointState(point.id).lessonComplete)||POINTS.find(point=>isLevelUnlocked(point.level)); if(next)startLesson(next.id);});
         document.getElementById("kqPpReviews")?.addEventListener("click",()=>startReviews(false));
+        document.getElementById("kqPpContrast")?.addEventListener("click",startContrastTraining);
         document.getElementById("kqPpFree")?.addEventListener("click",()=>showTab("practice"));
         el.querySelectorAll("[data-pp-lesson]").forEach(button=>button.addEventListener("click",()=>startLesson(button.dataset.ppLesson)));
         el.querySelectorAll("[data-pp-level-review]").forEach(button=>button.addEventListener("click",()=>startReviews(true,Number(button.dataset.ppLevelReview))));
@@ -28411,15 +28574,23 @@ function shuffle(values) {
       }
     
       function buildReviewQuestion(item, practiceOnly=false) {
-        const point=item.point, skill=item.skill, example=point.examples[Math.floor(Math.random()*point.examples.length)];
+        const point=item.point, skill=item.skill;
+        const contrastCases = skill.id === "contrast" ? CONTRAST_CASES.filter(candidate => candidate.pointId === point.id) : [];
+        const contrastCase = contrastCases.length ? contrastCases[Math.floor(Math.random()*contrastCases.length)] : null;
+        const example = contrastCase || point.examples[Math.floor(Math.random()*point.examples.length)];
         if(skill.id==="production") return { point,skill,example,type:"input",practiceOnly };
         if(skill.id==="function") {
           const correct=point.functions[0];
           const distractors=shuffle([...new Set(POINTS.filter(other=>other.id!==point.id).flatMap(other=>other.functions.slice(0,1)).filter(value=>value!==correct))]).slice(0,3);
           return {point,skill,example,type:"choice",prompt:"Welche Funktion hat die markierte Partikel hier?",correct,accepted:[correct],choices:shuffle([correct,...distractors]),practiceOnly};
         }
-        const choices=shuffle([point.particle,...point.distractors.filter(Boolean)]).filter((value,index,array)=>array.indexOf(value)===index).slice(0,4);
-        return {point,skill,example,type:"choice-particle",prompt:"Welche Partikel passt in die Lücke?",correct:point.particle,accepted:point.accepted,choices:shuffle(choices),practiceOnly};
+        if (contrastCase) {
+          const alternatives = shuffle([...new Set((contrastCase.choices || []).filter(value => value && value !== point.particle))]).slice(0,3);
+          return {point,skill,example,type:"choice-particle",prompt:"Welche Partikel drückt genau diese Beziehung aus?",correct:point.particle,accepted:[point.particle],choices:shuffle([point.particle,...alternatives]),practiceOnly,contrastCase};
+        }
+        const related = contrastPoints(point).map(candidate => candidate.particle);
+        const alternatives = shuffle([...new Set([...related,...point.distractors.filter(Boolean)].filter(value => value !== point.particle))]).slice(0,3);
+        return {point,skill,example,type:"choice-particle",prompt:"Welche Partikel passt in die Lücke?",correct:point.particle,accepted:point.accepted,choices:shuffle([point.particle,...alternatives]),practiceOnly,contrastParticles:related};
       }
       function startReviews(practiceOnly=false, level=null) {
         let items=practiceOnly ? POINTS.filter(point=>(level?point.level===level:isLevelUnlocked(point.level))&&pointState(point.id).lessonComplete).flatMap(point=>SKILLS.map(skill=>({point,skill}))) : dueItems();
@@ -28433,7 +28604,7 @@ function shuffle(values) {
         let interaction="";
         if(q.type==="input") interaction=`<form id="kqPpReviewForm" class="kq-pp-answer-form"><input id="kqPpReviewInput" autocomplete="off" inputmode="latin" placeholder="Partikel eingeben" ${feedback?"disabled":""}><button class="primary" ${feedback?"disabled":""}>Prüfen</button></form>`;
         else interaction=`<div class="kq-pp-choice-grid">${q.choices.map((choice,index)=>`<button data-pp-choice="${esc(choice)}" ${feedback?"disabled":""}><span>${index+1}</span>${esc(choice)}</button>`).join("")}</div>`;
-        el.innerHTML=`<div class="kq-pp-topline"><button class="ghost" id="kqPpReviewQuit">Session beenden</button><div><span>${session.practiceOnly?"Freie Übung":"Partikel-SRS"} · ${session.index+1}/${session.questions.length}</span><div><i style="width:${(session.index/session.questions.length)*100}%"></i></div></div></div><article class="card kq-pp-review ${feedback?(feedback.correct?"good":"bad"):""}"><span class="kq-pp-skill">${q.skill.icon} ${esc(q.skill.label)}</span><h2>${esc(q.prompt||"Setze die passende Partikel ein")}</h2><div class="kq-pp-japanese">${q.type==="function"?fullSentence(point,example,{highlight:true}):fullSentence(point,example,{blank:true})}</div><p class="kq-pp-translation">${esc(example.de)}</p>${interaction}${feedback?renderReviewFeedback(q,feedback):""}${feedback?renderVocabHelp(point,example):""}</article>`;
+        el.innerHTML=`<div class="kq-pp-topline"><button class="ghost" id="kqPpReviewQuit">Session beenden</button><div><span>${session.mode==="contrast"?"⚖️ Kontrasttraining":session.practiceOnly?"Freie Übung":"Partikel-SRS"} · ${session.index+1}/${session.questions.length}</span><div><i style="width:${(session.index/session.questions.length)*100}%"></i></div></div></div><article class="card kq-pp-review ${feedback?(feedback.correct?"good":"bad"):""}"><span class="kq-pp-skill">${q.skill.icon} ${esc(q.skill.label)}</span><h2>${esc(q.prompt||"Setze die passende Partikel ein")}</h2><div class="kq-pp-japanese">${q.type==="function"?fullSentence(point,example,{highlight:true}):fullSentence(point,example,{blank:true})}</div><p class="kq-pp-translation">${esc(example.de)}</p>${interaction}${feedback?renderReviewFeedback(q,feedback):""}${feedback?renderVocabHelp(point,example):""}</article>`;
         document.getElementById("kqPpReviewQuit")?.addEventListener("click",()=>{reviewSession=null;viewMode="overview";renderOverview();});
         if(q.type==="input"&&!feedback){const input=document.getElementById("kqPpReviewInput");input?.addEventListener("input",()=>{const converted=convertParticleInput(input.value);if(converted!==input.value){input.value=converted;input.setSelectionRange(input.value.length,input.value.length);}});document.getElementById("kqPpReviewForm")?.addEventListener("submit",event=>{event.preventDefault();gradeCurrent(point.accepted.map(normalizeAnswer).includes(normalizeAnswer(input.value)),normalizeAnswer(input.value));});setTimeout(()=>input?.focus(),0);}
         el.querySelectorAll("[data-pp-choice]").forEach(button=>button.addEventListener("click",()=>gradeCurrent((q.accepted||[q.correct]).includes(button.dataset.ppChoice),button.dataset.ppChoice)));
@@ -28443,18 +28614,22 @@ function shuffle(values) {
       }
       function renderReviewFeedback(q,feedback) {
         const point=q.point;
-        const explanation=feedback.correct?point.summary:explanationWrong(point,feedback.entered);
-        return `<div class="kq-pp-review-feedback"><h3>${feedback.correct?"Richtig":"Nicht ganz"}: 「${esc(feedback.correct?point.particle:feedback.entered||"—")}」</h3><div><strong>${feedback.correct?"Warum passt es?":"Warum passt deine Antwort hier nicht?"}</strong><p>${esc(explanation)}</p></div>${feedback.correct?"":`<div><strong>Richtig ist 「${esc(point.particle)}」</strong><p>${esc(point.summary)}</p>${point.contrast?`<p class="muted">Abgrenzung: ${esc(point.contrast)}</p>`:""}</div>`}<button class="primary" id="kqPpReviewNext">Weiter</button></div>`;
+        const caseWhy = q.contrastCase?.why || "";
+        const explanation=feedback.correct?(caseWhy || point.summary):explanationWrong(point,feedback.entered);
+        const enteredPoint = !feedback.correct ? pointByParticle(feedback.entered) : null;
+        const contrastNote = q.skill.id === "contrast" ? `<div class="kq-pp-contrast-feedback"><strong>⚖️ Abgrenzung</strong><p>${esc(point.contrast || point.summary)}</p>${enteredPoint?`<p><b>「${esc(feedback.entered)}」</b>: ${esc(enteredPoint.summary)}</p>`:""}</div>` : "";
+        return `<div class="kq-pp-review-feedback"><h3>${feedback.correct?"Richtig":"Nicht ganz"}: 「${esc(feedback.correct?point.particle:feedback.entered||"—")}」</h3><div><strong>${feedback.correct?"Warum passt es?":"Warum passt deine Antwort hier nicht?"}</strong><p>${esc(explanation)}</p></div>${feedback.correct?`<div><strong>Warum nicht einfach eine ähnliche Partikel?</strong><p>${esc(caseWhy || point.contrast || "Der Kontext entscheidet, welche Beziehung markiert werden soll.")}</p></div>`:`<div><strong>Richtig ist 「${esc(point.particle)}」</strong><p>${esc(point.summary)}</p>${point.contrast?`<p class="muted">Abgrenzung: ${esc(point.contrast)}</p>`:""}</div>`}${contrastNote}<button class="primary" id="kqPpReviewNext">Weiter</button></div>`;
       }
       function gradeCurrent(correct,entered) {
         if(!reviewSession||reviewSession.feedback)return;
         const q=reviewSession.questions[reviewSession.index];reviewSession.feedback={correct,entered};reviewSession.results[correct?"good":"bad"]++;
+        if(!correct) recordConfusion(q.point.particle, entered);
         if(!reviewSession.practiceOnly){const s=pointState(q.point.id).skills[q.skill.id],now=Date.now();s.lastReviewedAt=now;if(correct){s.correct++;s.stage=Math.min(9,Math.max(1,s.stage+1));s.dueAt=s.stage>=9?null:now+STAGES[s.stage].delay;state.stats.correct++;}else{s.incorrect++;s.stage=Math.max(1,s.stage-1);s.dueAt=now+30*60*1000;state.stats.incorrect++;}state.stats.reviews++;state.stats.lastStudiedAt=now;persist({activity:true});}
-        if(correct){nextReview();return;}
+        else if(!correct){persist();}
         renderReview();
       }
       function nextReview(){if(!reviewSession)return;reviewSession.index++;reviewSession.feedback=null;renderReview();}
-      function renderReviewSummary(){const el=root(),s=reviewSession,total=s.results.good+s.results.bad,accuracy=total?Math.round(s.results.good/total*100):0;el.innerHTML=`<article class="card kq-pp-summary"><div>${accuracy>=80?"🌸":"🌱"}</div><h2>${s.practiceOnly?"Übungsrunde beendet":"Partikelreviews gespeichert"}</h2><p>${s.results.good} richtig, ${s.results.bad} falsch. ${s.practiceOnly?"Die SRS-Stufen wurden nicht verändert.":"Falsche Antworten werden nach 30 Minuten erneut fällig."}</p><div><span><strong>${accuracy}%</strong><small>Genauigkeit</small></span><span><strong>${dueItems().length}</strong><small>noch fällig</small></span></div><button class="primary" id="kqPpSummaryBack">Zur Übersicht</button></article>`;document.getElementById("kqPpSummaryBack")?.addEventListener("click",()=>{reviewSession=null;viewMode="overview";renderOverview();});updateDashboardCard();}
+      function renderReviewSummary(){const el=root(),s=reviewSession,total=s.results.good+s.results.bad,accuracy=total?Math.round(s.results.good/total*100):0;el.innerHTML=`<article class="card kq-pp-summary"><div>${accuracy>=80?"🌸":"🌱"}</div><h2>${s.mode==="contrast"?"Kontrastrunde beendet":s.practiceOnly?"Übungsrunde beendet":"Partikelreviews gespeichert"}</h2><p>${s.results.good} richtig, ${s.results.bad} falsch. ${s.practiceOnly?"Die SRS-Stufen wurden nicht verändert; deine Verwechslungen werden aber für künftige Kontrastrunden gemerkt.":"Falsche Antworten werden nach 30 Minuten erneut fällig."}</p><div><span><strong>${accuracy}%</strong><small>Genauigkeit</small></span><span><strong>${dueItems().length}</strong><small>noch fällig</small></span></div><button class="primary" id="kqPpSummaryBack">Zur Übersicht</button></article>`;document.getElementById("kqPpSummaryBack")?.addEventListener("click",()=>{reviewSession=null;viewMode="overview";renderOverview();});updateDashboardCard();}
       function renderCurrent(){if(currentTab!=="path")return;if(viewMode==="lesson")renderLesson();else if(viewMode==="review")renderReview();else renderOverview();}
     
       function installEntryPoints(){
@@ -28467,7 +28642,7 @@ function shuffle(values) {
       function wrap(name){try{const original=eval(name);if(typeof original!=="function"||original.__kqParticlePathWrapped)return;const wrapped=function(...args){const result=original.apply(this,args);scheduleInstall();return result;};wrapped.__kqParticlePathWrapped=true;eval(`${name}=wrapped`);}catch{}}
     
       const style=document.createElement("style");style.id="kotobaParticlePathStyles";style.textContent=`
-        .kq-pp-tabs{display:flex;gap:8px;margin-bottom:18px;padding:6px;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--kq-wash,#f5efff) 65%,white)}.kq-pp-tabs button{flex:1;padding:11px 14px;border-radius:11px;background:transparent;color:var(--muted);font-weight:900}.kq-pp-tabs button.active{background:var(--primary);color:white}.kq-pp-hero{display:grid;grid-template-columns:1.25fr .75fr;gap:20px;background:linear-gradient(135deg,var(--kq-wash,#f4efff),white)}.kq-pp-hero h2{margin:4px 0 10px;font-size:clamp(1.7rem,4vw,2.5rem)}.kq-pp-hero p{color:var(--muted);line-height:1.55}.kq-pp-hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kq-pp-hero-stats span{display:grid;place-content:center;text-align:center;padding:13px;border:1px solid var(--border);border-radius:14px;background:white}.kq-pp-hero-stats strong{color:var(--primary);font-size:1.35rem}.kq-pp-hero-stats small{color:var(--muted)}.kq-pp-levels{display:grid;gap:16px;margin-top:18px}.kq-pp-level.locked{opacity:.58}.kq-pp-level-head{display:flex;justify-content:space-between;gap:18px}.kq-pp-level-head span{color:var(--primary-dark);font-size:.78rem;font-weight:900}.kq-pp-level-head h3{margin:4px 0}.kq-pp-level-head p{margin:0;color:var(--muted)}.kq-pp-level-progress{display:grid;align-content:center;text-align:center}.kq-pp-level-progress strong{color:var(--primary);font-size:1.7rem}.kq-pp-level-progress small{color:var(--muted)}.kq-pp-point-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.kq-pp-point{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:11px;padding:12px;text-align:left;border:1px solid var(--border);border-radius:13px;background:white}.kq-pp-point>span{display:grid;place-items:center;width:50px;height:50px;border-radius:14px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:1.25rem;font-weight:950}.kq-pp-point>div{display:grid;gap:3px}.kq-pp-point small{color:var(--muted)}.kq-pp-point.complete{border-color:color-mix(in srgb,var(--good) 50%,var(--border))}.kq-pp-level-review{margin-top:12px}.kq-pp-lock{margin-top:14px;padding:13px;border-radius:12px;background:var(--kq-wash,#f4efff);color:var(--muted)}.kq-pp-topline{display:flex;align-items:center;gap:18px;max-width:920px;margin:0 auto 12px}.kq-pp-topline>div{display:grid;gap:6px;flex:1;text-align:right;color:var(--muted);font-size:.82rem}.kq-pp-topline>div>div{height:8px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-pp-topline i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-pp-lesson,.kq-pp-review{max-width:920px;margin:0 auto;min-height:540px}.kq-pp-concept{text-align:center}.kq-pp-big-particle{display:inline-grid;place-items:center;min-width:100px;height:100px;padding:0 18px;border-radius:26px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:2.6rem;font-weight:950}.kq-pp-summary{font-size:1.08rem;line-height:1.65;color:var(--text)}.kq-pp-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0;text-align:left}.kq-pp-info-grid>div{display:grid;gap:4px;padding:13px;border:1px solid var(--border);border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-info-grid span{color:var(--muted);font-size:.78rem}.kq-pp-concept ul{text-align:left;line-height:1.65}.kq-pp-examples{display:grid;gap:14px}.kq-pp-examples article{padding:17px;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--kq-wash,#f4efff) 45%,white)}.kq-pp-examples article>span{color:var(--primary-dark);font-size:.76rem;font-weight:900}.kq-pp-japanese{margin:12px 0;font-size:clamp(1.25rem,3vw,1.75rem);font-weight:900;line-height:2.4;text-align:center}.kq-pp-japanese rt{color:var(--primary-dark);font-size:.48em}.kq-pp-japanese mark{padding:2px 8px;border-radius:8px;background:color-mix(in srgb,var(--accent) 55%,white)}.kq-pp-vocab{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--border);text-align:left}.kq-pp-vocab-head{display:flex;justify-content:space-between;gap:12px}.kq-pp-vocab-head span{color:var(--muted);font-size:.75rem}.kq-pp-vocab-row{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start}.kq-pp-vocab-row>span{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:var(--primary);color:white;font-size:.72rem;font-weight:900}.kq-pp-vocab-row>div{display:grid;gap:6px}.kq-pp-vocab-row em{color:var(--primary-dark);font-size:.75rem;font-style:normal}.kq-pp-vocab-actions{display:flex;gap:7px;flex-wrap:wrap}.kq-pp-vocab-actions button{padding:6px 9px;border-radius:9px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:.72rem;font-weight:850}.kq-pp-contrast,.kq-pp-warning,.kq-pp-wrong-grid>div{padding:15px;border-radius:14px;border:1px solid var(--border);background:var(--kq-wash,#f4efff)}.kq-pp-contrast p,.kq-pp-warning p,.kq-pp-wrong-grid p{line-height:1.6}.kq-pp-warning{margin-top:12px;background:color-mix(in srgb,#fff4c7 65%,white)}.kq-pp-wrong-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kq-pp-lesson-nav{justify-content:center;margin-top:22px}.kq-pp-check-sentence{margin-top:28px}.kq-pp-blank{display:inline-block;min-width:80px;padding:0 8px;border-bottom:3px solid var(--primary);color:var(--primary)}.kq-pp-translation{text-align:center;color:var(--muted);font-weight:750}.kq-pp-answer-form{display:grid;grid-template-columns:1fr auto;gap:10px;max-width:560px;margin:18px auto}.kq-pp-answer-form input{text-align:center;font-size:1.2rem;font-weight:850}.kq-pp-review{text-align:center;border-top:8px solid var(--primary)}.kq-pp-review.good{border-top-color:var(--good)}.kq-pp-review.bad{border-top-color:var(--bad)}.kq-pp-skill{display:inline-flex;padding:8px 13px;border-radius:999px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-weight:900}.kq-pp-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:700px;margin:18px auto}.kq-pp-choice-grid button{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--border);border-radius:13px;background:white;text-align:left;font-weight:850}.kq-pp-choice-grid span{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--kq-wash,#f4efff);color:var(--primary-dark)}.kq-pp-review-feedback{display:grid;gap:10px;max-width:730px;margin:18px auto 0;text-align:left}.kq-pp-review-feedback h3{text-align:center}.kq-pp-review-feedback>div{padding:14px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-review-feedback p{line-height:1.55}.kq-pp-review-feedback button{justify-self:center}.kq-pp-summary{max-width:720px;margin:0 auto;text-align:center}.kq-pp-summary>div:first-child{font-size:4rem}.kq-pp-summary>div:not(:first-child){display:flex;justify-content:center;gap:10px;margin:18px}.kq-pp-summary span{display:grid;padding:13px 22px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-summary strong{color:var(--primary);font-size:1.8rem}.kq-pp-summary small{color:var(--muted)}.kq-pp-teaser,.kq-pp-dashboard-card{display:flex;align-items:center;justify-content:space-between;gap:16px}.kq-pp-teaser>div,.kq-pp-dashboard-card>div:first-child{display:flex;align-items:center;gap:13px}.kq-pp-teaser>div>span{font-size:2rem}.kq-pp-teaser h3,.kq-pp-teaser p,.kq-pp-dashboard-card h3,.kq-pp-dashboard-card p{margin:0}.kq-pp-teaser p,.kq-pp-dashboard-card p{color:var(--muted);margin-top:3px}.kq-pp-dashboard-card>div:nth-child(2){display:grid;text-align:center}.kq-pp-dashboard-card>div:nth-child(2) strong{color:var(--primary);font-size:1.7rem}.kq-pp-dashboard-card>div:nth-child(2) span{color:var(--muted);font-size:.75rem}@media(max-width:800px){.kq-pp-hero{grid-template-columns:1fr}.kq-pp-point-grid,.kq-pp-wrong-grid{grid-template-columns:1fr}.kq-pp-topline{align-items:flex-start;flex-direction:column}.kq-pp-topline>div{text-align:left;width:100%}.kq-pp-teaser,.kq-pp-dashboard-card{align-items:flex-start;flex-direction:column}}@media(max-width:560px){.kq-pp-hero-stats,.kq-pp-info-grid,.kq-pp-choice-grid{grid-template-columns:1fr}.kq-pp-answer-form{grid-template-columns:1fr}.kq-pp-vocab-head{flex-direction:column}.kq-pp-point{grid-template-columns:48px 1fr}}
+        .kq-pp-tabs{display:flex;gap:8px;margin-bottom:18px;padding:6px;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--kq-wash,#f5efff) 65%,white)}.kq-pp-tabs button{flex:1;padding:11px 14px;border-radius:11px;background:transparent;color:var(--muted);font-weight:900}.kq-pp-tabs button.active{background:var(--primary);color:white}.kq-pp-hero{display:grid;grid-template-columns:1.25fr .75fr;gap:20px;background:linear-gradient(135deg,var(--kq-wash,#f4efff),white)}.kq-pp-hero h2{margin:4px 0 10px;font-size:clamp(1.7rem,4vw,2.5rem)}.kq-pp-hero p{color:var(--muted);line-height:1.55}.kq-pp-hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kq-pp-hero-stats span{display:grid;place-content:center;text-align:center;padding:13px;border:1px solid var(--border);border-radius:14px;background:white}.kq-pp-hero-stats strong{color:var(--primary);font-size:1.35rem}.kq-pp-hero-stats small{color:var(--muted)}.kq-pp-levels{display:grid;gap:16px;margin-top:18px}.kq-pp-level.locked{opacity:.58}.kq-pp-level-head{display:flex;justify-content:space-between;gap:18px}.kq-pp-level-head span{color:var(--primary-dark);font-size:.78rem;font-weight:900}.kq-pp-level-head h3{margin:4px 0}.kq-pp-level-head p{margin:0;color:var(--muted)}.kq-pp-level-progress{display:grid;align-content:center;text-align:center}.kq-pp-level-progress strong{color:var(--primary);font-size:1.7rem}.kq-pp-level-progress small{color:var(--muted)}.kq-pp-point-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.kq-pp-point{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:11px;padding:12px;text-align:left;border:1px solid var(--border);border-radius:13px;background:white}.kq-pp-point>span{display:grid;place-items:center;width:50px;height:50px;border-radius:14px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:1.25rem;font-weight:950}.kq-pp-point>div{display:grid;gap:3px}.kq-pp-point small{color:var(--muted)}.kq-pp-point.complete{border-color:color-mix(in srgb,var(--good) 50%,var(--border))}.kq-pp-level-review{margin-top:12px}.kq-pp-lock{margin-top:14px;padding:13px;border-radius:12px;background:var(--kq-wash,#f4efff);color:var(--muted)}.kq-pp-topline{display:flex;align-items:center;gap:18px;max-width:920px;margin:0 auto 12px}.kq-pp-topline>div{display:grid;gap:6px;flex:1;text-align:right;color:var(--muted);font-size:.82rem}.kq-pp-topline>div>div{height:8px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-pp-topline i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-pp-lesson,.kq-pp-review{max-width:920px;margin:0 auto;min-height:540px}.kq-pp-concept{text-align:center}.kq-pp-big-particle{display:inline-grid;place-items:center;min-width:100px;height:100px;padding:0 18px;border-radius:26px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:2.6rem;font-weight:950}.kq-pp-summary{font-size:1.08rem;line-height:1.65;color:var(--text)}.kq-pp-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0;text-align:left}.kq-pp-info-grid>div{display:grid;gap:4px;padding:13px;border:1px solid var(--border);border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-info-grid span{color:var(--muted);font-size:.78rem}.kq-pp-concept ul{text-align:left;line-height:1.65}.kq-pp-examples{display:grid;gap:14px}.kq-pp-examples article{padding:17px;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--kq-wash,#f4efff) 45%,white)}.kq-pp-examples article>span{color:var(--primary-dark);font-size:.76rem;font-weight:900}.kq-pp-japanese{margin:12px 0;font-size:clamp(1.25rem,3vw,1.75rem);font-weight:900;line-height:2.4;text-align:center}.kq-pp-japanese rt{color:var(--primary-dark);font-size:.48em}.kq-pp-japanese mark{padding:2px 8px;border-radius:8px;background:color-mix(in srgb,var(--accent) 55%,white)}.kq-pp-vocab{display:grid;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--border);text-align:left}.kq-pp-vocab-head{display:flex;justify-content:space-between;gap:12px}.kq-pp-vocab-head span{color:var(--muted);font-size:.75rem}.kq-pp-vocab-row{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start}.kq-pp-vocab-row>span{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:var(--primary);color:white;font-size:.72rem;font-weight:900}.kq-pp-vocab-row>div{display:grid;gap:6px}.kq-pp-vocab-row em{color:var(--primary-dark);font-size:.75rem;font-style:normal}.kq-pp-vocab-actions{display:flex;gap:7px;flex-wrap:wrap}.kq-pp-vocab-actions button{padding:6px 9px;border-radius:9px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:.72rem;font-weight:850}.kq-pp-contrast,.kq-pp-warning,.kq-pp-wrong-grid>div{padding:15px;border-radius:14px;border:1px solid var(--border);background:var(--kq-wash,#f4efff)}.kq-pp-contrast p,.kq-pp-warning p,.kq-pp-wrong-grid p{line-height:1.6}.kq-pp-warning{margin-top:12px;background:color-mix(in srgb,#fff4c7 65%,white)}.kq-pp-wrong-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kq-pp-lesson-nav{justify-content:center;margin-top:22px}.kq-pp-check-sentence{margin-top:28px}.kq-pp-blank{display:inline-block;min-width:80px;padding:0 8px;border-bottom:3px solid var(--primary);color:var(--primary)}.kq-pp-translation{text-align:center;color:var(--muted);font-weight:750}.kq-pp-answer-form{display:grid;grid-template-columns:1fr auto;gap:10px;max-width:560px;margin:18px auto}.kq-pp-answer-form input{text-align:center;font-size:1.2rem;font-weight:850}.kq-pp-review{text-align:center;border-top:8px solid var(--primary)}.kq-pp-review.good{border-top-color:var(--good)}.kq-pp-review.bad{border-top-color:var(--bad)}.kq-pp-skill{display:inline-flex;padding:8px 13px;border-radius:999px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-weight:900}.kq-pp-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:700px;margin:18px auto}.kq-pp-choice-grid button{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--border);border-radius:13px;background:white;text-align:left;font-weight:850}.kq-pp-choice-grid span{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--kq-wash,#f4efff);color:var(--primary-dark)}.kq-pp-review-feedback{display:grid;gap:10px;max-width:730px;margin:18px auto 0;text-align:left}.kq-pp-review-feedback h3{text-align:center}.kq-pp-review-feedback>div{padding:14px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-review-feedback p{line-height:1.55}.kq-pp-review-feedback button{justify-self:center}.kq-pp-summary{max-width:720px;margin:0 auto;text-align:center}.kq-pp-summary>div:first-child{font-size:4rem}.kq-pp-summary>div:not(:first-child){display:flex;justify-content:center;gap:10px;margin:18px}.kq-pp-summary span{display:grid;padding:13px 22px;border-radius:13px;background:var(--kq-wash,#f4efff)}.kq-pp-summary strong{color:var(--primary);font-size:1.8rem}.kq-pp-summary small{color:var(--muted)}.kq-pp-teaser,.kq-pp-dashboard-card{display:flex;align-items:center;justify-content:space-between;gap:16px}.kq-pp-teaser>div,.kq-pp-dashboard-card>div:first-child{display:flex;align-items:center;gap:13px}.kq-pp-teaser>div>span{font-size:2rem}.kq-pp-teaser h3,.kq-pp-teaser p,.kq-pp-dashboard-card h3,.kq-pp-dashboard-card p{margin:0}.kq-pp-teaser p,.kq-pp-dashboard-card p{color:var(--muted);margin-top:3px}.kq-pp-dashboard-card>div:nth-child(2){display:grid;text-align:center}.kq-pp-dashboard-card>div:nth-child(2) strong{color:var(--primary);font-size:1.7rem}.kq-pp-dashboard-card>div:nth-child(2) span{color:var(--muted);font-size:.75rem}.kq-pp-confusion-card{display:grid;grid-template-columns:1fr 1.25fr;gap:18px;align-items:center;margin-top:18px;background:linear-gradient(120deg,color-mix(in srgb,var(--kq-wash,#f4efff) 70%,white),white)}.kq-pp-confusion-card h3{margin:4px 0 6px}.kq-pp-confusion-card p{margin:0;color:var(--muted);line-height:1.5}.kq-pp-confusion-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kq-pp-confusion-list span{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:white}.kq-pp-confusion-list b{color:var(--primary-dark)}.kq-pp-confusion-list small{color:var(--muted)}.kq-pp-contrast-feedback{border:1px solid color-mix(in srgb,var(--accent) 65%,var(--border))!important;background:color-mix(in srgb,var(--accent) 16%,white)!important}@media(max-width:800px){.kq-pp-hero,.kq-pp-confusion-card{grid-template-columns:1fr}.kq-pp-point-grid,.kq-pp-wrong-grid{grid-template-columns:1fr}.kq-pp-topline{align-items:flex-start;flex-direction:column}.kq-pp-topline>div{text-align:left;width:100%}.kq-pp-teaser,.kq-pp-dashboard-card{align-items:flex-start;flex-direction:column}}@media(max-width:560px){.kq-pp-hero-stats,.kq-pp-info-grid,.kq-pp-choice-grid,.kq-pp-confusion-list{grid-template-columns:1fr}.kq-pp-answer-form{grid-template-columns:1fr}.kq-pp-vocab-head{flex-direction:column}.kq-pp-point{grid-template-columns:48px 1fr}}
       `;document.head.appendChild(style);
     
       const originalPracticeOpen=window.KotobaQuestParticlePractice?.open;
@@ -28491,7 +28666,7 @@ function shuffle(values) {
         if(/^[1-4]$/.test(event.key)){const button=document.querySelectorAll("[data-pp-choice]")[Number(event.key)-1];if(button){event.preventDefault();button.click();}}
       });
     
-      window.KotobaQuestParticlePath={open:openPath,startReviews:()=>startReviews(false),getDueItems:dueItems,getProgress:()=>POINTS.map(point=>({id:point.id,level:point.level,particle:point.particle,title:point.title,lessonComplete:pointState(point.id).lessonComplete,stage:pointStage(point),skills:SKILLS.map(skill=>({id:skill.id,...pointState(point.id).skills[skill.id]}))})),refresh:()=>{state=normalizeState(sourceData().particlePath);scheduleInstall();}};
+      window.KotobaQuestParticlePath={version:VERSION,open:openPath,startReviews:()=>startReviews(false),startContrastTraining,getConfusions:()=>combinedConfusions(),getDueItems:dueItems,getProgress:()=>POINTS.map(point=>({id:point.id,level:point.level,particle:point.particle,title:point.title,lessonComplete:pointState(point.id).lessonComplete,stage:pointStage(point),skills:SKILLS.map(skill=>({id:skill.id,...pointState(point.id).skills[skill.id]}))})),refresh:()=>{state=normalizeState(sourceData().particlePath);scheduleInstall();}};
     }
     
         function storyReaderBootstrap() {
@@ -30583,17 +30758,16 @@ ${tooltipText(segment, status)}`)}"`
     }
 
     function resonanceTrainingBootstrap() {
-      if (window.__KOTOBA_RESONANCE_TRAINING_V2__) return;
-      window.__KOTOBA_RESONANCE_TRAINING_V2__ = true;
+      if (window.__KOTOBA_RESONANCE_TRAINING_V1__) return;
+      window.__KOTOBA_RESONANCE_TRAINING_V1__ = true;
     
       const STORAGE_KEY = "kotobaQuestDataV3";
-      const VERSION = 2;
+      const VERSION = 1;
       const MAX_SELECTION = 10;
       const FILTERS = [
         ["recommended", "Empfohlen"],
-        ["mining", "Mining · neu"],
-        ["core", "Core · neu"],
-        ["srs", "SRS auffrischen"],
+        ["mining", "Mining"],
+        ["core", "Core"],
         ["prepared", "Stabilisiert"],
         ["all", "Alle"]
       ];
@@ -30644,7 +30818,7 @@ ${tooltipText(segment, status)}`)}"`
             version: VERSION,
             settings: { batchSize: 5, includeMining: true, includeCore: true },
             entries: {},
-            totals: { sessions: 0, encounters: 0, correct: 0, incorrect: 0, prepared: 0, srsHandoffs: 0, productiveSessions: 0 }
+            totals: { sessions: 0, encounters: 0, correct: 0, incorrect: 0, prepared: 0 }
           };
         }
         const state = source.resonanceTraining;
@@ -30658,11 +30832,7 @@ ${tooltipText(segment, status)}`)}"`
         state.entries = state.entries && typeof state.entries === "object" ? state.entries : {};
         state.totals = state.totals && typeof state.totals === "object"
           ? state.totals
-          : { sessions: 0, encounters: 0, correct: 0, incorrect: 0, prepared: 0, srsHandoffs: 0, productiveSessions: 0 };
-        state.totals.srsHandoffs = Math.max(0, Number(state.totals.srsHandoffs || 0));
-        if (state.totals.productiveSessions == null) state.totals.productiveSessions = Math.max(0, Number(state.totals.sessions || 0));
-        else state.totals.productiveSessions = Math.max(0, Number(state.totals.productiveSessions || 0));
-        state.migrations = state.migrations && typeof state.migrations === "object" ? state.migrations : {};
+          : { sessions: 0, encounters: 0, correct: 0, incorrect: 0, prepared: 0 };
         try { if (typeof data !== "undefined") data.resonanceTraining = state; } catch {}
         return state;
       }
@@ -30799,14 +30969,11 @@ ${tooltipText(segment, status)}`)}"`
       function recommendationScore(item) {
         const entry = entryFor(item, false);
         if (entry?.prepared) return -1000;
-        const stage = Number(item.stage || 0);
-        // Resonanz ist primär die Erstlernphase. Bereits gestartete SRS-Karten
-        // bleiben manuell auffrischbar, verdrängen aber keine neuen Wörter.
-        if (stage > 0 && !entry?.manualQueued) return -250;
         let score = 0;
-        if (item.sourceType === "mining") score += 110;
-        if (stage === 0) score += 70;
-        if (contextOf(item).sentence) score += 16;
+        if (item.sourceType === "mining") score += 100;
+        if (Number(item.stage || 0) === 0) score += 60;
+        if (Number(item.stage || 0) === 1) score += 25;
+        if (contextOf(item).sentence) score += 12;
         score += Math.min(20, Number(item.incorrect || 0) * 4);
         if (entry?.manualQueued) score += 250;
         score -= Math.min(40, Number(entry?.encounters || 0) * 2);
@@ -30827,11 +30994,10 @@ ${tooltipText(segment, status)}`)}"`
         return sortedCandidates().filter(item => {
           const entry = entryFor(item, false);
           if (activeFilter === "recommended" && (entry?.prepared || recommendationScore(item) < 1)) return false;
-          if (activeFilter === "mining" && (item.sourceType !== "mining" || Number(item.stage || 0) > 0)) return false;
-          if (activeFilter === "core" && (item.sourceType !== "core" || Number(item.stage || 0) > 0)) return false;
-          if (activeFilter === "srs" && Number(item.stage || 0) <= 0) return false;
+          if (activeFilter === "mining" && item.sourceType !== "mining") return false;
+          if (activeFilter === "core" && item.sourceType !== "core") return false;
           if (activeFilter === "prepared" && !entry?.prepared) return false;
-          if (!["prepared","all","srs"].includes(activeFilter) && entry?.prepared) return false;
+          if (activeFilter !== "prepared" && activeFilter !== "all" && entry?.prepared) return false;
           if (!query) return true;
           const haystack = `${item.word} ${readingOf(item)} ${meaningsOf(item).join(" ")} ${sourceLabel(item)}`.toLocaleLowerCase("de-DE");
           return haystack.includes(query);
@@ -30842,7 +31008,7 @@ ${tooltipText(segment, status)}`)}"`
         if (selectedKeys.size && !force) return;
         selectedKeys.clear();
         const size = trainingState().settings.batchSize;
-        const pool = sortedCandidates().filter(item => Number(item.stage || 0) === 0 && !entryFor(item, false)?.prepared && recommendationScore(item) > 0);
+        const pool = sortedCandidates().filter(item => !entryFor(item, false)?.prepared && recommendationScore(item) > 0);
         pool.slice(0, size).forEach(item => selectedKeys.add(keyOf(item)));
       }
     
@@ -31024,46 +31190,11 @@ ${tooltipText(segment, status)}`)}"`
         else renderSession();
       }
     
-      function handoffMiningToSrs(item, { migrated = false } = {}) {
-        if (!item || item.sourceType !== "mining" || Number(item.stage || 0) > 0) return false;
-        item.stage = 1;
-        item.learnedViaResonance = true;
-        item.resonancePreparedAt = Date.now();
-        try {
-          if (typeof schedule === "function") schedule(item);
-          else item.availableAt = Date.now() + (sourceData().demoMode ? 10 * 1000 : 4 * 60 * 60 * 1000);
-        } catch {
-          item.availableAt = Date.now() + (sourceData().demoMode ? 10 * 1000 : 4 * 60 * 60 * 1000);
-        }
-        const source = sourceData();
-        if (!migrated) source.xp = Math.max(0, Number(source.xp || 0)) + 5;
-        const state = trainingState();
-        state.totals.srsHandoffs = Math.max(0, Number(state.totals.srsHandoffs || 0)) + 1;
-        return true;
-      }
-
-      function migratePreparedMiningToSrs() {
-        const state = trainingState();
-        if (state.migrations?.v2PreparedMiningHandoffAt) return 0;
-        const map = itemMap();
-        let moved = 0;
-        Object.entries(state.entries || {}).forEach(([key, entry]) => {
-          if (!entry?.prepared) return;
-          const item = map.get(key);
-          if (handoffMiningToSrs(item, { migrated: true })) moved += 1;
-        });
-        state.migrations.v2PreparedMiningHandoffAt = Date.now();
-        state.migrations.v2PreparedMiningHandoffCount = moved;
-        if (moved) saveTraining();
-        return moved;
-      }
-
       function finishSession() {
         if (!session || session.completed) return;
         session.completed = true;
         const state = trainingState();
         let preparedNow = 0;
-        let handedToSrsNow = 0;
         for (const item of session.items) {
           const key = keyOf(item);
           const result = sessionWord(key);
@@ -31075,11 +31206,9 @@ ${tooltipText(segment, status)}`)}"`
             entry.points = Math.max(80, Number(entry.points || 0));
             preparedNow += 1;
           }
-          if (qualifies && handoffMiningToSrs(item)) handedToSrsNow += 1;
           if (qualifies) entry.lastSuccessfulSessionAt = Date.now();
         }
         state.totals.sessions = Math.max(0, Number(state.totals.sessions || 0)) + 1;
-        if (preparedNow > 0) state.totals.productiveSessions = Math.max(0, Number(state.totals.productiveSessions || 0)) + 1;
         state.totals.prepared = Object.values(state.entries).filter(entry => entry?.prepared).length;
         state.lastSessionAt = Date.now();
         state.lastSessionSummary = {
@@ -31087,12 +31216,11 @@ ${tooltipText(segment, status)}`)}"`
           correct: session.correct,
           incorrect: session.incorrect,
           preparedNow,
-          handedToSrsNow,
           bestCombo: session.bestCombo,
           durationMs: Date.now() - session.startedAt
         };
         saveTraining();
-        renderSummary(preparedNow, handedToSrsNow);
+        renderSummary(preparedNow);
       }
     
       function taskLabel(task) {
@@ -31237,7 +31365,7 @@ ${tooltipText(segment, status)}`)}"`
         }
       }
     
-      function renderSummary(preparedNow, handedToSrsNow = 0) {
+      function renderSummary(preparedNow) {
         ensureView();
         const root = document.getElementById("kqResonanceRoot");
         if (!root || !session) return;
@@ -31247,26 +31375,18 @@ ${tooltipText(segment, status)}`)}"`
         const results = session.items.map(item => {
           const word = sessionWord(keyOf(item));
           const entry = entryFor(item, false);
-          const miningInSrs = item.sourceType === "mining" && Number(item.stage || 0) > 0;
-          const statusText = miningInSrs
-            ? `Mining-SRS gestartet · ${typeof formatNext === "function" ? formatNext(item) : "erstes Review geplant"}`
-            : entry?.prepared
-              ? (item.sourceType === "core" ? "Für die Core-Lektion vorgeprägt" : "Stabilisiert")
-              : `${word.correct} Treffer · nächste Runde empfohlen`;
-          return `<div class="kq-res-summary-row"><div><strong>${ruby(item.word, readingOf(item))}</strong><span>${esc(primaryMeaning(item))}</span></div><div class="kq-res-summary-meter"><i><b style="width:${Math.min(100, Number(entry?.points || 0))}%"></b></i><small>${esc(statusText)}</small></div><em>${miningInSrs ? "→ SRS" : entry?.prepared ? "✓ stabil" : "↻ offen"}</em></div>`;
+          return `<div class="kq-res-summary-row"><div><strong>${ruby(item.word, readingOf(item))}</strong><span>${esc(primaryMeaning(item))}</span></div><div class="kq-res-summary-meter"><i><b style="width:${Math.min(100, Number(entry?.points || 0))}%"></b></i><small>${entry?.prepared ? "Für das SRS vorbereitet" : `${word.correct} Treffer · nächste Runde empfohlen`}</small></div><em>${entry?.prepared ? "✓ stabil" : "↻ offen"}</em></div>`;
         }).join("");
     
         root.innerHTML = `<div class="kq-res-summary-shell">
           <article class="card kq-res-summary-card">
             <div class="kq-res-summary-icon">${preparedNow ? "⚡" : "🌱"}</div>
             <p class="eyebrow">Resonanzrunde abgeschlossen</p>
-            <h2>${handedToSrsNow ? `${handedToSrsNow} ${handedToSrsNow === 1 ? "Mining-Wort startet" : "Mining-Wörter starten"} jetzt ins SRS` : preparedNow ? `${preparedNow} ${preparedNow === 1 ? "Wort ist" : "Wörter sind"} jetzt stabilisiert` : "Die Frequenzen werden klarer"}</h2>
-            <p>${handedToSrsNow
-              ? `Erfolgreich stabilisierte Mining-Wörter brauchen keine zweite Mining-Lektion mehr: Sie sind jetzt auf Apprentice 1 und ihr erstes reguläres Review wird geplant. Core-Wörter bleiben bewusst im Core-Lernpfad.`
-              : `Resonanztraining verändert bei Core-Wörtern keine SRS-Stufe. Bei neuen Mining-Wörtern übernimmt eine erfolgreich abgeschlossene Resonanzrunde direkt die Funktion der ersten Lernphase.`}</p>
-            <div class="kq-res-summary-stats"><div><strong>${accuracy}%</strong><span>Trefferquote</span></div><div><strong>${session.bestCombo}</strong><span>beste Combo</span></div><div><strong>${handedToSrsNow}</strong><span>neu ins Mining-SRS</span></div></div>
+            <h2>${preparedNow ? `${preparedNow} ${preparedNow === 1 ? "Wort ist" : "Wörter sind"} jetzt stabilisiert` : "Die Frequenzen werden klarer"}</h2>
+            <p>Die schnellen Begegnungen haben keine SRS-Stufe verändert. Stabil markierte Wörter sind nun bereit für die normale Langzeitwiederholung.</p>
+            <div class="kq-res-summary-stats"><div><strong>${accuracy}%</strong><span>Trefferquote</span></div><div><strong>${session.bestCombo}</strong><span>beste Combo</span></div><div><strong>${session.items.length}</strong><span>Wörter</span></div></div>
             <div class="kq-res-summary-list">${results}</div>
-            <div class="button-row kq-res-summary-actions"><button class="primary" id="kqResAnother">Nächste 5 einprägen</button><button class="secondary" id="kqResRepeatWeak">Offene Wörter wiederholen</button>${handedToSrsNow && typeof dueVocabulary === "function" && dueVocabulary("mining").length ? `<button class="secondary" id="kqResDueMining">Fällige Mining-Reviews</button>` : ""}<button class="ghost" id="kqResHome">Zur Übersicht</button></div>
+            <div class="button-row kq-res-summary-actions"><button class="primary" id="kqResAnother">Nächste 5 einprägen</button><button class="secondary" id="kqResRepeatWeak">Offene Wörter wiederholen</button><button class="ghost" id="kqResHome">Zur Übersicht</button></div>
           </article>
         </div>`;
         root.querySelector("#kqResAnother")?.addEventListener("click", () => {
@@ -31283,10 +31403,6 @@ ${tooltipText(segment, status)}`)}"`
             renderHome();
           }
         });
-        root.querySelector("#kqResDueMining")?.addEventListener("click", () => {
-          session = null;
-          try { startReviews("mining"); } catch { setPracticeGroupAndSwitch(); }
-        });
         root.querySelector("#kqResHome")?.addEventListener("click", () => {
           session = null;
           renderHome();
@@ -31295,10 +31411,9 @@ ${tooltipText(segment, status)}`)}"`
     
       function candidateStatus(item) {
         const entry = entryFor(item, false);
-        if (Number(item.stage || 0) >= 5 || item?.guruPassed) return { label: "Guru+", className: "prepared" };
-        if (Number(item.stage || 0) > 0) return { label: `SRS · ${typeof stageName === "function" ? stageName(item.stage) : `Stufe ${item.stage}`}`, className: "started" };
-        if (entry?.prepared) return { label: item.sourceType === "core" ? "Vorgeprägt" : "Stabilisiert", className: "prepared" };
+        if (entry?.prepared) return { label: "Stabilisiert", className: "prepared" };
         if (Number(entry?.encounters || 0) > 0) return { label: `${Math.min(100, Number(entry?.points || 0))}% Resonanz`, className: "started" };
+        if (Number(item.stage || 0) > 0) return { label: "SRS schon begonnen", className: "started" };
         return { label: "Noch ganz neu", className: "new" };
       }
     
@@ -31311,31 +31426,28 @@ ${tooltipText(segment, status)}`)}"`
         const state = trainingState();
         const all = vocabularyItems();
         const prepared = all.filter(item => entryFor(item, false)?.prepared).length;
-        const waitingMining = all.filter(item => item.sourceType === "mining" && !entryFor(item, false)?.prepared && Number(item.stage || 0) === 0).length;
+        const waitingMining = all.filter(item => item.sourceType === "mining" && !entryFor(item, false)?.prepared && Number(item.stage || 0) <= 2).length;
         const waitingCore = all.filter(item => item.sourceType === "core" && !entryFor(item, false)?.prepared && Number(item.stage || 0) === 0).length;
-        const miningInSrs = all.filter(item => item.sourceType === "mining" && Number(item.stage || 0) > 0 && Number(item.stage || 0) < 5).length;
-        const miningGuru = all.filter(item => item.sourceType === "mining" && (Number(item.stage || 0) >= 5 || item?.guruPassed)).length;
         const filtered = filteredCandidates().slice(0, 80);
         const selected = selectedItems();
     
         root.innerHTML = `<div class="kq-res-home">
-          <div class="section-title kq-res-title"><div><p class="eyebrow">Vor dem SRS</p><h2>⚡ Resonanztraining</h2><p>Neue Wörter werden in kleinen, durchmischten Begegnungen eingeprägt: sehen, hören, erkennen, im Kontext finden und aktiv abrufen. Neue Mining-Wörter gehen danach direkt ins SRS; Core bleibt bewusst im Core-Pfad.</p></div><div class="kq-res-hero-orb"><span>${waitingMining + waitingCore}</span><small>bereit zum Einprägen</small></div></div>
+          <div class="section-title kq-res-title"><div><p class="eyebrow">Vor dem SRS</p><h2>⚡ Resonanztraining</h2><p>Neue Wörter werden in kleinen, durchmischten Begegnungen eingeprägt: sehen, hören, erkennen, im Kontext finden und aktiv abrufen. Keine Eselsbrücke nötig, solange Wiederholung reicht.</p></div><div class="kq-res-hero-orb"><span>${waitingMining + waitingCore}</span><small>bereit zum Einprägen</small></div></div>
           <div class="kq-res-stat-grid">
             <article class="card"><span>Mining wartet</span><strong>${waitingMining}</strong><small>neue Serien- und Storywörter</small></article>
             <article class="card"><span>Core wartet</span><strong>${waitingCore}</strong><small>freigeschaltete neue Core-Wörter</small></article>
-            <article class="card"><span>Mining im SRS</span><strong>${miningInSrs}</strong><small>Apprentice bis vor Guru</small></article>
-            <article class="card"><span>Mining Guru+</span><strong>${miningGuru}</strong><small>langfristig gefestigt</small></article>
-            <article class="card"><span>Runden</span><strong>${Number(state.totals.sessions || 0)}</strong><small>${Number(state.totals.productiveSessions || 0)} produktiv · ${Number(state.totals.srsHandoffs || 0)} Mining-Wörter ins SRS</small></article>
+            <article class="card"><span>Stabilisiert</span><strong>${prepared}</strong><small>für das normale SRS vorbereitet</small></article>
+            <article class="card"><span>Runden</span><strong>${Number(state.totals.sessions || 0)}</strong><small>spielerische Einpräge-Sessions</small></article>
           </div>
           <div class="grid-two kq-res-control-grid">
             <article class="card kq-res-start-card">
-              <div class="section-title"><div><h3>Deine nächste Frequenzgruppe</h3><p>Fünf Wörter sind meistens ideal. Neue Mining-Wörter wechseln nach erfolgreicher Stabilisierung direkt ins SRS; Core-Wörter bleiben im normalen Core-Lernpfad.</p></div></div>
+              <div class="section-title"><div><h3>Deine nächste Frequenzgruppe</h3><p>Fünf Wörter sind meistens ideal. Falsche Antworten sind kein Verlust – das Wort taucht nur früher wieder auf.</p></div></div>
               <div class="kq-res-batch-picker"><span>Paketgröße</span>${[3,5,7].map(size => `<button type="button" class="${Number(state.settings.batchSize) === size ? "active" : ""}" data-kq-res-batch="${size}">${size}</button>`).join("")}</div>
               <div class="kq-res-selected-preview">${selected.length ? selected.map(item => `<span>${esc(item.word)}</span>`).join("") : `<span class="muted">Noch nichts ausgewählt</span>`}</div>
               <button class="primary kq-res-start-button" id="kqResStart" ${selected.length ? "" : "disabled"}>${selected.length} ${selected.length === 1 ? "Wort" : "Wörter"} stabilisieren</button>
-              <p class="small muted">Bei Mining ersetzt eine erfolgreiche Resonanzrunde die doppelte Erstlektion und plant direkt das erste SRS-Review. Bereits gestartete SRS-Wörter kannst du hier freiwillig auffrischen.</p>
+              <p class="small muted">Die normalen SRS-Stufen, Fälligkeiten und Fehlerstatistiken bleiben während dieses Minispiels unverändert.</p>
             </article>
-            <article class="card kq-res-how-card"><h3>So wird ein Wort stabil</h3><div class="kq-res-step-list"><div><span>1</span><p><strong>Begegnen</strong>Klang, Lesung, Bedeutung und echter Kontext gemeinsam sehen.</p></div><div><span>2</span><p><strong>Wiedererkennen</strong>Bedeutung und Lesung aus ähnlichen Antworten auswählen.</p></div><div><span>3</span><p><strong>Aktiv abrufen</strong>Das Japanische aus der Bedeutung selbst hervorholen.</p></div><div><span>✓</span><p><strong>Mining → direkt ins SRS</strong>Neue Mining-Wörter starten nach erfolgreicher Runde automatisch auf Apprentice 1. Core bleibt im Core-Pfad.</p></div></div></article>
+            <article class="card kq-res-how-card"><h3>So wird ein Wort stabil</h3><div class="kq-res-step-list"><div><span>1</span><p><strong>Begegnen</strong>Klang, Lesung, Bedeutung und echter Kontext gemeinsam sehen.</p></div><div><span>2</span><p><strong>Wiedererkennen</strong>Bedeutung und Lesung aus ähnlichen Antworten auswählen.</p></div><div><span>3</span><p><strong>Aktiv abrufen</strong>Das Japanische aus der Bedeutung selbst hervorholen.</p></div><div><span>✓</span><p><strong>Bereit fürs SRS</strong>Erst danach übernimmt die normale Langzeitwiederholung.</p></div></div></article>
           </div>
           <article class="card kq-res-pool-card">
             <div class="kq-res-toolbar"><div class="kq-segmented">${FILTERS.map(([id,label]) => `<button type="button" class="${activeFilter === id ? "active" : ""}" data-kq-res-filter="${id}">${label}</button>`).join("")}</div><input id="kqResSearch" type="search" value="${esc(searchQuery)}" placeholder="Wort, Lesung oder Bedeutung …"></div>
@@ -31432,7 +31544,7 @@ ${tooltipText(segment, status)}`)}"`
         const card = document.createElement("article");
         card.id = "kqIaResonanceCard";
         card.className = "card kq-ia-practice-card kq-res-practice-card";
-        card.innerHTML = `<span class="mode-icon">⚡</span><h3>Resonanztraining</h3><p>Neue Mining-Wörter direkt für das SRS vorbereiten und Core-Wörter spielerisch vorprägen – mit Bedeutung, Lesung, Kontext und aktivem Abruf.</p><div class="button-row"><button class="primary" type="button">Neue Wörter einprägen</button></div>`;
+        card.innerHTML = `<span class="mode-icon">⚡</span><h3>Resonanztraining</h3><p>Neue Mining-, Story- und Core-Wörter durch kurze, durchmischte Wiederbegegnungen erst einmal in den Kopf bekommen.</p><div class="button-row"><button class="primary" type="button">Neue Wörter einprägen</button></div>`;
         const firstCard = grid.querySelector(":scope > article");
         if (firstCard) firstCard.insertAdjacentElement("afterend", card); else grid.appendChild(card);
         card.querySelector("button")?.addEventListener("click", () => {
@@ -31457,69 +31569,44 @@ ${tooltipText(segment, status)}`)}"`
     
       function installMiningTeaser() {
         const mining = document.getElementById("mining");
-        if (!mining) return;
-        const miningItems = vocabularyItems().filter(item => item.sourceType === "mining");
-        const waiting = miningItems.filter(item => Number(item.stage || 0) === 0 && !entryFor(item, false)?.prepared).length;
-        const due = miningItems.filter(item => { const stage = Number(item.stage || 0); const dueAt = Number(item.availableAt); return stage > 0 && stage < 9 && Number.isFinite(dueAt) && dueAt <= Date.now(); }).length;
-        const inSrs = miningItems.filter(item => Number(item.stage || 0) > 0 && Number(item.stage || 0) < 5).length;
-        const guru = miningItems.filter(item => Number(item.stage || 0) >= 5 || item?.guruPassed).length;
-        let teaser = document.getElementById("kqResonanceMiningTeaser");
-        if (!teaser) {
-          teaser = document.createElement("article");
-          teaser.id = "kqResonanceMiningTeaser";
-          teaser.className = "card kq-res-mining-teaser kq-mining-pipeline";
-          const importer = document.getElementById("kqLanguageReactorImport");
-          const title = mining.querySelector(":scope > .section-title");
-          if (importer) importer.insertAdjacentElement("afterend", teaser);
-          else if (title) title.insertAdjacentElement("afterend", teaser);
-          else mining.prepend(teaser);
-        }
-        teaser.innerHTML = `<div class="kq-mining-pipeline-copy"><span>⚡</span><div><h3>Mining-Lernweg</h3><p>Neue Wörter erst verankern, dann langfristig wiederholen. Resonanztraining kann die erste Mining-Lektion vollständig ersetzen.</p><div class="kq-mining-pipeline-stats"><span><strong>${waiting}</strong> neu</span><span><strong>${inSrs}</strong> im SRS</span><span><strong>${due}</strong> fällig</span><span><strong>${guru}</strong> Guru+</span></div></div></div><div class="kq-mining-pipeline-actions"><button class="primary" type="button" data-kq-mining-resonance ${waiting ? "" : "disabled"}>${waiting ? "Neue Wörter einprägen" : "Nichts Neues offen"}</button><button class="ghost" type="button" data-kq-mining-lesson ${waiting ? "" : "disabled"}>Klassische Lektion</button><button class="secondary" type="button" data-kq-mining-reviews ${due ? "" : "disabled"}>${due} Reviews</button></div>`;
-        teaser.querySelector("[data-kq-mining-resonance]")?.addEventListener("click", () => {
+        if (!mining || document.getElementById("kqResonanceMiningTeaser")) return;
+        const waiting = vocabularyItems().filter(item => item.sourceType === "mining" && !entryFor(item, false)?.prepared && Number(item.stage || 0) <= 2).length;
+        const teaser = document.createElement("article");
+        teaser.id = "kqResonanceMiningTeaser";
+        teaser.className = "card kq-res-mining-teaser";
+        teaser.innerHTML = `<div><span>⚡</span><div><h3>Neue Wörter erst einprägen</h3><p><strong data-kq-res-waiting>${waiting}</strong> Mining-Wörter warten auf eine kurze Resonanzrunde, bevor du sie langfristig im SRS festigst.</p></div></div><button class="primary" type="button">Resonanztraining</button>`;
+        const importer = document.getElementById("kqLanguageReactorImport");
+        const title = mining.querySelector(":scope > .section-title");
+        if (importer) importer.insertAdjacentElement("afterend", teaser);
+        else if (title) title.insertAdjacentElement("afterend", teaser);
+        else mining.prepend(teaser);
+        teaser.querySelector("button")?.addEventListener("click", () => {
           activeFilter = "mining";
           selectedKeys.clear();
-          sortedCandidates().filter(item => item.sourceType === "mining" && Number(item.stage || 0) === 0 && !entryFor(item, false)?.prepared).slice(0, trainingState().settings.batchSize).forEach(item => selectedKeys.add(keyOf(item)));
+          sortedCandidates().filter(item => item.sourceType === "mining" && !entryFor(item, false)?.prepared).slice(0, trainingState().settings.batchSize).forEach(item => selectedKeys.add(keyOf(item)));
           openView();
-        });
-        teaser.querySelector("[data-kq-mining-lesson]")?.addEventListener("click", () => {
-          try { if (typeof startLessons === "function") startLessons("mining"); else openView(); } catch { openView(); }
-        });
-        teaser.querySelector("[data-kq-mining-reviews]")?.addEventListener("click", () => {
-          try { if (typeof startReviews === "function") startReviews("mining"); else openView(); } catch { openView(); }
         });
       }
     
       function enhanceMiningRows() {
         document.querySelectorAll("#vocabList .vocab-row[data-vocab-id]").forEach(row => {
+          if (row.querySelector(".kq-res-row-button")) return;
           const id = row.dataset.vocabId;
           const item = vocabularyItems().find(candidate => String(candidate.id) === String(id));
           if (!item) return;
-          let button = row.querySelector(".kq-res-row-button");
-          if (!button) {
-            button = document.createElement("button");
-            button.type = "button";
-            button.className = "ghost kq-res-row-button";
-            row.lastElementChild?.insertBefore(button, row.lastElementChild.firstChild);
-          }
-          const entry = entryFor(item, false);
-          const stage = Number(item.stage || 0);
-          if (stage > 0) {
-            button.textContent = "⚡ Auffrischen";
-            button.title = "Dieses Mining-Wort zusätzlich zum SRS im Resonanztraining auffrischen";
-          } else if (entry?.prepared) {
-            button.textContent = "✓ Stabil";
-            button.title = "Dieses Wort ist stabilisiert";
-          } else {
-            button.textContent = "⚡ Einprägen";
-            button.title = "Dieses neue Mining-Wort stabilisieren und danach direkt ins SRS übernehmen";
-          }
-          button.onclick = event => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "ghost kq-res-row-button";
+          const prepared = Boolean(entryFor(item, false)?.prepared);
+          button.textContent = prepared ? "✓ Stabil" : "⚡ Einprägen";
+          button.title = prepared ? "Im Resonanztraining erneut üben" : "Dieses Wort spielerisch einprägen";
+          button.addEventListener("click", event => {
             event.preventDefault();
             event.stopPropagation();
             selectedKeys = new Set([keyOf(item)]);
-            activeFilter = stage > 0 ? "srs" : "mining";
             openView([keyOf(item)]);
-          };
+          });
+          row.lastElementChild?.insertBefore(button, row.lastElementChild.firstChild);
         });
       }
     
@@ -31547,7 +31634,7 @@ ${tooltipText(segment, status)}`)}"`
         const style = document.createElement("style");
         style.id = "kqResonanceStyles";
         style.textContent = `
-          #kqResonanceRoot{display:grid;gap:18px}.kq-res-home{display:grid;gap:18px}.kq-res-title{align-items:center}.kq-res-title h2{font-size:clamp(2rem,5vw,3.3rem)}.kq-res-title p{max-width:820px;line-height:1.6}.kq-res-hero-orb{display:grid;place-content:center;width:142px;height:142px;flex:0 0 auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,white,var(--kq-wash,#eee8ff));box-shadow:0 0 0 10px color-mix(in srgb,var(--primary) 10%,transparent),0 18px 50px var(--kq-glow,rgba(121,87,213,.18));text-align:center}.kq-res-hero-orb span{color:var(--primary);font-size:2.7rem;font-weight:950}.kq-res-hero-orb small{max-width:90px;color:var(--muted);font-weight:800}.kq-res-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kq-res-stat-grid article{display:grid;align-content:center;min-height:125px}.kq-res-stat-grid span,.kq-res-stat-grid small{color:var(--muted);font-weight:750}.kq-res-stat-grid strong{color:var(--primary);font-size:2.3rem}.kq-res-control-grid{align-items:stretch}.kq-res-start-card,.kq-res-how-card{display:grid;align-content:start}.kq-res-batch-picker{display:flex;align-items:center;gap:8px;margin:8px 0 14px}.kq-res-batch-picker>span{margin-right:auto;color:var(--muted);font-weight:850}.kq-res-batch-picker button{width:44px;height:40px;border:1px solid var(--border);border-radius:11px;background:white;color:var(--text);font-weight:900}.kq-res-batch-picker button.active{border-color:var(--primary);background:var(--primary);color:white}.kq-res-selected-preview{display:flex;flex-wrap:wrap;gap:7px;min-height:46px;padding:10px;border:1px dashed var(--border);border-radius:13px;background:var(--kq-card-soft,#faf8ff)}.kq-res-selected-preview span{padding:6px 9px;border-radius:999px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:850}.kq-res-start-button{width:100%;margin-top:14px;padding:14px}.kq-res-step-list{display:grid;gap:9px}.kq-res-step-list>div{display:grid;grid-template-columns:40px 1fr;gap:11px;align-items:center;padding:11px;border:1px solid var(--border);border-radius:13px;background:var(--kq-card-soft,#faf8ff)}.kq-res-step-list>div>span{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--primary);color:white;font-weight:950}.kq-res-step-list p,.kq-res-step-list strong{display:block;margin:0}.kq-res-step-list p{color:var(--muted);font-size:.85rem}.kq-res-step-list strong{color:var(--text);font-size:.95rem}.kq-res-toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.kq-res-toolbar input{min-width:min(100%,280px)}.kq-res-pool-head{display:flex;justify-content:space-between;margin:12px 0;color:var(--muted);font-size:.8rem;font-weight:850}.kq-res-pool{display:grid;gap:8px;max-height:640px;overflow:auto;padding-right:4px}.kq-res-pool-row{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:14px;background:white;cursor:pointer}.kq-res-pool-row.selected{border-color:var(--primary);box-shadow:0 0 0 3px var(--kq-glow,rgba(121,87,213,.1));background:color-mix(in srgb,var(--kq-wash,#eee8ff) 35%,white)}.kq-res-pool-row input{width:18px;height:18px}.kq-res-pool-word{display:grid;gap:2px}.kq-res-pool-word strong{font-size:1.18rem}.kq-res-pool-word span,.kq-res-pool-word small{color:var(--muted)}.kq-res-pool-word rt{color:var(--primary-dark);font-size:.5em}.kq-res-pool-row em{padding:6px 9px;border-radius:999px;font-size:.72rem;font-style:normal;font-weight:900;white-space:nowrap}.kq-res-pool-row em.new{background:var(--kq-wash,#eee8ff);color:var(--primary-dark)}.kq-res-pool-row em.started{background:#fff2d9;color:#8e621f}.kq-res-pool-row em.prepared{background:#e8f7ef;color:#34745a}.kq-res-session-shell{display:grid;gap:14px}.kq-res-session-top{display:grid;grid-template-columns:auto minmax(180px,1fr) auto;gap:14px;align-items:center}.kq-res-progress{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center}.kq-res-progress>div{height:10px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-res-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-res-progress span,.kq-res-combo{color:var(--muted);font-size:.82rem;font-weight:900}.kq-res-combo{padding:8px 11px;border-radius:999px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark)}.kq-res-game-card{max-width:900px;width:100%;min-height:600px;margin:0 auto;display:flex;flex-direction:column}.kq-res-card-head{display:grid;grid-template-columns:auto minmax(100px,1fr) auto;gap:10px;align-items:center;color:var(--muted);font-size:.78rem;font-weight:900}.kq-res-card-head>div{height:8px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-res-card-head b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-res-intro,.kq-res-question{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 0}.kq-res-orbit{display:grid;place-items:center;width:68px;height:68px;margin-bottom:14px;border-radius:22px;background:var(--kq-wash,#eee8ff);font-size:2rem;animation:kqResFloat 2.6s ease-in-out infinite}.kq-res-main-word{font-size:clamp(3rem,9vw,6.5rem);font-weight:950;line-height:1.5}.kq-res-main-word rt,.kq-res-prompt rt{color:var(--primary-dark);font-size:.42em}.kq-res-meaning{margin-top:8px;font-size:1.35rem;font-weight:850}.kq-res-audio{margin:16px 0;padding:11px 15px;border-radius:13px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:900}.kq-res-context{width:min(700px,100%);margin-top:14px;padding:15px;border:1px solid var(--border);border-radius:15px;background:var(--kq-card-soft,#faf8ff);text-align:left}.kq-res-context span,.kq-res-context strong,.kq-res-context p{display:block}.kq-res-context span{color:var(--primary-dark);font-size:.75rem;font-weight:950;text-transform:uppercase;letter-spacing:.07em}.kq-res-context strong{margin-top:7px;font-size:1.18rem;line-height:1.8}.kq-res-context p{margin:4px 0 0;color:var(--muted)}.kq-res-memory-tip{max-width:660px;margin:14px auto;color:var(--muted);line-height:1.55}.kq-res-large-action{min-width:220px;padding:14px 20px}.kq-res-direction{padding:7px 11px;border-radius:999px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:900}.kq-res-question h2{font-size:clamp(2rem,6vw,4.5rem)}.kq-res-prompt{max-width:760px;margin:22px auto 8px;font-size:clamp(2rem,6vw,4.3rem);font-weight:950;line-height:1.8}.kq-res-question-context{max-width:680px;padding:12px;border-radius:12px;background:var(--kq-card-soft,#faf8ff)}.kq-res-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(700px,100%);margin:20px auto}.kq-res-choice-grid button{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:10px;padding:14px;border:1px solid var(--border);border-radius:14px;background:white;text-align:left;color:var(--text)}.kq-res-choice-grid button:hover{border-color:var(--primary);transform:translateY(-1px)}.kq-res-choice-grid button span{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:950}.kq-res-production-form{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px;width:min(650px,100%);margin:18px auto}.kq-res-production-form input{text-align:center;font-size:1.25rem;font-weight:850}.kq-res-reveal{display:grid;gap:14px;width:min(620px,100%);padding:20px;border:1px solid var(--border);border-radius:17px;background:linear-gradient(135deg,var(--kq-wash,#eee8ff),white)}.kq-res-reveal>strong{font-size:clamp(2.5rem,7vw,4.8rem)}.kq-res-reveal>span{color:var(--muted)}.kq-res-reveal .button-row{justify-content:center}.kq-res-feedback{display:grid;grid-template-columns:54px 1fr;gap:12px;width:min(720px,100%);margin:16px auto 0;padding:14px;border-radius:15px;text-align:left}.kq-res-feedback.good{background:#eaf8f1;color:#2f6f54}.kq-res-feedback.bad{background:#fff0f3;color:#8c5060}.kq-res-feedback-icon{font-size:2rem}.kq-res-feedback p{margin:4px 0;line-height:1.5}.kq-res-feedback small{display:block;opacity:.8}.kq-res-next{justify-content:center}.kq-res-word-dots{display:flex;justify-content:center;gap:8px}.kq-res-word-dots span{width:11px;height:11px;border-radius:50%;background:var(--border)}.kq-res-word-dots span.active{background:var(--primary);box-shadow:0 0 0 5px var(--kq-glow,rgba(121,87,213,.12))}.kq-res-word-dots span.prepared{background:var(--good)}.kq-res-summary-shell{display:grid;place-items:center;min-height:70vh}.kq-res-summary-card{width:min(900px,100%);text-align:center}.kq-res-summary-icon{font-size:4rem}.kq-res-summary-card h2{font-size:clamp(2rem,5vw,3.2rem)}.kq-res-summary-card>p:not(.eyebrow){max-width:720px;margin-left:auto;margin-right:auto;color:var(--muted);line-height:1.6}.kq-res-summary-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}.kq-res-summary-stats>div{display:grid;padding:14px;border-radius:14px;background:var(--kq-wash,#eee8ff)}.kq-res-summary-stats strong{color:var(--primary);font-size:2rem}.kq-res-summary-stats span{color:var(--muted);font-size:.8rem}.kq-res-summary-list{display:grid;gap:8px;text-align:left}.kq-res-summary-row{display:grid;grid-template-columns:minmax(160px,.8fr) minmax(180px,1fr) auto;gap:14px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:14px}.kq-res-summary-row>div:first-child{display:grid}.kq-res-summary-row>div:first-child span{color:var(--muted)}.kq-res-summary-meter{display:grid;gap:5px}.kq-res-summary-meter i{height:8px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-res-summary-meter b{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-res-summary-meter small{color:var(--muted)}.kq-res-summary-row em{font-style:normal;font-weight:900;color:var(--primary-dark)}.kq-res-summary-actions{justify-content:center;margin-top:18px}.kq-res-mining-teaser{display:flex;align-items:center;justify-content:space-between;gap:16px}.kq-mining-pipeline{align-items:stretch}.kq-mining-pipeline-copy{display:flex;align-items:center;gap:13px;min-width:0}.kq-mining-pipeline-copy>span{font-size:2.2rem}.kq-mining-pipeline-copy h3,.kq-mining-pipeline-copy p{margin:0}.kq-mining-pipeline-copy p{margin-top:4px;color:var(--muted)}.kq-mining-pipeline-stats{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.kq-mining-pipeline-stats span{padding:6px 9px;border-radius:999px;background:var(--kq-wash,#eee8ff);color:var(--muted);font-size:.75rem}.kq-mining-pipeline-stats strong{color:var(--primary-dark)}.kq-mining-pipeline-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.kq-res-mining-teaser>div{display:flex;align-items:center;gap:13px}.kq-res-mining-teaser>div>span{font-size:2.2rem}.kq-res-mining-teaser h3,.kq-res-mining-teaser p{margin:0}.kq-res-mining-teaser p{margin-top:4px;color:var(--muted)}.kq-res-row-button{padding:7px 10px!important}.kq-res-practice-card{border-top:6px solid var(--primary)}@keyframes kqResFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@media(max-width:850px){.kq-res-stat-grid{grid-template-columns:1fr 1fr}.kq-res-session-top{grid-template-columns:1fr auto}.kq-res-session-top>button{grid-column:1/-1;justify-self:start}.kq-res-summary-row{grid-template-columns:1fr}.kq-res-summary-row em{justify-self:start}}@media(max-width:620px){.kq-res-title{align-items:flex-start}.kq-res-hero-orb{width:110px;height:110px}.kq-res-stat-grid{grid-template-columns:1fr}.kq-res-toolbar{display:grid}.kq-res-toolbar input{width:100%}.kq-res-pool-row{grid-template-columns:24px 1fr}.kq-res-pool-row em{grid-column:2;justify-self:start}.kq-res-choice-grid{grid-template-columns:1fr}.kq-res-production-form{grid-template-columns:1fr}.kq-res-session-top{grid-template-columns:1fr}.kq-res-combo{justify-self:start}.kq-res-summary-stats{grid-template-columns:1fr}.kq-res-mining-teaser{align-items:flex-start;flex-direction:column}.kq-mining-pipeline-actions{width:100%;justify-content:flex-start}}
+          #kqResonanceRoot{display:grid;gap:18px}.kq-res-home{display:grid;gap:18px}.kq-res-title{align-items:center}.kq-res-title h2{font-size:clamp(2rem,5vw,3.3rem)}.kq-res-title p{max-width:820px;line-height:1.6}.kq-res-hero-orb{display:grid;place-content:center;width:142px;height:142px;flex:0 0 auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,white,var(--kq-wash,#eee8ff));box-shadow:0 0 0 10px color-mix(in srgb,var(--primary) 10%,transparent),0 18px 50px var(--kq-glow,rgba(121,87,213,.18));text-align:center}.kq-res-hero-orb span{color:var(--primary);font-size:2.7rem;font-weight:950}.kq-res-hero-orb small{max-width:90px;color:var(--muted);font-weight:800}.kq-res-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kq-res-stat-grid article{display:grid;align-content:center;min-height:125px}.kq-res-stat-grid span,.kq-res-stat-grid small{color:var(--muted);font-weight:750}.kq-res-stat-grid strong{color:var(--primary);font-size:2.3rem}.kq-res-control-grid{align-items:stretch}.kq-res-start-card,.kq-res-how-card{display:grid;align-content:start}.kq-res-batch-picker{display:flex;align-items:center;gap:8px;margin:8px 0 14px}.kq-res-batch-picker>span{margin-right:auto;color:var(--muted);font-weight:850}.kq-res-batch-picker button{width:44px;height:40px;border:1px solid var(--border);border-radius:11px;background:white;color:var(--text);font-weight:900}.kq-res-batch-picker button.active{border-color:var(--primary);background:var(--primary);color:white}.kq-res-selected-preview{display:flex;flex-wrap:wrap;gap:7px;min-height:46px;padding:10px;border:1px dashed var(--border);border-radius:13px;background:var(--kq-card-soft,#faf8ff)}.kq-res-selected-preview span{padding:6px 9px;border-radius:999px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:850}.kq-res-start-button{width:100%;margin-top:14px;padding:14px}.kq-res-step-list{display:grid;gap:9px}.kq-res-step-list>div{display:grid;grid-template-columns:40px 1fr;gap:11px;align-items:center;padding:11px;border:1px solid var(--border);border-radius:13px;background:var(--kq-card-soft,#faf8ff)}.kq-res-step-list>div>span{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--primary);color:white;font-weight:950}.kq-res-step-list p,.kq-res-step-list strong{display:block;margin:0}.kq-res-step-list p{color:var(--muted);font-size:.85rem}.kq-res-step-list strong{color:var(--text);font-size:.95rem}.kq-res-toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.kq-res-toolbar input{min-width:min(100%,280px)}.kq-res-pool-head{display:flex;justify-content:space-between;margin:12px 0;color:var(--muted);font-size:.8rem;font-weight:850}.kq-res-pool{display:grid;gap:8px;max-height:640px;overflow:auto;padding-right:4px}.kq-res-pool-row{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:14px;background:white;cursor:pointer}.kq-res-pool-row.selected{border-color:var(--primary);box-shadow:0 0 0 3px var(--kq-glow,rgba(121,87,213,.1));background:color-mix(in srgb,var(--kq-wash,#eee8ff) 35%,white)}.kq-res-pool-row input{width:18px;height:18px}.kq-res-pool-word{display:grid;gap:2px}.kq-res-pool-word strong{font-size:1.18rem}.kq-res-pool-word span,.kq-res-pool-word small{color:var(--muted)}.kq-res-pool-word rt{color:var(--primary-dark);font-size:.5em}.kq-res-pool-row em{padding:6px 9px;border-radius:999px;font-size:.72rem;font-style:normal;font-weight:900;white-space:nowrap}.kq-res-pool-row em.new{background:var(--kq-wash,#eee8ff);color:var(--primary-dark)}.kq-res-pool-row em.started{background:#fff2d9;color:#8e621f}.kq-res-pool-row em.prepared{background:#e8f7ef;color:#34745a}.kq-res-session-shell{display:grid;gap:14px}.kq-res-session-top{display:grid;grid-template-columns:auto minmax(180px,1fr) auto;gap:14px;align-items:center}.kq-res-progress{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center}.kq-res-progress>div{height:10px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-res-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-res-progress span,.kq-res-combo{color:var(--muted);font-size:.82rem;font-weight:900}.kq-res-combo{padding:8px 11px;border-radius:999px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark)}.kq-res-game-card{max-width:900px;width:100%;min-height:600px;margin:0 auto;display:flex;flex-direction:column}.kq-res-card-head{display:grid;grid-template-columns:auto minmax(100px,1fr) auto;gap:10px;align-items:center;color:var(--muted);font-size:.78rem;font-weight:900}.kq-res-card-head>div{height:8px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-res-card-head b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-res-intro,.kq-res-question{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 0}.kq-res-orbit{display:grid;place-items:center;width:68px;height:68px;margin-bottom:14px;border-radius:22px;background:var(--kq-wash,#eee8ff);font-size:2rem;animation:kqResFloat 2.6s ease-in-out infinite}.kq-res-main-word{font-size:clamp(3rem,9vw,6.5rem);font-weight:950;line-height:1.5}.kq-res-main-word rt,.kq-res-prompt rt{color:var(--primary-dark);font-size:.42em}.kq-res-meaning{margin-top:8px;font-size:1.35rem;font-weight:850}.kq-res-audio{margin:16px 0;padding:11px 15px;border-radius:13px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:900}.kq-res-context{width:min(700px,100%);margin-top:14px;padding:15px;border:1px solid var(--border);border-radius:15px;background:var(--kq-card-soft,#faf8ff);text-align:left}.kq-res-context span,.kq-res-context strong,.kq-res-context p{display:block}.kq-res-context span{color:var(--primary-dark);font-size:.75rem;font-weight:950;text-transform:uppercase;letter-spacing:.07em}.kq-res-context strong{margin-top:7px;font-size:1.18rem;line-height:1.8}.kq-res-context p{margin:4px 0 0;color:var(--muted)}.kq-res-memory-tip{max-width:660px;margin:14px auto;color:var(--muted);line-height:1.55}.kq-res-large-action{min-width:220px;padding:14px 20px}.kq-res-direction{padding:7px 11px;border-radius:999px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:900}.kq-res-question h2{font-size:clamp(2rem,6vw,4.5rem)}.kq-res-prompt{max-width:760px;margin:22px auto 8px;font-size:clamp(2rem,6vw,4.3rem);font-weight:950;line-height:1.8}.kq-res-question-context{max-width:680px;padding:12px;border-radius:12px;background:var(--kq-card-soft,#faf8ff)}.kq-res-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(700px,100%);margin:20px auto}.kq-res-choice-grid button{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:10px;padding:14px;border:1px solid var(--border);border-radius:14px;background:white;text-align:left;color:var(--text)}.kq-res-choice-grid button:hover{border-color:var(--primary);transform:translateY(-1px)}.kq-res-choice-grid button span{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:950}.kq-res-production-form{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px;width:min(650px,100%);margin:18px auto}.kq-res-production-form input{text-align:center;font-size:1.25rem;font-weight:850}.kq-res-reveal{display:grid;gap:14px;width:min(620px,100%);padding:20px;border:1px solid var(--border);border-radius:17px;background:linear-gradient(135deg,var(--kq-wash,#eee8ff),white)}.kq-res-reveal>strong{font-size:clamp(2.5rem,7vw,4.8rem)}.kq-res-reveal>span{color:var(--muted)}.kq-res-reveal .button-row{justify-content:center}.kq-res-feedback{display:grid;grid-template-columns:54px 1fr;gap:12px;width:min(720px,100%);margin:16px auto 0;padding:14px;border-radius:15px;text-align:left}.kq-res-feedback.good{background:#eaf8f1;color:#2f6f54}.kq-res-feedback.bad{background:#fff0f3;color:#8c5060}.kq-res-feedback-icon{font-size:2rem}.kq-res-feedback p{margin:4px 0;line-height:1.5}.kq-res-feedback small{display:block;opacity:.8}.kq-res-next{justify-content:center}.kq-res-word-dots{display:flex;justify-content:center;gap:8px}.kq-res-word-dots span{width:11px;height:11px;border-radius:50%;background:var(--border)}.kq-res-word-dots span.active{background:var(--primary);box-shadow:0 0 0 5px var(--kq-glow,rgba(121,87,213,.12))}.kq-res-word-dots span.prepared{background:var(--good)}.kq-res-summary-shell{display:grid;place-items:center;min-height:70vh}.kq-res-summary-card{width:min(900px,100%);text-align:center}.kq-res-summary-icon{font-size:4rem}.kq-res-summary-card h2{font-size:clamp(2rem,5vw,3.2rem)}.kq-res-summary-card>p:not(.eyebrow){max-width:720px;margin-left:auto;margin-right:auto;color:var(--muted);line-height:1.6}.kq-res-summary-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}.kq-res-summary-stats>div{display:grid;padding:14px;border-radius:14px;background:var(--kq-wash,#eee8ff)}.kq-res-summary-stats strong{color:var(--primary);font-size:2rem}.kq-res-summary-stats span{color:var(--muted);font-size:.8rem}.kq-res-summary-list{display:grid;gap:8px;text-align:left}.kq-res-summary-row{display:grid;grid-template-columns:minmax(160px,.8fr) minmax(180px,1fr) auto;gap:14px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:14px}.kq-res-summary-row>div:first-child{display:grid}.kq-res-summary-row>div:first-child span{color:var(--muted)}.kq-res-summary-meter{display:grid;gap:5px}.kq-res-summary-meter i{height:8px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-res-summary-meter b{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-res-summary-meter small{color:var(--muted)}.kq-res-summary-row em{font-style:normal;font-weight:900;color:var(--primary-dark)}.kq-res-summary-actions{justify-content:center;margin-top:18px}.kq-res-mining-teaser{display:flex;align-items:center;justify-content:space-between;gap:16px}.kq-res-mining-teaser>div{display:flex;align-items:center;gap:13px}.kq-res-mining-teaser>div>span{font-size:2.2rem}.kq-res-mining-teaser h3,.kq-res-mining-teaser p{margin:0}.kq-res-mining-teaser p{margin-top:4px;color:var(--muted)}.kq-res-row-button{padding:7px 10px!important}.kq-res-practice-card{border-top:6px solid var(--primary)}@keyframes kqResFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@media(max-width:850px){.kq-res-stat-grid{grid-template-columns:1fr 1fr}.kq-res-session-top{grid-template-columns:1fr auto}.kq-res-session-top>button{grid-column:1/-1;justify-self:start}.kq-res-summary-row{grid-template-columns:1fr}.kq-res-summary-row em{justify-self:start}}@media(max-width:620px){.kq-res-title{align-items:flex-start}.kq-res-hero-orb{width:110px;height:110px}.kq-res-stat-grid{grid-template-columns:1fr}.kq-res-toolbar{display:grid}.kq-res-toolbar input{width:100%}.kq-res-pool-row{grid-template-columns:24px 1fr}.kq-res-pool-row em{grid-column:2;justify-self:start}.kq-res-choice-grid{grid-template-columns:1fr}.kq-res-production-form{grid-template-columns:1fr}.kq-res-session-top{grid-template-columns:1fr}.kq-res-combo{justify-self:start}.kq-res-summary-stats{grid-template-columns:1fr}.kq-res-mining-teaser{align-items:flex-start;flex-direction:column}}
         `;
         document.head.appendChild(style);
       }
@@ -31556,7 +31643,6 @@ ${tooltipText(segment, status)}`)}"`
         if (renderGuard) return;
         renderGuard = true;
         try {
-          migratePreparedMiningToSrs();
           ensureView();
           installStyles();
           installPracticeCard();
@@ -32431,7 +32517,7 @@ ${tooltipText(segment, status)}`)}"`
           ...vocabularySnapshot(source),
           ...grammarSnapshot(),
           ...particleSnapshot(source),
-          resonanceSessions: number(source.resonanceTraining?.totals?.productiveSessions ?? source.resonanceTraining?.totals?.sessions),
+          resonanceSessions: number(source.resonanceTraining?.totals?.sessions),
           contextSessions: number(source.vocabContextPractice?.sessions),
           particlePracticeSessions: number(source.particlePractice?.sessions),
           problemAnswers: number(source.problemWordWorkshop?.totalPractice?.correct) + number(source.problemWordWorkshop?.totalPractice?.incorrect)
@@ -32516,7 +32602,7 @@ ${tooltipText(segment, status)}`)}"`
           }
 
           for (const [key,label] of [
-            ["resonanceSessions","Produktives Resonanztraining abgeschlossen"],
+            ["resonanceSessions","Resonanztraining abgeschlossen"],
             ["contextSessions","Freie Vokabel-/Satzrunde abgeschlossen"],
             ["particlePracticeSessions","Freie Partikelrunde abgeschlossen"]
           ]) {
@@ -32697,7 +32783,7 @@ ${tooltipText(segment, status)}`)}"`
         add("Grammatiklektionen", progress.grammarLessons, lessons.grammar);
         add("Partikellektionen", progress.particleLessons, lessons.particles);
         add("begonnene Core-Wörter", progress.coreWordsStarted, requirements.minCoreWordsStarted);
-        add("Produktive Resonanzrunden", progress.resonanceSessions, requirements.minResonanceSessions);
+        add("Resonanzrunden", progress.resonanceSessions, requirements.minResonanceSessions);
         return checks;
       }
       function requirementsMet(requirements = {}) {
@@ -34188,7 +34274,7 @@ ${tooltipText(segment, status)}`)}"`
         available:miningDue > 0, strength:miningDue > 0 ? 1 : 40, launch:launchMiningReview
       },
       resonanceSessions: {
-        key, icon:"🎧", title:"Resonanztraining", detail:"Eine produktive Resonanzrunde zählt, sobald mindestens ein neues Wort wirklich stabilisiert wurde.",
+        key, icon:"🎧", title:"Resonanztraining", detail:"Eine Resonanzrunde ist ein direkter alternativer Weg für Mining & Resonanz.",
         available:Boolean(window.KotobaQuestResonanceTraining?.open), strength:2, launch:() => window.KotobaQuestResonanceTraining?.open?.()
       },
       contextSessions: {
