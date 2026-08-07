@@ -20663,6 +20663,17 @@
 
         root.innerHTML = `
           <div class="kq-dashboard-hero">
+            ${placement ? `<article class="card kq-placement-alert">
+              <div class="kq-placement-alert-copy">
+                <p class="eyebrow">🌱 Core-Vokabeln · Level ${currentLevel}</p>
+                <h2>Deine nächste Einstufung ist offen</h2>
+                <p>Die Core-Vokabeln sind der zentrale Lernpfad. Bevor die Einstufung zwischen Reviews und anderen Bereichen untergeht, kannst du sie hier direkt fortsetzen.</p>
+              </div>
+              <div class="kq-placement-alert-action">
+                <span class="badge">Priorität · Core</span>
+                <button class="primary" id="kqDashboardPlacement" type="button">Einstufung fortsetzen</button>
+              </div>
+            </article>` : ""}
             <article class="card kq-today-card">
               <p class="eyebrow">Dein Lernzentrum</p>
               <h2>${totalDue ? `${totalDue} Wiederholungen warten auf dich` : "Für den Moment ist alles wiederholt"}</h2>
@@ -20709,7 +20720,7 @@
           <div class="grid-two kq-lower-grid">
             <article class="card">
               <div class="section-title"><div><h3>Als Nächstes</h3><p>Die nächsten geplanten Wiederholungen.</p></div></div>
-              <div class="kq-schedule-row"><span class="kq-schedule-dot vocab"></span><div><strong>Vokabeln</strong><span>${vocabDue ? `${vocabDue} jetzt fällig` : formatMoment(nextVocab)}</span></div></div>
+              <div class="kq-schedule-row"><span class="kq-schedule-dot vocab"></span><div><strong>Vokabeln</strong><span>${placement ? `Core-Einstufung für Level ${currentLevel} offen` : vocabDue ? `${vocabDue} jetzt fällig` : formatMoment(nextVocab)}</span></div></div>
               <div class="kq-schedule-row"><span class="kq-schedule-dot grammar"></span><div><strong>Grammatik</strong><span>${grammarDueCount ? `${grammarDueCount} jetzt fällig` : formatMoment(nextGrammar)}</span></div></div>
               <div class="kq-schedule-row"><span class="kq-schedule-dot mining"></span><div><strong>Mining</strong><span>${miningDue ? `${miningDue} Reviews fällig` : miningNew ? `${miningNew} neue Wörter` : "Keine offenen Karten"}</span></div></div>
             </article>
@@ -20735,6 +20746,7 @@
           else grammarApi()?.openGrammarView?.("grammar");
         };
 
+        root.querySelector("#kqDashboardPlacement")?.addEventListener("click", () => startPlacement());
         root.querySelector("#kqDashboardVocabReview")?.addEventListener("click", () => startReviews("core"));
         root.querySelector("#kqDashboardGrammarReview")?.addEventListener("click", () => grammarApi()?.startReviewSession?.(false));
         root.querySelector("#kqVocabPrimary")?.addEventListener("click", startVocab);
@@ -20865,6 +20877,12 @@
         .nav { flex:1 1 520px; }
         #kqLearningDashboard { display:grid; gap:18px; }
         .kq-dashboard-hero { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr); gap:18px; }
+        .kq-placement-alert { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; gap:22px; padding:22px 24px; border:2px solid color-mix(in srgb,var(--primary) 34%,var(--border)); background:linear-gradient(135deg,var(--kq-wash,#f3efff),white 72%); box-shadow:0 14px 32px color-mix(in srgb,var(--primary) 12%,transparent); }
+        .kq-placement-alert-copy { min-width:0; }
+        .kq-placement-alert-copy h2 { margin:4px 0 7px; font-size:clamp(1.35rem,2.6vw,2rem); }
+        .kq-placement-alert-copy p:last-child { margin:0; max-width:780px; color:var(--muted); line-height:1.5; }
+        .kq-placement-alert-action { flex:0 0 auto; display:grid; justify-items:end; gap:10px; }
+        .kq-placement-alert-action .primary { min-width:210px; min-height:48px; }
         .kq-today-card { padding:30px; color:var(--text); background:linear-gradient(135deg,var(--kq-a,#d8c9f2),var(--kq-b,#f2d6e5)); }
         .kq-today-card h2 { margin:6px 0 10px; max-width:720px; font-size:clamp(1.65rem,3.5vw,2.7rem); line-height:1.08; }
         .kq-today-card p:not(.eyebrow) { max-width:720px; line-height:1.55; }
@@ -20919,6 +20937,9 @@
           .kq-overview-main { flex-direction:column; align-items:flex-start; }
         }
         @media (max-width:620px) {
+          .kq-placement-alert { align-items:stretch; flex-direction:column; }
+          .kq-placement-alert-action { justify-items:stretch; }
+          .kq-placement-alert-action .primary { width:100%; min-width:0; }
           .kq-stat-grid,.kq-quick-grid { grid-template-columns:1fr; }
           .kq-archive-entry { grid-template-columns:1fr auto; }
           .kq-archive-meaning { grid-column:1 / -1; }
@@ -32302,6 +32323,91 @@ ${tooltipText(segment, status)}`)}"`
       window.KotobaQuestJapaneseInput={toHiragana,attach,refresh:refreshInputs};
 
       function visible(button){return button && !button.disabled && button.offsetParent!==null && getComputedStyle(button).visibility!=="hidden";}
+
+      function placementLevelPending() {
+        try {
+          if (typeof data === "undefined" || !data) return false;
+          const level = Math.max(1, Number(data.currentLevel || 1));
+          const hasItems = typeof coreItemsForLevel === "function" ? coreItemsForLevel(level).length > 0 : true;
+          return hasItems && typeof placementDone === "function" && !placementDone(level);
+        } catch {
+          return false;
+        }
+      }
+
+      function continuePlacementScreen() {
+        if (!document.getElementById("placement")?.classList.contains("active")) return false;
+
+        const batchContinue = document.getElementById("placementContinue");
+        if (visible(batchContinue)) { batchContinue.click(); return true; }
+
+        const nextLevel = document.getElementById("placementNextLevel");
+        if (visible(nextLevel)) { nextLevel.click(); return true; }
+
+        const lessons = document.getElementById("placementLessons");
+        if (visible(lessons)) { lessons.click(); return true; }
+
+        // Nach einem vollständig bestandenen Level setzt finishPlacement die Session
+        // auf null und schaltet currentLevel bereits hoch. In genau diesem Zustand
+        // soll Enter ohne Umweg direkt die nächste Einstufung beginnen.
+        try {
+          if (!placementSession && placementLevelPending() && typeof startPlacement === "function") {
+            startPlacement();
+            return true;
+          }
+        } catch {}
+
+        for (const id of ["placementDashboard", "placementPause", "placementBack"]) {
+          const button = document.getElementById(id);
+          if (visible(button)) { button.click(); return true; }
+        }
+        return false;
+      }
+
+      function enhancePlacementLevelCompletion(completedLevel) {
+        try {
+          const card = document.getElementById("placementCard");
+          const lessons = document.getElementById("placementLessons");
+          const nextLevel = Math.max(1, Number(data?.currentLevel || 1));
+          if (!card || !lessons || !lessons.disabled) return;
+          if (!(nextLevel > Number(completedLevel || 0)) || !placementLevelPending()) return;
+
+          lessons.disabled = false;
+          lessons.id = "placementNextLevel";
+          lessons.textContent = `Einstufung Level ${nextLevel} starten`;
+          lessons.onclick = () => startPlacement();
+
+          let hint = card.querySelector("[data-kq-placement-enter-hint]");
+          if (!hint) {
+            hint = document.createElement("p");
+            hint.className = "small muted";
+            hint.dataset.kqPlacementEnterHint = "1";
+            hint.style.marginTop = "14px";
+            hint.textContent = `Enter startet direkt die Einstufung von Level ${nextLevel}.`;
+            card.appendChild(hint);
+          }
+          try { focusFirstEnabledAction?.("placementNextLevel", "placementDashboard"); } catch {}
+        } catch (error) {
+          console.warn("Kotoba Quest placement continuation could not be enhanced", error);
+        }
+      }
+
+      try {
+        if (typeof finishPlacement === "function" && !finishPlacement.__kqEnterFlowWrapped) {
+          const originalFinishPlacement = finishPlacement;
+          const wrappedFinishPlacement = function(...args) {
+            let completedLevel = null;
+            try { completedLevel = placementSession?.level ?? data?.currentLevel ?? null; } catch {}
+            const result = originalFinishPlacement.apply(this, args);
+            enhancePlacementLevelCompletion(completedLevel);
+            return result;
+          };
+          wrappedFinishPlacement.__kqEnterFlowWrapped = true;
+          wrappedFinishPlacement.__kqOriginal = originalFinishPlacement;
+          finishPlacement = wrappedFinishPlacement;
+        }
+      } catch {}
+
       function activeChoiceButtons(){
         const selectors=['[data-kq-res-choice]','[data-pp-choice]','[data-choice-index]','.kq-choice-list button','.kq-res-choice-grid button'];
         for(const selector of selectors){const buttons=[...document.querySelectorAll(selector)].filter(visible);if(buttons.length)return buttons;}
@@ -32325,6 +32431,7 @@ ${tooltipText(segment, status)}`)}"`
           if(shouldAttach(target)){target.value=toHiragana(target.value,true);target.dispatchEvent(new Event("input",{bubbles:true}));}
           if(target.form){event.preventDefault();event.stopImmediatePropagation();target.form.requestSubmit?.();return;}
         }
+        if(continuePlacementScreen()){event.preventDefault();event.stopImmediatePropagation();return;}
         const next=continueButton();if(next){event.preventDefault();event.stopImmediatePropagation();next.click();return;}
         const intro=document.getElementById("kqResIntroNext");if(visible(intro)){event.preventDefault();event.stopImmediatePropagation();intro.click();}
       },true);
