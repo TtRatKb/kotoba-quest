@@ -28695,7 +28695,14 @@ function shuffle(values) {
         activePackId: BUILT_IN_PACK.id,
         packs: {},
         progress: {},
-        readerSettings: { showAllTranslations: false },
+        readerSettings: {
+          showAllTranslations: false,
+          mode: "learn",
+          showFurigana: true,
+          showSupportCards: true,
+          highlightMode: "all",
+          showTooltips: true
+        },
         lastOpenedAt: null
       };
     
@@ -28858,8 +28865,22 @@ function shuffle(values) {
         state.activePackId = BUILT_IN_PACK.id;
         state.readerSettings = state.readerSettings && typeof state.readerSettings === "object"
           ? state.readerSettings
-          : { showAllTranslations: false };
+          : {};
         state.readerSettings.showAllTranslations = Boolean(state.readerSettings.showAllTranslations);
+        const validReaderModes = new Set(["learn", "focus", "immersion", "shadow", "custom"]);
+        state.readerSettings.mode = validReaderModes.has(state.readerSettings.mode) ? state.readerSettings.mode : "learn";
+        const presetDefaults = {
+          learn: { showFurigana:true, showSupportCards:true, highlightMode:"all", showTooltips:true },
+          focus: { showFurigana:false, showSupportCards:true, highlightMode:"unknown", showTooltips:true },
+          immersion: { showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false },
+          shadow: { showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false },
+          custom: { showFurigana:true, showSupportCards:true, highlightMode:"all", showTooltips:true }
+        };
+        const preset = presetDefaults[state.readerSettings.mode] || presetDefaults.learn;
+        if (typeof state.readerSettings.showFurigana !== "boolean") state.readerSettings.showFurigana = preset.showFurigana;
+        if (typeof state.readerSettings.showSupportCards !== "boolean") state.readerSettings.showSupportCards = preset.showSupportCards;
+        if (!["all", "unknown", "off"].includes(state.readerSettings.highlightMode)) state.readerSettings.highlightMode = preset.highlightMode;
+        if (typeof state.readerSettings.showTooltips !== "boolean") state.readerSettings.showTooltips = preset.showTooltips;
         state.lastOpenedAt = state.lastOpenedAt || null;
         return state;
       }
@@ -29362,6 +29383,96 @@ function shuffle(values) {
         if (!reading || !/[\u3400-\u4dbf\u4e00-\u9fff々〆ヶ]/.test(String(surface || ""))) return esc(surface);
         return `<ruby>${esc(surface)}<rt>${esc(reading)}</rt></ruby>`;
       }
+
+      const STORY_READER_2_VERSION = "2.0";
+      const STORY_READER_PRESETS = {
+        learn: { label:"Lernen", icon:"🌸", showFurigana:true, showSupportCards:true, highlightMode:"all", showTooltips:true },
+        focus: { label:"Fokus", icon:"🎯", showFurigana:false, showSupportCards:true, highlightMode:"unknown", showTooltips:true },
+        immersion: { label:"Immersion", icon:"🌙", showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false },
+        shadow: { label:"Shadowing", icon:"🎧", showFurigana:false, showSupportCards:false, highlightMode:"off", showTooltips:false }
+      };
+
+      function applyReaderPreset(mode, { persistChange = true, rerender = true } = {}) {
+        const preset = STORY_READER_PRESETS[mode] || STORY_READER_PRESETS.learn;
+        state.readerSettings.mode = STORY_READER_PRESETS[mode] ? mode : "learn";
+        state.readerSettings.showFurigana = preset.showFurigana;
+        state.readerSettings.showSupportCards = preset.showSupportCards;
+        state.readerSettings.highlightMode = preset.highlightMode;
+        state.readerSettings.showTooltips = preset.showTooltips;
+        state.readerSettings.showAllTranslations = false;
+        openTranslations.clear();
+        detailTarget = null;
+        if (persistChange) persist();
+        if (rerender) renderStory();
+      }
+
+      function cycleHighlightMode() {
+        const modes = ["all", "unknown", "off"];
+        const current = modes.indexOf(state.readerSettings.highlightMode);
+        state.readerSettings.highlightMode = modes[(current + 1 + modes.length) % modes.length];
+        state.readerSettings.mode = "custom";
+        persist();
+        renderStory();
+      }
+
+      function sentencePlainText(sentence) {
+        return (sentence?.segments || []).map(segment => String(segment?.text || "")).join("").trim();
+      }
+
+      let storySpeechRun = 0;
+      function speakStoryText(text, { rate = 0.84, repeat = 1 } = {}) {
+        const spoken = String(text || "").trim();
+        if (!spoken || !("speechSynthesis" in window)) {
+          notify("Die Browserstimme ist auf diesem Gerät nicht verfügbar.");
+          return;
+        }
+        const run = ++storySpeechRun;
+        window.speechSynthesis.cancel();
+        const play = remaining => {
+          if (run !== storySpeechRun || remaining <= 0) return;
+          const utterance = new SpeechSynthesisUtterance(spoken);
+          utterance.lang = "ja-JP";
+          utterance.rate = Math.max(0.55, Math.min(1.05, Number(rate || 0.84)));
+          const voices = window.speechSynthesis.getVoices();
+          utterance.voice = voices.find(voice => String(voice.lang || "").toLowerCase().startsWith("ja")) || null;
+          utterance.onend = () => {
+            if (run !== storySpeechRun || remaining <= 1) return;
+            setTimeout(() => play(remaining - 1), 520);
+          };
+          window.speechSynthesis.speak(utterance);
+        };
+        play(Math.max(1, Number(repeat || 1)));
+      }
+
+      function stopStorySpeech() {
+        storySpeechRun += 1;
+        try { window.speechSynthesis?.cancel?.(); } catch {}
+      }
+
+      function readerModeClass() {
+        const mode = STORY_READER_PRESETS[state.readerSettings.mode] ? state.readerSettings.mode : "custom";
+        return [
+          `mode-${mode}`,
+          state.readerSettings.showFurigana ? "furigana-on" : "furigana-off",
+          state.readerSettings.showSupportCards ? "support-on" : "support-off",
+          `highlight-${state.readerSettings.highlightMode || "all"}`,
+          state.readerSettings.showTooltips ? "tooltips-on" : "tooltips-off"
+        ].join(" ");
+      }
+
+      function readerPresetControls() {
+        const mode = state.readerSettings.mode;
+        const highlightLabel = state.readerSettings.highlightMode === "all" ? "Alle Statusfarben" : state.readerSettings.highlightMode === "unknown" ? "Nur Lernbedarf" : "Farben aus";
+        return `<section class="kq-sr-reader-controls" aria-label="Story Reader 2.0 Einstellungen">
+          <div class="kq-sr-reader-controls-head"><div><span class="kq-sr-side-kicker">Story Reader 2.0</span><strong>Wie viel Hilfe möchtest du?</strong></div><small>Einstellungen werden gespeichert.</small></div>
+          <div class="kq-sr-reader-presets">${Object.entries(STORY_READER_PRESETS).map(([id,preset]) => `<button type="button" class="${mode === id ? "active" : ""}" data-sr-reader-preset="${id}"><span>${preset.icon}</span><b>${preset.label}</b></button>`).join("")}</div>
+          <div class="kq-sr-reader-toggles">
+            <button type="button" class="ghost ${state.readerSettings.showFurigana ? "active" : ""}" data-sr-toggle-furigana>ふ Furigana ${state.readerSettings.showFurigana ? "an" : "aus"}</button>
+            <button type="button" class="ghost ${state.readerSettings.showSupportCards ? "active" : ""}" data-sr-toggle-support>🗂 Satzkarten ${state.readerSettings.showSupportCards ? "an" : "aus"}</button>
+            <button type="button" class="ghost" data-sr-cycle-highlight>🎨 ${esc(highlightLabel)}</button>
+          </div>
+        </section>`;
+      }
     
       function tooltipText(segment, status) {
         const lines = [];
@@ -29400,9 +29511,12 @@ function shuffle(values) {
         const classes = ["kq-sr-token"];
         if (tracked) classes.push("interactive", status.unknown ? "unknown" : "known", `mastery-${status.mastery}`);
         else if (segment.gloss) classes.push("interactive", "language-help");
-        const attrs = interactive
-          ? `tabindex="0" role="button" ${tracked ? `data-sr-mastery="${esc(status.mastery)}"` : `data-sr-mastery="context"`} data-sr-detail="${esc(detailKey(context.sceneId, context.blockIndex, context.sentenceIndex, context.segmentIndex))}" data-sr-tip="${esc(`${tracked ? status.masteryLabel : "Sprachbaustein"}
+        const tip = state.readerSettings.showTooltips
+          ? ` data-sr-tip="${esc(`${tracked ? status.masteryLabel : "Sprachbaustein"}
 ${tooltipText(segment, status)}`)}"`
+          : "";
+        const attrs = interactive
+          ? `tabindex="0" role="button" ${tracked ? `data-sr-mastery="${esc(status.mastery)}"` : `data-sr-mastery="context"`} data-sr-detail="${esc(detailKey(context.sceneId, context.blockIndex, context.sentenceIndex, context.segmentIndex))}"${tip}`
           : "";
         return `<span class="${classes.join(" ")}" ${attrs}>${ruby(segment.text, segment.reading)}</span>`;
       }
@@ -29859,6 +29973,7 @@ ${tooltipText(segment, status)}`)}"`
         if (detailTarget && String(detailTarget).startsWith(detailPrefix)) {
           return `<aside class="kq-sr-sentence-support detail-open"><div id="kqSrDetailPanel">${renderDetailPanel(resolveDetail(detailTarget))}</div></aside>`;
         }
+        if (!state.readerSettings.showSupportCards) return "";
         const items = unknownItemsInSentence(sentence, context);
         const scene = sceneById(activePack(), context.sceneId);
         const vocabularyGroups = { recommended: [], core: [], active: [], context: [] };
@@ -29902,7 +30017,9 @@ ${tooltipText(segment, status)}`)}"`
       function renderSentence(sentence, context) {
         const translationKey = `${context.sceneId}:${context.blockIndex}:${context.sentenceIndex}`;
         const translated = state.readerSettings.showAllTranslations || openTranslations.has(translationKey);
-        return `<div class="kq-sr-sentence-row" data-sr-sentence-row="${context.blockIndex}-${context.sentenceIndex}"><article class="kq-sr-sentence" data-sr-sentence="${context.blockIndex}-${context.sentenceIndex}"><div class="kq-sr-japanese">${sentence.segments.map((segment, segmentIndex) => renderSegment(segment, { ...context, segmentIndex })).join("")}</div><button type="button" class="kq-sr-translation-toggle" data-sr-translation="${context.blockIndex}:${context.sentenceIndex}">${translated ? "Übersetzung ausblenden" : "Satz übersetzen"}</button><p class="kq-sr-translation" ${translated ? "" : "hidden"}>${esc(sentence.translation)}</p></article>${renderSentenceSupport(sentence, context)}</div>`;
+        const shadow = state.readerSettings.mode === "shadow";
+        const audioControls = `<div class="kq-sr-sentence-audio"><button type="button" class="ghost" data-sr-audio="${context.blockIndex}:${context.sentenceIndex}" title="Japanischen Satz abspielen">🔊 ${shadow ? "Hören" : "Audio"}</button><button type="button" class="ghost" data-sr-audio-slow="${context.blockIndex}:${context.sentenceIndex}" title="Langsamer abspielen">🐢 ${shadow ? "Langsam" : "0,72×"}</button>${shadow ? `<button type="button" class="ghost" data-sr-audio-repeat="${context.blockIndex}:${context.sentenceIndex}" title="Zweimal mit kurzer Pause abspielen">↻ 2×</button>` : ""}</div>`;
+        return `<div class="kq-sr-sentence-row" data-sr-sentence-row="${context.blockIndex}-${context.sentenceIndex}"><article class="kq-sr-sentence" data-sr-sentence="${context.blockIndex}-${context.sentenceIndex}"><div class="kq-sr-sentence-head">${audioControls}<button type="button" class="kq-sr-translation-toggle" data-sr-translation="${context.blockIndex}:${context.sentenceIndex}">${translated ? "Übersetzung ausblenden" : "Übersetzung prüfen"}</button></div><div class="kq-sr-japanese">${sentence.segments.map((segment, segmentIndex) => renderSegment(segment, { ...context, segmentIndex })).join("")}</div><p class="kq-sr-translation" ${translated ? "" : "hidden"}>${esc(sentence.translation)}</p>${shadow ? `<p class="kq-sr-shadow-cue">Hören → mitsprechen → noch einmal hören. Die Übersetzung bleibt bewusst optional.</p>` : ""}</article>${renderSentenceSupport(sentence, context)}</div>`;
       }
     
       function sceneMasterySummary(scene) {
@@ -29958,20 +30075,30 @@ ${tooltipText(segment, status)}`)}"`
           : next
             ? "Mit „Abschnitt beenden“ wird dein Fortschritt gespeichert und du gelangst direkt zum nächsten Abschnitt – oder zu seiner Sperrseite."
             : "Mit „Path beenden“ wird dein Fortschritt gespeichert und du kehrst zum Story-Dashboard zurück.";
-        return `<div class="kq-sr-reader-shell">
+        const mode = STORY_READER_PRESETS[state.readerSettings.mode] || null;
+        const modeNote = state.readerSettings.mode === "immersion"
+          ? "Immersion: Hilfen sind aus dem Lesefluss entfernt. Wörter und Grammatik bleiben anklickbar, falls du doch etwas nachschlagen möchtest."
+          : state.readerSettings.mode === "shadow"
+            ? "Shadowing: Höre jeden Satz, sprich ihn nach und nutze die langsame oder doppelte Wiedergabe. Übersetzung und Hilfen bleiben optional."
+            : state.readerSettings.mode === "focus"
+              ? "Fokus: Furigana sind aus; farbig bleiben nur Inhalte, die noch nicht sicher auf Guru oder höher sind."
+              : `${totalUnknown ? `${totalUnknown} aktuell nicht sichere Inhalte werden im Lernmodus direkt unterstützt.` : "Alle annotierten Inhalte gelten derzeit als bekannt."} Übersetzungen bleiben zunächst verdeckt.`;
+        return `<div class="kq-sr-reader-shell ${readerModeClass()}" data-sr-reader-version="${STORY_READER_2_VERSION}">
           <div class="kq-sr-reader-main">
             <div class="kq-sr-scene-toolbar">
               <div><span>${esc(scene.chapter || pack.title)}</span><h2>${esc(scene.title)}</h2><p>${esc(scene.subtitle || "")}</p></div>
               <div class="button-row"><button type="button" class="ghost" data-sr-all-translations>${state.readerSettings.showAllTranslations ? "Alle Übersetzungen aus" : "Alle Übersetzungen an"}</button><button type="button" class="ghost" data-sr-library>Story-Pfad</button></div>
             </div>
-            <div class="kq-sr-reader-note"><span>ふ</span><div><strong>Furigana bleiben immer sichtbar.</strong><p>${totalUnknown ? `${totalUnknown} aktuell unbekannte Inhalte werden direkt neben dem jeweiligen Satz erklärt. Nur ein begrenzter Teil wird als aktives Mining-Ziel empfohlen; die übrigen Wörter dienen zunächst nur dem Textverständnis.` : "Alle annotierten Inhalte gelten derzeit als bekannt; ihre Bedeutungen bleiben bis zum Hover oder Antippen verborgen."}</p></div></div>
+            ${readerPresetControls()}
+            <div class="kq-sr-reader-note"><span>${mode?.icon || "⚙️"}</span><div><strong>${esc(mode?.label || "Eigene Reader-Einstellungen")}</strong><p>${esc(modeNote)}</p></div></div>
             ${renderMasteryPanel(mastery)}
             ${renderVocabularyBudgetPanel(scene)}
             <div class="kq-sr-story-text">${scene.blocks.map((block, blockIndex) => `<section class="kq-sr-text-block">${block.heading ? `<h3>${esc(block.heading)}</h3>` : ""}${block.sentences.map((sentence, sentenceIndex) => renderSentence(sentence, { sceneId: scene.id, blockIndex, sentenceIndex })).join("")}</section>`).join("")}</div>
-            <div class="kq-sr-scene-end"><p>${completed ? "Dieser Abschnitt ist bereits abgeschlossen. Du kannst ihn jederzeit erneut lesen." : completionCopy}</p><div class="button-row">${prev ? `<button type="button" class="ghost" data-sr-scene="${esc(prev.id)}">Zurück</button>` : ""}${completed ? (next ? `<button type="button" class="secondary" ${nextUnlocked ? `data-sr-scene="${esc(next.id)}"` : "disabled"}>Nächster Abschnitt</button>` : `<button type="button" class="secondary" data-sr-library>Story-Dashboard</button>`) : `<button type="button" class="primary" data-sr-complete="${esc(scene.id)}">${esc(completionLabel)}</button>`}</div></div>
+            <div class="kq-sr-scene-end"><p>${completed ? "Dieser Abschnitt ist bereits abgeschlossen. Du kannst ihn jederzeit erneut lesen." : completionCopy}</p><div class="button-row"><button type="button" class="ghost" data-sr-reread-immersion>🌙 Ohne Hilfen nochmal lesen</button>${prev ? `<button type="button" class="ghost" data-sr-scene="${esc(prev.id)}">Zurück</button>` : ""}${completed ? (next ? `<button type="button" class="secondary" ${nextUnlocked ? `data-sr-scene="${esc(next.id)}"` : "disabled"}>Nächster Abschnitt</button>` : `<button type="button" class="secondary" data-sr-library>Story-Dashboard</button>`) : `<button type="button" class="primary" data-sr-complete="${esc(scene.id)}">${esc(completionLabel)}</button>`}</div></div>
           </div>
         </div>`;
       }
+
       function requirementLabel(scene, progress) {
         const requirements = scene.unlock || {};
         const lines = [];
@@ -30408,6 +30535,37 @@ ${tooltipText(segment, status)}`)}"`
           renderStory();
         }));
         root.querySelectorAll("[data-sr-detail-close]").forEach(button => button.addEventListener("click", () => { detailTarget = null; renderStory(); }));
+        root.querySelectorAll("[data-sr-reader-preset]").forEach(button => button.addEventListener("click", () => applyReaderPreset(button.dataset.srReaderPreset)));
+        root.querySelectorAll("[data-sr-toggle-furigana]").forEach(button => button.addEventListener("click", () => {
+          state.readerSettings.showFurigana = !state.readerSettings.showFurigana;
+          state.readerSettings.mode = "custom";
+          persist();
+          renderStory();
+        }));
+        root.querySelectorAll("[data-sr-toggle-support]").forEach(button => button.addEventListener("click", () => {
+          state.readerSettings.showSupportCards = !state.readerSettings.showSupportCards;
+          state.readerSettings.mode = "custom";
+          detailTarget = null;
+          persist();
+          renderStory();
+        }));
+        root.querySelectorAll("[data-sr-cycle-highlight]").forEach(button => button.addEventListener("click", cycleHighlightMode));
+        root.querySelectorAll("[data-sr-reread-immersion]").forEach(button => button.addEventListener("click", () => {
+          applyReaderPreset("immersion", { rerender:false });
+          renderStory();
+          requestAnimationFrame(() => document.querySelector(".kq-sr-story-text")?.scrollIntoView?.({ behavior:"smooth", block:"start" }));
+        }));
+        const playSentenceFromButton = (button, options) => {
+          const pack = activePack();
+          const scene = sceneById(pack, activeSceneId);
+          const raw = button.dataset.srAudio || button.dataset.srAudioSlow || button.dataset.srAudioRepeat || "";
+          const [blockIndex, sentenceIndex] = raw.split(":").map(Number);
+          const sentence = scene?.blocks?.[blockIndex]?.sentences?.[sentenceIndex];
+          if (sentence) speakStoryText(sentencePlainText(sentence), options);
+        };
+        root.querySelectorAll("[data-sr-audio]").forEach(button => button.addEventListener("click", () => playSentenceFromButton(button, { rate:0.84, repeat:1 })));
+        root.querySelectorAll("[data-sr-audio-slow]").forEach(button => button.addEventListener("click", () => playSentenceFromButton(button, { rate:0.72, repeat:1 })));
+        root.querySelectorAll("[data-sr-audio-repeat]").forEach(button => button.addEventListener("click", () => playSentenceFromButton(button, { rate:0.78, repeat:2 })));
         root.querySelectorAll("[data-sr-translation]").forEach(button => button.addEventListener("click", () => {
           const pack = activePack();
           const scene = sceneById(pack, activeSceneId);
@@ -30683,6 +30841,29 @@ ${tooltipText(segment, status)}`)}"`
           .kq-sr-mastery-panel>p{margin:10px 0 0;color:var(--muted);font-size:.78rem;line-height:1.45}
         `;
         document.head.append(masteryStyle);
+
+        const reader2Style = document.createElement("style");
+        reader2Style.id = "kqStoryReader2Styles";
+        reader2Style.textContent = `
+          .kq-sr-reader-controls{display:grid;gap:12px;margin:0 0 14px;padding:15px 16px;border:1px solid var(--border);border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--kq-wash,#f4efff) 74%,white),white)}
+          .kq-sr-reader-controls-head{display:flex;align-items:end;justify-content:space-between;gap:14px}.kq-sr-reader-controls-head>div{display:grid;gap:3px}.kq-sr-reader-controls-head>div>strong{font-size:1rem}.kq-sr-reader-controls-head small{color:var(--muted)}
+          .kq-sr-reader-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.kq-sr-reader-presets button{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1px solid var(--border);border-radius:12px;background:white;color:var(--text);font-weight:850}.kq-sr-reader-presets button.active{border-color:var(--primary);background:var(--primary);color:white;box-shadow:0 7px 20px color-mix(in srgb,var(--primary) 22%,transparent)}.kq-sr-reader-presets button span{font-size:1.05rem}
+          .kq-sr-reader-toggles{display:flex;flex-wrap:wrap;gap:8px}.kq-sr-reader-toggles button{font-size:.78rem}.kq-sr-reader-toggles button.active{border-color:color-mix(in srgb,var(--primary) 44%,var(--border));background:color-mix(in srgb,var(--primary) 8%,white);color:var(--primary-dark)}
+          .kq-sr-sentence-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:5px}.kq-sr-sentence-audio{display:flex;flex-wrap:wrap;gap:6px}.kq-sr-sentence-audio button{padding:5px 8px;font-size:.72rem}.kq-sr-shadow-cue{margin:10px 0 0;color:var(--muted);font-size:.76rem;font-style:italic}
+          .kq-sr-reader-shell.furigana-off .kq-sr-japanese ruby rt{display:none!important}
+          .kq-sr-reader-shell.highlight-unknown .kq-sr-token.mastery-guru,.kq-sr-reader-shell.highlight-unknown .kq-sr-token.mastery-mastered{--sr-mastery-bg:transparent!important;--sr-mastery-line:transparent!important;--sr-mastery-text:var(--muted)!important}
+          .kq-sr-reader-shell.highlight-off .kq-sr-token.interactive{--sr-mastery-bg:transparent!important;--sr-mastery-line:transparent!important;--sr-mastery-text:var(--muted)!important;box-shadow:none!important;background:transparent!important}.kq-sr-reader-shell.highlight-off .kq-sr-token.language-help{border-bottom-color:transparent!important}
+          .kq-sr-reader-shell.highlight-off .kq-sr-token.interactive:hover,.kq-sr-reader-shell.highlight-off .kq-sr-token.interactive:focus{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 6%,transparent)!important}
+          .kq-sr-reader-shell.tooltips-off .kq-sr-token.interactive:after{display:none!important}
+          .kq-sr-reader-shell.support-off .kq-sr-sentence-row{grid-template-columns:minmax(0,1fr)}
+          .kq-sr-reader-shell.mode-immersion .kq-sr-mastery-panel,.kq-sr-reader-shell.mode-immersion .kq-sr-vocab-budget,.kq-sr-reader-shell.mode-shadow .kq-sr-mastery-panel,.kq-sr-reader-shell.mode-shadow .kq-sr-vocab-budget{display:none}
+          .kq-sr-reader-shell.mode-immersion .kq-sr-reader-note,.kq-sr-reader-shell.mode-shadow .kq-sr-reader-note{background:color-mix(in srgb,var(--panel) 92%,var(--primary) 4%)}
+          .kq-sr-reader-shell.mode-immersion .kq-sr-japanese{font-size:clamp(1.28rem,2.6vw,1.7rem);line-height:2.15}
+          .kq-sr-reader-shell.mode-shadow .kq-sr-japanese{font-size:clamp(1.35rem,2.8vw,1.82rem);line-height:2.25}.kq-sr-reader-shell.mode-shadow .kq-sr-sentence{padding:8px 0}.kq-sr-reader-shell.mode-shadow .kq-sr-sentence-audio button{padding:8px 11px;font-size:.8rem}
+          .kq-sr-reader-shell.mode-immersion .kq-sr-translation-toggle,.kq-sr-reader-shell.mode-shadow .kq-sr-translation-toggle{opacity:.62;font-size:.75rem}.kq-sr-reader-shell.mode-immersion .kq-sr-translation-toggle:hover,.kq-sr-reader-shell.mode-shadow .kq-sr-translation-toggle:hover{opacity:1}
+          @media(max-width:760px){.kq-sr-reader-presets{grid-template-columns:1fr 1fr}.kq-sr-reader-controls-head{align-items:flex-start;flex-direction:column}.kq-sr-sentence-head{align-items:flex-start;flex-direction:column}.kq-sr-sentence-audio{width:100%}}
+        `;
+        document.head.append(reader2Style);
       }
     
       document.addEventListener("keydown", event => {
