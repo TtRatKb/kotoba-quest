@@ -353,7 +353,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "n4-adaptive-quality-audit-1";
+    const CLOUD_FEATURE_VERSION = "n4-adaptive-quality-audit-2";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -33238,12 +33238,12 @@ ${tooltipText(segment, status)}`)}"`
 
 
     function n4AdaptiveRecapBootstrap() {
-      if (window.__KOTOBA_N4_RECAP_V10__) return;
-      window.__KOTOBA_N4_RECAP_V10__ = true;
+      if (window.__KOTOBA_N4_RECAP_V12__) return;
+      window.__KOTOBA_N4_RECAP_V12__ = true;
 
       const STORAGE_KEY = "kotobaQuestDataV3";
       const BACKUP_KEY = "kotobaQuestN4RecapBackupV1";
-      const VERSION = 11;
+      const VERSION = 12;
       const REQUIRED_KINDS = ["context-a", "context-b", "meaning", "formation", "production"];
       const SESSION_SIZE = 12;
       const CATALOG = [{"id":"aida","title":"あいだ","meaning":"während; während der ganzen Zeit; zwischen","active":true},{"id":"amari-nai","title":"あまり〜ない","meaning":"nicht sehr; nicht oft; kaum","active":true},{"id":"ato-de","title":"後で","meaning":"nachher; nachdem","active":true},{"id":"ba","title":"〜ば","meaning":"wenn; falls","active":true},{"id":"baai-wa","title":"場合は","meaning":"im Fall, dass","active":true},{"id":"bakari","title":"〜ばかり","meaning":"nur; ständig; nichts als","active":true},{"id":"dake-de","title":"〜だけで","meaning":"allein dadurch; nur mit","active":true},{"id":"dasu","title":"〜出す","meaning":"plötzlich anfangen; heraus-","active":true},{"id":"de-gozaimasu","title":"でございます","meaning":"sehr höfliche Form von です","active":true},{"id":"demo","title":"〜でも","meaning":"zum Beispiel; oder so","active":true},{"id":"dewa-nai-ka","title":"〜ではないか","meaning":"nicht wahr?; ist es nicht so?","active":true},{"id":"ga-hitsuyou","title":"〜が必要","meaning":"etwas ist nötig","active":true},{"id":"hitsuyou-ga-aru","title":"〜必要がある","meaning":"es ist nötig, etwas zu tun","active":true},{"id":"ga-suru","title":"〜がする","meaning":"riechen; klingen; schmecken","active":true},{"id":"garu","title":"〜がる","meaning":"Anzeichen eines Gefühls zeigen","active":true},{"id":"gari","title":"〜がり","meaning":"zu etwas neigende Person","active":true},{"id":"gozaimasu","title":"ございます","meaning":"höfliche Form von ある","active":true},{"id":"hajimeru","title":"〜始める","meaning":"anfangen zu","active":true},{"id":"hazu-da","title":"〜はずだ","meaning":"sollte; müsste erwartbar sein","active":true},{"id":"hazu-ga-nai","title":"〜はずがない","meaning":"kann unmöglich sein","active":true},{"id":"volitional","title":"Willensform 〜よう","meaning":"lass uns; ich werde","active":true},{"id":"imperative","title":"Befehlsform","meaning":"direkter Befehl","active":true},{"id":"irassharu","title":"いらっしゃる","meaning":"respektvoll: sein; kommen; gehen","active":true},{"id":"itashimasu","title":"いたします","meaning":"bescheiden: tun","active":true},{"id":"ka-dou-ka","title":"〜かどうか","meaning":"ob oder nicht","active":true},{"id":"kana","title":"〜かな","meaning":"ich frage mich","active":true},{"id":"kashira","title":"〜かしら","meaning":"ich frage mich","active":true},{"id":"kai","title":"〜かい","meaning":"lockere Ja/Nein-Frage","active":true},{"id":"kamoshirenai","title":"〜かもしれない","meaning":"vielleicht; möglicherweise","active":true},{"id":"kara-tsukuru","title":"〜から作る","meaning":"aus etwas herstellen","active":true},{"id":"kitto","title":"きっと","meaning":"bestimmt; sehr wahrscheinlich","active":true},{"id":"sakki","title":"さっき","meaning":"gerade eben; vorhin","active":true},{"id":"koro-goro","title":"頃","meaning":"ungefähr; um die Zeit","active":true},{"id":"koto","title":"〜こと","meaning":"Verb nominalisieren","active":true},{"id":"koto-ga-aru","title":"〜ことがある","meaning":"manchmal; es kommt vor","active":true},{"id":"koto-ga-dekiru","title":"〜ことができる","meaning":"können; möglich sein","active":true},{"id":"koto-ni-naru","title":"〜ことになる","meaning":"es wird entschieden; ergibt sich","active":true},{"id":"koto-ni-suru","title":"〜ことにする","meaning":"sich entscheiden","active":true},{"id":"ku-suru","title":"〜くする","meaning":"etwas ... machen","active":true},{"id":"kyuu-ni","title":"急に","meaning":"plötzlich","active":true},{"id":"made-ni","title":"〜までに","meaning":"bis spätestens; Frist","active":true},{"id":"mama","title":"〜まま","meaning":"unverändert; so lassen","active":true},{"id":"mata-wa","title":"または","meaning":"oder; alternativ","active":true},{"id":"mitai-da","title":"〜みたいだ","meaning":"scheint; ist wie","active":true},{"id":"mitai-na","title":"〜みたいな","meaning":"wie ...; ähnlich","active":true},{"id":"mitai-ni","title":"〜みたいに","meaning":"wie ...; auf ähnliche Weise","active":true},{"id":"na-prohibition","title":"Wörterbuchform + な","meaning":"tu das nicht!","active":true},{"id":"nado","title":"〜など","meaning":"zum Beispiel; und Ähnliches","active":true},{"id":"nagara","title":"〜ながら","meaning":"während; gleichzeitig","active":true},{"id":"nakanaka-nai","title":"なかなか〜ない","meaning":"nicht leicht; kommt nicht dazu","active":true},{"id":"nara","title":"〜なら","meaning":"wenn es um ... geht; falls","active":true},{"id":"nasai","title":"〜なさい","meaning":"bestimmte, aber mildere Aufforderung","active":true},{"id":"nasaru","title":"なさる","meaning":"respektvoll: tun","active":true},{"id":"ni-kigatsuku","title":"〜に気がつく","meaning":"bemerken; erkennen","active":true},{"id":"ni-mieru","title":"〜に見える","meaning":"so aussehen; erscheinen","active":true},{"id":"ni-suru","title":"〜にする","meaning":"sich für etwas entscheiden","active":true},{"id":"nikui","title":"〜にくい","meaning":"schwer zu tun","active":true},{"id":"no-naka-de","title":"〜の中で","meaning":"unter; innerhalb","active":true},{"id":"noni-contrast","title":"〜のに","meaning":"obwohl","active":true},{"id":"noni-purpose","title":"〜のに","meaning":"um etwas zu tun; für","active":true},{"id":"nowa-da","title":"〜のは〜だ","meaning":"Fokus: Das, was ..., ist ...","active":true},{"id":"o-kudasai","title":"お〜ください","meaning":"bitte tun Sie","active":true},{"id":"o-ni-naru","title":"お〜になる","meaning":"respektvoll: tun","active":true},{"id":"oki-ni","title":"〜おきに","meaning":"in Abständen von","active":true},{"id":"orimasu","title":"おります","meaning":"bescheiden/höflich: sein","active":true},{"id":"owaru","title":"〜終わる","meaning":"zu Ende tun","active":true},{"id":"rashii-hearsay","title":"〜らしい","meaning":"anscheinend; ich hörte","active":true},{"id":"rashii-typical","title":"〜らしい","meaning":"typisch; -haft","active":true},{"id":"potential","title":"Potentialform","meaning":"etwas tun können","active":true},{"id":"passive","title":"Passivform","meaning":"etwas wird getan","active":true},{"id":"sa","title":"〜さ","meaning":"Eigenschaft als Nomen","active":true},{"id":"sakki-duplicate","title":"さっき","meaning":"gerade eben; vorhin (zweiter identischer Eintrag der Quellliste)","active":false,"aliasOf":"sakki"},{"id":"saseru","title":"Kausativform","meaning":"jemanden etwas tun lassen/zwingen","active":true},{"id":"saserareru","title":"Kausativ-Passiv","meaning":"zu etwas gezwungen werden","active":true},{"id":"sasete-kudasai","title":"〜させてください","meaning":"lassen Sie mich bitte","active":true},{"id":"sasuga-ni","title":"さすが（に）","meaning":"wie erwartet; selbst dafür zu viel","active":true},{"id":"shi","title":"〜し","meaning":"außerdem; Gründe aufzählen","active":true},{"id":"shika-nai","title":"〜しか〜ない","meaning":"nur; nichts außer","active":true},{"id":"sonna-ni","title":"そんなに","meaning":"so sehr; in diesem Ausmaß","active":true},{"id":"sore-demo","title":"それでも","meaning":"trotzdem; selbst dann","active":true},{"id":"sore-ni","title":"それに","meaning":"außerdem; zusätzlich","active":true},{"id":"sou-da-hearsay","title":"〜そうだ","meaning":"ich habe gehört","active":true},{"id":"sou-da-look","title":"〜そうだ","meaning":"sieht danach aus","active":true},{"id":"sou-ni","title":"〜そうに","meaning":"scheinbar; auf ... wirkende Weise","active":true},{"id":"ta-bakari","title":"〜たばかり","meaning":"gerade erst getan","active":true},{"id":"ta-tokoro","title":"〜たところ","meaning":"gerade getan; nachdem man tat","active":true},{"id":"transitive-intransitive","title":"他動詞・自動詞","meaning":"transitive und intransitive Verben","active":true},{"id":"tagaru","title":"〜たがる","meaning":"eine andere Person will","active":true},{"id":"tara","title":"〜たら","meaning":"wenn; nachdem; sobald","active":true},{"id":"tara-dou","title":"〜たらどう","meaning":"wie wäre es, wenn ...?","active":true},{"id":"tara-ii-desu-ka","title":"〜たらいいですか","meaning":"was soll ich tun?","active":true},{"id":"te-connect","title":"〜て","meaning":"Handlungen/Gründe verbinden","active":true},{"id":"te-request","title":"〜て","meaning":"lockere Bitte","active":true},{"id":"te-ageru","title":"〜てあげる","meaning":"etwas für jemanden tun","active":true},{"id":"te-hoshii","title":"〜てほしい","meaning":"ich möchte, dass jemand ...","active":true},{"id":"te-iku","title":"〜ていく","meaning":"von jetzt an weitergehen","active":true},{"id":"te-ita","title":"〜ていた","meaning":"war gerade/regelmäßig am Tun","active":true},{"id":"te-itadakemasen-ka","title":"〜ていただけませんか","meaning":"sehr höfliche Bitte","active":true},{"id":"te-kureru","title":"〜てくれる","meaning":"jemand tut etwas für mich/uns","active":true},{"id":"te-kuru","title":"〜てくる","meaning":"tun und zurückkommen; Entwicklung bis jetzt","active":true},{"id":"te-miru","title":"〜てみる","meaning":"versuchen, etwas zu tun","active":true},{"id":"te-morau","title":"〜てもらう","meaning":"jemanden etwas für sich tun lassen","active":true},{"id":"te-oku","title":"〜ておく","meaning":"im Voraus tun","active":true},{"id":"te-shimau","title":"〜てしまう","meaning":"vollständig/versehentlich tun","active":true},{"id":"te-sumimasen","title":"〜てすみません","meaning":"Entschuldigung dafür, dass ...","active":true},{"id":"te-yaru","title":"〜てやる","meaning":"etwas für jemanden tun; derb","active":true},{"id":"te-yokatta","title":"〜てよかった","meaning":"froh sein, dass ...","active":true},{"id":"teiru-tokoro","title":"〜ているところ","meaning":"gerade mitten im Tun","active":true},{"id":"temo","title":"〜ても","meaning":"selbst wenn; obwohl","active":true},{"id":"to-condition","title":"〜と","meaning":"immer wenn; natürliche Folge","active":true},{"id":"to-ittemo-ii","title":"〜と言ってもいい","meaning":"man könnte sagen","active":true},{"id":"to-iu","title":"〜という","meaning":"genannt; dass ...","active":true},{"id":"to-iu-koto","title":"〜ということ","meaning":"die Tatsache/Bedeutung, dass ...","active":true},{"id":"to-iwareteiru","title":"〜と言われている","meaning":"es wird gesagt, dass ...","active":true},{"id":"to-kiita","title":"〜と聞いた","meaning":"ich hörte, dass ...","active":true},{"id":"to-omou","title":"〜と思う","meaning":"ich denke, dass ...","active":true},{"id":"toka-toka","title":"〜とか〜とか","meaning":"zum Beispiel ... und ...","active":true},{"id":"tokoro","title":"〜ところ","meaning":"gerade davor/dabei/danach","active":true},{"id":"tsudzukeru","title":"〜続ける","meaning":"weitermachen","active":true},{"id":"tte","title":"〜って","meaning":"locker: genannt/Zitat/Thema","active":true},{"id":"wa-ga","title":"〜は〜が","meaning":"A ..., aber B ...; kontrastiver Vergleich","active":true},{"id":"yasui","title":"〜やすい","meaning":"leicht zu; neigt dazu","active":true},{"id":"yatto","title":"やっと","meaning":"endlich; gerade noch","active":true},{"id":"yotei-da","title":"〜予定だ","meaning":"geplant sein","active":true},{"id":"you-da","title":"〜ようだ","meaning":"scheint; sieht aus wie","active":true},{"id":"you-ni-na","title":"〜ように／〜ような","meaning":"wie; ähnlich wie","active":true},{"id":"you-ni-naru","title":"〜ようになる","meaning":"dazu kommen; inzwischen können","active":true},{"id":"you-ni-suru","title":"〜ようにする","meaning":"darauf achten; sich bemühen","active":true},{"id":"you-to-omou","title":"Willensform + と思う","meaning":"vorhaben; planen","active":true},{"id":"zehi","title":"ぜひ","meaning":"unbedingt; auf jeden Fall","active":true},{"id":"zenzen","title":"全然","meaning":"völlig; total (auch positiv)","active":true},{"id":"zenzen-nai","title":"全然〜ない","meaning":"überhaupt nicht","active":true},{"id":"zurai","title":"〜づらい","meaning":"schwer zu tun; emotional/physisch unangenehm","active":true}];
@@ -33255,6 +33255,40 @@ ${tooltipText(segment, status)}`)}"`
       const BRIDGE_QUESTIONS = [{"id":"bdk1","family":"bridge-limit-contrast","point":"dake","prompt":"Welche Ergänzung passt?","sentence":"今日は水___飲みました。","choices":["だけ","しか","まで","ほど"],"correct":0,"explanation":"だけ bedeutet neutral „nur“. Anders als しか verlangt es keine Verneinung."},{"id":"bdk2","family":"bridge-limit-contrast","point":"dake","prompt":"Welche Bedeutung passt?","sentence":"あと十分だけ待ってください。","choices":["Bitte warten Sie noch genau zehn Minuten.","Bitte warten Sie mindestens zehn Stunden.","Sie dürfen nicht warten.","Warten Sie erst nach zehn Minuten."],"correct":0,"explanation":"だけ begrenzt die Menge oder Dauer: nur noch zehn Minuten."},{"id":"bdg1","family":"bridge-limit-contrast","point":"dakedo","prompt":"Welche Ergänzung verbindet den Gegensatz natürlich?","sentence":"行きたい___、今日は時間がない。","choices":["だけど","だから","なら","まで"],"correct":0,"explanation":"だけど／けど verbindet „Ich möchte gehen“ mit der gegensätzlichen Einschränkung „heute habe ich keine Zeit“."},{"id":"bdg2","family":"bridge-limit-contrast","point":"dakedo","prompt":"Welche Gesprächsnuance hat der Satz?","sentence":"ちょっと聞きたいんだけど…。","choices":["Der Sprecher leitet vorsichtig eine Bitte oder Frage ein.","Der Sprecher erteilt einen harten Befehl.","Der Sprecher nennt eine feste Frist.","Der Sprecher berichtet Hörensagen."],"correct":0,"explanation":"Ein abschließendes けど／だけど kann den Gedanken offenlassen und eine Bitte oder Frage höflicher einleiten."},{"id":"bdw1","family":"bridge-limit-contrast","point":"dewa-naku","prompt":"Welche Ergänzung passt zu „nicht A, sondern B“?","sentence":"これは失敗___、大切な練習です。","choices":["ではなく","だけど","しかなく","にして"],"correct":0,"explanation":"AではなくB korrigiert die erste Einordnung: nicht ein Scheitern, sondern eine wichtige Übung."},{"id":"bdw2","family":"bridge-limit-contrast","point":"dewa-naku","prompt":"Welche Bedeutung passt?","sentence":"電車ではなく、バスで行きます。","choices":["Ich fahre nicht mit dem Zug, sondern mit dem Bus.","Ich fahre sowohl mit dem Zug als auch mit dem Bus.","Falls es einen Zug gibt, fahre ich Bus.","Ich darf weder Zug noch Bus benutzen."],"correct":0,"explanation":"ではなく verwirft A und setzt B als Korrektur ein."},{"id":"bhc1","family":"bridge-limit-contrast","point":"hou-comparison","prompt":"Welche Ergänzung macht den Vergleich natürlich?","sentence":"電車よりバスの___安いです。","choices":["ほうが","だけが","ことが","ままが"],"correct":0,"explanation":"AよりBのほうが bedeutet: Im Vergleich zu A ist B stärker in der genannten Eigenschaft."},{"id":"bhc2","family":"bridge-limit-contrast","point":"hou-comparison","prompt":"Welche Aussage trifft zu?","sentence":"朝より夜のほうが集中できます。","choices":["Ich kann mich nachts besser konzentrieren als morgens.","Ich kann mich nur morgens konzentrieren.","Ich konzentriere mich vor der Nacht.","Morgens und nachts ist es genau gleich."],"correct":0,"explanation":"夜のほうが setzt die Nacht als die im Vergleich stärkere Seite."},{"id":"bkg1","family":"bridge-impression-register","point":"ki-ga-suru","prompt":"Welche Ergänzung passt zu einem subjektiven Eindruck?","sentence":"誰かに見られている___。","choices":["気がする","ことにする","はずがない","しかない"],"correct":0,"explanation":"気がする drückt ein subjektives Gefühl oder einen noch nicht gesicherten Eindruck aus."},{"id":"bkg2","family":"bridge-impression-register","point":"ki-ga-suru","prompt":"Welche Nuance hat der Satz?","sentence":"この答えは少し違う気がします。","choices":["Ich habe den Eindruck, dass diese Antwort etwas anders oder falsch ist.","Ich habe endgültig bewiesen, dass die Antwort falsch ist.","Ich entscheide, die Antwort zu ändern.","Die Antwort darf nicht anders sein."],"correct":0,"explanation":"気がする lässt die Einschätzung bewusst subjektiv und weniger endgültig."},{"id":"bmn1","family":"bridge-impression-register","point":"mo-naku","prompt":"Welche Ergänzung bedeutet „ohne auch nur ein Wort“?","sentence":"彼は一言___、部屋を出た。","choices":["もなく","だけで","にして","として"],"correct":0,"explanation":"一言もなく bedeutet „ohne auch nur ein Wort“."},{"id":"bmn2","family":"bridge-impression-register","point":"mo-naku","prompt":"Welche Bedeutung passt?","sentence":"音もなくドアが開いた。","choices":["Die Tür öffnete sich lautlos.","Die Tür öffnete sich wegen eines lauten Geräuschs.","Die Tür darf nicht geöffnet werden.","Die Tür öffnete sich erst später."],"correct":0,"explanation":"Nomen + もなく hebt hervor, dass selbst das erwartbare Merkmal vollständig fehlt."},{"id":"bmd1","family":"bridge-impression-register","point":"mono-da","prompt":"Welche Ergänzung passt zu einer allgemeinen Erwartung?","sentence":"約束は守る___。","choices":["ものだ","ところだ","だけだ","そうだ"],"correct":0,"explanation":"ものだ kann eine allgemeine Regel oder soziale Erwartung ausdrücken: Versprechen hält man."},{"id":"bmd2","family":"bridge-impression-register","point":"mono-da","prompt":"Welche Nuance hat der Satz?","sentence":"時間がたつのは早いものですね。","choices":["Der Sprecher bewertet nachdenklich, wie schnell die Zeit vergeht.","Der Sprecher setzt eine genaue Frist.","Der Sprecher verbietet, Zeit zu verlieren.","Der Sprecher zitiert eine fremde Anweisung."],"correct":0,"explanation":"ものだ kann eine allgemeine, oft nachdenkliche Feststellung oder Bewertung ausdrücken."},{"id":"bmp1","family":"bridge-time-permission","point":"mae-ni","prompt":"Welche Ergänzung bedeutet „bevor“?","sentence":"寝る___、歯を磨きます。","choices":["前に","後で","間に","までに"],"correct":0,"explanation":"Verb in Wörterbuchform + 前に bedeutet: bevor die Handlung geschieht."},{"id":"bmp2","family":"bridge-time-permission","point":"mae-ni","prompt":"Welche Reihenfolge gilt?","sentence":"日本へ来る前に、日本語を勉強しました。","choices":["Zuerst lernte ich Japanisch, danach kam ich nach Japan.","Zuerst kam ich nach Japan, danach lernte ich Japanisch.","Beide Handlungen geschehen gleichzeitig.","Die Reise wurde abgesagt."],"correct":0,"explanation":"Die Handlung vor 前に findet später statt; der Hauptsatz geschieht davor."},{"id":"btk1","family":"bridge-time-permission","point":"te-kara","prompt":"Welche Ergänzung bedeutet „nachdem“?","sentence":"宿題をし___、ゲームをします。","choices":["てから","ながら","ても","たらどう"],"correct":0,"explanation":"てから legt eine klare Reihenfolge fest: erst Hausaufgaben, danach spielen."},{"id":"btk2","family":"bridge-time-permission","point":"te-kara","prompt":"Welche Reihenfolge gilt?","sentence":"駅に着いてから、電話してください。","choices":["Rufen Sie an, nachdem Sie am Bahnhof angekommen sind.","Rufen Sie vor der Ankunft an.","Rufen Sie während der gesamten Fahrt ununterbrochen an.","Sie dürfen am Bahnhof nicht anrufen."],"correct":0,"explanation":"AてからB bedeutet, dass B erst nach Abschluss von A erfolgt."},{"id":"btm1","family":"bridge-time-permission","point":"te-mo-ii","prompt":"Welche Ergänzung bittet um Erlaubnis?","sentence":"ここに座っ___ですか。","choices":["てもいい","てはいけない","てから","てしまう"],"correct":0,"explanation":"〜てもいいですか fragt, ob eine Handlung erlaubt beziehungsweise in Ordnung ist."},{"id":"btm2","family":"bridge-time-permission","point":"te-mo-ii","prompt":"Welche Bedeutung passt?","sentence":"この写真を使ってもいいですよ。","choices":["Sie dürfen dieses Foto benutzen.","Sie müssen dieses Foto benutzen.","Sie dürfen dieses Foto nicht benutzen.","Sie haben das Foto versehentlich benutzt."],"correct":0,"explanation":"〜てもいい gibt Erlaubnis oder bestätigt, dass etwas in Ordnung ist."},{"id":"bto1","family":"bridge-time-permission","point":"toki","prompt":"Welche Ergänzung markiert den Zeitpunkt?","sentence":"日本へ行く___、パスポートが必要です。","choices":["時","だけ","そうに","し"],"correct":0,"explanation":"Verb + 時 bedeutet „wenn / zu dem Zeitpunkt, an dem“."},{"id":"bto2","family":"bridge-time-permission","point":"toki","prompt":"Welche Aussage trifft zu?","sentence":"子供の時、よくこの公園で遊びました。","choices":["Als Kind spielte ich oft in diesem Park.","Bevor ich ein Kind war, spielte ich dort.","Ich werde später in diesem Park spielen.","Nur Kinder dürfen dort spielen."],"correct":0,"explanation":"Nomen + の時 nennt den zeitlichen Rahmen, hier die Kindheit."}];
       const BRIDGE_LESSONS = {"dake":{"title":"〜だけ — neutrale Begrenzung","summary":"だけ grenzt eine Menge, Dauer oder Auswahl neutral auf „nur“ ein. Im Gegensatz zu しか braucht die Form keine Verneinung.","formation":"Nomen／Verb Plainform + だけ","example":"あと十分だけ待ってください。 — Bitte warten Sie nur noch zehn Minuten.","tip":"だけ ist neutral. しか〜ない wirkt stärker: Es gibt nichts außer dieser Möglichkeit oder Menge."},"dakedo":{"title":"〜だけど／〜けど — Gegensatz und offene Gesprächsführung","summary":"けど beziehungsweise だけど verbindet einen Gegensatz und kann am Satzende eine Bitte, Frage oder unausgesprochene Fortsetzung vorsichtig offenlassen.","formation":"Plainform + けど; Nomen／na-Adjektiv + だけど","example":"行きたいけど、今日は時間がない。 — Ich möchte gehen, aber heute habe ich keine Zeit.","tip":"Im Gespräch ist ein offenes けど oft keine unvollständige Grammatik, sondern eine höfliche Einladung an die andere Person zu reagieren."},"dewa-naku":{"title":"〜ではなく — nicht A, sondern B","summary":"ではなく korrigiert eine erste Einordnung und ersetzt A durch B.","formation":"Nomen／na-Adjektiv + ではなく（て） + B","example":"電車ではなく、バスで行きます。 — Ich fahre nicht mit dem Zug, sondern mit dem Bus.","tip":"Der Fokus liegt nicht nur auf der Verneinung von A, sondern auf der Korrektur zu B."},"hou-comparison":{"title":"〜ほうが — die stärkere Vergleichsseite","summary":"Im Muster AよりBのほうが nennt ほう die Seite, die die folgende Eigenschaft stärker erfüllt.","formation":"A より B のほうが + Adjektiv／Verb","example":"朝より夜のほうが集中できます。 — Nachts kann ich mich besser konzentrieren als morgens.","tip":"より markiert den Vergleichsmaßstab; ほうが markiert die Seite, für die die Aussage stärker gilt."},"ki-ga-suru":{"title":"〜気がする — subjektiver Eindruck","summary":"気がする drückt ein Gefühl, eine Ahnung oder einen noch nicht gesicherten Eindruck aus.","formation":"Plainform + 気がする; Nomen／na-Adjektiv + な気がする","example":"この答えは少し違う気がします。 — Ich habe das Gefühl, dass diese Antwort etwas anders oder falsch ist.","tip":"Die Form ist bewusst weniger endgültig als はずだ oder eine direkte Tatsachenbehauptung."},"mae-ni":{"title":"〜前に — bevor","summary":"前に ordnet zwei Ereignisse: Der Hauptsatz geschieht vor der Handlung oder dem Zeitpunkt vor 前に.","formation":"Verb Wörterbuchform + 前に; Nomen + の前に","example":"寝る前に、歯を磨きます。 — Vor dem Schlafengehen putze ich mir die Zähne.","tip":"Vor 前に steht bei einer zukünftigen Handlung normalerweise die Wörterbuchform, nicht die Vergangenheitsform."},"mo-naku":{"title":"〜もなく — ohne auch nur","summary":"Nomen + もなく betont, dass selbst ein erwartbares Merkmal vollständig fehlt.","formation":"Nomen + もなく","example":"彼は一言もなく、部屋を出た。 — Er verließ den Raum, ohne auch nur ein Wort zu sagen.","tip":"Die Form ist stärker und literarischer als ein neutrales ないで."},"mono-da":{"title":"〜ものだ — allgemeine Erwartung und Bewertung","summary":"ものだ kann allgemeine Regeln, typische menschliche Reaktionen oder eine nachdenkliche Bewertung ausdrücken.","formation":"Plainform + ものだ; Nomen／na-Adjektiv + なものだ","example":"約束は守るものだ。 — Versprechen hält man.","tip":"Nicht automatisch mit こと verwechseln: ものだ trägt oft eine wertende, typische oder erinnernde Sprecherhaltung."},"te-kara":{"title":"〜てから — erst A, dann B","summary":"てから legt fest, dass B erst nach dem Abschluss von A geschieht.","formation":"Verb-て + から","example":"駅に着いてから、電話してください。 — Rufen Sie an, nachdem Sie am Bahnhof angekommen sind.","tip":"Für eine klare Abfolge ist てから stärker als eine bloße Verbindung mit der て-Form."},"te-mo-ii":{"title":"〜てもいい — Erlaubnis","summary":"てもいい gibt Erlaubnis oder fragt, ob eine Handlung in Ordnung ist.","formation":"Verb-て + もいい（です／ですか）","example":"ここに座ってもいいですか。 — Darf ich hier sitzen?","tip":"Die Antwort いいです kann je nach Kontext missverständlich sein; はい、いいですよ oder だめです ist klarer."},"toki":{"title":"〜時 — Zeitpunkt und zeitlicher Rahmen","summary":"時 verbindet eine Handlung oder einen Zustand mit dem Zeitpunkt, an dem der Hauptsatz gilt.","formation":"Verb Plainform + 時; Nomen + の時; na-Adjektiv + な時","example":"子供の時、よくこの公園で遊びました。 — Als Kind spielte ich oft in diesem Park.","tip":"Die Form vor 時 zeigt, ob die Handlung zu diesem Zeitpunkt schon abgeschlossen ist oder noch bevorsteht."}};
       const PRODUCTION_FALLBACKS = {"ato-de":{"sentence":"会議が終わった___、電話します。","answers":["後で","あとで"],"display":"後で"},"hitsuyou-ga-aru":{"sentence":"この部屋を使うには、予約する___。","answers":["必要がある","ひつようがある"],"display":"必要がある"},"hajimeru":{"sentence":"急に雨が降り___。","answers":["始めた","はじめた"],"display":"始めた"},"volitional":{"sentence":"一緒に___。","answers":["帰ろう","かえろう"],"display":"帰ろう"},"imperative":{"sentence":"危ない！早く___！","answers":["来い","こい"],"display":"来い"},"kana":{"sentence":"明日は晴れる___。","answers":["かな"],"display":"かな"},"koto":{"sentence":"毎日読む___は大切です。","answers":["こと"],"display":"こと"},"koto-ga-dekiru":{"sentence":"日本語を話す___。","answers":["ことができる","事ができる"],"display":"ことができる"},"na-prohibition":{"sentence":"ここに入る___。","answers":["な"],"display":"な"},"nagara":{"sentence":"音楽を聞き___勉強します。","answers":["ながら"],"display":"ながら"},"nasai":{"sentence":"もう遅いから、早く___。","answers":["寝なさい","ねなさい"],"display":"寝なさい"},"nikui":{"sentence":"この字は読み___です。","answers":["にくい"],"display":"にくい"},"nowa-da":{"sentence":"私が一番好き___この曲です。","answers":["なのは"],"display":"なのは"},"sasuga-ni":{"sentence":"三日徹夜したら、___疲れます。","answers":["さすがに"],"display":"さすがに"},"shika-nai":{"sentence":"電車がないので、歩く___。","answers":["しかない"],"display":"しかない"},"sou-da-hearsay":{"sentence":"天気予報によると、明日は雨だ___。","answers":["そうです","そうだ"],"display":"そうです"},"te-connect":{"sentence":"朝ご飯を食べ___、学校へ行きます。","answers":["て"],"display":"て"},"te-iku":{"sentence":"これからも日本語を勉強し___。","answers":["ていく","ていきます"],"display":"ていく"},"te-ita":{"sentence":"昨日の八時、勉強し___。","answers":["ていた","ていました"],"display":"ていた"},"te-kuru":{"sentence":"ちょっと飲み物を買っ___。","answers":["てくる","てきます"],"display":"てくる"},"te-morau":{"sentence":"友達に宿題を手伝っ___。","answers":["てもらう","てもらいました"],"display":"てもらう"},"te-shimau":{"sentence":"大切な財布を忘れ___。","answers":["てしまった","てしまいました"],"display":"てしまった"},"to-iu":{"sentence":"ルカ___人を知っていますか。","answers":["という"],"display":"という"},"tsudzukeru":{"sentence":"毎日少しずつ勉強し___。","answers":["続ける","つづける","続けます","つづけます"],"display":"続ける"},"tte":{"sentence":"ルカ___誰ですか。","answers":["って"],"display":"って"}};
+      // Kana-equivalent answers for production items whose canonical display uses kanji.
+      // The Standorttest checks grammar knowledge, not whether the learner happened to
+      // convert a perfectly valid kana spelling to the expected kanji with the IME.
+      const PRODUCTION_KANA_ALIASES = {
+        "aida":["あいだに"],
+        "baai-wa":["ばあいは"],
+        "dasu":["ふりだした"],
+        "ga-hitsuyou":["がひつようです"],
+        "ku-suru":["あかるくする"],
+        "kyuu-ni":["きゅうに"],
+        "ni-mieru":["にみえる"],
+        "no-naka-de":["のなかで"],
+        "o-kudasai":["おかきください"],
+        "o-ni-naru":["おかえりになりました"],
+        "owaru":["かきおわりました"],
+        "potential":["こられます"],
+        "sa":["たかさ"],
+        "ta-tokoro":["みたところです"],
+        "te-miru":["たべてみて"],
+        "teiru-tokoro":["たべているところです"],
+        "to-ittemo-ii":["といってもいい"],
+        "to-iwareteiru":["といわれています"],
+        "to-kiita":["とききました"],
+        "wa-ga":["あのへやはもっとあかるいです"],
+        "yasui":["わかりやすい"],
+        "yotei-da":["よていです"],
+        "you-to-omou":["ようとおもいます"],
+        "zenzen":["ぜんぜん"],
+        "zenzen-nai":["ぜんぜん"],
+        "zurai":["あるきづらい"],
+        "ki-ga-suru":["きがする"],
+        "mae-ni":["まえに"],
+        "toki":["とき"]
+      };
       const STORY_ALIASES = {"to-conditional":"to-condition","shi-listing":"shi","tte-quote":"tte","no-wa-focus":"nowa-da","keredo":"dakedo"};
 
       const CORE_POINTS = CATALOG.filter(item => item.active && !item.aliasOf);
@@ -33352,7 +33386,7 @@ ${tooltipText(segment, status)}`)}"`
         return { correct:0, wrong:0, passedKinds:[], wrongKinds:[], seenSources:[], kindAttempts:{}, consecutiveWrong:0, certifiedAt:null, lastSeenAt:null, sessionIds:[], postRepair:false };
       }
       function defaultPoint() {
-        return { status:"untested", provisional:false, legacyStatus:"", attempts:0, correct:0, incorrect:0, repairComplete:false, repairCycles:0, evidence:defaultEvidence(), srs:{stage:0,dueAt:null,correct:0,incorrect:0} };
+        return { status:"untested", provisional:false, legacyStatus:"", attempts:0, correct:0, incorrect:0, repairComplete:false, repairCycles:0, evidence:defaultEvidence(), srs:{stage:0,dueAt:null,correct:0,incorrect:0,consecutiveWrong:0} };
       }
       function defaultState() {
         return {
@@ -33360,6 +33394,7 @@ ${tooltipText(segment, status)}`)}"`
           points:Object.fromEntries(ALL_POINTS.map(point => [point.id, defaultPoint()])),
           families:Object.fromEntries(ALL_FAMILIES.map(family => [family.id, {awarded:false,completedAt:null}])),
           energyFamilies:[],
+          activeSession:null,
           totals:{sessions:0,answered:0,correct:0,incorrect:0},
           updatedAt:Date.now()
         };
@@ -33397,13 +33432,60 @@ ${tooltipText(segment, status)}`)}"`
         for (const family of ALL_FAMILIES) base.families[family.id] = {...base.families[family.id], ...objectValue(old.families?.[family.id])};
         base.energyFamilies = unique(old.energyFamilies);
         base.totals = {...base.totals, ...objectValue(old.totals)};
+        const savedSession = objectValue(old.activeSession);
+        if (Array.isArray(savedSession.tasks) && savedSession.tasks.length) {
+          const index = Math.max(0, Math.min(savedSession.tasks.length, Number(savedSession.index || 0)));
+          base.activeSession = {
+            ...savedSession,
+            index,
+            tasks:savedSession.tasks.filter(task => task && typeof task === "object" && task.point && task.kind),
+            newlyKnown:unique(savedSession.newlyKnown),
+            repairs:unique(savedSession.repairs)
+          };
+          if (!base.activeSession.tasks.length || base.activeSession.index >= base.activeSession.tasks.length) base.activeSession = null;
+        }
         return base;
       }
       function readBackup() {
         try { return JSON.parse(localStorage.getItem(BACKUP_KEY) || "null")?.state || null; } catch { return null; }
       }
+      function mergeStoredStates(current, backup) {
+        const a = objectValue(current), b = objectValue(backup);
+        if (!Object.keys(a).length) return b;
+        if (!Object.keys(b).length) return a;
+        const merged = {...b,...a,points:{},families:{}};
+        for (const point of ALL_POINTS) {
+          const left = objectValue(a.points?.[point.id]);
+          const right = objectValue(b.points?.[point.id]);
+          const leftSeen = Number(left.evidence?.lastSeenAt || 0);
+          const rightSeen = Number(right.evidence?.lastSeenAt || 0);
+          if (!Object.keys(left).length) merged.points[point.id] = right;
+          else if (!Object.keys(right).length) merged.points[point.id] = left;
+          else merged.points[point.id] = leftSeen >= rightSeen ? left : right;
+        }
+        for (const family of ALL_FAMILIES) {
+          const left = objectValue(a.families?.[family.id]);
+          const right = objectValue(b.families?.[family.id]);
+          merged.families[family.id] = {
+            ...right,...left,
+            awarded:Boolean(left.awarded || right.awarded),
+            completedAt:Math.max(Number(left.completedAt || 0),Number(right.completedAt || 0)) || null
+          };
+        }
+        merged.energyFamilies = unique([...(a.energyFamilies || []),...(b.energyFamilies || [])]);
+        merged.totals = {
+          sessions:Math.max(Number(a.totals?.sessions || 0),Number(b.totals?.sessions || 0)),
+          answered:Math.max(Number(a.totals?.answered || 0),Number(b.totals?.answered || 0)),
+          correct:Math.max(Number(a.totals?.correct || 0),Number(b.totals?.correct || 0)),
+          incorrect:Math.max(Number(a.totals?.incorrect || 0),Number(b.totals?.incorrect || 0))
+        };
+        const aUpdated = Number(a.updatedAt || 0), bUpdated = Number(b.updatedAt || 0);
+        merged.activeSession = aUpdated >= bUpdated ? a.activeSession || null : b.activeSession || null;
+        merged.updatedAt = Math.max(aUpdated,bUpdated) || Date.now();
+        return merged;
+      }
 
-      let state = normalize(sourceData().n4Recap || readBackup());
+      let state = normalize(mergeStoredStates(sourceData().n4Recap, readBackup()));
 
       function persist() {
         state.version = VERSION;
@@ -33413,6 +33495,34 @@ ${tooltipText(segment, status)}`)}"`
         try { localStorage.setItem(BACKUP_KEY, JSON.stringify({version:VERSION,updatedAt:Date.now(),state})); } catch {}
         saveSource(source);
         addEntryCards();
+      }
+      function activeSessionRecord() {
+        const saved = objectValue(state.activeSession);
+        return Array.isArray(saved.tasks) && saved.tasks.length && Number(saved.index || 0) < saved.tasks.length ? saved : null;
+      }
+      function syncActiveSession(nextIndex = session?.index || 0) {
+        if (!session || !Array.isArray(session.tasks)) return;
+        state.activeSession = {
+          ...session,
+          index:Math.max(0, Math.min(session.tasks.length, Number(nextIndex || 0))),
+          tasks:session.tasks.map(task => ({...task})),
+          newlyKnown:unique(session.newlyKnown),
+          repairs:unique(session.repairs)
+        };
+      }
+      function clearActiveSession() { state.activeSession = null; }
+      function resumeActiveSession() {
+        const saved = activeSessionRecord();
+        if (!saved) { notify("Es gibt keinen pausierten N4-Testblock."); renderHome(); return; }
+        session = {
+          ...saved,
+          tasks:saved.tasks.map(task => ({...task,choices:Array.isArray(task.choices) ? [...task.choices] : task.choices,answers:Array.isArray(task.answers) ? [...task.answers] : task.answers})),
+          index:Math.max(0, Number(saved.index || 0)),
+          newlyKnown:unique(saved.newlyKnown),
+          repairs:unique(saved.repairs)
+        };
+        feedbackPending = false;
+        renderQuestion();
       }
       function pointState(id) { return state.points[id] || (state.points[id] = defaultPoint()); }
       function evidenceFor(id) { return pointState(id).evidence || (pointState(id).evidence = defaultEvidence()); }
@@ -33502,9 +33612,9 @@ ${tooltipText(segment, status)}`)}"`
       }
 
       function installStyles() {
-        if (document.getElementById("kqN4RecapStylesV10")) return;
+        if (document.getElementById("kqN4RecapStylesV12")) return;
         const style = document.createElement("style");
-        style.id = "kqN4RecapStylesV10";
+        style.id = "kqN4RecapStylesV12";
         style.textContent = `
           #kqN4RecapRoot{display:grid;gap:18px}.kq-n4-hero{padding:24px;border-radius:22px;color:white;background:linear-gradient(135deg,#4d68c8,#8a66cc 55%,#d77da8);position:relative;overflow:hidden}.kq-n4-hero:after{content:'N4';position:absolute;right:18px;bottom:-34px;font-size:8rem;font-weight:950;opacity:.12}.kq-n4-hero h2{margin:0;font-size:clamp(1.8rem,4vw,2.8rem)}.kq-n4-hero p{max-width:780px;line-height:1.6}.kq-n4-primary-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.kq-n4-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kq-n4-metric{display:grid;padding:15px;border:1px solid var(--border);border-radius:15px;background:white}.kq-n4-metric strong{font-size:2rem;color:var(--primary)}.kq-n4-metric span{color:var(--muted);font-size:.78rem;font-weight:800}.kq-n4-rule-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kq-n4-rule-grid>div{padding:13px;border:1px solid var(--border);border-radius:14px;background:var(--kq-card-soft,#faf8ff)}.kq-n4-rule-grid strong,.kq-n4-rule-grid span{display:block}.kq-n4-rule-grid span{margin-top:4px;color:var(--muted);font-size:.82rem;line-height:1.45}.kq-n4-family-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.kq-n4-family-card{display:grid;gap:10px;padding:15px;border:1px solid var(--border);border-radius:16px;background:white}.kq-n4-family-card.safe{border-color:#a9dec7;background:#f4fbf7}.kq-n4-family-card.repair{border-color:#efbdc8;background:#fff7f9}.kq-n4-family-card.testing{border-color:#d7c8f3;background:#fbf9ff}.kq-n4-family-head{display:flex;justify-content:space-between;gap:12px}.kq-n4-family-head h3,.kq-n4-family-head p{margin:0}.kq-n4-family-head p{margin-top:4px;color:var(--muted);font-size:.82rem}.kq-n4-status{height:max-content;padding:5px 8px;border-radius:999px;font-size:.7rem;font-weight:900;white-space:nowrap;background:#eeeaf8;color:#5f5481}.kq-n4-status.safe{background:#dff5e9;color:#2f7254}.kq-n4-status.repair{background:#ffe3e9;color:#9b4359}.kq-n4-status.testing{background:#eee8ff;color:#674da1}.kq-n4-progress{height:9px;overflow:hidden;border-radius:999px;background:var(--border)}.kq-n4-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-n4-point-mini-list{display:grid;gap:6px}.kq-n4-point-mini{display:grid;grid-template-columns:minmax(110px,.7fr) 1fr auto;gap:8px;align-items:center;padding:8px;border-radius:11px;background:rgba(255,255,255,.78);border:1px solid var(--border)}.kq-n4-point-mini strong{font-size:.84rem}.kq-n4-point-mini span{color:var(--muted);font-size:.74rem}.kq-n4-point-mini b{font-size:.72rem;color:var(--primary-dark)}.kq-n4-question{max-width:900px;width:100%;margin:0 auto}.kq-n4-question-head{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:.8rem;font-weight:900}.kq-n4-sentence{margin:18px 0;padding:20px;border:1px solid var(--border);border-radius:16px;background:var(--kq-card-soft,#faf8ff);font-size:clamp(1.35rem,4vw,2.1rem);line-height:1.8;text-align:center}.kq-n4-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kq-n4-options button{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;padding:14px;border:1px solid var(--border);border-radius:14px;background:white;color:var(--text);text-align:left}.kq-n4-options button span{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--kq-wash,#eee8ff);color:var(--primary-dark);font-weight:950}.kq-n4-options button.correct{border-color:#73bd98;background:#edf9f2}.kq-n4-options button.wrong{border-color:#dc8095;background:#fff0f3}.kq-n4-production{display:grid;grid-template-columns:1fr auto;gap:10px;max-width:620px;margin:18px auto}.kq-n4-production input{font-size:1.25rem;text-align:center}.kq-n4-feedback{margin-top:14px;padding:14px;border-radius:14px}.kq-n4-feedback.good{background:#eaf8f1;color:#2f6f54}.kq-n4-feedback.bad{background:#fff0f3;color:#8c5060}.kq-n4-feedback .reveal{margin-top:8px;padding-top:8px;border-top:1px solid currentColor}.kq-n4-session-summary{text-align:center}.kq-n4-session-summary h2{font-size:clamp(1.8rem,4vw,2.8rem)}.kq-n4-repair-list{display:grid;gap:8px}.kq-n4-repair-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px;border:1px solid var(--border);border-radius:13px}.kq-n4-lesson-box{margin:12px 0;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--kq-card-soft,#faf8ff)}.kq-n4-catalog-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;max-height:540px;overflow:auto;margin-top:12px}.kq-n4-catalog-item{display:grid;gap:2px;padding:9px;border:1px solid var(--border);border-radius:11px}.kq-n4-catalog-item span{color:var(--muted);font-size:.72rem}.kq-n4-entry{margin:16px 0;background:linear-gradient(135deg,#f5f2ff,#fff7fb)}.kq-n4-entry .kq-n4-progress{margin:10px 0}.grammar-path-now{margin-top:18px}.grammar-roadmap-compact{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px}.grammar-roadmap-chip{display:grid;gap:2px;padding:9px;border:1px solid var(--border);border-radius:11px;background:white}.grammar-roadmap-chip.current{border-color:var(--primary);background:var(--kq-wash,#eee8ff)}.grammar-roadmap-chip.complete{background:#eef9f3;border-color:#bfe3d0}.grammar-roadmap-chip.locked{opacity:.65}.grammar-roadmap-chip strong{font-size:.78rem}.grammar-roadmap-chip span{color:var(--muted);font-size:.68rem}.grammar-package-note{padding:13px;border-radius:14px;background:var(--kq-card-soft,#faf8ff);color:var(--muted);line-height:1.5}.grammar-core-audit details{margin-top:12px}.grammar-current-only-note{margin-bottom:12px;color:var(--muted);font-size:.82rem}
           @media(max-width:820px){.kq-n4-metrics,.kq-n4-rule-grid{grid-template-columns:1fr 1fr}.kq-n4-family-grid{grid-template-columns:1fr}}@media(max-width:600px){.kq-n4-metrics,.kq-n4-rule-grid,.kq-n4-options,.kq-n4-catalog-grid{grid-template-columns:1fr}.kq-n4-production{grid-template-columns:1fr}.kq-n4-point-mini{grid-template-columns:1fr}.kq-n4-repair-row{align-items:flex-start;flex-direction:column}}
@@ -33616,10 +33726,10 @@ ${tooltipText(segment, status)}`)}"`
         const blank = (questionsByPoint.get(id) || []).find(question => question.sentence.includes("___"));
         if (blank) {
           const answer = String(blank.choices[blank.correct]);
-          return {point:id,kind:"production",mode:"production",sourceKey:`production:${blank.id}`,prompt:"Ergänze die Lücke auf Japanisch. Die geprüfte Grammatik wird nicht genannt.",sentence:blank.sentence,answers:[answer],answerDisplay:answer,explanation:blank.explanation};
+          return {point:id,kind:"production",mode:"production",sourceKey:`production:${blank.id}`,prompt:"Ergänze die Lücke auf Japanisch. Die geprüfte Grammatik wird nicht genannt.",sentence:blank.sentence,answers:unique([answer, ...(PRODUCTION_KANA_ALIASES[id] || [])]),answerDisplay:answer,explanation:blank.explanation};
         }
         const fallback = PRODUCTION_FALLBACKS[id];
-        if (fallback) return {point:id,kind:"production",mode:"production",sourceKey:`production:fallback:${id}`,prompt:"Ergänze die Lücke auf Japanisch. Die geprüfte Grammatik wird nicht genannt.",sentence:fallback.sentence,answers:fallback.answers,answerDisplay:fallback.display,explanation:ALL_LESSONS[id]?.tip || ""};
+        if (fallback) return {point:id,kind:"production",mode:"production",sourceKey:`production:fallback:${id}`,prompt:"Ergänze die Lücke auf Japanisch. Die geprüfte Grammatik wird nicht genannt.",sentence:fallback.sentence,answers:unique([...(fallback.answers || []), ...(PRODUCTION_KANA_ALIASES[id] || [])]),answerDisplay:fallback.display,explanation:ALL_LESSONS[id]?.tip || ""};
         return makeFormationProbe(id);
       }
       function makeProbe(id, kind) {
@@ -33666,10 +33776,14 @@ ${tooltipText(segment, status)}`)}"`
         state.totals.sessions = Number(state.totals.sessions || 0) + 1;
         session = {id:`n4-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,title,scope,tasks,index:0,correct:0,incorrect:0,newlyKnown:[],repairs:[]};
         feedbackPending = false;
+        syncActiveSession(0);
         persist();
         renderQuestion();
       }
-      function startGlobal() { startSession(buildGlobalTasks(CORE_POINTS, SESSION_SIZE, 1), "Gemischter N4-Standorttest", "global"); }
+      function startGlobal() {
+        if (activeSessionRecord()) return resumeActiveSession();
+        startSession(buildGlobalTasks(CORE_POINTS, SESSION_SIZE, 1), "Gemischter N4-Standorttest", "global");
+      }
       function startFamily(familyId) {
         const family = ALL_FAMILIES.find(item => item.id === familyId);
         if (!family) return;
@@ -33690,13 +33804,35 @@ ${tooltipText(segment, status)}`)}"`
       }
 
       function renderQuestion() {
+        if (!session) { renderHome(); return; }
+        let skipped = false;
+        while (session.index < session.tasks.length) {
+          const candidate = session.tasks[session.index];
+          if (!candidate) { session.index++; skipped = true; continue; }
+          const ps = pointState(candidate.point);
+          // A point can become certified halfway through a family block. Do not ask a
+          // stale queued question after the learner has already proved the point.
+          if (pointKnown(candidate.point) || (ps.status === "repair" && !ps.repairComplete)) {
+            session.index++;
+            skipped = true;
+            continue;
+          }
+          break;
+        }
+        if (skipped) { syncActiveSession(session.index); persist(); }
         const probe = session?.tasks?.[session.index];
         if (!probe) { finishSession(); return; }
         const progress = Math.round(session.index / Math.max(1, session.tasks.length) * 100);
-        root.innerHTML = `<article class="card kq-n4-question"><div class="kq-n4-question-head"><span>${esc(session.title)}</span><span>${session.index + 1}/${session.tasks.length}</span></div><div class="kq-n4-progress" style="margin-top:10px"><span style="width:${progress}%"></span></div><p class="eyebrow" style="margin-top:20px">JLPT-Stil · Zielstruktur bleibt unangekündigt</p><h2>${esc(probe.prompt)}</h2><div class="kq-n4-sentence">${esc(probe.sentence)}</div>${probe.mode === "production" ? `<form class="kq-n4-production" id="kqN4Production"><input id="kqN4ProductionInput" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Japanische Ergänzung eingeben"><button class="primary" type="submit">Prüfen</button></form>` : `<div class="kq-n4-options">${probe.choices.map((choice,index) => `<button type="button" data-n4-answer="${index}"><span>${index+1}</span>${esc(choice)}</button>`).join("")}</div>`}<div id="kqN4Feedback"></div><div class="button-row" style="margin-top:15px"><button class="ghost" id="kqN4Exit">Für jetzt beenden</button><button class="secondary" id="kqN4DontKnow">Weiß ich nicht</button><button class="primary" id="kqN4Next" hidden>Weiter</button></div><p class="small muted" style="margin-top:10px;text-align:center">Beantwortete Nachweise werden sofort gespeichert. Ein beendeter Block muss nicht exakt an derselben Frage fortgesetzt werden.</p></article>`;
+        root.innerHTML = `<article class="card kq-n4-question"><div class="kq-n4-question-head"><span>${esc(session.title)}</span><span>${session.index + 1}/${session.tasks.length}</span></div><div class="kq-n4-progress" style="margin-top:10px"><span style="width:${progress}%"></span></div><p class="eyebrow" style="margin-top:20px">JLPT-Stil · Zielstruktur bleibt unangekündigt</p><h2>${esc(probe.prompt)}</h2><div class="kq-n4-sentence">${esc(probe.sentence)}</div>${probe.mode === "production" ? `<form class="kq-n4-production" id="kqN4Production"><input id="kqN4ProductionInput" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Japanische Ergänzung eingeben"><button class="primary" type="submit">Prüfen</button></form>` : `<div class="kq-n4-options">${probe.choices.map((choice,index) => `<button type="button" data-n4-answer="${index}"><span>${index+1}</span>${esc(choice)}</button>`).join("")}</div>`}<div id="kqN4Feedback"></div><div class="button-row" style="margin-top:15px"><button class="ghost" id="kqN4Exit">Für jetzt beenden</button><button class="secondary" id="kqN4DontKnow">Weiß ich nicht</button><button class="primary" id="kqN4Next" hidden>Weiter</button></div><p class="small muted" style="margin-top:10px;text-align:center">Beantwortete Nachweise werden sofort gespeichert. Wenn du jetzt beendest, setzt „Fortsetzen“ später exakt beim nächsten unbeantworteten Nachweis dieses Blocks an.</p></article>`;
         root.querySelectorAll("[data-n4-answer]").forEach(button => button.addEventListener("click", () => gradeChoice(Number(button.dataset.n4Answer))));
         root.querySelector("#kqN4Production")?.addEventListener("submit", event => { event.preventDefault(); gradeProduction(document.getElementById("kqN4ProductionInput")?.value || ""); });
-        root.querySelector("#kqN4Exit")?.addEventListener("click", () => { session = null; renderHome(); });
+        root.querySelector("#kqN4Exit")?.addEventListener("click", () => {
+          syncActiveSession(feedbackPending ? session.index + 1 : session.index);
+          session = null;
+          feedbackPending = false;
+          persist();
+          renderHome();
+        });
         root.querySelector("#kqN4DontKnow")?.addEventListener("click", gradeUnknown);
         root.querySelector("#kqN4Next")?.addEventListener("click", nextQuestion);
         setTimeout(() => document.getElementById("kqN4ProductionInput")?.focus(), 0);
@@ -33743,6 +33879,7 @@ ${tooltipText(segment, status)}`)}"`
             awardFamilyIfReady(familyByPoint.get(probe.point)?.id);
           } else ps.status = "testing";
         }
+        syncActiveSession(session.index + 1);
         persist();
       }
       function feedbackMarkup(probe, correct, answer) {
@@ -33769,7 +33906,6 @@ ${tooltipText(segment, status)}`)}"`
         document.getElementById("kqN4Feedback").innerHTML = feedbackMarkup(probe, correct, probe.choices[probe.correct]);
         feedbackPending = true;
         document.getElementById("kqN4Next").hidden = false;
-        if (correct) setTimeout(() => { if (feedbackPending) nextQuestion(); }, 650);
       }
       function gradeUnknown() {
         if (feedbackPending || !session) return;
@@ -33809,18 +33945,21 @@ ${tooltipText(segment, status)}`)}"`
         document.getElementById("kqN4Feedback").innerHTML = feedbackMarkup(probe, correct, probe.answerDisplay);
         feedbackPending = true;
         document.getElementById("kqN4Next").hidden = false;
-        if (correct) setTimeout(() => { if (feedbackPending) nextQuestion(); }, 750);
       }
       function nextQuestion() {
         if (!session) return;
         feedbackPending = false;
         session.index++;
+        syncActiveSession(session.index);
+        persist();
         renderQuestion();
       }
       function finishSession() {
         const finished = session;
-        if (!finished) { renderHome(); return; }
+        if (!finished) { clearActiveSession(); persist(); renderHome(); return; }
         session = null;
+        clearActiveSession();
+        persist();
         const newlyKnown = unique(finished.newlyKnown);
         const repairs = unique(finished.repairs);
         root.innerHTML = `<article class="card kq-n4-question kq-n4-session-summary"><div class="mode-icon">${repairs.length ? "🧭" : "✨"}</div><h2>Testblock abgeschlossen</h2><p>${finished.correct} richtig · ${finished.incorrect} falsch. Einzelne Fehler bleiben zunächst zusätzliche Prüfnachweise; erst ein wiederholtes Muster öffnet eine Reparaturlektion.</p><div class="kq-n4-metrics" style="margin:18px 0"><div class="kq-n4-metric"><strong>${finished.correct}</strong><span>richtig</span></div><div class="kq-n4-metric"><strong>${finished.incorrect}</strong><span>falsch</span></div><div class="kq-n4-metric"><strong>${newlyKnown.length}</strong><span>neu sicher bestätigt</span></div><div class="kq-n4-metric"><strong>${repairs.length}</strong><span>echte Lücken erkannt</span></div></div>${newlyKnown.length ? `<div class="kq-n4-feedback good"><strong>Jetzt als bekannt gespeichert</strong><div>${newlyKnown.map(id => esc(byId.get(id)?.title || id)).join(" · ")}</div></div>` : ""}${repairs.length ? `<div class="kq-n4-feedback bad"><strong>Reparatur erst nach wiederholter Evidenz</strong><div>${repairs.map(id => esc(byId.get(id)?.title || id)).join(" · ")}</div></div>` : ""}<div class="button-row" style="justify-content:center;margin-top:18px"><button class="primary" id="kqN4SummaryHome">Zur Übersicht</button>${repairs[0] ? `<button class="secondary" id="kqN4SummaryRepair">Erste Reparaturlektion</button>` : ""}</div></article>`;
@@ -33831,6 +33970,16 @@ ${tooltipText(segment, status)}`)}"`
       function openRepair(id) {
         const lesson = ALL_LESSONS[id];
         if (!lesson) return;
+        ensureView();
+        document.querySelectorAll("main .view").forEach(item => item.classList.remove("active"));
+        document.querySelectorAll(".nav button").forEach(item => item.classList.remove("active"));
+        view?.classList.add("active");
+        document.querySelector('[data-view="grammar"]')?.classList.add("active");
+        session = null;
+        reviewSession = null;
+        feedbackPending = false;
+        try { window.KotobaQuestInterface?.activateLearning?.("grammar"); } catch {}
+        window.scrollTo({top:0,behavior:"smooth"});
         root.innerHTML = `<article class="card kq-n4-question"><p class="eyebrow">N4-Reparatur · nur nach wiederholter Unsicherheit</p><h2>${esc(lesson.title)}</h2><p class="grammar-explanation">${esc(lesson.summary)}</p><div class="kq-n4-lesson-box"><strong>Bildung</strong><div>${esc(lesson.formation)}</div></div><div class="kq-n4-lesson-box"><strong>Beispiel</strong><div style="font-size:1.2rem;margin-top:5px">${esc(lesson.example)}</div></div><div class="kq-n4-lesson-box"><strong>Entscheidungshilfe</strong><div>${esc(lesson.tip)}</div></div><p class="grammar-package-note">Das Lesen dieser Erklärung markiert die Grammatik noch nicht als bekannt. Danach folgt erneut ein unangekündigter Fünf-Arten-Check.</p><div class="button-row"><button class="ghost" id="kqN4RepairBack">Zur Übersicht</button><button class="primary" id="kqN4RepairComplete">Verstanden · erneut testen</button></div></article>`;
         document.getElementById("kqN4RepairBack")?.addEventListener("click", renderHome);
         document.getElementById("kqN4RepairComplete")?.addEventListener("click", () => {
@@ -33840,6 +33989,7 @@ ${tooltipText(segment, status)}`)}"`
           ps.status = "testing";
           ps.provisional = false;
           ps.evidence = {...defaultEvidence(),postRepair:true};
+          ps.srs = {...ps.srs,stage:0,dueAt:null,consecutiveWrong:0};
           persist();
           startPoint(id);
         });
@@ -33875,16 +34025,23 @@ ${tooltipText(segment, status)}`)}"`
         if (correct) {
           srs.stage = Math.min(9, Math.max(1, Number(srs.stage || 1)) + 1);
           srs.correct = Number(srs.correct || 0) + 1;
+          srs.consecutiveWrong = 0;
           reviewSession.correct++;
         } else {
           srs.stage = Math.max(1, Number(srs.stage || 1) - 1);
           srs.incorrect = Number(srs.incorrect || 0) + 1;
-          ps.status = "testing";
-          ps.evidence.certifiedAt = null;
-          ps.evidence.passedKinds = [];
-          ps.evidence.correct = 0;
-          ps.evidence.wrong = 1;
-          ps.evidence.wrongKinds = [probe.kind];
+          srs.consecutiveWrong = Number(srs.consecutiveWrong || 0) + 1;
+          // One later SRS miss is not enough to erase a five-part certification.
+          // A second consecutive lapse reopens the focused repair path.
+          if (srs.consecutiveWrong >= 2) {
+            ps.status = "repair";
+            ps.repairComplete = false;
+            ps.evidence.certifiedAt = null;
+            ps.evidence.passedKinds = [];
+            ps.evidence.correct = 0;
+            ps.evidence.wrong = 2;
+            ps.evidence.wrongKinds = unique([...(ps.evidence.wrongKinds || []), probe.kind]);
+          }
         }
         srs.dueAt = srs.stage >= 9 ? null : Date.now() + delays[srs.stage];
         persist();
@@ -33897,7 +34054,6 @@ ${tooltipText(segment, status)}`)}"`
         document.getElementById("kqN4Feedback").innerHTML = feedbackMarkup(probe, correct, probe.choices[probe.correct]);
         feedbackPending = true;
         document.getElementById("kqN4ReviewNext").hidden = false;
-        if (correct) setTimeout(nextRepairReview, 650);
       }
       function nextRepairReview() { feedbackPending = false; reviewSession.index++; renderRepairReview(); }
 
@@ -33926,7 +34082,9 @@ ${tooltipText(segment, status)}`)}"`
         const due = dueRepairs();
         const nextFamilies = FAMILIES.filter(family => familyStatus(family) !== "safe").sort((a,b) => familyProgress(a) - familyProgress(b)).slice(0, 6);
         const allCoreSafe = known === CORE_POINTS.length;
-        root.innerHTML = `<div class="kq-n4-hero"><h2>${allCoreSafe ? "N4 vollständig bestätigt" : "Adaptiver N4-Standorttest"}</h2><p>Die Aufgaben werden gemischt und nennen nie vorab, welche Grammatik geprüft wird. Jeder Punkt braucht fünf verschiedene Nachweisarten. Die gemischten Blöcke sind bewusst kurz gehalten; einzelne Flüchtigkeits- oder Tippfehler lösen keine Reparaturlektion aus.</p><div class="kq-n4-primary-actions"><button class="primary" id="kqN4StartGlobal" ${allCoreSafe ? "disabled" : ""}>${allCoreSafe ? "Alle N4-Punkte bestanden" : "Kurzen Testblock fortsetzen"}</button>${due.length ? `<button class="secondary" id="kqN4StartReview">${due.length} Reparatur-Reviews</button>` : ""}</div></div><div class="kq-n4-metrics"><div class="kq-n4-metric"><strong>${known}/${CORE_POINTS.length}</strong><span>N4-Punkte sicher bestätigt</span></div><div class="kq-n4-metric"><strong>${provisionalCount()}</strong><span>alte Einstufungen neu zu bestätigen</span></div><div class="kq-n4-metric"><strong>${repairs.length}</strong><span>echte Reparaturlücken</span></div><div class="kq-n4-metric"><strong>${Number(state.totals.sessions || 0)}</strong><span>gemischte Testblöcke</span></div></div><article class="card"><div class="section-title"><div><h3>Wann gilt ein Punkt als bekannt?</h3><p>Die Einstufung basiert nicht auf einer einzigen Multiple-Choice-Frage.</p></div><span class="kq-n4-status ${allCoreSafe ? "safe" : "testing"}">${allCoreSafe ? "N4-Paket bestanden" : "gründliche Diagnose"}</span></div><div class="kq-n4-rule-grid"><div><strong>5 Prüfarten</strong><span>Zwei unterschiedliche Kontexte, Bedeutungsabgrenzung, Bildung und aktive Eingabe – über gemischte Blöcke verteilt.</span></div><div><strong>Keine Zielansage</strong><span>Grammatikname und Familie werden nicht als Lernziel vorangestellt. Erst nach der Antwort wird die Struktur aufgelöst.</span></div><div><strong>Fehlertolerant</strong><span>Ein echter Fehler verlangt nur einen zusätzlichen Treffer. Nahe Tippfehler und nicht umgewandelte IME-Eingaben werden ohne Strafpunkt erneut abgefragt; Reparatur erst bei einem wiederholten Fehlermuster.</span></div></div></article>${repairs.length ? `<article class="card"><div class="section-title"><div><h3>Reparaturpfad</h3><p>Diese Punkte zeigten ein wiederholtes Muster, nicht nur einen einzelnen Ausrutscher.</p></div></div><div class="kq-n4-repair-list">${repairs.map(id => `<div class="kq-n4-repair-row"><div><strong>${esc(byId.get(id)?.title || id)}</strong><div class="small muted">${esc(pointStatus(id).label)}</div></div><button class="secondary" data-n4-repair="${esc(id)}">Reparaturlektion</button></div>`).join("")}</div></article>` : ""}<div class="section-title"><div><h2>Nächste Testblöcke</h2><p>Es werden nur die aktuell sinnvollsten offenen Familien gezeigt. Die einzelnen Grammatikpunkte bleiben eingeklappt.</p></div></div><div class="kq-n4-family-grid">${nextFamilies.length ? nextFamilies.map(familyCard).join("") : `<article class="card"><h3>Alle Kernfamilien bestanden</h3><p class="muted">N4-Grundlagen gelten jetzt als bekannt und verschwinden aus den erklärenden Story-Kästen.</p></article>`}</div><details class="card"><summary><strong>Alle ${FAMILIES.length} N4-Diagnosefamilien anzeigen</strong></summary><div class="kq-n4-family-grid" style="margin-top:14px">${FAMILIES.map(familyCard).join("")}</div></details><details class="card"><summary><strong>Story-Grundlagen außerhalb des 133-Einträge-Katalogs</strong></summary><p class="muted">Diese ${BRIDGE_CATALOG.length} häufigen Reader-Strukturen kommen bereits in der Story vor. Sie werden genauso gründlich getestet, zählen aber nicht künstlich als zusätzliche Game-Gengo-Katalogeinträge.</p><div class="kq-n4-family-grid">${BRIDGE_FAMILIES.map(familyCard).join("")}</div></details><details class="card"><summary><strong>Vollständigen 133-Einträge-Abgleich durchsuchen</strong></summary><p class="muted">Alle Quelllisteneinträge sind enthalten. Der doppelte Eintrag さっき teilt bewusst eine Diagnose.</p><input id="kqN4Search" type="search" placeholder="Grammatik suchen …"><div class="kq-n4-catalog-grid" id="kqN4CatalogGrid"></div></details>`;
+        const paused = activeSessionRecord();
+        const pausedAt = paused ? Math.min(paused.tasks.length, Number(paused.index || 0) + 1) : 0;
+        root.innerHTML = `<div class="kq-n4-hero"><h2>${allCoreSafe ? "N4 vollständig bestätigt" : "Adaptiver N4-Standorttest"}</h2><p>Die Aufgaben werden gemischt und nennen nie vorab, welche Grammatik geprüft wird. Jeder Punkt braucht fünf verschiedene Nachweisarten. Die gemischten Blöcke sind bewusst kurz gehalten; einzelne Flüchtigkeits- oder Tippfehler lösen keine Reparaturlektion aus.</p><div class="kq-n4-primary-actions"><button class="primary" id="kqN4StartGlobal" ${allCoreSafe && !paused ? "disabled" : ""}>${allCoreSafe && !paused ? "Alle N4-Punkte bestanden" : paused ? `Testblock fortsetzen · ${pausedAt}/${paused.tasks.length}` : "Kurzen Testblock starten"}</button>${due.length ? `<button class="secondary" id="kqN4StartReview">${due.length} Reparatur-Reviews</button>` : ""}</div>${paused ? `<p class="small" style="margin:12px 0 0;opacity:.9">Dein pausierter Block ist gespeichert. Du setzt exakt beim nächsten unbeantworteten Nachweis fort.</p>` : ""}</div><div class="kq-n4-metrics"><div class="kq-n4-metric"><strong>${known}/${CORE_POINTS.length}</strong><span>N4-Punkte sicher bestätigt</span></div><div class="kq-n4-metric"><strong>${provisionalCount()}</strong><span>alte Einstufungen neu zu bestätigen</span></div><div class="kq-n4-metric"><strong>${repairs.length}</strong><span>echte Reparaturlücken</span></div><div class="kq-n4-metric"><strong>${Number(state.totals.sessions || 0)}</strong><span>gemischte Testblöcke</span></div></div><article class="card"><div class="section-title"><div><h3>Wann gilt ein Punkt als bekannt?</h3><p>Die Einstufung basiert nicht auf einer einzigen Multiple-Choice-Frage.</p></div><span class="kq-n4-status ${allCoreSafe ? "safe" : "testing"}">${allCoreSafe ? "N4-Paket bestanden" : "gründliche Diagnose"}</span></div><div class="kq-n4-rule-grid"><div><strong>5 Prüfarten</strong><span>Zwei unterschiedliche Kontexte, Bedeutungsabgrenzung, Bildung und aktive Eingabe – über gemischte Blöcke verteilt.</span></div><div><strong>Keine Zielansage</strong><span>Grammatikname und Familie werden nicht als Lernziel vorangestellt. Erst nach der Antwort wird die Struktur aufgelöst.</span></div><div><strong>Fehlertolerant</strong><span>Ein echter Fehler verlangt nur einen zusätzlichen Treffer. Nahe Tippfehler und nicht umgewandelte IME-Eingaben werden ohne Strafpunkt erneut abgefragt; Reparatur erst bei einem wiederholten Fehlermuster.</span></div></div></article>${repairs.length ? `<article class="card"><div class="section-title"><div><h3>Reparaturpfad</h3><p>Diese Punkte zeigten ein wiederholtes Muster, nicht nur einen einzelnen Ausrutscher.</p></div></div><div class="kq-n4-repair-list">${repairs.map(id => `<div class="kq-n4-repair-row"><div><strong>${esc(byId.get(id)?.title || id)}</strong><div class="small muted">${esc(pointStatus(id).label)}</div></div><button class="secondary" data-n4-repair="${esc(id)}">Reparaturlektion</button></div>`).join("")}</div></article>` : ""}<div class="section-title"><div><h2>Nächste Testblöcke</h2><p>Es werden nur die aktuell sinnvollsten offenen Familien gezeigt. Die einzelnen Grammatikpunkte bleiben eingeklappt.</p></div></div><div class="kq-n4-family-grid">${nextFamilies.length ? nextFamilies.map(familyCard).join("") : `<article class="card"><h3>Alle Kernfamilien bestanden</h3><p class="muted">N4-Grundlagen gelten jetzt als bekannt und verschwinden aus den erklärenden Story-Kästen.</p></article>`}</div><details class="card"><summary><strong>Alle ${FAMILIES.length} N4-Diagnosefamilien anzeigen</strong></summary><div class="kq-n4-family-grid" style="margin-top:14px">${FAMILIES.map(familyCard).join("")}</div></details><details class="card"><summary><strong>Story-Grundlagen außerhalb des 133-Einträge-Katalogs</strong></summary><p class="muted">Diese ${BRIDGE_CATALOG.length} häufigen Reader-Strukturen kommen bereits in der Story vor. Sie werden genauso gründlich getestet, zählen aber nicht künstlich als zusätzliche Game-Gengo-Katalogeinträge.</p><div class="kq-n4-family-grid">${BRIDGE_FAMILIES.map(familyCard).join("")}</div></details><details class="card"><summary><strong>Vollständigen 133-Einträge-Abgleich durchsuchen</strong></summary><p class="muted">Alle Quelllisteneinträge sind enthalten. Der doppelte Eintrag さっき teilt bewusst eine Diagnose.</p><input id="kqN4Search" type="search" placeholder="Grammatik suchen …"><div class="kq-n4-catalog-grid" id="kqN4CatalogGrid"></div></details>`;
         document.getElementById("kqN4StartGlobal")?.addEventListener("click", startGlobal);
         document.getElementById("kqN4StartReview")?.addEventListener("click", startRepairReview);
         root.querySelectorAll("[data-n4-family]").forEach(button => button.addEventListener("click", () => startFamily(button.dataset.n4Family)));
@@ -33981,6 +34139,8 @@ ${tooltipText(segment, status)}`)}"`
         openPointTest:startPoint,
         openRepair,
         startGlobal,
+        resumeActiveSession,
+        getActiveSession:() => activeSessionRecord() ? ({...activeSessionRecord(),tasks:activeSessionRecord().tasks.map(task => ({...task}))}) : null,
         getState:() => state,
         getCatalog:() => CATALOG.map(item => ({...item})),
         getBridgeCatalog:() => BRIDGE_CATALOG.map(item => ({...item})),
@@ -33988,7 +34148,7 @@ ${tooltipText(segment, status)}`)}"`
         getStoryStatus,
         resolveGrammarId,
         isKnown:id => Boolean(getStoryStatus(id)?.known),
-        getAudit:() => ({sourceRows:CATALOG.length,corePoints:CORE_POINTS.length,bridgePoints:BRIDGE_CATALOG.length,families:FAMILIES.length,bridgeFamilies:BRIDGE_FAMILIES.length,questions:ALL_QUESTIONS.length,requiredKinds:[...REQUIRED_KINDS]})
+        getAudit:() => ({sourceRows:CATALOG.length,corePoints:CORE_POINTS.length,bridgePoints:BRIDGE_CATALOG.length,families:FAMILIES.length,bridgeFamilies:BRIDGE_FAMILIES.length,questions:ALL_QUESTIONS.length,requiredKinds:[...REQUIRED_KINDS],productionKanaAliases:Object.keys(PRODUCTION_KANA_ALIASES).length,exactResume:true})
       };
     }
 
@@ -33996,7 +34156,7 @@ ${tooltipText(segment, status)}`)}"`
   if (window.__KOTOBA_QUEST_DASHBOARD_V1__) return;
   window.__KOTOBA_QUEST_DASHBOARD_V1__ = true;
 
-  const VERSION = "2.1";
+  const VERSION = "2.2";
   const STORAGE_KEY = "kotobaQuestDataV3";
   let renderQueued = false;
 
@@ -34097,6 +34257,45 @@ ${tooltipText(segment, status)}`)}"`
     } catch {
       return true;
     }
+  }
+
+  function n4Attention() {
+    const api = window.KotobaQuestN4Recap;
+    if (!api?.getCatalog || !api?.getPointStatus) return null;
+    try {
+      const core = (api.getCatalog() || []).filter(item => item?.active !== false && !item?.aliasOf);
+      const statuses = core.map(item => ({item,status:api.getPointStatus(item.id)})).filter(row => row.status);
+      const repair = statuses.find(row => row.status.status === "repair" && !row.status.repairComplete);
+      if (repair) return {
+        type:"repair", icon:"🧭", title:`N4-Reparatur offen · ${repair.item.title}`,
+        detail:"Dieser Punkt zeigte erst nach mehreren unterschiedlichen Fehlversuchen ein echtes Muster. Die gezielte Reparatur ist bereit.",
+        launch:() => api.openRepair?.(repair.item.id)
+      };
+      const active = api.getActiveSession?.();
+      if (active?.tasks?.length) {
+        const next = Math.min(active.tasks.length, Number(active.index || 0) + 1);
+        return {
+          type:"resume", icon:"🧭", title:"N4-Testblock pausiert",
+          detail:`Dein Block ist gespeichert · nächster Nachweis ${next}/${active.tasks.length}. Du setzt exakt dort fort.`,
+          launch:() => { api.open?.(); setTimeout(() => api.resumeActiveSession?.(), 0); }
+        };
+      }
+      const provisional = statuses.find(row => row.status.provisional && !row.status.known);
+      if (provisional) return {
+        type:"confirm", icon:"🧭", title:`N4-Bestätigung offen · ${provisional.item.title}`,
+        detail:"Eine frühere Einstufung wird noch mit dem neuen Fünf-Nachweise-System bestätigt.",
+        launch:() => api.openPointTest?.(provisional.item.id)
+      };
+      const testing = statuses.find(row => !row.status.known && (row.status.correct || row.status.wrong));
+      if (testing) return {
+        type:"testing", icon:"🧭", title:`N4-Bestätigung begonnen · ${testing.item.title}`,
+        detail:`${testing.status.passedKinds}/${testing.status.requiredKinds} Prüfarten sind bereits bestätigt.`,
+        launch:() => api.openPointTest?.(testing.item.id)
+      };
+    } catch (error) {
+      console.warn("Kotoba Quest N4 dashboard status could not be calculated", error);
+    }
+    return null;
   }
 
   function particleDue() {
@@ -34677,6 +34876,7 @@ ${tooltipText(segment, status)}`)}"`
     const energyClass = target?.complete || target?.energyOkay ? "done" : "";
     const activeSession = activeSessionInfo();
     const sessionMarkup = sessionHubHtml(target);
+    const n4Notice = n4Attention();
     const signature = JSON.stringify({
       target:target?.next?.id || "complete",
       ready:Boolean(target?.ready),
@@ -34692,6 +34892,7 @@ ${tooltipText(segment, status)}`)}"`
       grammarDue:grammarDue(),
       particleDue:particleDue(),
       miningDue:dueVocabulary("mining").length,
+      n4:n4Notice ? [n4Notice.type,n4Notice.title,n4Notice.detail] : null,
       session:activeSession ? [activeSession.id,activeSession.mode,activeSession.done,activeSession.total,activeSession.tasks.map(task => [task.key,task.status.delta,task.status.target,task.status.done])] : null
     });
 
@@ -34727,6 +34928,7 @@ ${tooltipText(segment, status)}`)}"`
         </section>
       </div>
       ${sessionMarkup}
+      ${n4Notice ? `<div class="kq-quest-n4"><span>${n4Notice.icon}</span><div><strong>${esc(n4Notice.title)}</strong><small>${esc(n4Notice.detail)}</small></div><button type="button" class="secondary" id="kqQuestN4Action">${n4Notice.type === "repair" ? "Reparatur öffnen" : n4Notice.type === "resume" ? "Test fortsetzen" : "N4 prüfen"}</button></div>` : ""}
       ${quickActions.length ? `<div class="kq-quest-quick"><div><strong>Direkt loslegen</strong><small>Ohne Session-Plan direkt eine sinnvolle Aktivität öffnen.</small></div><div>${quickActions.map((action,index) => `<button type="button" class="secondary" data-kq-quest-action="${index}">${action.icon} ${esc(action.title)}</button>`).join("")}</div></div>` : ""}
       <div class="kq-quest-foot"><span>Kein Daily-Zwang · kein Reset · Mission = Hauptfortschritt · Energie = Soft Gate.</span><button class="ghost" type="button" id="kqQuestEnergyDetails">⚡ Energie & Regeln</button></div>`;
 
@@ -34735,6 +34937,7 @@ ${tooltipText(segment, status)}`)}"`
     });
     card.querySelector("#kqQuestStory")?.addEventListener("click", openStory);
     card.querySelector("#kqQuestEnergyDetails")?.addEventListener("click", () => window.KotobaQuestStoryEnergy?.open?.());
+    card.querySelector("#kqQuestN4Action")?.addEventListener("click", () => { try { n4Notice?.launch?.(); } catch (error) { console.warn("N4 quest action failed", error); } });
     card.querySelectorAll("[data-kq-quest-action]").forEach(button => {
       button.addEventListener("click", () => {
         const action = quickActions[Number(button.dataset.kqQuestAction || 0)];
@@ -34761,12 +34964,13 @@ ${tooltipText(segment, status)}`)}"`
       .kq-quest-section-title{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px}.kq-quest-section-title>div{display:grid;gap:2px}.kq-quest-section-title strong{font-size:1rem}.kq-quest-section-title small{color:var(--muted)}.kq-quest-ready-pill{padding:5px 9px;border-radius:999px;background:var(--kq-wash,#f4efff);color:var(--primary-dark);font-size:.7rem;font-weight:950}.kq-quest-ready-pill.ready{background:color-mix(in srgb,var(--good) 14%,white);color:var(--good)}
       .kq-quest-objectives{display:grid;gap:7px}.kq-quest-objective,.kq-quest-empty-objective{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:start;padding:9px 10px;border-radius:12px;background:color-mix(in srgb,var(--kq-wash,#f4efff) 56%,white)}.kq-quest-objective>div,.kq-quest-empty-objective>div{display:grid;gap:4px}.kq-quest-objective small,.kq-quest-empty-objective small{color:var(--muted);font-size:.75rem;line-height:1.35}.kq-quest-check{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:white;color:var(--primary);font-weight:950}.kq-quest-objective.done .kq-quest-check,.kq-quest-objective.energy.done .kq-quest-check{color:var(--good)}.kq-quest-objective i{display:block;height:5px;border-radius:99px;background:var(--border);overflow:hidden}.kq-quest-objective i b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width .2s}.kq-quest-objective.done i b,.kq-quest-objective.energy.done i b{background:var(--good)}.kq-quest-objective.energy{margin-top:7px;border:1px dashed color-mix(in srgb,var(--primary) 25%,var(--border))}
       .kq-quest-next{display:flex;flex-direction:column;align-items:flex-start}.kq-quest-next-kicker{color:var(--muted);font-size:.7rem;font-weight:950;letter-spacing:.07em;text-transform:uppercase}.kq-quest-next-icon{display:grid;place-items:center;width:52px;height:52px;margin:12px 0 8px;border-radius:16px;background:var(--kq-wash,#f4efff);font-size:1.6rem}.kq-quest-next h3{margin:0 0 6px}.kq-quest-next p{flex:1;margin:0 0 15px;color:var(--muted);line-height:1.45}.kq-quest-next button{width:100%;margin-top:7px}
+      .kq-quest-n4{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:14px;padding:11px 12px;border:1px solid color-mix(in srgb,#6f74c9 28%,var(--border));border-radius:14px;background:linear-gradient(135deg,#f5f4ff,#fff)}.kq-quest-n4>span{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:#ecebff;font-size:1.1rem}.kq-quest-n4>div{display:grid;gap:2px}.kq-quest-n4 small{color:var(--muted);font-size:.74rem;line-height:1.35}.kq-quest-n4 button{padding:8px 10px}
       .kq-quest-quick{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}.kq-quest-quick>div:first-child{display:grid;gap:2px;min-width:190px}.kq-quest-quick small{color:var(--muted);font-size:.75rem}.kq-quest-quick>div:last-child{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}.kq-quest-quick button{padding:9px 12px}
       .kq-session-hub{margin-top:16px;padding:17px;border:1px solid var(--border);border-radius:18px;background:rgba(255,255,255,.72)}.kq-session-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kq-session-choice{display:grid;gap:12px;padding:14px;border:1px solid var(--border);border-radius:15px;background:white}.kq-session-choice-head{display:flex;gap:10px;align-items:flex-start}.kq-session-choice-head>span{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--kq-wash,#f4efff);font-size:1.15rem}.kq-session-choice-head>div{display:grid;gap:2px}.kq-session-choice-head small,.kq-session-choice-foot small{color:var(--muted);font-size:.73rem;line-height:1.35}.kq-session-preview{display:flex;flex-wrap:wrap;gap:6px}.kq-session-preview span{padding:5px 8px;border-radius:999px;background:color-mix(in srgb,var(--kq-wash,#f4efff) 70%,white);font-size:.7rem;font-weight:750}.kq-session-choice-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}.kq-session-choice-foot button{padding:8px 10px}
       .kq-session-active-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.kq-session-active-head>div{display:flex;align-items:center;gap:10px}.kq-session-active-head>div>div{display:grid;gap:2px}.kq-session-active-head small{color:var(--muted);font-size:.74rem}.kq-session-mode-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:var(--kq-wash,#f4efff);font-size:1.25rem}.kq-session-progress-pill{padding:5px 9px;border-radius:999px;background:color-mix(in srgb,var(--primary) 10%,white);color:var(--primary-dark);font-size:.72rem;font-weight:950}.kq-session-bar{height:7px;margin:12px 0 13px;border-radius:99px;background:var(--border);overflow:hidden}.kq-session-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width .2s}.kq-session-task-list{display:grid;gap:7px}.kq-session-task{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid transparent;border-radius:13px;background:color-mix(in srgb,var(--kq-wash,#f4efff) 52%,white)}.kq-session-task.current{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));background:white}.kq-session-task.done{opacity:.78}.kq-session-task-check{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:white;color:var(--primary);font-weight:950}.kq-session-task.done .kq-session-task-check{color:var(--good)}.kq-session-task>div{display:grid;gap:4px}.kq-session-task small{color:var(--muted);font-size:.72rem}.kq-session-task small b{color:var(--primary-dark)}.kq-session-task>div>i{display:block;height:4px;border-radius:99px;background:var(--border);overflow:hidden}.kq-session-task>div>i b{display:block;height:100%;background:var(--primary)}.kq-session-task.done>div>i b{background:var(--good)}.kq-session-task button{padding:7px 9px;font-size:.72rem}.kq-session-done-label{color:var(--good);font-size:.7rem;font-weight:950}.kq-session-controls{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
       .kq-quest-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:13px;color:var(--muted);font-size:.75rem}.kq-quest-foot button{padding:6px 9px;font-size:.75rem}
       @media(max-width:850px){.kq-session-choices{grid-template-columns:1fr}.kq-quest-grid{grid-template-columns:1fr}.kq-quest-quick{align-items:flex-start;flex-direction:column}.kq-quest-quick>div:last-child{justify-content:flex-start}.kq-quest-head{align-items:stretch;flex-direction:column}.kq-quest-energy{align-self:flex-start}}
-      @media(max-width:560px){.kq-session-choice-foot,.kq-session-controls{align-items:stretch;flex-direction:column}.kq-session-choice-foot button,.kq-session-controls button{width:100%}.kq-session-task{grid-template-columns:28px minmax(0,1fr)}.kq-session-task>button,.kq-session-done-label{grid-column:2}.kq-quest-hub{padding:17px}.kq-quest-foot{align-items:flex-start;flex-direction:column}.kq-quest-quick>div:last-child{display:grid;width:100%}.kq-quest-quick button{width:100%}}
+      @media(max-width:560px){.kq-quest-n4{grid-template-columns:36px 1fr}.kq-quest-n4 button{grid-column:2;width:100%}.kq-session-choice-foot,.kq-session-controls{align-items:stretch;flex-direction:column}.kq-session-choice-foot button,.kq-session-controls button{width:100%}.kq-session-task{grid-template-columns:28px minmax(0,1fr)}.kq-session-task>button,.kq-session-done-label{grid-column:2}.kq-quest-hub{padding:17px}.kq-quest-foot{align-items:flex-start;flex-direction:column}.kq-quest-quick>div:last-child{display:grid;width:100%}.kq-quest-quick button{width:100%}}
     `;
     document.head.appendChild(style);
   }
