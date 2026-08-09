@@ -32454,6 +32454,7 @@ ${tooltipText(segment, status)}`)}"`
           <div class="kq-ia-tabs">
             <button type="button" data-kq-progress-tab="statistics" class="${progressTab === "statistics" ? "active" : ""}">Statistiken</button>
             <button type="button" data-kq-progress-tab="archive" class="${progressTab === "archive" ? "active" : ""}">Archiv</button>
+            <button type="button" id="kqMasteryProgressTab" data-kq-progress-tab="skilltree">🌳 Skilltree</button>
           </div>
           ${progressTab === "statistics" ? `
             <div class="kq-ia-domain-grid">
@@ -32470,7 +32471,12 @@ ${tooltipText(segment, status)}`)}"`
             <article class="card"><div class="section-title"><div><h3>Gefestigte Inhalte durchsuchen</h3><p>Vokabeln, bekannte Wörter und Grammatik.</p></div><button class="primary" id="kqIaOpenArchive">Archiv öffnen</button></div></article>`}
         </div>`;
         root.querySelectorAll("[data-kq-progress-tab]").forEach(button => button.addEventListener("click", () => {
-          progressTab = button.dataset.kqProgressTab;
+          const target = button.dataset.kqProgressTab;
+          if (target === "skilltree") {
+            window.KotobaQuestMasteryTree?.open?.();
+            return;
+          }
+          progressTab = target;
           renderProgressCenter();
         }));
         root.querySelector("#kqIaOpenStatistics")?.addEventListener("click", () => {
