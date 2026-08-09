@@ -32454,7 +32454,7 @@ ${tooltipText(segment, status)}`)}"`
           <div class="kq-ia-tabs">
             <button type="button" data-kq-progress-tab="statistics" class="${progressTab === "statistics" ? "active" : ""}">Statistiken</button>
             <button type="button" data-kq-progress-tab="archive" class="${progressTab === "archive" ? "active" : ""}">Archiv</button>
-            <button type="button" id="kqMasteryProgressTab" data-kq-progress-tab="skilltree">🌳 Skilltree</button>
+            <button type="button" id="kqMasteryProgressTab" data-kq-progress-tab="skilltree" class="${progressTab === "skilltree" ? "active" : ""}">🌳 Skilltree</button>
           </div>
           ${progressTab === "statistics" ? `
             <div class="kq-ia-domain-grid">
@@ -32462,21 +32462,17 @@ ${tooltipText(segment, status)}`)}"`
               <article class="kq-ia-domain-card"><h3>Grammatik</h3><p>Gesamtstand der vier Skills je Grammatikpunkt.</p>${stageGrid(grammarDistribution(), true)}</article>
               <article class="kq-ia-domain-card"><h3>Partikel</h3><p>Lernpfad und Partikel-SRS gemeinsam.</p>${stageGrid(particleDistribution(), true)}</article>
             </div>
-            <article class="card"><div class="section-title"><div><h3>Ausführliche Auswertung</h3><p>Lernzeit, Genauigkeit, Aktivität und schwierige Inhalte.</p></div><button class="primary" id="kqIaOpenStatistics">Statistiken öffnen</button></div></article>` : `
+            <article class="card"><div class="section-title"><div><h3>Ausführliche Auswertung</h3><p>Lernzeit, Genauigkeit, Aktivität und schwierige Inhalte.</p></div><button class="primary" id="kqIaOpenStatistics">Statistiken öffnen</button></div></article>` : progressTab === "archive" ? `
             <div class="kq-ia-domain-grid">
               <article class="kq-ia-domain-card"><h3>Vokabeln auf Guru+</h3><p>Core und Mining</p><strong style="font-size:2rem;color:var(--primary)">${summary.guruVocab}</strong></article>
               <article class="kq-ia-domain-card"><h3>Als bekannt markiert</h3><p>Manueller Bekannt-Pool</p><strong style="font-size:2rem;color:var(--primary)">${summary.known}</strong></article>
               <article class="kq-ia-domain-card"><h3>Grammatik und Partikel</h3><p>${summary.grammarGuru} Grammatikpunkte · ${summary.particleGuru} Partikelpunkte auf Guru+</p><strong style="font-size:2rem;color:var(--primary)">${summary.grammarGuru + summary.particleGuru}</strong></article>
             </div>
-            <article class="card"><div class="section-title"><div><h3>Gefestigte Inhalte durchsuchen</h3><p>Vokabeln, bekannte Wörter und Grammatik.</p></div><button class="primary" id="kqIaOpenArchive">Archiv öffnen</button></div></article>`}
+            <article class="card"><div class="section-title"><div><h3>Gefestigte Inhalte durchsuchen</h3><p>Vokabeln, bekannte Wörter und Grammatik.</p></div><button class="primary" id="kqIaOpenArchive">Archiv öffnen</button></div></article>` : `
+            <div id="kqMasteryInlineRoot" class="kq-mastery-inline-host"><article class="card"><p class="muted">Skilltree wird geladen …</p></article></div>`}
         </div>`;
         root.querySelectorAll("[data-kq-progress-tab]").forEach(button => button.addEventListener("click", () => {
-          const target = button.dataset.kqProgressTab;
-          if (target === "skilltree") {
-            window.KotobaQuestMasteryTree?.open?.();
-            return;
-          }
-          progressTab = target;
+          progressTab = button.dataset.kqProgressTab;
           renderProgressCenter();
         }));
         root.querySelector("#kqIaOpenStatistics")?.addEventListener("click", () => {
@@ -32489,6 +32485,15 @@ ${tooltipText(segment, status)}`)}"`
           safeSwitch("archive");
           try { renderArchive(); } catch {}
         });
+        if (progressTab === "skilltree") {
+          const host = root.querySelector("#kqMasteryInlineRoot");
+          const paint = () => {
+            const currentHost = document.getElementById("kqMasteryInlineRoot");
+            if (!currentHost) return;
+            if (window.KotobaQuestMasteryTree?.renderInto) window.KotobaQuestMasteryTree.renderInto(currentHost);
+          };
+          if (host) { paint(); setTimeout(paint, 0); setTimeout(paint, 120); }
+        }
       }
     
       function dashboardDomainCard(title, tab, counts) {
@@ -36244,6 +36249,7 @@ function smartReviewBootstrap() {
 
   const VERSION="1.2";
   const VIEW_ID = "masteryTree";
+  const INTEGRATION_VERSION = "1.3-inline";
   const NAV_ID = "kqMasteryTreeNav";
   let selectedKey = null;
   let renderQueued = false;
@@ -36523,58 +36529,39 @@ function smartReviewBootstrap() {
   }
 
   function open(){
-    ensureView();
-    document.querySelectorAll("main .view").forEach(v=>v.classList.toggle("active",v.id===VIEW_ID));
-    document.querySelectorAll("[data-kq-main-group]").forEach(btn=>btn.classList.toggle("active",btn.dataset.kqMainGroup==="progress"));
-    document.getElementById("kqContextNav")?.setAttribute("hidden","");
-    render();
-    try{window.KotobaQuestInterface?.refresh?.();}catch{}
-    requestAnimationFrame(()=>{
+    const progressButton=document.querySelector('[data-kq-main-group="progress"]');
+    if(progressButton && !progressButton.classList.contains("active")) progressButton.click();
+    const show=()=>{
+      const tab=document.querySelector('#kqProgressCenterRoot [data-kq-progress-tab="skilltree"]');
+      if(tab){ tab.click(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+      // Fallback only if the Progress center itself is unavailable.
+      ensureView();
       document.querySelectorAll("main .view").forEach(v=>v.classList.toggle("active",v.id===VIEW_ID));
-      document.querySelectorAll("[data-kq-main-group]").forEach(btn=>btn.classList.toggle("active",btn.dataset.kqMainGroup==="progress"));
       render();
-      window.scrollTo({top:0,behavior:"smooth"});
-    });
+    };
+    setTimeout(show,progressButton?30:0);
   }
 
   function ensureProgressEntry(){
-    const progressRoot=document.getElementById("kqProgressCenterRoot");
-    if(!progressRoot) return;
-    const tabs=progressRoot.querySelector(".kq-ia-tabs");
-    if(tabs&&!document.getElementById("kqMasteryProgressTab")){
-      const button=document.createElement("button");
-      button.id="kqMasteryProgressTab";
-      button.type="button";
-      button.textContent="🌳 Skilltree";
-      button.addEventListener("click",open);
-      tabs.appendChild(button);
-    }
-    if(!document.getElementById("kqMasteryProgressCard")){
-      const shell=progressRoot.querySelector(".kq-ia-shell");
-      if(shell){
-        const card=document.createElement("article");
-        card.id="kqMasteryProgressCard";
-        card.className="card kq-tree-dashboard";
-        const m=model(),rank=overallRank(m.overall),pct=Math.round(clamp(m.overall));
-        card.innerHTML=`<span>🌳</span><div><h3>Japanese Skilltree · ${pct}%</h3><p>${esc(rank.name)} · Deine Mastery Map verbindet Vokabeln, Grammatik, Partikel und Anwendung.</p></div><button type="button" class="primary">Mastery Map öffnen</button>`;
-        card.querySelector("button")?.addEventListener("click",open);
-        const tabsNode=shell.querySelector(".kq-ia-tabs");
-        if(tabsNode) tabsNode.insertAdjacentElement("afterend",card); else shell.prepend(card);
-      }
-    }
+    // Skilltree is a first-class Progress tab now; nothing is injected after render.
   }
 
-  function render(){
-    ensureView();
-    const root=document.getElementById("kqMasteryTreeRoot"); if(!root) return;
+  function renderInto(root){
+    ensureStyles();
+    if(!root) return;
     const m=model(); const rank=overallRank(m.overall); const pct=Math.round(clamp(m.overall));
     root.innerHTML=`<article class="card kq-tree-hero"><div><p class="eyebrow">🌳 Japanese Mastery Map</p><h2>Dein Skilltree</h2><p>Kein eigener Parallelfortschritt: Jeder Knoten wird direkt aus deinem echten Core-, Grammatik-, Partikel-, Mining- und Anwendungstand berechnet. Smart Review setzt Warnmarker genau dort, wo wiederholte Fehler ein belastbares Muster bilden.</p><div class="kq-tree-overall"><span>Gesamtentwicklung</span><div class="kq-tree-overall-track"><i style="width:${pct}%"></i></div><strong>${pct}%</strong></div></div><div class="kq-tree-rank"><span>${rank.icon}</span><strong>${rank.name}</strong><em>${rank.note}</em>${m.totalWarnings?`<small>⚠ ${m.totalWarnings} aktuelle Fokusmarker im Baum</small>`:`<small>✨ Kein akuter Smart-Review-Fokus</small>`}</div></article>
       <div class="kq-tree-legend"><span>○ offen</span><span class="learning">🌱 in Festigung</span><span class="guru">◆ stabil / Guru</span><span class="advanced">✦ sehr sicher</span><span class="mastered">✨ gemeistert</span><span class="attention">⚠ Smart-Review-Fokus</span></div>
       <div class="kq-tree-map">${m.branches.map(branchMarkup).join("")}</div>${detailMarkup(m)}`;
-    root.querySelectorAll("[data-tree-node]").forEach(button=>button.addEventListener("click",()=>{selectedKey=button.dataset.treeNode;render();document.querySelector(".kq-tree-detail")?.scrollIntoView({behavior:"smooth",block:"nearest"});}));
+    root.querySelectorAll("[data-tree-node]").forEach(button=>button.addEventListener("click",()=>{selectedKey=button.dataset.treeNode;renderInto(root);root.querySelector(".kq-tree-detail")?.scrollIntoView({behavior:"smooth",block:"nearest"});}));
     const picked=selectedNode(m);
     root.querySelector("#kqTreeTrain")?.addEventListener("click",()=>{try{picked?.node?.action?.();}catch(error){console.warn("Skilltree-Training konnte nicht geöffnet werden",error);}});
     root.querySelector("#kqTreeSmart")?.addEventListener("click",()=>window.KotobaQuestSmartReview?.open?.());
+  }
+
+  function render(){
+    ensureView();
+    renderInto(document.getElementById("kqMasteryTreeRoot"));
   }
 
   function dashboardTeaser(){
@@ -36597,7 +36584,7 @@ function smartReviewBootstrap() {
   window.addEventListener("storage",event=>{if(event.key==="kotobaQuestDataV3")schedule();});
   document.addEventListener("click",event=>{if(event.target?.closest?.("[data-view='dashboard'],#kqSmartReviewNav,[data-kq-main-group='progress']"))setTimeout(schedule,80);},{passive:true});
 
-  window.KotobaQuestMasteryTree={version:VERSION,open,refresh:schedule,getModel:model};
+  window.KotobaQuestMasteryTree={version:VERSION,open,refresh:schedule,getModel:model,renderInto};
 })();
 
 </script>
