@@ -32445,7 +32445,151 @@ ${tooltipText(segment, status)}`)}"`
         return { guruVocab, known, grammarGuru, particleGuru };
       }
     
-      function renderProgressCenter() {
+      
+      function kqSkilltreeStageMeta(stage) {
+        const s = clampStage(stage);
+        if (s >= 9) return { icon:"✨", label:"Gemeistert", cls:"mastered" };
+        if (s >= 7) return { icon:"✦", label:"Sehr sicher", cls:"advanced" };
+        if (s >= 5) return { icon:"◆", label:"Stabil / Guru", cls:"guru" };
+        if (s >= 1) return { icon:"🌱", label:"In Festigung", cls:"learning" };
+        return { icon:"○", label:"Offen", cls:"new" };
+      }
+
+      function kqSkilltreeAverageStage(items, getStage = item => item?.stage) {
+        if (!Array.isArray(items) || !items.length) return 0;
+        return Math.round(items.reduce((sum,item)=>sum + clampStage(getStage(item)),0) / items.length);
+      }
+
+      function kqSkilltreeChunks(items, getLevel, maxNodes = 7) {
+        const valid = (Array.isArray(items) ? items : []).filter(item => Number(getLevel(item)) > 0);
+        const levels = [...new Set(valid.map(item => Number(getLevel(item))))].sort((a,b)=>a-b);
+        if (!levels.length) return [];
+        const min = levels[0], max = levels[levels.length-1];
+        const size = Math.max(1, Math.ceil((max-min+1)/maxNodes));
+        const groups=[];
+        for (let from=min; from<=max; from+=size) {
+          const to=Math.min(max,from+size-1);
+          const members=valid.filter(item => Number(getLevel(item))>=from && Number(getLevel(item))<=to);
+          if (members.length) groups.push({from,to,members});
+        }
+        return groups;
+      }
+
+      function kqSkilltreeNode(label, stage, note, action = "") {
+        const meta=kqSkilltreeStageMeta(stage);
+        const pct=Math.round(clampStage(stage)/9*100);
+        return `<button type="button" class="kq-inline-tree-node ${meta.cls}" ${action?`data-kq-skill-open="${esc(action)}"`:""} title="${esc(label)} · ${esc(meta.label)}">
+          <span class="kq-inline-tree-orb" style="--kq-node-pct:${pct}%"><i>${meta.icon}</i></span>
+          <strong>${esc(label)}</strong><small>${esc(note||meta.label)}</small><em>${pct}% · ${meta.label}</em>
+        </button>`;
+      }
+
+      function kqSkilltreeBranch(icon, title, subtitle, nodes) {
+        const safeNodes=Array.isArray(nodes)?nodes:[];
+        return `<article class="card kq-inline-tree-branch"><header><span>${icon}</span><div><h3>${esc(title)}</h3><p>${esc(subtitle)}</p></div></header><div class="kq-inline-tree-path">${safeNodes.join("")}</div></article>`;
+      }
+
+      function kqSkilltreeHtml() {
+        const source=sourceData();
+        const vocabulary=Array.isArray(source.vocabulary)?source.vocabulary:[];
+        const core=vocabulary.filter(item=>String(item?.sourceType||"core")==="core");
+        const mining=vocabulary.filter(item=>String(item?.sourceType||"")==="mining");
+        const grammar=grammarProgress();
+        const particles=particleProgress();
+        const allNodes=[];
+
+        const coreNodes=kqSkilltreeChunks(core,item=>item.level,7).map(group=>{
+          const stage=kqSkilltreeAverageStage(group.members,item=>item.stage);
+          allNodes.push(stage);
+          const label=group.from===group.to?`Core Lv ${group.from}`:`Core Lv ${group.from}–${group.to}`;
+          const guru=group.members.filter(item=>clampStage(item.stage)>=5).length;
+          return kqSkilltreeNode(label,stage,`${guru}/${group.members.length} Guru+`,"core");
+        });
+        if (mining.length) {
+          const stage=kqSkilltreeAverageStage(mining,item=>item.stage); allNodes.push(stage);
+          coreNodes.push(kqSkilltreeNode("Mining",stage,`${mining.filter(item=>clampStage(item.stage)>=5).length}/${mining.length} Guru+`,"mining"));
+        } else coreNodes.push(kqSkilltreeNode("Mining",0,"Noch keine Mining-Wörter","mining"));
+
+        const grammarNodes=kqSkilltreeChunks(grammar,item=>item.level,7).map(group=>{
+          const stage=kqSkilltreeAverageStage(group.members,grammarStage); allNodes.push(stage);
+          const lessons=group.members.filter(item=>item.lessonComplete).length;
+          const label=group.from===group.to?`N3 Lv ${group.from}`:`N3 Lv ${group.from}–${group.to}`;
+          return kqSkilltreeNode(label,stage,`${lessons}/${group.members.length} Lektionen`,"grammar");
+        });
+        let n4Known=0,n4Total=0;
+        try {
+          const api=window.KotobaQuestN4Recap;
+          for (const item of api?.getCatalog?.()||[]) {
+            if (item?.aliasOf || item?.active===false) continue;
+            n4Total++;
+            const status=api.getPointStatus?.(item.id);
+            if (status?.known || status?.status==="known") n4Known++;
+          }
+        } catch {}
+        const n4Stage=n4Total?Math.round(9*n4Known/n4Total):0; allNodes.push(n4Stage);
+        grammarNodes.unshift(kqSkilltreeNode("N4 Foundation",n4Stage,`${n4Known}/${n4Total||132} bestätigt`,"n4"));
+
+        const particleLevels=[...new Set(particles.map(item=>Number(item.level||0)).filter(Boolean))].sort((a,b)=>a-b);
+        const particleNodes=particleLevels.map(level=>{
+          const points=particles.filter(item=>Number(item.level||0)===level);
+          const stage=kqSkilltreeAverageStage(points,particleStage); allNodes.push(stage);
+          const learned=points.filter(item=>item.lessonComplete).length;
+          return kqSkilltreeNode(`Partikel Lv ${level}`,stage,`${learned}/${points.length} gelernt`,"particles");
+        });
+        if (!particleNodes.length) particleNodes.push(kqSkilltreeNode("Partikel Lv 1",0,"Noch nicht begonnen","particles"));
+
+        let storyDone=0,storyTotal=0;
+        try {
+          const state=window.KotobaQuestStoryReader?.getState?.()||{};
+          const pack=window.KotobaQuestStoryReader?.getActivePack?.()||{};
+          storyTotal=Array.isArray(pack.scenes)?pack.scenes.length:0;
+          const completed=state.completedSceneIds||state.completedScenes||state.completed||[];
+          storyDone=Array.isArray(completed)?completed.length:Object.values(completed||{}).filter(Boolean).length;
+        } catch {}
+        const storyStage=storyTotal?Math.round(9*storyDone/storyTotal):0; allNodes.push(storyStage);
+        const resonance=Number(source?.resonanceTraining?.totals?.productiveSessions||source?.resonanceTraining?.totals?.sessions||0);
+        const resonanceStage=Math.min(9,Math.floor(resonance/3)); allNodes.push(resonanceStage);
+        const smartCount=(()=>{try{return window.KotobaQuestSmartReview?.analyze?.().length||0;}catch{return 0;}})();
+        const smartStage=smartCount?Math.max(1,5-Math.min(4,smartCount)):9; allNodes.push(smartStage);
+        const practiceCount=Number(source?.vocabContextPractice?.sessions||0)+Number(source?.particlePractice?.sessions||0);
+        const practiceStage=Math.min(9,Math.floor(practiceCount/4)); allNodes.push(practiceStage);
+        const applicationNodes=[
+          kqSkilltreeNode("Story Reading",storyStage,`${storyDone}/${storyTotal||0} Szenen`,"story"),
+          kqSkilltreeNode("Resonanz",resonanceStage,`${resonance} produktive Runden`,"resonance"),
+          kqSkilltreeNode("Freie Praxis",practiceStage,`${practiceCount} Runden`,"practice"),
+          kqSkilltreeNode("Smart Review",smartStage,smartCount?`${smartCount} Fokusmuster aktiv`:"Kein akuter Fokus","smart")
+        ];
+
+        const overall=allNodes.length?Math.round(allNodes.reduce((a,b)=>a+b,0)/allNodes.length/9*100):0;
+        const rank=overall>=85?["👑","言葉 Vanguard"]:overall>=65?["🌟","Japanese Specialist"]:overall>=45?["⚔️","Language Adventurer"]:overall>=25?["🧭","Kotoba Explorer"]:["🌱","新米 Learner"];
+        return `<style>
+          .kq-inline-tree-hero{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 9%,white),color-mix(in srgb,var(--accent) 10%,white))}.kq-inline-tree-hero h3,.kq-inline-tree-hero p{margin:0}.kq-inline-tree-hero p{margin-top:5px;color:var(--muted)}.kq-inline-tree-rank{display:grid;justify-items:center;gap:2px;padding:12px 18px;border-radius:16px;background:white;border:1px solid var(--border)}.kq-inline-tree-rank span{font-size:2rem}.kq-inline-tree-rank strong{color:var(--primary-dark)}.kq-inline-tree-overall{height:10px;border-radius:999px;background:var(--border);overflow:hidden;margin-top:14px}.kq-inline-tree-overall i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-inline-tree-grid{display:grid;gap:16px}.kq-inline-tree-branch{overflow:hidden}.kq-inline-tree-branch header{display:flex;gap:10px;align-items:center;margin-bottom:14px}.kq-inline-tree-branch header>span{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;color:white;background:linear-gradient(135deg,var(--primary),var(--accent));font-weight:950}.kq-inline-tree-branch h3,.kq-inline-tree-branch p{margin:0}.kq-inline-tree-branch p{margin-top:2px;color:var(--muted);font-size:.82rem}.kq-inline-tree-path{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(112px,1fr);gap:10px;overflow-x:auto;padding:8px 2px}.kq-inline-tree-node{display:grid;justify-items:center;gap:5px;min-width:112px;padding:8px 6px 10px;border:0;background:transparent!important;color:var(--text);transform:none!important}.kq-inline-tree-node:hover .kq-inline-tree-orb{transform:translateY(-2px)}.kq-inline-tree-orb{position:relative;display:grid;place-items:center;width:52px;height:52px;border-radius:17px;background:conic-gradient(var(--primary) var(--kq-node-pct),var(--border) 0);transition:transform .15s ease}.kq-inline-tree-orb:before{content:"";position:absolute;inset:4px;border-radius:13px;background:white}.kq-inline-tree-orb i{position:relative;font-style:normal}.kq-inline-tree-node strong{font-size:.75rem;text-align:center}.kq-inline-tree-node small{font-size:.65rem;color:var(--muted);text-align:center}.kq-inline-tree-node em{font-size:.61rem;color:var(--primary-dark);font-style:normal;font-weight:800}.kq-inline-tree-node.mastered .kq-inline-tree-orb{box-shadow:0 0 0 4px rgba(38,141,99,.10)}@media(max-width:700px){.kq-inline-tree-hero{grid-template-columns:1fr}.kq-inline-tree-rank{justify-items:start}}
+        </style>
+        <article class="card kq-inline-tree-hero"><div><p class="eyebrow">🌳 Japanese Mastery Map</p><h3 style="font-size:1.8rem">Dein Skilltree</h3><p>Direkt aus deinem echten Lernstand – kein separater Fortschritt.</p><div class="kq-inline-tree-overall"><i style="width:${overall}%"></i></div><p class="small"><strong>${overall}% Gesamtentwicklung</strong></p></div><div class="kq-inline-tree-rank"><span>${rank[0]}</span><strong>${rank[1]}</strong></div></article>
+        <div class="kq-inline-tree-grid">
+          ${kqSkilltreeBranch("語","語彙 · Vocabulary","Core-Pfad und Mining",coreNodes)}
+          ${kqSkilltreeBranch("文","文法 · Grammar","N4-Basis und N3-Grammatik",grammarNodes.length?grammarNodes:[kqSkilltreeNode("N3",0,"Noch nicht begonnen","grammar")])}
+          ${kqSkilltreeBranch("助","助詞 · Particles","Partikelpfad und Kontraste",particleNodes)}
+          ${kqSkilltreeBranch("実","実践 · Application","Story, Resonanz und aktive Praxis",applicationNodes)}
+        </div>`;
+      }
+
+      function kqBindSkilltreeActions(root) {
+        root.querySelectorAll("[data-kq-skill-open]").forEach(button=>button.addEventListener("click",()=>{
+          const action=button.dataset.kqSkillOpen;
+          if (action==="core") return openLearning("vocabulary");
+          if (action==="grammar") return openLearning("grammar");
+          if (action==="particles") return openLearning("particles");
+          if (action==="n4") { setGroup("learning"); try { window.KotobaQuestN4Recap?.open?.(); } catch {} return; }
+          if (action==="mining") { setGroup("mining"); return safeSwitch("mining"); }
+          if (action==="story") { document.querySelector('[data-kq-main-group="story"]')?.click(); return; }
+          if (action==="resonance") { try { window.KotobaQuestResonanceTraining?.open?.(); } catch {} return; }
+          if (action==="smart") { try { window.KotobaQuestSmartReview?.open?.(); } catch {} return; }
+          if (action==="practice") return openPractice("vocabulary");
+        }));
+      }
+
+function renderProgressCenter() {
         const root = document.getElementById("kqProgressCenterRoot");
         if (!root) return;
         const summary = archiveSummary();
@@ -32469,7 +32613,7 @@ ${tooltipText(segment, status)}`)}"`
               <article class="kq-ia-domain-card"><h3>Grammatik und Partikel</h3><p>${summary.grammarGuru} Grammatikpunkte · ${summary.particleGuru} Partikelpunkte auf Guru+</p><strong style="font-size:2rem;color:var(--primary)">${summary.grammarGuru + summary.particleGuru}</strong></article>
             </div>
             <article class="card"><div class="section-title"><div><h3>Gefestigte Inhalte durchsuchen</h3><p>Vokabeln, bekannte Wörter und Grammatik.</p></div><button class="primary" id="kqIaOpenArchive">Archiv öffnen</button></div></article>` : `
-            <div id="kqMasteryInlineRoot" class="kq-mastery-inline-host"><article class="card"><p class="muted">Skilltree wird geladen …</p></article></div>`}
+            <div id="kqMasteryInlineRoot" class="kq-mastery-inline-host">${kqSkilltreeHtml()}</div>`}
         </div>`;
         root.querySelectorAll("[data-kq-progress-tab]").forEach(button => button.addEventListener("click", () => {
           progressTab = button.dataset.kqProgressTab;
@@ -32486,22 +32630,7 @@ ${tooltipText(segment, status)}`)}"`
           try { renderArchive(); } catch {}
         });
         if (progressTab === "skilltree") {
-          const host = root.querySelector("#kqMasteryInlineRoot");
-          const paint = () => {
-            const currentHost = document.getElementById("kqMasteryInlineRoot");
-            if (!currentHost) return;
-            try {
-              if (window.KotobaQuestMasteryTree?.renderInto) {
-                window.KotobaQuestMasteryTree.renderInto(currentHost);
-              } else {
-                currentHost.innerHTML = `<article class="card"><p class="muted">Skilltree initialisiert …</p></article>`;
-              }
-            } catch (error) {
-              console.error("Skilltree konnte nicht gerendert werden", error);
-              currentHost.innerHTML = `<article class="card"><h3>🌳 Skilltree</h3><p class="muted">Der Skilltree konnte gerade nicht aufgebaut werden. Bitte lade die Seite einmal neu.</p></article>`;
-            }
-          };
-          if (host) { paint(); setTimeout(paint, 0); setTimeout(paint, 120); }
+          kqBindSkilltreeActions(root);
         }
       }
     
@@ -36251,352 +36380,6 @@ function smartReviewBootstrap() {
     }
   </script>
 
-<script>
-(function skillTreeBootstrap(){
-  if (window.__KOTOBA_SKILLTREE_V1__) return;
-  window.__KOTOBA_SKILLTREE_V1__ = true;
 
-  const VERSION="1.3";
-  const VIEW_ID = "masteryTree";
-  const INTEGRATION_VERSION = "1.4-inline-runtime";
-  const NAV_ID = "kqMasteryTreeNav";
-  let selectedKey = null;
-  let renderQueued = false;
-
-  const esc = value => String(value ?? "")
-    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-  const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,Number(n)||0));
-
-  function sourceData(){
-    try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
-    try { return JSON.parse(localStorage.getItem("kotobaQuestDataV3") || "{}") || {}; } catch { return {}; }
-  }
-
-  function stageValue(stage){
-    const value = Number(stage || 0);
-    if (value <= 0) return 0;
-    if (value < 5) return 0.18 + ((value - 1) / 4) * 0.42;
-    if (value < 7) return 0.68 + ((value - 5) / 2) * 0.14;
-    if (value < 9) return 0.86 + ((value - 7) / 2) * 0.10;
-    return 1;
-  }
-
-  function statusFor(percent,{locked=false,started=false,guruShare=0,masteredShare=0,completeShare=0}={}){
-    if (locked) return "locked";
-    if (completeShare >= .92 || percent >= 96) return "mastered";
-    if (masteredShare >= .55 || percent >= 82) return "advanced";
-    if (guruShare >= .55 || percent >= 64) return "guru";
-    if (started || percent > 3) return "learning";
-    return "new";
-  }
-
-  const STATUS_META = {
-    locked:{label:"Gesperrt",icon:"🔒",rank:0},
-    new:{label:"Noch offen",icon:"○",rank:1},
-    learning:{label:"In Festigung",icon:"🌱",rank:2},
-    guru:{label:"Stabil",icon:"◆",rank:3},
-    advanced:{label:"Sehr sicher",icon:"✦",rank:4},
-    mastered:{label:"Gemeistert",icon:"✨",rank:5}
-  };
-
-  function smartDiagnoses(){
-    try { return window.KotobaQuestSmartReview?.analyze?.() || []; } catch { return []; }
-  }
-
-  function vocabItems(){ return Array.isArray(sourceData().vocabulary) ? sourceData().vocabulary : []; }
-  function coreItems(){ return vocabItems().filter(item => String(item?.sourceType || "core") === "core"); }
-  function miningItems(){ return vocabItems().filter(item => String(item?.sourceType || "") === "mining"); }
-
-  function chunkLevels(levels,maxNodes=8){
-    const clean=[...new Set(levels.map(Number).filter(Number.isFinite).filter(n=>n>0))].sort((a,b)=>a-b);
-    if(!clean.length) return [];
-    const min=clean[0], max=clean.at(-1), span=max-min+1;
-    const size=Math.max(1,Math.ceil(span/maxNodes));
-    const groups=[];
-    for(let start=min; start<=max; start+=size){
-      const end=Math.min(max,start+size-1);
-      const entries=clean.filter(level=>level>=start&&level<=end);
-      if(entries.length) groups.push({start,end,levels:entries});
-    }
-    return groups;
-  }
-
-  function scoreItems(items){
-    if(!items.length) return {percent:0,guruShare:0,masteredShare:0,completeShare:0,started:false,total:0,guru:0,mastered:0,complete:0};
-    const stages=items.map(item=>Number(item.stage||0));
-    const percent=100*stages.reduce((sum,stage)=>sum+stageValue(stage),0)/items.length;
-    const guru=stages.filter(stage=>stage>=5).length;
-    const mastered=stages.filter(stage=>stage>=7).length;
-    const complete=stages.filter(stage=>stage>=9).length;
-    return {percent,guruShare:guru/items.length,masteredShare:mastered/items.length,completeShare:complete/items.length,started:stages.some(stage=>stage>0),total:items.length,guru,mastered,complete};
-  }
-
-  function vocabBranch(diagnoses){
-    const core=coreItems();
-    const mining=miningItems();
-    const currentLevel=Math.max(1,Number(sourceData().currentLevel||1));
-    const levels=core.map(item=>Number(item.level||0)).filter(Boolean);
-    const groups=chunkLevels(levels,8);
-    const nodes=groups.map(group=>{
-      const items=core.filter(item=>Number(item.level||0)>=group.start&&Number(item.level||0)<=group.end);
-      const score=scoreItems(items);
-      const locked=group.start>currentLevel;
-      const warning=diagnoses.filter(diag=>{
-        if(diag.area!=="vocab") return false;
-        const id=String(diag.key||"").split(":")[1];
-        const item=core.find(v=>String(v.id)===id);
-        return item && Number(item.level||0)>=group.start && Number(item.level||0)<=group.end;
-      }).length;
-      const label=group.start===group.end?`Core Lv ${group.start}`:`Core Lv ${group.start}–${group.end}`;
-      return {key:`vocab-core-${group.start}-${group.end}`,area:"vocab",label,subtitle:`${score.guru}/${score.total} Guru+`,percent:locked?0:score.percent,status:statusFor(score.percent,{...score,locked}),warning,detail:`${score.total} Core-Wörter · ${score.guru} Guru+ · ${score.mastered} Master+`,actionLabel:"Core öffnen",action:()=>{try{switchView("core");}catch{}}};
-    });
-    const miningScore=scoreItems(mining);
-    const miningWarn=diagnoses.filter(diag=>diag.area==="vocab"&&String(diag.key||"").split(":")[1]&&mining.some(v=>String(v.id)===String(diag.key).split(":")[1])).length;
-    nodes.push({key:"vocab-mining",area:"vocab",label:"Mining",subtitle:`${miningScore.guru}/${miningScore.total||0} Guru+`,percent:miningScore.percent,status:statusFor(miningScore.percent,miningScore),warning:miningWarn,detail:`${miningScore.total} Mining-Wörter · ${miningScore.guru} Guru+ · ${miningScore.mastered} Master+`,actionLabel:"Mining öffnen",action:()=>{try{switchView("mining");}catch{}}});
-    const avg=nodes.length?nodes.reduce((s,n)=>s+n.percent,0)/nodes.length:0;
-    return {id:"vocab",icon:"語",title:"語彙 · Vocabulary",subtitle:"Core-Pfad & Mining",percent:avg,warnings:nodes.reduce((s,n)=>s+n.warning,0),nodes};
-  }
-
-  function grammarBranch(diagnoses){
-    let progress=[];
-    try{progress=window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.()||[];}catch{}
-    const groups=chunkLevels(progress.map(p=>Number(p.level||0)),9);
-    const nodes=groups.map(group=>{
-      const points=progress.filter(p=>Number(p.level||0)>=group.start&&Number(p.level||0)<=group.end);
-      const skills=points.flatMap(p=>p.skills||[]);
-      const pseudo=skills.map(skill=>({stage:Number(skill.stage||0)}));
-      const score=scoreItems(pseudo);
-      const lessons=points.filter(p=>p.lessonComplete).length;
-      const unlocked=points.some(p=>p.lessonComplete)||group.start<=Math.max(1,Number(sourceData()?.grammarProgress?.currentLevel||sourceData()?.grammar?.currentLevel||1));
-      const warning=diagnoses.filter(diag=>{
-        if(diag.area!=="grammar") return false;
-        const id=String(diag.key||"").slice("grammar:".length);
-        const point=progress.find(p=>String(p.id)===id);
-        return point&&Number(point.level||0)>=group.start&&Number(point.level||0)<=group.end;
-      }).length;
-      const titleA=points[0]?.levelTitle||"";
-      const titleB=points.at(-1)?.levelTitle||"";
-      return {key:`grammar-${group.start}-${group.end}`,area:"grammar",label:group.start===group.end?`N3 Lv ${group.start}`:`N3 Lv ${group.start}–${group.end}`,subtitle:titleA&&titleB&&titleA!==titleB?`${titleA} → ${titleB}`:(titleA||`${lessons}/${points.length} Lektionen`),percent:score.percent,status:statusFor(score.percent,{...score,locked:!unlocked,started:lessons>0||score.started}),warning,detail:`${lessons}/${points.length} Lektionen · ${score.guru}/${score.total} Skills Guru+`,actionLabel:"N3-Grammatik öffnen",action:()=>window.KotobaQuestGrammarSupportApi?.openGrammarView?.("grammar")};
-    });
-    let n4Known=0,n4Total=0,n4Repair=0;
-    try{
-      const api=window.KotobaQuestN4Recap;
-      for(const item of api?.getCatalog?.()||[]){
-        if(item?.aliasOf||item?.active===false) continue;
-        n4Total++;
-        const status=api.getPointStatus(item.id);
-        if(status?.known||status?.status==="known") n4Known++;
-        if(status?.status==="repair"&&!status?.repairComplete) n4Repair++;
-      }
-    }catch{}
-    const n4Percent=n4Total?100*n4Known/n4Total:0;
-    nodes.unshift({key:"grammar-n4",area:"n4",label:"N4 Foundation",subtitle:`${n4Known}/${n4Total||132} bestätigt`,percent:n4Percent,status:statusFor(n4Percent,{started:n4Known>0,guruShare:n4Percent/100,masteredShare:n4Percent/100}),warning:Math.max(n4Repair,diagnoses.filter(d=>d.area==="n4").length),detail:`${n4Known} einzeln bestätigte N4-Punkte${n4Repair?` · ${n4Repair} Repair offen`:""}`,actionLabel:"N4-Standorttest öffnen",action:()=>window.KotobaQuestN4Recap?.open?.()});
-    const avg=nodes.length?nodes.reduce((s,n)=>s+n.percent,0)/nodes.length:0;
-    return {id:"grammar",icon:"文",title:"文法 · Grammar",subtitle:"N4-Basis & N3-Pfad",percent:avg,warnings:nodes.reduce((s,n)=>s+n.warning,0),nodes};
-  }
-
-  function particleBranch(diagnoses){
-    let progress=[];
-    try{progress=window.KotobaQuestParticlePath?.getProgress?.()||[];}catch{}
-    const byLevel=new Map();
-    progress.forEach(point=>{const level=Number(point.level||0);if(!byLevel.has(level))byLevel.set(level,[]);byLevel.get(level).push(point);});
-    const nodes=[...byLevel.entries()].sort((a,b)=>a[0]-b[0]).map(([level,points])=>{
-      const skills=points.flatMap(p=>p.skills||[]).map(skill=>({stage:Number(skill.stage||0)}));
-      const score=scoreItems(skills);
-      const lessons=points.filter(p=>p.lessonComplete).length;
-      const particles=points.map(p=>p.particle).filter(Boolean).join(" · ");
-      const warning=diagnoses.filter(diag=>diag.area==="particles"&&points.some(p=>String(diag.key||"").includes(String(p.particle||"__")))).length;
-      const locked=level>1 && !points.some(p=>p.lessonComplete)&&!progress.some(p=>Number(p.level||0)===level-1&&p.lessonComplete);
-      return {key:`particles-${level}`,area:"particles",label:`Partikel Lv ${level}`,subtitle:particles||`${lessons}/${points.length} gelernt`,percent:score.percent,status:statusFor(score.percent,{...score,locked,started:lessons>0||score.started}),warning,detail:`${lessons}/${points.length} Lektionen · ${score.guru}/${score.total} Skills Guru+`,actionLabel:"Partikelpfad öffnen",action:()=>window.KotobaQuestParticlePath?.open?.()};
-    });
-    const avg=nodes.length?nodes.reduce((s,n)=>s+n.percent,0)/nodes.length:0;
-    return {id:"particles",icon:"助",title:"助詞 · Particles",subtitle:"Rollen, Kontraste & Beziehungen",percent:avg,warnings:nodes.reduce((s,n)=>s+n.warning,0),nodes};
-  }
-
-  function applicationBranch(diagnoses){
-    const source=sourceData();
-    let storyCompleted=0,storyTotal=0;
-    try{
-      const state=window.KotobaQuestStoryReader?.getState?.()||{};
-      const pack=window.KotobaQuestStoryReader?.getActivePack?.()||{};
-      storyTotal=Array.isArray(pack.scenes)?pack.scenes.length:0;
-      const completed=state.completedSceneIds||state.completedScenes||state.completed||[];
-      storyCompleted=Array.isArray(completed)?completed.length:Object.values(completed||{}).filter(Boolean).length;
-    }catch{}
-    const storyPct=storyTotal?100*storyCompleted/storyTotal:0;
-    const energyProgress=(()=>{try{return window.KotobaQuestStoryEnergy?.absoluteProgress?.()||{};}catch{return {};}})();
-    const resonance=Number(energyProgress.resonanceSessions||source.resonanceTraining?.totals?.productiveSessions||source.resonanceTraining?.totals?.sessions||0);
-    const context=Number(energyProgress.contextSessions||source.vocabContextPractice?.sessions||0);
-    const particlePractice=Number(energyProgress.particlePracticeSessions||source.particlePractice?.sessions||0);
-    const problemAnswers=Number(energyProgress.problemAnswers||0);
-    const smartCount=diagnoses.length;
-    const cap=(count,target)=>Math.min(100,100*Math.log2(1+Math.max(0,count))/Math.log2(1+target));
-    const nodes=[
-      {key:"app-story",area:"application",label:"Story Reading",subtitle:`${storyCompleted}/${storyTotal||0} Szenen`,percent:storyPct,status:statusFor(storyPct,{started:storyCompleted>0,guruShare:storyPct/100,masteredShare:storyPct>=80?storyPct/100:0}),warning:0,detail:`${storyCompleted} von ${storyTotal} Story-Szenen gelesen · Immersion Reader verfügbar`,actionLabel:"Story Reader öffnen",action:()=>window.KotobaQuestStoryReader?.open?.()},
-      {key:"app-resonance",area:"application",label:"Resonanz",subtitle:`${resonance} produktive Runden`,percent:cap(resonance,24),status:statusFor(cap(resonance,24),{started:resonance>0,guruShare:resonance>=8?.6:0,masteredShare:resonance>=18?.6:0}),warning:0,detail:`${resonance} produktive Resonanzrunden · Mining → SRS verankern`,actionLabel:"Resonanztraining öffnen",action:()=>window.KotobaQuestResonanceTraining?.open?.()},
-      {key:"app-context",area:"application",label:"Satzpraxis",subtitle:`${context} freie Runden`,percent:cap(context,30),status:statusFor(cap(context,30),{started:context>0,guruShare:context>=10?.6:0,masteredShare:context>=24?.6:0}),warning:0,detail:`${context} freie Satz-/Context-Runden`,actionLabel:"Satzpraxis öffnen",action:()=>window.KotobaQuestContextPractice?.open?.()},
-      {key:"app-particle",area:"application",label:"Freie Partikel",subtitle:`${particlePractice} Runden`,percent:cap(particlePractice,24),status:statusFor(cap(particlePractice,24),{started:particlePractice>0,guruShare:particlePractice>=8?.6:0,masteredShare:particlePractice>=18?.6:0}),warning:diagnoses.filter(d=>d.area==="particles").length,detail:`${particlePractice} freie Partikelrunden · ${diagnoses.filter(d=>d.area==="particles").length} aktive Kontrastmuster`,actionLabel:"Partikel-Werkstatt öffnen",action:()=>window.KotobaQuestParticlePractice?.open?.()},
-      {key:"app-repair",area:"application",label:"Smart Review",subtitle:smartCount?`${smartCount} Muster aktiv`:"kein Reparaturfokus",percent:smartCount?Math.max(12,55-smartCount*8):100,status:smartCount?"learning":"mastered",warning:smartCount,detail:smartCount?`${smartCount} belastbare Fehlermuster warten auf gezieltes Training.`:"Aktuell kein wiederholtes Fehlermuster – normales SRS reicht.",actionLabel:"Trainingszentrum öffnen",action:()=>window.KotobaQuestSmartReview?.open?.()},
-      {key:"app-problem",area:"application",label:"Problemwörter",subtitle:`${problemAnswers} Antworten`,percent:cap(problemAnswers,40),status:statusFor(cap(problemAnswers,40),{started:problemAnswers>0,guruShare:problemAnswers>=12?.6:0,masteredShare:problemAnswers>=30?.6:0}),warning:0,detail:`${problemAnswers} aktive Problemwort-Antworten`,actionLabel:"Problemwörter öffnen",action:()=>window.KotobaQuestProblemWorkshop?.open?.()}
-    ];
-    const avg=nodes.length?nodes.reduce((s,n)=>s+n.percent,0)/nodes.length:0;
-    return {id:"application",icon:"実",title:"実践 · Application",subtitle:"Lesen, Resonanz & aktives Anwenden",percent:avg,warnings:nodes.reduce((s,n)=>s+n.warning,0),nodes};
-  }
-
-  function model(){
-    const diagnoses=smartDiagnoses();
-    const branches=[vocabBranch(diagnoses),grammarBranch(diagnoses),particleBranch(diagnoses),applicationBranch(diagnoses)];
-    const overall=branches.reduce((sum,b)=>sum+b.percent,0)/Math.max(1,branches.length);
-    const totalWarnings=branches.reduce((sum,b)=>sum+b.warnings,0);
-    return {branches,overall,totalWarnings,diagnoses};
-  }
-
-  function overallRank(percent){
-    if(percent>=92) return {icon:"👑",name:"言葉 Vanguard",note:"Breit gefestigte Fähigkeiten mit vielen gemeisterten Zweigen."};
-    if(percent>=76) return {icon:"🌟",name:"Japanese Specialist",note:"Mehrere Lernzweige sind stabil und greifen sichtbar ineinander."};
-    if(percent>=56) return {icon:"⚔️",name:"Language Adventurer",note:"Dein Skilltree ist klar aufgebaut; jetzt wächst vor allem Tiefe und Sicherheit."};
-    if(percent>=32) return {icon:"🧭",name:"Kotoba Explorer",note:"Die großen Zweige sind geöffnet und beginnen sich zu verzahnen."};
-    return {icon:"🌱",name:"新米 Learner",note:"Der Baum wächst – jeder gelernte Skill öffnet neue Verbindungen."};
-  }
-
-  function nodeMarkup(node,index,total){
-    const meta=STATUS_META[node.status]||STATUS_META.new;
-    const pct=Math.round(clamp(node.percent));
-    const warning=node.warning?`<b class="kq-tree-alert" title="${node.warning} Smart-Review-Muster">${node.warning}</b>`:"";
-    return `<button type="button" class="kq-tree-node ${node.status}${selectedKey===node.key?" selected":""}" data-tree-node="${esc(node.key)}" style="--node-progress:${pct}%" aria-label="${esc(node.label)} · ${meta.label}">
-      <span class="kq-tree-node-orb"><i>${meta.icon}</i>${warning}</span>
-      <span class="kq-tree-node-copy"><strong>${esc(node.label)}</strong><small>${esc(node.subtitle||meta.label)}</small><em>${pct}% · ${meta.label}</em></span>
-    </button>`;
-  }
-
-  function branchMarkup(branch){
-    const pct=Math.round(clamp(branch.percent));
-    return `<section class="kq-tree-branch branch-${branch.id}">
-      <header><div class="kq-tree-glyph">${branch.icon}</div><div><h3>${esc(branch.title)}</h3><p>${esc(branch.subtitle)}</p></div><div class="kq-tree-branch-score"><strong>${pct}%</strong><span>${branch.warnings?`${branch.warnings} Fokusmarker`:"kein akuter Fokus"}</span></div></header>
-      <div class="kq-tree-path"><div class="kq-tree-rail"><i style="width:${pct}%"></i></div><div class="kq-tree-nodes">${branch.nodes.map((node,i)=>nodeMarkup(node,i,branch.nodes.length)).join("")}</div></div>
-    </section>`;
-  }
-
-  function selectedNode(m){
-    for(const branch of m.branches){
-      const node=branch.nodes.find(n=>n.key===selectedKey);
-      if(node) return {branch,node};
-    }
-    return null;
-  }
-
-  function detailMarkup(m){
-    const picked=selectedNode(m);
-    if(!picked) return `<article class="card kq-tree-detail kq-tree-detail-empty"><span>✦</span><div><h3>Skill auswählen</h3><p>Klick auf einen Knoten, um seinen echten Lernstand, Smart-Review-Hinweise und den direkten Trainingsweg zu sehen.</p></div></article>`;
-    const {branch,node}=picked;
-    const meta=STATUS_META[node.status]||STATUS_META.new;
-    const related=m.diagnoses.filter(diag=>{
-      if(node.area==="n4") return diag.area==="n4";
-      if(node.area==="particles") return diag.area==="particles";
-      if(node.key==="app-repair") return true;
-      if(node.area!==diag.area) return false;
-      if(node.area==="vocab"){
-        const id=String(diag.key||"").split(":")[1];
-        const item=vocabItems().find(v=>String(v.id)===id);
-        if(node.key==="vocab-mining") return item?.sourceType==="mining";
-        const match=node.key.match(/vocab-core-(\d+)-(\d+)/); return match&&item&&Number(item.level)>=Number(match[1])&&Number(item.level)<=Number(match[2]);
-      }
-      if(node.area==="grammar"){
-        const id=String(diag.key||"").replace(/^grammar:/,"");
-        const point=(window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.()||[]).find(p=>String(p.id)===id);
-        const match=node.key.match(/grammar-(\d+)-(\d+)/); return match&&point&&Number(point.level)>=Number(match[1])&&Number(point.level)<=Number(match[2]);
-      }
-      return false;
-    }).slice(0,3);
-    return `<article class="card kq-tree-detail"><div class="kq-tree-detail-head"><span class="kq-tree-detail-icon ${node.status}">${meta.icon}</span><div><span>${esc(branch.title)}</span><h3>${esc(node.label)}</h3><p>${esc(node.detail||node.subtitle||"")}</p></div><strong>${Math.round(clamp(node.percent))}%</strong></div>
-      <div class="kq-tree-detail-status"><span class="${node.status}">${meta.icon} ${meta.label}</span>${node.warning?`<span class="attention">⚠ ${node.warning} Smart-Review-Fokus${node.warning===1?"":"se"}</span>`:"<span>✓ kein akuter Reparaturmarker</span>"}</div>
-      ${related.length?`<div class="kq-tree-related"><strong>Aktuell auffällig</strong>${related.map(item=>`<span>${item.icon} ${esc(item.title)}</span>`).join("")}</div>`:""}
-      <div class="button-row"><button type="button" class="primary" id="kqTreeTrain">${esc(node.actionLabel||"Training öffnen")}</button>${node.warning?`<button type="button" class="secondary" id="kqTreeSmart">🧠 Smart Review</button>`:""}</div></article>`;
-  }
-
-  function ensureStyles(){
-    if(document.getElementById("kqMasteryTreeStyles")) return;
-    const style=document.createElement("style");
-    style.id="kqMasteryTreeStyles";
-    style.textContent=`
-      #kqMasteryTreeRoot,.kq-mastery-inline-host{display:grid;gap:18px}.kq-tree-hero{display:grid;grid-template-columns:1.25fr .75fr;gap:22px;align-items:center;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 11%,white),color-mix(in srgb,var(--accent) 13%,white))}.kq-tree-hero h2{margin:4px 0 8px;font-size:clamp(2rem,5vw,3.25rem)}.kq-tree-hero p{max-width:760px;line-height:1.55;color:var(--muted)}.kq-tree-rank{display:grid;place-items:center;text-align:center;gap:5px;padding:18px;border:1px solid var(--border);border-radius:20px;background:rgba(255,255,255,.72)}.kq-tree-rank>span{font-size:3rem}.kq-tree-rank strong{font-size:1.25rem;color:var(--primary-dark)}.kq-tree-rank em{font-style:normal;color:var(--muted);font-size:.78rem;line-height:1.35}.kq-tree-overall{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin-top:18px}.kq-tree-overall>span{font-weight:900;color:var(--primary-dark)}.kq-tree-overall>strong{font-size:1.2rem}.kq-tree-overall-track{height:12px;border-radius:999px;overflow:hidden;background:var(--border)}.kq-tree-overall-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent));box-shadow:0 0 18px color-mix(in srgb,var(--primary) 35%,transparent)}
-      .kq-tree-legend{display:flex;flex-wrap:wrap;gap:8px}.kq-tree-legend span{padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:white;font-size:.76rem;font-weight:800}.kq-tree-legend .learning{color:#a96d12}.kq-tree-legend .guru{color:#496fd4}.kq-tree-legend .advanced{color:#7957d5}.kq-tree-legend .mastered{color:#268d63}.kq-tree-legend .attention{color:#c84f67}
-      .kq-tree-map{display:grid;gap:18px}.kq-tree-branch{position:relative;padding:20px;border:1px solid var(--border);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.98),color-mix(in srgb,var(--kq-wash,#f4efff) 48%,white));box-shadow:var(--shadow)}.kq-tree-branch header{display:grid;grid-template-columns:auto 1fr auto;gap:13px;align-items:center;margin-bottom:18px}.kq-tree-glyph{display:grid;place-items:center;width:50px;height:50px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;font-size:1.45rem;font-weight:950;box-shadow:0 8px 20px rgba(121,87,213,.2)}.kq-tree-branch h3,.kq-tree-branch p{margin:0}.kq-tree-branch p{margin-top:3px;color:var(--muted);font-size:.84rem}.kq-tree-branch-score{text-align:right;display:grid}.kq-tree-branch-score strong{font-size:1.6rem;color:var(--primary)}.kq-tree-branch-score span{color:var(--muted);font-size:.72rem}.kq-tree-path{position:relative;overflow-x:auto;padding:13px 4px 6px}.kq-tree-rail{position:absolute;left:45px;right:45px;top:37px;height:8px;border-radius:999px;background:var(--border);overflow:hidden}.kq-tree-rail i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--primary) 70%,white),color-mix(in srgb,var(--accent) 70%,white));opacity:.78}.kq-tree-nodes{position:relative;z-index:1;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(118px,1fr);gap:14px;min-width:max-content}.kq-tree-node{width:128px;display:grid;justify-items:center;gap:8px;padding:0 5px 10px;border:0;background:transparent;color:var(--text);text-align:center;transform:none!important}.kq-tree-node-orb{position:relative;display:grid;place-items:center;width:56px;height:56px;border-radius:18px;border:3px solid var(--border);background:conic-gradient(var(--primary) var(--node-progress),white 0);box-shadow:0 6px 16px rgba(41,36,58,.1)}.kq-tree-node-orb:before{content:"";position:absolute;inset:4px;border-radius:12px;background:white}.kq-tree-node-orb i{position:relative;z-index:1;font-style:normal;font-size:1.15rem}.kq-tree-node.learning .kq-tree-node-orb{border-color:#dfbb77}.kq-tree-node.guru .kq-tree-node-orb{border-color:#93abe8}.kq-tree-node.advanced .kq-tree-node-orb{border-color:#b4a0ec}.kq-tree-node.mastered .kq-tree-node-orb{border-color:#8fd0b6;box-shadow:0 0 0 4px rgba(38,141,99,.08),0 8px 20px rgba(38,141,99,.15)}.kq-tree-node.locked{opacity:.5}.kq-tree-node.selected .kq-tree-node-orb{box-shadow:0 0 0 5px rgba(121,87,213,.13),0 10px 22px rgba(121,87,213,.22);transform:translateY(-2px)}.kq-tree-node-copy{display:grid;gap:2px}.kq-tree-node-copy strong{font-size:.78rem;line-height:1.2}.kq-tree-node-copy small{color:var(--muted);font-size:.65rem;line-height:1.25;max-width:118px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.kq-tree-node-copy em{font-size:.61rem;color:var(--primary-dark);font-style:normal;font-weight:850}.kq-tree-alert{position:absolute;z-index:3;right:-7px;top:-7px;display:grid;place-items:center;min-width:23px;height:23px;padding:0 5px;border-radius:999px;background:var(--bad);color:white;border:2px solid white;font-size:.65rem}.kq-tree-detail{display:grid;gap:15px}.kq-tree-detail-empty{grid-template-columns:auto 1fr;align-items:center}.kq-tree-detail-empty>span{font-size:2rem}.kq-tree-detail-empty h3,.kq-tree-detail-empty p{margin:0}.kq-tree-detail-empty p{margin-top:4px;color:var(--muted)}.kq-tree-detail-head{display:grid;grid-template-columns:auto 1fr auto;gap:13px;align-items:center}.kq-tree-detail-head>strong{font-size:2rem;color:var(--primary)}.kq-tree-detail-head div>span{font-size:.72rem;color:var(--muted);font-weight:850}.kq-tree-detail-head h3,.kq-tree-detail-head p{margin:0}.kq-tree-detail-head p{margin-top:4px;color:var(--muted)}.kq-tree-detail-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:var(--kq-wash,#f4efff);font-size:1.25rem}.kq-tree-detail-status{display:flex;flex-wrap:wrap;gap:8px}.kq-tree-detail-status span{padding:7px 10px;border-radius:999px;background:var(--kq-wash,#f4efff);font-size:.76rem;font-weight:850}.kq-tree-detail-status .attention{background:#fff0f3;color:var(--bad)}.kq-tree-related{display:grid;gap:7px;padding:13px 14px;border:1px solid #f1ccd5;border-radius:14px;background:#fff7f9}.kq-tree-related>span{font-size:.82rem;color:#8d4051}.kq-tree-dashboard{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-bottom:18px;background:linear-gradient(120deg,color-mix(in srgb,var(--primary) 8%,white),white)}.kq-tree-dashboard>span{font-size:2rem}.kq-tree-dashboard h3,.kq-tree-dashboard p{margin:0}.kq-tree-dashboard p{margin-top:3px;color:var(--muted)}
-      @media(max-width:820px){.kq-tree-hero{grid-template-columns:1fr}.kq-tree-rank{grid-template-columns:auto 1fr;text-align:left;justify-items:start}.kq-tree-rank>em{grid-column:1/-1}.kq-tree-branch header{grid-template-columns:auto 1fr}.kq-tree-branch-score{grid-column:2;text-align:left}.kq-tree-dashboard{grid-template-columns:auto 1fr}.kq-tree-dashboard>button{grid-column:2;width:100%}}
-      @media(max-width:560px){.kq-tree-overall{grid-template-columns:1fr auto}.kq-tree-overall>span{grid-column:1/-1}.kq-tree-overall-track{grid-column:1}.kq-tree-detail-head{grid-template-columns:auto 1fr}.kq-tree-detail-head>strong{grid-column:2}.kq-tree-rank{grid-template-columns:1fr;justify-items:center;text-align:center}}
-    `;
-    document.head.appendChild(style);
-  }
-
-  function ensureView(){
-    ensureStyles();
-    if(!document.getElementById(VIEW_ID)){
-      const view=document.createElement("section");
-      view.id=VIEW_ID; view.className="view"; view.innerHTML=`<div id="kqMasteryTreeRoot"></div>`;
-      document.querySelector("main")?.appendChild(view);
-    }
-  }
-
-  function open(){
-    const progressButton=document.querySelector('[data-kq-main-group="progress"]');
-    if(progressButton && !progressButton.classList.contains("active")) progressButton.click();
-    const show=()=>{
-      const tab=document.querySelector('#kqProgressCenterRoot [data-kq-progress-tab="skilltree"]');
-      if(tab){ tab.click(); window.scrollTo({top:0,behavior:"smooth"}); return; }
-      // Fallback only if the Progress center itself is unavailable.
-      ensureView();
-      document.querySelectorAll("main .view").forEach(v=>v.classList.toggle("active",v.id===VIEW_ID));
-      render();
-    };
-    setTimeout(show,progressButton?30:0);
-  }
-
-  function ensureProgressEntry(){
-    // Skilltree is a first-class Progress tab now; nothing is injected after render.
-  }
-
-  function renderInto(root){
-    ensureStyles();
-    if(!root) return;
-    const m=model(); const rank=overallRank(m.overall); const pct=Math.round(clamp(m.overall));
-    root.innerHTML=`<article class="card kq-tree-hero"><div><p class="eyebrow">🌳 Japanese Mastery Map</p><h2>Dein Skilltree</h2><p>Kein eigener Parallelfortschritt: Jeder Knoten wird direkt aus deinem echten Core-, Grammatik-, Partikel-, Mining- und Anwendungstand berechnet. Smart Review setzt Warnmarker genau dort, wo wiederholte Fehler ein belastbares Muster bilden.</p><div class="kq-tree-overall"><span>Gesamtentwicklung</span><div class="kq-tree-overall-track"><i style="width:${pct}%"></i></div><strong>${pct}%</strong></div></div><div class="kq-tree-rank"><span>${rank.icon}</span><strong>${rank.name}</strong><em>${rank.note}</em>${m.totalWarnings?`<small>⚠ ${m.totalWarnings} aktuelle Fokusmarker im Baum</small>`:`<small>✨ Kein akuter Smart-Review-Fokus</small>`}</div></article>
-      <div class="kq-tree-legend"><span>○ offen</span><span class="learning">🌱 in Festigung</span><span class="guru">◆ stabil / Guru</span><span class="advanced">✦ sehr sicher</span><span class="mastered">✨ gemeistert</span><span class="attention">⚠ Smart-Review-Fokus</span></div>
-      <div class="kq-tree-map">${m.branches.map(branchMarkup).join("")}</div>${detailMarkup(m)}`;
-    root.querySelectorAll("[data-tree-node]").forEach(button=>button.addEventListener("click",()=>{selectedKey=button.dataset.treeNode;renderInto(root);root.querySelector(".kq-tree-detail")?.scrollIntoView({behavior:"smooth",block:"nearest"});}));
-    const picked=selectedNode(m);
-    root.querySelector("#kqTreeTrain")?.addEventListener("click",()=>{try{picked?.node?.action?.();}catch(error){console.warn("Skilltree-Training konnte nicht geöffnet werden",error);}});
-    root.querySelector("#kqTreeSmart")?.addEventListener("click",()=>window.KotobaQuestSmartReview?.open?.());
-  }
-
-  function render(){
-    ensureView();
-    renderInto(document.getElementById("kqMasteryTreeRoot"));
-  }
-
-  function dashboardTeaser(){
-    const dashboard=document.getElementById("dashboard"); if(!dashboard) return;
-    let card=document.getElementById("kqMasteryTreeTeaser");
-    if(!card){card=document.createElement("article");card.id="kqMasteryTreeTeaser";card.className="card kq-tree-dashboard";const smart=document.getElementById("kqSmartReviewTeaser");const host=document.getElementById("kqLearningDashboard")||dashboard;if(smart?.parentElement)smart.insertAdjacentElement("afterend",card);else host.prepend(card);}
-    const m=model(),rank=overallRank(m.overall),pct=Math.round(clamp(m.overall));
-    card.innerHTML=`<span>🌳</span><div><h3>Japanese Skilltree · ${pct}%</h3><p>${esc(rank.name)} · ${m.totalWarnings?`${m.totalWarnings} Knoten brauchen gerade besondere Aufmerksamkeit.`:"Dein aktueller Baum hat keinen akuten Smart-Review-Fokus."}</p></div><button type="button" class="secondary">Mastery Map öffnen</button>`;
-    card.querySelector("button")?.addEventListener("click",open);
-  }
-
-  function schedule(){
-    if(renderQueued) return; renderQueued=true;
-    requestAnimationFrame(()=>{renderQueued=false;ensureView();ensureProgressEntry();if(document.getElementById(VIEW_ID)?.classList.contains("active"))render();if(document.getElementById("dashboard")?.classList.contains("active"))dashboardTeaser();});
-  }
-
-  ensureView(); schedule();
-  setTimeout(schedule,400); setTimeout(schedule,1400);
-  setInterval(()=>{ensureProgressEntry();if(document.getElementById(VIEW_ID)?.classList.contains("active")||document.getElementById("dashboard")?.classList.contains("active")||document.getElementById("progressCenter")?.classList.contains("active"))schedule();},1200);
-  window.addEventListener("storage",event=>{if(event.key==="kotobaQuestDataV3")schedule();});
-  document.addEventListener("click",event=>{if(event.target?.closest?.("[data-view='dashboard'],#kqSmartReviewNav,[data-kq-main-group='progress']"))setTimeout(schedule,80);},{passive:true});
-
-  window.KotobaQuestMasteryTree={version:VERSION,open,refresh:schedule,getModel:model,renderInto};
-})();
-
-</script>
 </body>
 </html>
