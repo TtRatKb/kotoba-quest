@@ -762,16 +762,12 @@
           for (const type of ["listening", "production"]) {
             const ld = objectValue(objectValue(left.directions)[type]);
             const rd = objectValue(objectValue(right.directions)[type]);
-            const leftFresh = number(ld.updatedAt) || number(left.updatedAt);
-            const rightFresh = number(rd.updatedAt) || number(right.updatedAt);
-            const fresher = leftFresh >= rightFresh ? ld : rd;
             directions[type] = {
               ...rd,
               ...ld,
               complete: Boolean(ld.complete || rd.complete),
-              error: Boolean(fresher.error),
-              completedAt: earliest(ld.completedAt, rd.completedAt),
-              updatedAt: latest(ld.updatedAt, rd.updatedAt, left.updatedAt, right.updatedAt)
+              error: Boolean(ld.error || rd.error),
+              completedAt: earliest(ld.completedAt, rd.completedAt)
             };
           }
           items[id] = {
@@ -32281,9 +32277,12 @@ ${tooltipText(segment, status)}`)}"`
     
       function openProgress(tab = "statistics") {
         progressTab = ["archive", "skilltree"].includes(tab) ? tab : "statistics";
+        ensureViews();
         setGroup("progress");
-        safeSwitch("progressCenter");
+        document.querySelectorAll("main .view").forEach(view => view.classList.toggle("active", view.id === "progressCenter"));
         renderProgressCenter();
+        renderContextBar();
+        updateNavigationState();
       }
     
       function launchVocabLessons() {
@@ -32588,13 +32587,15 @@ ${tooltipText(segment, status)}`)}"`
         });
         if (!particleNodes.length) particleNodes.push(kqSkilltreeNodeData("Partikel Lv 1",0,"Noch nicht begonnen","particles"));
 
-        const stats=statTracker();
         const storyScenes=(window.KotobaQuestRpgProgression?.getSceneCatalog?.()||[]).length;
         const storyDone=(window.KotobaQuestRpgProgression?.getCompletedSceneCount?.()||data.storyProgress||[]).length;
         const storyStage=storyScenes?Math.round(9*storyDone/storyScenes):0; allNodes.push(storyStage);
-        const resonance=Number(data.resonanceStats?.productiveRounds||0);
+        const resonance=Number(data.resonanceStats?.productiveRounds || data.resonanceTraining?.totals?.productiveSessions || data.resonanceTraining?.totals?.sessions || 0);
         const resonanceStage=Math.min(9,Math.round(resonance/3)); allNodes.push(resonanceStage);
-        const practiceCount=Number(stats.contextPracticeSessions||0)+Number(stats.freeParticleSessions||0)+Number(stats.problemWorkshopSessions||0);
+        const contextSessions=Number(data.vocabContextPractice?.sessions||0);
+        const particlePracticeSessions=Number(data.particlePractice?.sessions||0);
+        const problemAnswers=Number(data.problemWordWorkshop?.totalPractice?.correct||0)+Number(data.problemWordWorkshop?.totalPractice?.incorrect||0);
+        const practiceCount=contextSessions+particlePracticeSessions+Math.floor(problemAnswers/3);
         const practiceStage=Math.min(9,Math.round(practiceCount/4)); allNodes.push(practiceStage);
         let smartCount=0;
         try { smartCount=(window.KotobaQuestSmartReview?.getFocusItems?.()||[]).length; } catch {}
@@ -35530,7 +35531,6 @@ function vocabularyReviewPartialProgressBootstrap() {
   let wrappedStart = false;
   let wrappedGrade = false;
   let wrappedRender = false;
-  let wrappedPause = false;
 
   function sourceData() {
     try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
@@ -35576,8 +35576,8 @@ function vocabularyReviewPartialProgressBootstrap() {
         availableAt:item?.availableAt == null ? null : Number(item.availableAt),
         kind:String(item?.sourceType || "core"),
         directions:{
-          listening:{complete:false,error:false,completedAt:null,updatedAt:null},
-          production:{complete:false,error:false,completedAt:null,updatedAt:null}
+          listening:{complete:false,error:false,completedAt:null},
+          production:{complete:false,error:false,completedAt:null}
         },
         updatedAt:Date.now()
       };
@@ -35589,8 +35589,7 @@ function vocabularyReviewPartialProgressBootstrap() {
         record.directions[type] = {
           complete:Boolean(old.complete),
           error:Boolean(old.error),
-          completedAt:old.completedAt == null ? null : Number(old.completedAt),
-          updatedAt:old.updatedAt == null ? null : Number(old.updatedAt)
+          completedAt:old.completedAt == null ? null : Number(old.completedAt)
         };
       }
     }
@@ -35616,8 +35615,7 @@ function vocabularyReviewPartialProgressBootstrap() {
       else direction.completedAt = null;
     }
     if (error != null) direction.error = Boolean(error);
-    direction.updatedAt = Date.now();
-    record.updatedAt = direction.updatedAt;
+    record.updatedAt = Date.now();
     persistQuietly();
   }
 
@@ -35626,15 +35624,12 @@ function vocabularyReviewPartialProgressBootstrap() {
     catch { return null; }
   }
 
-  function validSavedCount(kind = "", ids = null) {
+  function validSavedCount() {
     let count = 0;
     const store = root();
-    const allowed = Array.isArray(ids) ? new Set(ids.map(String)) : null;
     for (const [id, saved] of Object.entries(store.items || {})) {
-      if (allowed && !allowed.has(String(id))) continue;
       const item = currentItem(id);
       if (!item || String(saved?.cycle || "") !== cycle(item)) continue;
-      if (kind && String(saved?.kind || item?.sourceType || "") !== String(kind)) continue;
       count += ["listening","production"].filter(type => saved?.directions?.[type]?.complete).length;
     }
     return count;
@@ -35683,7 +35678,7 @@ function vocabularyReviewPartialProgressBootstrap() {
     if (!reviewSession || !["core","mining"].includes(reviewSession.kind)) return;
     const pause = document.getElementById("reviewPause");
     const note = pause?.parentElement?.querySelector("span.small.muted");
-    const saved = validSavedCount(reviewSession.kind, Object.keys(reviewSession.results || {}));
+    const saved = validSavedCount();
     if (note) note.textContent = `${saved} Richtungs-Check${saved === 1 ? "" : "s"} zwischengespeichert · eine Vokabel steigt erst nach beiden Richtungen auf.`;
     const card = document.getElementById("reviewCard") || document.querySelector("#reviews .study-card");
     if (card && !card.querySelector(".kq-review-partial-note")) {
@@ -35788,33 +35783,10 @@ function vocabularyReviewPartialProgressBootstrap() {
     }, 0);
   }, true);
 
-  function installPauseWrapper() {
-    if (wrappedPause) return;
-    try {
-      if (typeof pauseReviewSession !== "function" || pauseReviewSession.__kqPartialDirections) return;
-      const original = pauseReviewSession;
-      const replacement = function() {
-        const savedBefore = validSavedCount(reviewSession?.kind || "", Object.keys(reviewSession?.results || {}));
-        const output = original.apply(this, arguments);
-        try {
-          if (savedBefore && typeof toast === "function") {
-            toast(`${savedBefore} Richtungs-Check${savedBefore === 1 ? "" : "s"} bleiben gespeichert. Beim nächsten Review werden nur die noch offenen Richtungen abgefragt.`);
-          }
-        } catch {}
-        return output;
-      };
-      replacement.__kqPartialDirections = true;
-      replacement.__kqOriginal = original;
-      pauseReviewSession = replacement;
-      wrappedPause = true;
-    } catch {}
-  }
-
   function install() {
     installStartWrapper();
     installGradeWrapper();
     installRenderWrapper();
-    installPauseWrapper();
   }
 
   install();
@@ -36167,11 +36139,8 @@ function smartReviewBootstrap() {
     state().lastOpenedAt = Date.now();
     persistSmart();
     try { window.KotobaQuestInterface?.activateGroup?.("smart"); } catch {}
-    try { switchView("smartReview"); }
-    catch {
-      document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === "smartReview"));
-      document.querySelectorAll("[data-kq-main-group]").forEach(button => button.classList.toggle("active", button.dataset.kqMainGroup === "smart"));
-    }
+    document.querySelectorAll("main .view, .view").forEach(view => view.classList.toggle("active", view.id === "smartReview"));
+    document.querySelectorAll("[data-kq-main-group]").forEach(button => button.classList.toggle("active", button.dataset.kqMainGroup === "smart"));
     render();
   }
 
