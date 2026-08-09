@@ -32053,7 +32053,7 @@ ${tooltipText(segment, status)}`)}"`
         if (viewName === "particlePractice") return ["learning", "practice"].includes(activeGroup) ? activeGroup : "learning";
         if (viewName === "storyReader") return "story";
         if (["mining", "vocabulary"].includes(viewName)) return "mining";
-        if (["progressCenter", "statistics", "archive"].includes(viewName)) return "progress";
+        if (["progressCenter", "statistics", "archive", "masteryTree"].includes(viewName)) return "progress";
         return activeGroup;
       }
     
@@ -36242,7 +36242,7 @@ function smartReviewBootstrap() {
   if (window.__KOTOBA_SKILLTREE_V1__) return;
   window.__KOTOBA_SKILLTREE_V1__ = true;
 
-  const VERSION = "1.0";
+  const VERSION="1.2";
   const VIEW_ID = "masteryTree";
   const NAV_ID = "kqMasteryTreeNav";
   let selectedKey = null;
@@ -36524,10 +36524,17 @@ function smartReviewBootstrap() {
 
   function open(){
     ensureView();
-    try{window.KotobaQuestInterface?.activateProgress?.("mastery");}catch{}
-    try{switchView(VIEW_ID);}catch{document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===VIEW_ID));}
+    document.querySelectorAll("main .view").forEach(v=>v.classList.toggle("active",v.id===VIEW_ID));
     document.querySelectorAll("[data-kq-main-group]").forEach(btn=>btn.classList.toggle("active",btn.dataset.kqMainGroup==="progress"));
+    document.getElementById("kqContextNav")?.setAttribute("hidden","");
     render();
+    try{window.KotobaQuestInterface?.refresh?.();}catch{}
+    requestAnimationFrame(()=>{
+      document.querySelectorAll("main .view").forEach(v=>v.classList.toggle("active",v.id===VIEW_ID));
+      document.querySelectorAll("[data-kq-main-group]").forEach(btn=>btn.classList.toggle("active",btn.dataset.kqMainGroup==="progress"));
+      render();
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
   }
 
   function ensureProgressEntry(){
