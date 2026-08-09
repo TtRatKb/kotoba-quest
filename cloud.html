@@ -31921,6 +31921,7 @@ ${tooltipText(segment, status)}`)}"`
       let activeGroup = "overview";
       let learningTab = "vocabulary";
       let progressTab = "statistics";
+      let skilltreeMode = "overview";
       let refreshQueued = false;
     
       function esc(value) {
@@ -32475,21 +32476,25 @@ ${tooltipText(segment, status)}`)}"`
         return groups;
       }
 
-      function kqSkilltreeNode(label, stage, note, action = "") {
-        const meta=kqSkilltreeStageMeta(stage);
-        const pct=Math.round(clampStage(stage)/9*100);
-        return `<button type="button" class="kq-inline-tree-node ${meta.cls}" ${action?`data-kq-skill-open="${esc(action)}"`:""} title="${esc(label)} · ${esc(meta.label)}">
-          <span class="kq-inline-tree-orb" style="--kq-node-pct:${pct}%"><i>${meta.icon}</i></span>
-          <strong>${esc(label)}</strong><small>${esc(note||meta.label)}</small><em>${pct}% · ${meta.label}</em>
+      function kqSkilltreeNodeData(label, stage, note, action = "") {
+        const meta = kqSkilltreeStageMeta(stage);
+        const pct = Math.round(clampStage(stage)/9*100);
+        return { label, stage: clampStage(stage), note: note || meta.label, action, meta, pct };
+      }
+
+      function kqSkilltreeNodeButton(node) {
+        return `<button type="button" class="kq-inline-tree-node ${node.meta.cls}" ${node.action?`data-kq-skill-open="${esc(node.action)}"`:""} title="${esc(node.label)} · ${esc(node.meta.label)}">
+          <span class="kq-inline-tree-orb" style="--kq-node-pct:${node.pct}%"><i>${node.meta.icon}</i></span>
+          <strong>${esc(node.label)}</strong><small>${esc(node.note)}</small><em>${node.pct}% · ${node.meta.label}</em>
         </button>`;
       }
 
       function kqSkilltreeBranch(icon, title, subtitle, nodes) {
-        const safeNodes=Array.isArray(nodes)?nodes:[];
+        const safeNodes=(Array.isArray(nodes)?nodes:[]).map(kqSkilltreeNodeButton);
         return `<article class="card kq-inline-tree-branch"><header><span>${icon}</span><div><h3>${esc(title)}</h3><p>${esc(subtitle)}</p></div></header><div class="kq-inline-tree-path">${safeNodes.join("")}</div></article>`;
       }
 
-      function kqSkilltreeHtml() {
+      function kqSkilltreeBuildData() {
         const source=sourceData();
         const vocabulary=Array.isArray(source.vocabulary)?source.vocabulary:[];
         const core=vocabulary.filter(item=>String(item?.sourceType||"core")==="core");
@@ -32503,18 +32508,18 @@ ${tooltipText(segment, status)}`)}"`
           allNodes.push(stage);
           const label=group.from===group.to?`Core Lv ${group.from}`:`Core Lv ${group.from}–${group.to}`;
           const guru=group.members.filter(item=>clampStage(item.stage)>=5).length;
-          return kqSkilltreeNode(label,stage,`${guru}/${group.members.length} Guru+`,"core");
+          return kqSkilltreeNodeData(label,stage,`${guru}/${group.members.length} Guru+`,"core");
         });
         if (mining.length) {
           const stage=kqSkilltreeAverageStage(mining,item=>item.stage); allNodes.push(stage);
-          coreNodes.push(kqSkilltreeNode("Mining",stage,`${mining.filter(item=>clampStage(item.stage)>=5).length}/${mining.length} Guru+`,"mining"));
-        } else coreNodes.push(kqSkilltreeNode("Mining",0,"Noch keine Mining-Wörter","mining"));
+          coreNodes.push(kqSkilltreeNodeData("Mining",stage,`${mining.filter(item=>clampStage(item.stage)>=5).length}/${mining.length} Guru+`,"mining"));
+        } else coreNodes.push(kqSkilltreeNodeData("Mining",0,"Noch keine Mining-Wörter","mining"));
 
         const grammarNodes=kqSkilltreeChunks(grammar,item=>item.level,7).map(group=>{
           const stage=kqSkilltreeAverageStage(group.members,grammarStage); allNodes.push(stage);
           const lessons=group.members.filter(item=>item.lessonComplete).length;
           const label=group.from===group.to?`N3 Lv ${group.from}`:`N3 Lv ${group.from}–${group.to}`;
-          return kqSkilltreeNode(label,stage,`${lessons}/${group.members.length} Lektionen`,"grammar");
+          return kqSkilltreeNodeData(label,stage,`${lessons}/${group.members.length} Lektionen`,"grammar");
         });
         let n4Known=0,n4Total=0;
         try {
@@ -32527,51 +32532,82 @@ ${tooltipText(segment, status)}`)}"`
           }
         } catch {}
         const n4Stage=n4Total?Math.round(9*n4Known/n4Total):0; allNodes.push(n4Stage);
-        grammarNodes.unshift(kqSkilltreeNode("N4 Foundation",n4Stage,`${n4Known}/${n4Total||132} bestätigt`,"n4"));
+        grammarNodes.unshift(kqSkilltreeNodeData("N4 Foundation",n4Stage,`${n4Known}/${n4Total||132} bestätigt`,"n4"));
 
         const particleLevels=[...new Set(particles.map(item=>Number(item.level||0)).filter(Boolean))].sort((a,b)=>a-b);
         const particleNodes=particleLevels.map(level=>{
           const points=particles.filter(item=>Number(item.level||0)===level);
           const stage=kqSkilltreeAverageStage(points,particleStage); allNodes.push(stage);
           const learned=points.filter(item=>item.lessonComplete).length;
-          return kqSkilltreeNode(`Partikel Lv ${level}`,stage,`${learned}/${points.length} gelernt`,"particles");
+          return kqSkilltreeNodeData(`Partikel Lv ${level}`,stage,`${learned}/${points.length} gelernt`,"particles");
         });
-        if (!particleNodes.length) particleNodes.push(kqSkilltreeNode("Partikel Lv 1",0,"Noch nicht begonnen","particles"));
+        if (!particleNodes.length) particleNodes.push(kqSkilltreeNodeData("Partikel Lv 1",0,"Noch nicht begonnen","particles"));
 
-        let storyDone=0,storyTotal=0;
-        try {
-          const state=window.KotobaQuestStoryReader?.getState?.()||{};
-          const pack=window.KotobaQuestStoryReader?.getActivePack?.()||{};
-          storyTotal=Array.isArray(pack.scenes)?pack.scenes.length:0;
-          const completed=state.completedSceneIds||state.completedScenes||state.completed||[];
-          storyDone=Array.isArray(completed)?completed.length:Object.values(completed||{}).filter(Boolean).length;
-        } catch {}
-        const storyStage=storyTotal?Math.round(9*storyDone/storyTotal):0; allNodes.push(storyStage);
-        const resonance=Number(source?.resonanceTraining?.totals?.productiveSessions||source?.resonanceTraining?.totals?.sessions||0);
-        const resonanceStage=Math.min(9,Math.floor(resonance/3)); allNodes.push(resonanceStage);
-        const smartCount=(()=>{try{return window.KotobaQuestSmartReview?.analyze?.().length||0;}catch{return 0;}})();
-        const smartStage=smartCount?Math.max(1,5-Math.min(4,smartCount)):9; allNodes.push(smartStage);
-        const practiceCount=Number(source?.vocabContextPractice?.sessions||0)+Number(source?.particlePractice?.sessions||0);
-        const practiceStage=Math.min(9,Math.floor(practiceCount/4)); allNodes.push(practiceStage);
+        const stats=statTracker();
+        const storyScenes=(window.KotobaQuestRpgProgression?.getSceneCatalog?.()||[]).length;
+        const storyDone=(window.KotobaQuestRpgProgression?.getCompletedSceneCount?.()||data.storyProgress||[]).length;
+        const storyStage=storyScenes?Math.round(9*storyDone/storyScenes):0; allNodes.push(storyStage);
+        const resonance=Number(data.resonanceStats?.productiveRounds||0);
+        const resonanceStage=Math.min(9,Math.round(resonance/3)); allNodes.push(resonanceStage);
+        const practiceCount=Number(stats.contextPracticeSessions||0)+Number(stats.freeParticleSessions||0)+Number(stats.problemWorkshopSessions||0);
+        const practiceStage=Math.min(9,Math.round(practiceCount/4)); allNodes.push(practiceStage);
+        let smartCount=0;
+        try { smartCount=(window.KotobaQuestSmartReview?.getFocusItems?.()||[]).length; } catch {}
+        const smartStage=smartCount?Math.max(2,9-smartCount):6; allNodes.push(smartStage);
         const applicationNodes=[
-          kqSkilltreeNode("Story Reading",storyStage,`${storyDone}/${storyTotal||0} Szenen`,"story"),
-          kqSkilltreeNode("Resonanz",resonanceStage,`${resonance} produktive Runden`,"resonance"),
-          kqSkilltreeNode("Freie Praxis",practiceStage,`${practiceCount} Runden`,"practice"),
-          kqSkilltreeNode("Smart Review",smartStage,smartCount?`${smartCount} Fokusmuster aktiv`:"Kein akuter Fokus","smart")
+          kqSkilltreeNodeData("Story Reading",storyStage,`${storyDone}/${storyScenes||0} Szenen`,"story"),
+          kqSkilltreeNodeData("Resonanz",resonanceStage,`${resonance} produktive Runden`,"resonance"),
+          kqSkilltreeNodeData("Freie Praxis",practiceStage,`${practiceCount} Runden`,"practice"),
+          kqSkilltreeNodeData("Smart Review",smartStage,smartCount?`${smartCount} Fokusmuster aktiv`:"Kein akuter Fokus","smart")
         ];
 
         const overall=allNodes.length?Math.round(allNodes.reduce((a,b)=>a+b,0)/allNodes.length/9*100):0;
         const rank=overall>=85?["👑","言葉 Vanguard"]:overall>=65?["🌟","Japanese Specialist"]:overall>=45?["⚔️","Language Adventurer"]:overall>=25?["🧭","Kotoba Explorer"]:["🌱","新米 Learner"];
+        return {
+          overall, rank,
+          branches:[
+            { key:"vocabulary", icon:"語", title:"語彙 · Vocabulary", subtitle:"Core-Pfad und Mining", nodes: coreNodes },
+            { key:"grammar", icon:"文", title:"文法 · Grammar", subtitle:"N4-Basis und N3-Grammatik", nodes: grammarNodes.length?grammarNodes:[kqSkilltreeNodeData("N3",0,"Noch nicht begonnen","grammar")] },
+            { key:"particles", icon:"助", title:"助詞 · Particles", subtitle:"Partikelpfad und Kontraste", nodes: particleNodes },
+            { key:"application", icon:"実", title:"実践 · Application", subtitle:"Story, Resonanz und aktive Praxis", nodes: applicationNodes }
+          ]
+        };
+      }
+
+      function kqSkilltreeBaseStyles() {
         return `<style>
-          .kq-inline-tree-hero{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 9%,white),color-mix(in srgb,var(--accent) 10%,white))}.kq-inline-tree-hero h3,.kq-inline-tree-hero p{margin:0}.kq-inline-tree-hero p{margin-top:5px;color:var(--muted)}.kq-inline-tree-rank{display:grid;justify-items:center;gap:2px;padding:12px 18px;border-radius:16px;background:white;border:1px solid var(--border)}.kq-inline-tree-rank span{font-size:2rem}.kq-inline-tree-rank strong{color:var(--primary-dark)}.kq-inline-tree-overall{height:10px;border-radius:999px;background:var(--border);overflow:hidden;margin-top:14px}.kq-inline-tree-overall i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-inline-tree-grid{display:grid;gap:16px}.kq-inline-tree-branch{overflow:hidden}.kq-inline-tree-branch header{display:flex;gap:10px;align-items:center;margin-bottom:14px}.kq-inline-tree-branch header>span{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;color:white;background:linear-gradient(135deg,var(--primary),var(--accent));font-weight:950}.kq-inline-tree-branch h3,.kq-inline-tree-branch p{margin:0}.kq-inline-tree-branch p{margin-top:2px;color:var(--muted);font-size:.82rem}.kq-inline-tree-path{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(112px,1fr);gap:10px;overflow-x:auto;padding:8px 2px}.kq-inline-tree-node{display:grid;justify-items:center;gap:5px;min-width:112px;padding:8px 6px 10px;border:0;background:transparent!important;color:var(--text);transform:none!important}.kq-inline-tree-node:hover .kq-inline-tree-orb{transform:translateY(-2px)}.kq-inline-tree-orb{position:relative;display:grid;place-items:center;width:52px;height:52px;border-radius:17px;background:conic-gradient(var(--primary) var(--kq-node-pct),var(--border) 0);transition:transform .15s ease}.kq-inline-tree-orb:before{content:"";position:absolute;inset:4px;border-radius:13px;background:white}.kq-inline-tree-orb i{position:relative;font-style:normal}.kq-inline-tree-node strong{font-size:.75rem;text-align:center}.kq-inline-tree-node small{font-size:.65rem;color:var(--muted);text-align:center}.kq-inline-tree-node em{font-size:.61rem;color:var(--primary-dark);font-style:normal;font-weight:800}.kq-inline-tree-node.mastered .kq-inline-tree-orb{box-shadow:0 0 0 4px rgba(38,141,99,.10)}@media(max-width:700px){.kq-inline-tree-hero{grid-template-columns:1fr}.kq-inline-tree-rank{justify-items:start}}
-        </style>
-        <article class="card kq-inline-tree-hero"><div><p class="eyebrow">🌳 Japanese Mastery Map</p><h3 style="font-size:1.8rem">Dein Skilltree</h3><p>Direkt aus deinem echten Lernstand – kein separater Fortschritt.</p><div class="kq-inline-tree-overall"><i style="width:${overall}%"></i></div><p class="small"><strong>${overall}% Gesamtentwicklung</strong></p></div><div class="kq-inline-tree-rank"><span>${rank[0]}</span><strong>${rank[1]}</strong></div></article>
+          .kq-inline-tree-hero{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 9%,white),color-mix(in srgb,var(--accent) 10%,white))}.kq-inline-tree-hero h3,.kq-inline-tree-hero p{margin:0}.kq-inline-tree-hero p{margin-top:5px;color:var(--muted)}.kq-inline-tree-rank{display:grid;justify-items:center;gap:2px;padding:12px 18px;border-radius:16px;background:white;border:1px solid var(--border)}.kq-inline-tree-rank span{font-size:2rem}.kq-inline-tree-rank strong{color:var(--primary-dark)}.kq-inline-tree-overall{height:10px;border-radius:999px;background:var(--border);overflow:hidden;margin-top:14px}.kq-inline-tree-overall i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent))}.kq-inline-tree-grid{display:grid;gap:16px}.kq-inline-tree-branch{overflow:hidden}.kq-inline-tree-branch header{display:flex;gap:10px;align-items:center;margin-bottom:14px}.kq-inline-tree-branch header>span{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;color:white;background:linear-gradient(135deg,var(--primary),var(--accent));font-weight:950}.kq-inline-tree-branch h3,.kq-inline-tree-branch p{margin:0}.kq-inline-tree-branch p{margin-top:2px;color:var(--muted);font-size:.82rem}.kq-inline-tree-path{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(112px,1fr);gap:10px;overflow-x:auto;padding:8px 2px}.kq-inline-tree-node{display:grid;justify-items:center;gap:5px;min-width:112px;padding:8px 6px 10px;border:0;background:transparent!important;color:var(--text);transform:none!important}.kq-inline-tree-node:hover .kq-inline-tree-orb{transform:translateY(-2px)}.kq-inline-tree-orb{position:relative;display:grid;place-items:center;width:52px;height:52px;border-radius:17px;background:conic-gradient(var(--primary) var(--kq-node-pct),var(--border) 0);transition:transform .15s ease}.kq-inline-tree-orb:before{content:"";position:absolute;inset:4px;border-radius:13px;background:white}.kq-inline-tree-orb i{position:relative;font-style:normal}.kq-inline-tree-node strong{font-size:.75rem;text-align:center}.kq-inline-tree-node small{font-size:.65rem;color:var(--muted);text-align:center}.kq-inline-tree-node em{font-size:.61rem;color:var(--primary-dark);font-style:normal;font-weight:800}.kq-inline-tree-node.mastered .kq-inline-tree-orb{box-shadow:0 0 0 4px rgba(38,141,99,.10)}
+          .kq-skilltree-mode-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}.kq-skilltree-mode-tabs button{border-radius:999px}
+          .kq-tree-actual{padding:22px 14px 18px;overflow-x:auto}.kq-tree-root{min-width:880px;display:grid;gap:20px;justify-items:center}.kq-tree-core-node{display:grid;justify-items:center;gap:8px}.kq-tree-core-pill{display:inline-flex;align-items:center;gap:10px;padding:12px 18px;border-radius:18px;border:1px solid var(--border);background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 8%,white),white);box-shadow:0 8px 20px rgba(31,38,135,.06)}.kq-tree-core-pill span{font-size:1.5rem}.kq-tree-core-pill strong{font-size:1rem}.kq-tree-connector-v{width:2px;height:22px;background:linear-gradient(180deg,var(--primary),var(--accent));border-radius:999px}.kq-tree-connector-h{height:2px;width:min(780px,92%);background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:999px}.kq-tree-branches{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:14px;align-items:start;width:min(980px,100%)}.kq-tree-branch-col{position:relative;display:grid;justify-items:center;gap:12px}.kq-tree-branch-col:before{content:"";position:absolute;top:-13px;width:2px;height:13px;background:linear-gradient(180deg,var(--primary),var(--accent));border-radius:999px}.kq-tree-branch-head{display:grid;justify-items:center;gap:6px;text-align:center}.kq-tree-branch-head span{display:grid;place-items:center;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;font-weight:900}.kq-tree-branch-head strong{font-size:.95rem}.kq-tree-branch-head small{color:var(--muted)}.kq-tree-leaves{display:grid;gap:10px;width:100%}.kq-tree-leaf{position:relative;display:grid;justify-items:center;padding-top:10px}.kq-tree-leaf:before{content:"";position:absolute;top:0;width:2px;height:10px;background:var(--border);border-radius:999px}.kq-tree-leaf .kq-inline-tree-node{min-width:unset;width:100%;padding-inline:4px}.kq-tree-help{margin-top:12px;color:var(--muted);text-align:center}
+          @media(max-width:980px){.kq-tree-root{min-width:760px}.kq-tree-branches{grid-template-columns:repeat(2,minmax(200px,1fr))}.kq-tree-connector-h{width:min(560px,92%)}}
+          @media(max-width:700px){.kq-inline-tree-hero{grid-template-columns:1fr}.kq-inline-tree-rank{justify-items:start}.kq-tree-root{min-width:640px}}
+        </style>`;
+      }
+
+      function kqSkilltreeOverviewHtml(dataModel = null) {
+        const data = dataModel || kqSkilltreeBuildData();
+        return `${kqSkilltreeBaseStyles()}
+        <article class="card kq-inline-tree-hero"><div><p class="eyebrow">🌳 Japanese Mastery Map</p><h3 style="font-size:1.8rem">Dein Skilltree</h3><p>Direkt aus deinem echten Lernstand – kein separater Fortschritt.</p><div class="kq-inline-tree-overall"><i style="width:${data.overall}%"></i></div><p class="small"><strong>${data.overall}% Gesamtentwicklung</strong></p></div><div class="kq-inline-tree-rank"><span>${data.rank[0]}</span><strong>${data.rank[1]}</strong></div></article>
         <div class="kq-inline-tree-grid">
-          ${kqSkilltreeBranch("語","語彙 · Vocabulary","Core-Pfad und Mining",coreNodes)}
-          ${kqSkilltreeBranch("文","文法 · Grammar","N4-Basis und N3-Grammatik",grammarNodes.length?grammarNodes:[kqSkilltreeNode("N3",0,"Noch nicht begonnen","grammar")])}
-          ${kqSkilltreeBranch("助","助詞 · Particles","Partikelpfad und Kontraste",particleNodes)}
-          ${kqSkilltreeBranch("実","実践 · Application","Story, Resonanz und aktive Praxis",applicationNodes)}
+          ${data.branches.map(branch=>kqSkilltreeBranch(branch.icon,branch.title,branch.subtitle,branch.nodes)).join("")}
         </div>`;
+      }
+
+      function kqSkilltreeTreeHtml(dataModel = null) {
+        const data = dataModel || kqSkilltreeBuildData();
+        return `${kqSkilltreeBaseStyles()}
+        <article class="card kq-inline-tree-hero"><div><p class="eyebrow">🌳 Tree View</p><h3 style="font-size:1.8rem">Japanese Skill Tree</h3><p>Dieselbe Mastery Map als tatsächliche Baumansicht mit Stamm, Ästen und Blättern.</p><div class="kq-inline-tree-overall"><i style="width:${data.overall}%"></i></div><p class="small"><strong>${data.overall}% Gesamtentwicklung</strong></p></div><div class="kq-inline-tree-rank"><span>${data.rank[0]}</span><strong>${data.rank[1]}</strong></div></article>
+        <article class="card kq-tree-actual">
+          <div class="kq-tree-root">
+            <div class="kq-tree-core-node"><div class="kq-tree-core-pill"><span>${data.rank[0]}</span><div><small style="display:block;color:var(--muted)">Luca · Japanese Mastery</small><strong>${data.rank[1]}</strong></div></div></div>
+            <div class="kq-tree-connector-v"></div>
+            <div class="kq-tree-connector-h"></div>
+            <div class="kq-tree-branches">
+              ${data.branches.map(branch=>`<section class="kq-tree-branch-col"><div class="kq-tree-branch-head"><span>${branch.icon}</span><strong>${esc(branch.title)}</strong><small>${esc(branch.subtitle)}</small></div><div class="kq-tree-leaves">${branch.nodes.map(node=>`<div class="kq-tree-leaf">${kqSkilltreeNodeButton(node)}</div>`).join("")}</div></section>`).join("")}
+            </div>
+          </div>
+          <p class="kq-tree-help small">Klicke auf ein Blatt, um direkt in den passenden Lernbereich zu springen.</p>
+        </article>`;
       }
 
       function kqBindSkilltreeActions(root) {
@@ -32613,10 +32649,18 @@ function renderProgressCenter() {
               <article class="kq-ia-domain-card"><h3>Grammatik und Partikel</h3><p>${summary.grammarGuru} Grammatikpunkte · ${summary.particleGuru} Partikelpunkte auf Guru+</p><strong style="font-size:2rem;color:var(--primary)">${summary.grammarGuru + summary.particleGuru}</strong></article>
             </div>
             <article class="card"><div class="section-title"><div><h3>Gefestigte Inhalte durchsuchen</h3><p>Vokabeln, bekannte Wörter und Grammatik.</p></div><button class="primary" id="kqIaOpenArchive">Archiv öffnen</button></div></article>` : `
-            <div id="kqMasteryInlineRoot" class="kq-mastery-inline-host">${kqSkilltreeHtml()}</div>`}
+            <div class="kq-skilltree-mode-tabs">
+              <button type="button" data-kq-skilltree-mode="overview" class="${skilltreeMode === "overview" ? "active" : ""}">Übersicht</button>
+              <button type="button" data-kq-skilltree-mode="tree" class="${skilltreeMode === "tree" ? "active" : ""}">Baumansicht</button>
+            </div>
+            <div id="kqMasteryInlineRoot" class="kq-mastery-inline-host">${skilltreeMode === "tree" ? kqSkilltreeTreeHtml() : kqSkilltreeOverviewHtml()}</div>`}
         </div>`;
         root.querySelectorAll("[data-kq-progress-tab]").forEach(button => button.addEventListener("click", () => {
           progressTab = button.dataset.kqProgressTab;
+          renderProgressCenter();
+        }));
+        root.querySelectorAll("[data-kq-skilltree-mode]").forEach(button => button.addEventListener("click", () => {
+          skilltreeMode = button.dataset.kqSkilltreeMode === "tree" ? "tree" : "overview";
           renderProgressCenter();
         }));
         root.querySelector("#kqIaOpenStatistics")?.addEventListener("click", () => {
