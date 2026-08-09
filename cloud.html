@@ -353,7 +353,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "smart-review-v1-vocab-mix";
+    const CLOUD_FEATURE_VERSION = "smart-review-stable-nav-vocab-partials-v1";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -743,6 +743,47 @@
           lastSessionSummary: { ...objectValue(b.lastSessionSummary), ...objectValue(a.lastSessionSummary) }
         };
       };
+      const mergeVocabReviewPartials = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const items = {};
+        const aItems = objectValue(a.items);
+        const bItems = objectValue(b.items);
+        new Set([...Object.keys(aItems), ...Object.keys(bItems)]).forEach(id => {
+          const left = objectValue(aItems[id]);
+          const right = objectValue(bItems[id]);
+          if (!Object.keys(left).length) { items[id] = clone(right); return; }
+          if (!Object.keys(right).length) { items[id] = clone(left); return; }
+          if (String(left.cycle || "") !== String(right.cycle || "")) {
+            items[id] = clone(number(left.updatedAt) >= number(right.updatedAt) ? left : right);
+            return;
+          }
+          const directions = {};
+          for (const type of ["listening", "production"]) {
+            const ld = objectValue(objectValue(left.directions)[type]);
+            const rd = objectValue(objectValue(right.directions)[type]);
+            const leftFresh = number(ld.updatedAt) || number(left.updatedAt);
+            const rightFresh = number(rd.updatedAt) || number(right.updatedAt);
+            const fresher = leftFresh >= rightFresh ? ld : rd;
+            directions[type] = {
+              ...rd,
+              ...ld,
+              complete: Boolean(ld.complete || rd.complete),
+              error: Boolean(fresher.error),
+              completedAt: earliest(ld.completedAt, rd.completedAt),
+              updatedAt: latest(ld.updatedAt, rd.updatedAt, left.updatedAt, right.updatedAt)
+            };
+          }
+          items[id] = {
+            ...right,
+            ...left,
+            cycle: String(left.cycle || right.cycle || ""),
+            updatedAt: latest(left.updatedAt, right.updatedAt),
+            directions
+          };
+        });
+        return { ...b, ...a, version: Math.max(1, number(a.version), number(b.version)), items };
+      };
       const mergeData = (current, preserved) => {
         const a = objectValue(current);
         const b = objectValue(preserved);
@@ -761,6 +802,7 @@
         if (hasOwn(a, "vocabularyMeaningOverrides") || hasOwn(b, "vocabularyMeaningOverrides")) result.vocabularyMeaningOverrides = mergeMeaningOverrides(a.vocabularyMeaningOverrides, b.vocabularyMeaningOverrides);
         if (hasOwn(a, "problemWordWorkshop") || hasOwn(b, "problemWordWorkshop")) result.problemWordWorkshop = mergeWorkshop(a.problemWordWorkshop, b.problemWordWorkshop);
         if (hasOwn(a, "resonanceTraining") || hasOwn(b, "resonanceTraining")) result.resonanceTraining = mergeResonanceTraining(a.resonanceTraining, b.resonanceTraining);
+        if (hasOwn(a, "vocabReviewPartials") || hasOwn(b, "vocabReviewPartials")) result.vocabReviewPartials = mergeVocabReviewPartials(a.vocabReviewPartials, b.vocabReviewPartials);
         ["particlePractice", "vocabContextPractice", "studyActivity"].forEach(key => {
           if (hasOwn(a, key) || hasOwn(b, key)) result[key] = mergeNumericObject(a[key], b[key]);
         });
@@ -31903,6 +31945,7 @@ ${tooltipText(segment, status)}`)}"`
         { id: "practice", label: "Üben" },
         { id: "story", label: "Story" },
         { id: "mining", label: "Mining" },
+        { id: "smart", label: "🧠 Smart Review" },
         { id: "progress", label: "Fortschritt" }
       ];
       const STAGES = [
@@ -32054,6 +32097,7 @@ ${tooltipText(segment, status)}`)}"`
         if (viewName === "particlePractice") return ["learning", "practice"].includes(activeGroup) ? activeGroup : "learning";
         if (viewName === "storyReader") return "story";
         if (["mining", "vocabulary"].includes(viewName)) return "mining";
+        if (viewName === "smartReview") return "smart";
         if (["progressCenter", "statistics", "archive", "masteryTree"].includes(viewName)) return "progress";
         return activeGroup;
       }
@@ -32206,6 +32250,7 @@ ${tooltipText(segment, status)}`)}"`
             else if (item.id === "practice") openPracticeCenter();
             else if (item.id === "story") { setGroup("story"); window.KotobaQuestStoryReader?.open?.(); }
             else if (item.id === "mining") safeSwitch("mining", "mining");
+            else if (item.id === "smart") { setGroup("smart"); window.KotobaQuestSmartReview?.open?.(); }
             else if (item.id === "progress") openProgress(progressTab);
           });
           nav.appendChild(button);
@@ -32235,7 +32280,7 @@ ${tooltipText(segment, status)}`)}"`
       }
     
       function openProgress(tab = "statistics") {
-        progressTab = tab === "archive" ? "archive" : "statistics";
+        progressTab = ["archive", "skilltree"].includes(tab) ? tab : "statistics";
         setGroup("progress");
         safeSwitch("progressCenter");
         renderProgressCenter();
@@ -32851,6 +32896,7 @@ function renderProgressCenter() {
         openLearning,
         openPractice: openPracticeCenter,
         openProgress,
+        activateGroup: group => setGroup(group),
         activateLearning: tab => {
           learningTab = ["vocabulary", "grammar", "particles"].includes(tab) ? tab : learningTab;
           setGroup("learning");
@@ -35473,6 +35519,315 @@ function vocabularyReviewMixBootstrap() {
   window.KotobaQuestVocabularyReviewMix = { version:VERSION, spreadQuestions };
 }
 
+
+function vocabularyReviewPartialProgressBootstrap() {
+  if (window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V1__) return;
+  window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V1__ = true;
+
+  const VERSION = "1.0";
+  const STORAGE_KEY = "kotobaQuestDataV3";
+  const ROOT_KEY = "vocabReviewPartials";
+  let wrappedStart = false;
+  let wrappedGrade = false;
+  let wrappedRender = false;
+  let wrappedPause = false;
+
+  function sourceData() {
+    try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+  }
+
+  function persistQuietly() {
+    try { if (typeof persist === "function") return persist(); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sourceData())); } catch {}
+  }
+
+  function root() {
+    const source = sourceData();
+    if (!source[ROOT_KEY] || typeof source[ROOT_KEY] !== "object" || Array.isArray(source[ROOT_KEY])) {
+      source[ROOT_KEY] = { version:VERSION, items:{} };
+    }
+    source[ROOT_KEY].version = VERSION;
+    if (!source[ROOT_KEY].items || typeof source[ROOT_KEY].items !== "object" || Array.isArray(source[ROOT_KEY].items)) source[ROOT_KEY].items = {};
+    return source[ROOT_KEY];
+  }
+
+  function cycle(item) {
+    const stage = Math.max(0, Math.min(9, Number(item?.stage || 0)));
+    const due = item?.availableAt == null ? "null" : String(Number(item.availableAt));
+    return `${stage}|${due}`;
+  }
+
+  function recordFor(item, create = false) {
+    const id = String(item?.id || "");
+    if (!id) return null;
+    const store = root();
+    let record = store.items[id] || null;
+    const currentCycle = cycle(item);
+    if (record && String(record.cycle || "") !== currentCycle) {
+      delete store.items[id];
+      record = null;
+    }
+    if (!record && create) {
+      record = store.items[id] = {
+        id,
+        cycle:currentCycle,
+        stage:Number(item?.stage || 0),
+        availableAt:item?.availableAt == null ? null : Number(item.availableAt),
+        kind:String(item?.sourceType || "core"),
+        directions:{
+          listening:{complete:false,error:false,completedAt:null,updatedAt:null},
+          production:{complete:false,error:false,completedAt:null,updatedAt:null}
+        },
+        updatedAt:Date.now()
+      };
+    }
+    if (record) {
+      record.directions = record.directions && typeof record.directions === "object" ? record.directions : {};
+      for (const type of ["listening","production"]) {
+        const old = record.directions[type] || {};
+        record.directions[type] = {
+          complete:Boolean(old.complete),
+          error:Boolean(old.error),
+          completedAt:old.completedAt == null ? null : Number(old.completedAt),
+          updatedAt:old.updatedAt == null ? null : Number(old.updatedAt)
+        };
+      }
+    }
+    return record;
+  }
+
+  function clearRecord(itemId, save = true) {
+    const store = root();
+    const id = String(itemId || "");
+    if (!id || !store.items[id]) return;
+    delete store.items[id];
+    if (save) persistQuietly();
+  }
+
+  function saveDirection(item, type, {complete = null, error = null} = {}) {
+    if (!item?.id || !["listening","production"].includes(type)) return;
+    const record = recordFor(item, true);
+    if (!record) return;
+    const direction = record.directions[type];
+    if (complete != null) {
+      direction.complete = Boolean(complete);
+      if (direction.complete) direction.completedAt ||= Date.now();
+      else direction.completedAt = null;
+    }
+    if (error != null) direction.error = Boolean(error);
+    direction.updatedAt = Date.now();
+    record.updatedAt = direction.updatedAt;
+    persistQuietly();
+  }
+
+  function currentItem(itemId) {
+    try { return (Array.isArray(data?.vocabulary) ? data.vocabulary : []).find(item => String(item?.id || "") === String(itemId || "")) || null; }
+    catch { return null; }
+  }
+
+  function validSavedCount(kind = "", ids = null) {
+    let count = 0;
+    const store = root();
+    const allowed = Array.isArray(ids) ? new Set(ids.map(String)) : null;
+    for (const [id, saved] of Object.entries(store.items || {})) {
+      if (allowed && !allowed.has(String(id))) continue;
+      const item = currentItem(id);
+      if (!item || String(saved?.cycle || "") !== cycle(item)) continue;
+      if (kind && String(saved?.kind || item?.sourceType || "") !== String(kind)) continue;
+      count += ["listening","production"].filter(type => saved?.directions?.[type]?.complete).length;
+    }
+    return count;
+  }
+
+  function restoreIntoSession() {
+    if (!reviewSession || !Array.isArray(reviewSession.questions) || !["core","mining"].includes(reviewSession.kind)) return;
+    let restored = 0;
+    const ids = Object.keys(reviewSession.results || {});
+    for (const id of ids) {
+      const item = currentItem(id);
+      if (!item) continue;
+      const saved = recordFor(item, false);
+      if (!saved) continue;
+      for (const type of ["listening","production"]) {
+        if (saved.directions[type]?.complete) {
+          reviewSession.results[id][type] = true;
+          restored++;
+        }
+        if (saved.directions[type]?.error) reviewSession.errors[id][type] = true;
+      }
+    }
+
+    if (restored) {
+      reviewSession.questions = reviewSession.questions.filter(question => reviewSession.results?.[question.itemId]?.[question.type] !== true);
+      reviewSession.index = 0;
+      reviewSession.feedback = null;
+      reviewSession.locked = false;
+      reviewSession.partialDirectionsRestored = restored;
+      // Defensive recovery: if both directions were persisted but a previous page closed
+      // between the second answer and finalization, finish that word now.
+      if (typeof finalizeReviewItemIfReady === "function") {
+        for (const id of ids) {
+          if (reviewSession.results?.[id]?.listening === true && reviewSession.results?.[id]?.production === true) {
+            try { finalizeReviewItemIfReady(id); } catch {}
+            if (reviewSession.finalized?.[id]) clearRecord(id, false);
+          }
+        }
+        reviewSession.questions = reviewSession.questions.filter(question => !reviewSession.finalized?.[question.itemId]);
+      }
+      persistQuietly();
+    }
+  }
+
+  function enhanceReviewUi() {
+    if (!reviewSession || !["core","mining"].includes(reviewSession.kind)) return;
+    const pause = document.getElementById("reviewPause");
+    const note = pause?.parentElement?.querySelector("span.small.muted");
+    const saved = validSavedCount(reviewSession.kind, Object.keys(reviewSession.results || {}));
+    if (note) note.textContent = `${saved} Richtungs-Check${saved === 1 ? "" : "s"} zwischengespeichert · eine Vokabel steigt erst nach beiden Richtungen auf.`;
+    const card = document.getElementById("reviewCard") || document.querySelector("#reviews .study-card");
+    if (card && !card.querySelector(".kq-review-partial-note")) {
+      const info = document.createElement("div");
+      info.className = "kq-review-partial-note small muted";
+      info.style.cssText = "margin:10px auto 0;max-width:680px;text-align:center;line-height:1.45";
+      info.textContent = "✓ Jede korrekt bestätigte Richtung wird sofort gespeichert. Du kannst die Session jederzeit verlassen; beim nächsten Mal wird nur die noch fehlende Richtung abgefragt.";
+      pause?.parentElement?.after(info);
+    }
+  }
+
+  function installStartWrapper() {
+    if (wrappedStart) return;
+    try {
+      if (typeof startReviews !== "function" || startReviews.__kqPartialDirections) return;
+      const original = startReviews;
+      const replacement = function(kind) {
+        const output = original.apply(this, arguments);
+        try {
+          if (["core","mining"].includes(kind) && reviewSession?.questions) {
+            restoreIntoSession();
+            if (typeof renderReview === "function") renderReview();
+          }
+        } catch (error) { console.warn("Vokabel-Zwischenstand konnte nicht wiederhergestellt werden", error); }
+        return output;
+      };
+      replacement.__kqPartialDirections = true;
+      replacement.__kqOriginal = original;
+      startReviews = replacement;
+      wrappedStart = true;
+    } catch {}
+  }
+
+  function installGradeWrapper() {
+    if (wrappedGrade) return;
+    try {
+      if (typeof gradeReview !== "function" || typeof evaluateAnswer !== "function" || gradeReview.__kqPartialDirections) return;
+      const original = gradeReview;
+      const replacement = function(question, item, answer) {
+        let result = null;
+        try { result = evaluateAnswer(question, item, answer); } catch {}
+        const output = original.apply(this, arguments);
+        try {
+          if (item?.id && ["listening","production"].includes(question?.type)) {
+            if (reviewSession?.finalized?.[item.id]) {
+              clearRecord(item.id);
+            } else if (result?.status === "correct" && reviewSession?.results?.[item.id]?.[question.type] === true) {
+              saveDirection(item, question.type, {
+                complete:true,
+                error:Boolean(reviewSession?.errors?.[item.id]?.[question.type])
+              });
+            } else if (result?.status === "incorrect") {
+              saveDirection(item, question.type, { error:true });
+            }
+          }
+        } catch (error) { console.warn("Vokabel-Richtungsfortschritt konnte nicht gespeichert werden", error); }
+        return output;
+      };
+      replacement.__kqPartialDirections = true;
+      replacement.__kqOriginal = original;
+      gradeReview = replacement;
+      wrappedGrade = true;
+    } catch {}
+  }
+
+  function installRenderWrapper() {
+    if (wrappedRender) return;
+    try {
+      if (typeof renderReview !== "function" || renderReview.__kqPartialDirections) return;
+      const original = renderReview;
+      const replacement = function() {
+        const output = original.apply(this, arguments);
+        try { enhanceReviewUi(); } catch {}
+        return output;
+      };
+      replacement.__kqPartialDirections = true;
+      replacement.__kqOriginal = original;
+      renderReview = replacement;
+      wrappedRender = true;
+    } catch {}
+  }
+
+  document.addEventListener("click", event => {
+    const veto = event.target?.closest?.("[data-vocab-veto]");
+    if (!veto) return;
+    let snapshot = null;
+    try {
+      const feedback = reviewSession?.feedback;
+      if (feedback?.sessionType === "review" && feedback?.itemId && feedback?.questionType) {
+        snapshot = { itemId:feedback.itemId, type:feedback.questionType };
+      }
+    } catch {}
+    if (!snapshot) return;
+    setTimeout(() => {
+      try {
+        const item = currentItem(snapshot.itemId);
+        if (!item) return;
+        const complete = reviewSession?.results?.[snapshot.itemId]?.[snapshot.type] === true;
+        const error = Boolean(reviewSession?.errors?.[snapshot.itemId]?.[snapshot.type]);
+        saveDirection(item, snapshot.type, { complete, error });
+      } catch {}
+    }, 0);
+  }, true);
+
+  function installPauseWrapper() {
+    if (wrappedPause) return;
+    try {
+      if (typeof pauseReviewSession !== "function" || pauseReviewSession.__kqPartialDirections) return;
+      const original = pauseReviewSession;
+      const replacement = function() {
+        const savedBefore = validSavedCount(reviewSession?.kind || "", Object.keys(reviewSession?.results || {}));
+        const output = original.apply(this, arguments);
+        try {
+          if (savedBefore && typeof toast === "function") {
+            toast(`${savedBefore} Richtungs-Check${savedBefore === 1 ? "" : "s"} bleiben gespeichert. Beim nächsten Review werden nur die noch offenen Richtungen abgefragt.`);
+          }
+        } catch {}
+        return output;
+      };
+      replacement.__kqPartialDirections = true;
+      replacement.__kqOriginal = original;
+      pauseReviewSession = replacement;
+      wrappedPause = true;
+    } catch {}
+  }
+
+  function install() {
+    installStartWrapper();
+    installGradeWrapper();
+    installRenderWrapper();
+    installPauseWrapper();
+  }
+
+  install();
+  setTimeout(install, 0);
+  setTimeout(install, 400);
+  window.KotobaQuestVocabularyReviewPartials = {
+    version:VERSION,
+    count:validSavedCount,
+    clear:itemId=>clearRecord(itemId),
+    refresh:install
+  };
+}
+
 function smartReviewBootstrap() {
   if (window.__KOTOBA_SMART_REVIEW_V1__) return;
   window.__KOTOBA_SMART_REVIEW_V1__ = true;
@@ -35509,7 +35864,9 @@ function smartReviewBootstrap() {
     source.smartReview = state();
     try {
       if (typeof data !== "undefined" && data && typeof data === "object") data.smartReview = source.smartReview;
-      if (typeof saveData === "function") saveData();
+      // Smart Review speichert häufig (z. B. nach jeder einzelnen Review-Antwort).
+      // saveData() würde dabei die komplette App neu rendern und sichtbares UI-Springen verursachen.
+      if (typeof persist === "function") persist();
       else localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
     } catch (error) {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); } catch {}
@@ -35802,27 +36159,19 @@ function smartReviewBootstrap() {
       const main = document.querySelector("main");
       main?.appendChild(view);
     }
-    const nav = document.querySelector(".nav");
-    if (nav && !document.getElementById("kqSmartReviewNav")) {
-      const button = document.createElement("button");
-      button.id = "kqSmartReviewNav";
-      button.type = "button";
-      button.dataset.view = "smartReview";
-      button.textContent = "🧠 Smart Review";
-      button.addEventListener("click", open);
-      nav.appendChild(button);
-    }
+
   }
 
   function open() {
     ensureView();
     state().lastOpenedAt = Date.now();
     persistSmart();
+    try { window.KotobaQuestInterface?.activateGroup?.("smart"); } catch {}
     try { switchView("smartReview"); }
     catch {
       document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === "smartReview"));
+      document.querySelectorAll("[data-kq-main-group]").forEach(button => button.classList.toggle("active", button.dataset.kqMainGroup === "smart"));
     }
-    document.querySelectorAll(".nav button").forEach(button => button.classList.toggle("active", button.id === "kqSmartReviewNav"));
     render();
   }
 
@@ -35887,7 +36236,7 @@ function smartReviewBootstrap() {
       installVocabTracking();
       ensureView();
       if (document.getElementById("smartReview")?.classList.contains("active")) render();
-      renderDashboardTeaser();
+      if (document.getElementById("dashboard")?.classList.contains("active")) renderDashboardTeaser();
     });
   }
 
@@ -35901,10 +36250,6 @@ function smartReviewBootstrap() {
     if (document.getElementById("dashboard")?.classList.contains("active") || document.getElementById("smartReview")?.classList.contains("active")) scheduleRender();
   }, 3000);
   window.addEventListener("storage", event => { if (event.key === STORAGE_KEY) scheduleRender(); });
-  const observer = new MutationObserver(mutations => {
-    if (mutations.some(m => (m.target?.id === "dashboard" || m.target?.closest?.("#dashboard")) && !m.target?.closest?.("#kqSmartReviewTeaser"))) scheduleRender();
-  });
-  observer.observe(document.body, {childList:true,subtree:true});
 
   window.KotobaQuestSmartReview = { version:VERSION, open, analyze:diagnoses, refresh:scheduleRender, getState:() => state() };
 }
@@ -35931,8 +36276,9 @@ function smartReviewBootstrap() {
       const interactionScript = "<script>(" + systemInteractionConsistencyBootstrap.toString() + ")();<" + "/script>";
       const questDashboardScript = "<script>(" + questDashboardBootstrap.toString() + ")();<" + "/script>";
       const vocabularyReviewMixScript = "<script>(" + vocabularyReviewMixBootstrap.toString() + ")();<" + "/script>";
+      const vocabularyReviewPartialScript = "<script>(" + vocabularyReviewPartialProgressBootstrap.toString() + ")();<" + "/script>";
       const smartReviewScript = "<script>(" + smartReviewBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${smartReviewScript}`;
+      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
