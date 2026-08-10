@@ -280,6 +280,7 @@
         <div class="actions">
           <button class="button" id="loginButton">Mit Google anmelden</button>
           <button class="button secondary" id="syncButton" hidden>Jetzt sichern</button>
+          <button class="button ghost" id="reviewRecoveryButton" hidden>🛟 Verlorenen Reviewblock reparieren</button>
           <button class="button ghost" id="logoutButton" hidden>Abmelden</button>
         </div>
       </div>
@@ -324,6 +325,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
     import {
       browserLocalPersistence,
+      browserSessionPersistence,
+      indexedDBLocalPersistence,
       getAuth,
       GoogleAuthProvider,
       onAuthStateChanged,
@@ -353,7 +356,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "vocab-review-engine-v5-authoritative-srs-commits";
+    const CLOUD_FEATURE_VERSION = "storage-quota-fix-v6-compact-progress-indexeddb-auth";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -369,6 +372,7 @@
     const accountEmail = document.getElementById("accountEmail");
     const loginButton = document.getElementById("loginButton");
     const syncButton = document.getElementById("syncButton");
+    const reviewRecoveryButton = document.getElementById("reviewRecoveryButton");
     const logoutButton = document.getElementById("logoutButton");
     const appFrame = document.getElementById("appFrame");
     const conflictDialog = document.getElementById("conflictDialog");
@@ -619,13 +623,37 @@
         return result;
       };
       const compactVocabulary = vocabulary => (Array.isArray(vocabulary) ? vocabulary : []).map(item => {
-        if (item?.sourceType !== "core") return clone(item);
+        // Only built-in Core cards can be rehydrated from the bundled Core pack.
+        // Custom Core cards and Mining cards must remain complete.
+        if (item?.sourceType !== "core" || !item?.packEntryId) return clone(item);
         const compact = {};
-        ["id","packEntryId","word","reading","sourceType","stage","availableAt","srsUpdatedAt","srsRevision","createdAt","correct","incorrect","guruPassed","meanings","lrContexts","lrImportKey","lrMediaKey","lrHasAudio","lrHasImage"].forEach(key => {
+        [
+          "id","packEntryId","word","reading","meanings","sourceType","level","stage","availableAt",
+          "srsUpdatedAt","srsRevision","createdAt","correct","incorrect","guruPassed",
+          // word/reading/meanings stay because the Core-2000 migration uses them
+          // to preserve the established ordering and stable pack IDs. Large static
+          // examples, production cues and audio metadata are rebuilt from the pack.
+          "acceptedMeanings","synonyms","meaningAlternatives","closeMeanings",
+          "acceptedReadings","closeReadings","lrContexts","lrImportKey","lrMediaKey",
+          "lrHasAudio","lrHasImage"
+        ].forEach(key => {
           if (item[key] !== undefined) compact[key] = clone(item[key]);
         });
         return compact;
       });
+      const compactStoredData = source => {
+        const copy = clone(objectValue(source));
+        if (Array.isArray(copy.vocabulary)) copy.vocabulary = compactVocabulary(copy.vocabulary);
+        // Prepared sentence metadata is a disposable cache; the audio itself lives
+        // in IndexedDB. Keeping thousands of cache records in localStorage can
+        // crowd out actual learning progress and Firebase Auth.
+        delete copy.sentenceCache;
+        return copy;
+      };
+      const compactRaw = raw => {
+        const parsed = parseRaw(raw);
+        return Object.keys(parsed).length ? JSON.stringify(compactStoredData(parsed)) : raw;
+      };
       const mergeVocabulary = (current, preserved, currentHadVocabulary) => {
         const a = Array.isArray(current) ? current : [];
         const b = Array.isArray(preserved) ? preserved : [];
@@ -826,12 +854,7 @@
         result.progressVaultVersion = VERSION;
         return result;
       };
-      const snapshot = source => {
-        const copy = clone(objectValue(source));
-        if (Array.isArray(copy.vocabulary)) copy.vocabulary = compactVocabulary(copy.vocabulary);
-        delete copy.sentenceCache;
-        return copy;
-      };
+      const snapshot = source => compactStoredData(source);
       const readLegacyBackups = () => {
         const restored = {};
         try {
@@ -874,7 +897,7 @@
         const mergedRaw = mergeRaw(raw, preservedRaw);
         const merged = parseRaw(mergedRaw);
         if (Object.keys(merged).length) writeVault(merged);
-        return mergedRaw;
+        return Object.keys(merged).length ? JSON.stringify(compactStoredData(merged)) : mergedRaw;
       };
       const install = () => {
         if (Storage.prototype.setItem.__kqProgressVaultGuard) return;
@@ -895,13 +918,18 @@
           } catch (error) {
             console.warn("Kotoba Quest Fortschritts-Tresor konnte einen Schreibvorgang nicht stabilisieren", error);
           }
+          try {
+            nextValue = compactRaw(nextValue);
+          } catch (error) {
+            console.warn("Kotoba Quest Spielstand konnte vor dem Schreiben nicht komprimiert werden", error);
+          }
           return previousSetItem.call(this, key, nextValue);
         };
         wrapped.__kqProgressVaultGuard = true;
         wrapped.__kqOriginal = previousSetItem;
         Storage.prototype.setItem = wrapped;
       };
-      return { version: VERSION, key: VAULT_KEY, mergeData, mergeRaw, stabilizeRaw, writeVault, readVault, install };
+      return { version: VERSION, key: VAULT_KEY, mergeData, mergeRaw, stabilizeRaw, writeVault, readVault, compactStoredData, compactRaw, install };
     }
 
     function objectValue(value) {
@@ -1152,6 +1180,232 @@
     }
 
     const progressVault = progressVaultFactory();
+    const STORAGE_MAINTENANCE_VERSION = "1.0";
+
+    function localStorageUsageBytes() {
+      let total = 0;
+      try {
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index) || "";
+          const value = localStorage.getItem(key) || "";
+          total += (key.length + value.length) * 2;
+        }
+      } catch {}
+      return total;
+    }
+
+    function performStorageMaintenance({ silent = true } = {}) {
+      const beforeBytes = localStorageUsageBytes();
+      let compacted = false;
+      let freedLegacy = false;
+      let recoveredFromVault = false;
+      try {
+        const existingRaw = localStorage.getItem(STORAGE_KEY);
+        if (!isValidProgress(existingRaw)) {
+          return { beforeBytes, afterBytes: beforeBytes, compacted:false, freedLegacy:false, recoveredFromVault:false };
+        }
+
+        // Merge all protected progress *before* deleting/replacing any duplicate.
+        // This means a newer vault copy cannot be lost during quota recovery.
+        const mergedCompactRaw = progressVault.stabilizeRaw(existingRaw);
+        const mergedParsed = JSON.parse(mergedCompactRaw || "{}");
+        recoveredFromVault = Boolean(mergedCompactRaw && mergedCompactRaw !== existingRaw);
+
+        // V3 is authoritative. Old whole-save copies can consume megabytes and are
+        // no longer needed once a valid V3 save exists.
+        for (const legacyKey of ["kotobaQuestDataV1", "kotobaQuestDataV2"]) {
+          if (localStorage.getItem(legacyKey) != null) {
+            localStorage.removeItem(legacyKey);
+            freedLegacy = true;
+          }
+        }
+
+        const writeCompactMain = () => {
+          localStorage.setItem(STORAGE_KEY, mergedCompactRaw);
+          compacted = mergedCompactRaw.length < existingRaw.length;
+        };
+
+        try {
+          writeCompactMain();
+        } catch (error) {
+          // The Progress Vault is a duplicate safety copy. We already merged it
+          // into mergedCompactRaw above, so it is safe to remove temporarily to
+          // make room for the authoritative compact main save.
+          if (String(error?.name || "").includes("Quota") || String(error?.message || "").toLowerCase().includes("quota")) {
+            try { localStorage.removeItem(progressVault.key); } catch {}
+            writeCompactMain();
+          } else {
+            throw error;
+          }
+        }
+
+        // Recreate the vault in its compact representation after the main save
+        // has successfully been reduced.
+        progressVault.writeVault(mergedParsed);
+      } catch (error) {
+        console.error("Kotoba Quest Speicherbereinigung fehlgeschlagen", error);
+        if (!silent) {
+          try { toast("⚠️ Browser-Speicher konnte nicht vollständig bereinigt werden."); } catch {}
+        }
+      }
+
+      const afterBytes = localStorageUsageBytes();
+      const result = {
+        version: STORAGE_MAINTENANCE_VERSION,
+        beforeBytes,
+        afterBytes,
+        freedBytes: Math.max(0, beforeBytes - afterBytes),
+        compacted,
+        freedLegacy,
+        recoveredFromVault
+      };
+      window.KotobaQuestStorageMaintenance = {
+        version: STORAGE_MAINTENANCE_VERSION,
+        compactNow: options => performStorageMaintenance(options || {}),
+        usageBytes: localStorageUsageBytes,
+        lastResult: result
+      };
+      return result;
+    }
+
+    const initialStorageMaintenance = performStorageMaintenance({ silent:true });
+
+    const QUOTA_REVIEW_RECOVERY_KEY = "kotobaQuestQuotaReviewRecoveryV1";
+    const SRS_LEDGER_KEY = "kotobaQuestVocabSrsLedgerV1";
+    const REVIEW_REAL_DELAYS = {
+      1: 4 * 60 * 60 * 1000,
+      2: 8 * 60 * 60 * 1000,
+      3: 24 * 60 * 60 * 1000,
+      4: 2 * 24 * 60 * 60 * 1000,
+      5: 7 * 24 * 60 * 60 * 1000,
+      6: 14 * 24 * 60 * 60 * 1000,
+      7: 30 * 24 * 60 * 60 * 1000,
+      8: 120 * 24 * 60 * 60 * 1000
+    };
+
+    function dueCoreItemsForQuotaRecovery() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        const now = Date.now();
+        return (Array.isArray(parsed?.vocabulary) ? parsed.vocabulary : []).filter(item =>
+          String(item?.sourceType || "core") === "core" &&
+          Number(item?.stage || 0) > 0 &&
+          Number(item?.stage || 0) < 9 &&
+          Number(item?.availableAt || 0) > 0 &&
+          Number(item.availableAt) <= now
+        );
+      } catch {
+        return [];
+      }
+    }
+
+    function shouldOfferQuotaReviewRecovery() {
+      if (!reviewRecoveryButton) return false;
+      try {
+        const marker = JSON.parse(localStorage.getItem(QUOTA_REVIEW_RECOVERY_KEY) || "null");
+        if (marker?.completedAt) return false;
+      } catch {}
+      const due = dueCoreItemsForQuotaRecovery();
+      // Only surface this emergency tool after the new version actually freed a
+      // substantial amount of storage and a suspiciously large due block remains.
+      return Number(initialStorageMaintenance?.freedBytes || 0) >= 250000 && due.length >= 20;
+    }
+
+    function refreshQuotaReviewRecoveryButton() {
+      if (!reviewRecoveryButton) return;
+      const due = dueCoreItemsForQuotaRecovery();
+      const visible = shouldOfferQuotaReviewRecovery();
+      reviewRecoveryButton.hidden = !visible;
+      if (visible) reviewRecoveryButton.textContent = `🛟 Verlorenen Reviewblock reparieren (${due.length})`;
+    }
+
+    function repairLostQuotaReviewBatch() {
+      const due = dueCoreItemsForQuotaRecovery();
+      if (!due.length) {
+        refreshQuotaReviewRecoveryButton();
+        toast("Keine fälligen Core-Vokabeln für die Notfallreparatur gefunden.");
+        return;
+      }
+
+      const confirmed = confirm(
+        `Kotoba Quest hat ${due.length} aktuell fällige Core-Vokabeln gefunden.\n\n` +
+        "Diese Notfallreparatur ist für den Reviewblock gedacht, den du bereits vollständig bearbeitet hattest, " +
+        "dessen Speicherung wegen des vollen Browser-Speichers fehlgeschlagen ist.\n\n" +
+        "Die Vokabeln werden NICHT hochgestuft. Ihre aktuelle SRS-Stufe bleibt bestehen und das nächste Review " +
+        "wird konservativ mit dem Zeitabstand der vorherigen Stufe geplant.\n\n" +
+        "Nur fortfahren, wenn dieser fällige Block wirklich der verlorene, bereits bearbeitete Reviewblock ist."
+      );
+      if (!confirmed) return;
+
+      try {
+        const source = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        const vocabulary = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        const dueIds = new Set(due.map(item => String(item.id || item.packEntryId || "")));
+        let ledger = { version:"1.0", updatedAt:0, items:{} };
+        try {
+          const existing = JSON.parse(localStorage.getItem(SRS_LEDGER_KEY) || "null");
+          if (existing && typeof existing === "object") ledger = {
+            version:String(existing.version || "1.0"),
+            updatedAt:Number(existing.updatedAt || 0),
+            items: existing.items && typeof existing.items === "object" ? existing.items : {}
+          };
+        } catch {}
+
+        const now = Date.now();
+        let repaired = 0;
+        vocabulary.forEach((item, index) => {
+          const id = String(item?.id || item?.packEntryId || "");
+          if (!dueIds.has(id)) return;
+          const stage = Math.max(1, Math.min(8, Number(item.stage || 1)));
+          const delayStage = Math.max(1, stage - 1);
+          const updatedAt = now + repaired + 1;
+          item.availableAt = now + Number(REVIEW_REAL_DELAYS[delayStage] || REVIEW_REAL_DELAYS[1]);
+          item.srsUpdatedAt = updatedAt;
+          item.srsRevision = updatedAt;
+          item.guruPassed = Boolean(item.guruPassed || stage >= 5);
+          const after = {
+            stage,
+            availableAt:item.availableAt,
+            srsUpdatedAt:updatedAt,
+            srsRevision:updatedAt,
+            correct:Math.max(0, Number(item.correct || 0)),
+            incorrect:Math.max(0, Number(item.incorrect || 0)),
+            guruPassed:Boolean(item.guruPassed)
+          };
+          ledger.items[id] = { id, updatedAt, after };
+          repaired += 1;
+        });
+
+        // Old half-review records from the failed batch must not resurrect one
+        // direction after the neutral recovery.
+        if (source.vocabReviewPartials?.items && typeof source.vocabReviewPartials.items === "object") {
+          dueIds.forEach(id => { delete source.vocabReviewPartials.items[id]; });
+        }
+
+        ledger.updatedAt = now + repaired + 1;
+        localStorage.setItem(SRS_LEDGER_KEY, JSON.stringify(ledger));
+        const compactRaw = progressVault.compactRaw(JSON.stringify(source));
+        localStorage.setItem(STORAGE_KEY, compactRaw);
+        progressVault.writeVault(JSON.parse(compactRaw));
+        localStorage.setItem(QUOTA_REVIEW_RECOVERY_KEY, JSON.stringify({
+          version:1,
+          completedAt:Date.now(),
+          repairedCount:repaired,
+          mode:"keep-stage-previous-stage-delay"
+        }));
+
+        observedLocalRaw = compactRaw;
+        reviewRecoveryButton.hidden = true;
+        reloadAppDocument();
+        toast(`${repaired} verlorene Reviews neutral wiederhergestellt.`);
+        if (currentUser) setTimeout(() => saveLocalProgressToCloud({ force:true, reason:"manual" }), 250);
+      } catch (error) {
+        console.error("Kotoba Quest Review-Notfallreparatur fehlgeschlagen", error);
+        toast("Review-Notfallreparatur konnte nicht gespeichert werden.");
+      }
+    }
+
+    reviewRecoveryButton?.addEventListener("click", repairLostQuotaReviewBatch);
 
     function stabilizeAllProgress(raw = localStorage.getItem(STORAGE_KEY), preservedRaw = null) {
       const vaultMerged = progressVault.stabilizeRaw(raw, preservedRaw);
@@ -35592,6 +35846,24 @@ function vocabularyReviewPartialProgressBootstrap() {
   const objectValue = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const clone = value => { try { return structuredClone(value); } catch { try { return JSON.parse(JSON.stringify(value)); } catch { return value; } } };
   const latest = (...values) => Math.max(0, ...values.map(Number).filter(Number.isFinite));
+  const isQuotaError = error => /quota|storage.*full|speicher.*voll/i.test(`${error?.name || ""} ${error?.message || ""}`);
+  function emergencyStorageCleanup() {
+    try {
+      const parentMaintenance = window.parent?.KotobaQuestStorageMaintenance;
+      if (parentMaintenance?.compactNow) {
+        parentMaintenance.compactNow({silent:true});
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+  function storageFailureNotice() {
+    window.__KQ_STORAGE_WRITE_FAILED__ = true;
+    try {
+      if (typeof toast === "function") toast("⚠️ Speicher voll: Review wurde noch nicht dauerhaft übernommen.");
+      else alert("Kotoba Quest konnte deinen Review-Fortschritt nicht dauerhaft speichern. Bitte Seite nicht schließen.");
+    } catch {}
+  }
 
   function sourceData() {
     try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
@@ -35626,6 +35898,7 @@ function vocabularyReviewPartialProgressBootstrap() {
   }
   let commitJournal=loadCommitJournal();
   function writeCommitJournal(){
+    const write=()=>localStorage.setItem(COMMIT_KEY,JSON.stringify(commitJournal));
     try{
       const cutoff=Date.now()-120*24*60*60*1000;
       for(const [id,list] of Object.entries(commitJournal.items||{})){
@@ -35633,8 +35906,16 @@ function vocabularyReviewPartialProgressBootstrap() {
         if(kept.length) commitJournal.items[id]=kept; else delete commitJournal.items[id];
       }
       commitJournal.updatedAt=Date.now();
-      localStorage.setItem(COMMIT_KEY,JSON.stringify(commitJournal));
-    }catch{}
+      write();
+      return true;
+    }catch(error){
+      if(isQuotaError(error)&&emergencyStorageCleanup()){
+        try{write();return true;}catch{}
+      }
+      console.error("Kotoba Quest: Review-Journal konnte nicht gespeichert werden",error);
+      storageFailureNotice();
+      return false;
+    }
   }
   function itemSnapshot(item){
     const srsAt=Math.max(0,Number(item?.srsUpdatedAt||0),Number(item?.srsRevision||0));
@@ -35677,7 +35958,14 @@ function vocabularyReviewPartialProgressBootstrap() {
   }
   let srsLedger=loadSrsLedger();
   function writeSrsLedger(){
-    try{srsLedger.updatedAt=Date.now();localStorage.setItem(SRS_LEDGER_KEY,JSON.stringify(srsLedger));}catch(error){console.error("Kotoba Quest: SRS-Ledger konnte nicht gespeichert werden",error);}
+    const write=()=>localStorage.setItem(SRS_LEDGER_KEY,JSON.stringify(srsLedger));
+    try{srsLedger.updatedAt=Date.now();write();return true;}
+    catch(error){
+      if(isQuotaError(error)&&emergencyStorageCleanup()){try{write();return true;}catch{}}
+      console.error("Kotoba Quest: SRS-Ledger konnte nicht gespeichert werden",error);
+      storageFailureNotice();
+      return false;
+    }
   }
   function recordSrsLedger(item,after,completedAt){
     if(!item?.id||!after)return;
@@ -35721,12 +36009,23 @@ function vocabularyReviewPartialProgressBootstrap() {
     recordSrsLedger(item,entry.after,completedAt);
   }
   function writeMainDataAtomic(){
+    const write=()=>localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData()));
     try{
       syncIntoData();
-      localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData()));
+      write();
+      window.__KQ_STORAGE_WRITE_FAILED__ = false;
       return true;
     }catch(error){
+      if(isQuotaError(error)&&emergencyStorageCleanup()){
+        try{
+          syncIntoData();
+          write();
+          window.__KQ_STORAGE_WRITE_FAILED__ = false;
+          return true;
+        }catch(retryError){error=retryError;}
+      }
       console.error("Kotoba Quest: Vokabel-SRS-Hauptsave konnte nicht geschrieben werden",error);
+      storageFailureNotice();
       return false;
     }
   }
@@ -35735,7 +36034,7 @@ function vocabularyReviewPartialProgressBootstrap() {
     // due timestamp is intentionally NOT required: cloud/vault reconstruction
     // may alter an obsolete availableAt value even though the review was done.
     migrateJournalToSrsLedger();
-    let changed=false,restoredCount=0;
+    let changed=false;
     for(const [id,entry] of Object.entries(srsLedger.items||{})){
       const item=currentItem(id);if(!item||!entry?.after)continue;
       const ledgerAt=Math.max(0,Number(entry.updatedAt||0),Number(entry.after?.srsUpdatedAt||0));
@@ -35745,15 +36044,14 @@ function vocabularyReviewPartialProgressBootstrap() {
         (item.availableAt==null?null:Number(item.availableAt))!==(authoritative.availableAt==null?null:Number(authoritative.availableAt));
       if(ledgerAt>itemAt || (ledgerAt===itemAt && ledgerAt>0 && stateDiff) || (itemAt===0 && ledgerAt>0)){
         applySnapshot(item,{...authoritative,srsUpdatedAt:ledgerAt,srsRevision:ledgerAt});
-        changed=true;restoredCount++;
+        changed=true;
       }
     }
     if(changed){
       syncIntoData();writeBackup();writeCommitJournal();writeSrsLedger();writeMainDataAtomic();
       try{window.dispatchEvent(new CustomEvent("kotoba-progress-dirty"));}catch{}
-      if(restoredCount){setTimeout(()=>{try{if(typeof toast==="function")toast(`✅ ${restoredCount} bereits abgeschlossene Vokabelreview${restoredCount===1?"":"s"} aus dem SRS-Journal wiederhergestellt.`);}catch{}},350);}
     }
-    return restoredCount;
+    return changed;
   }
 
   function emptyStore() { return { version:VERSION, items:{} }; }
@@ -35875,7 +36173,14 @@ function vocabularyReviewPartialProgressBootstrap() {
   }
 
   function writeBackup() {
-    try { localStorage.setItem(BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),partials:store,stats})); } catch {}
+    const write=()=>localStorage.setItem(BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),partials:store,stats}));
+    try { write(); return true; }
+    catch(error) {
+      if(isQuotaError(error)&&emergencyStorageCleanup()){try{write();return true;}catch{}}
+      console.error("Kotoba Quest: Review-Zwischenstand konnte nicht gespeichert werden",error);
+      storageFailureNotice();
+      return false;
+    }
   }
 
   let fullPersistTimer=null;
@@ -36972,6 +37277,9 @@ function smartReviewBootstrap() {
       if (code.includes("popup-closed-by-user")) {
         return "Die Anmeldung wurde abgebrochen.";
       }
+      if (code.includes("quota") || /quota|storage.*full|speicher.*voll/i.test(String(error?.message || ""))) {
+        return "Der Browser-Speicher war voll. Kotoba Quest hat den Spielstand komprimiert; lade die Seite einmal neu und versuche die Anmeldung erneut.";
+      }
       return String(error?.message || "Unbekannter Fehler").replace(/^Firebase:\s*/i, "");
     }
 
@@ -37157,10 +37465,24 @@ function smartReviewBootstrap() {
 
     await loadAppDocument();
 
+    if (Number(initialStorageMaintenance?.freedBytes || 0) > 50000) {
+      const freedMb = (Number(initialStorageMaintenance.freedBytes) / 1024 / 1024).toFixed(1).replace(".", ",");
+      setTimeout(() => toast(`Browser-Speicher bereinigt · ${freedMb} MB freigegeben.`), 350);
+    }
+    refreshQuotaReviewRecoveryButton();
+
     try {
-      await setPersistence(auth, browserLocalPersistence);
+      // Keep Firebase Auth away from Kotoba Quest's progress localStorage.
+      // IndexedDB has a separate, much roomier persistence backend and prevents
+      // a large language-learning save from blocking Google sign-in.
+      await setPersistence(auth, indexedDBLocalPersistence);
     } catch (error) {
-      console.warn("Firebase auth persistence could not be set", error);
+      console.warn("Firebase IndexedDB auth persistence could not be set; using session persistence", error);
+      try {
+        await setPersistence(auth, browserSessionPersistence);
+      } catch (fallbackError) {
+        console.warn("Firebase session auth persistence could not be set", fallbackError);
+      }
     }
 
     onAuthStateChanged(auth, user => {
