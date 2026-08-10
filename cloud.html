@@ -353,7 +353,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "vocab-review-engine-v3-fair-directional-grading";
+    const CLOUD_FEATURE_VERSION = "vocab-review-engine-v5-authoritative-srs-commits";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -586,13 +586,27 @@
         const b = objectValue(preserved);
         const aAttempts = Math.max(0, number(a.correct) + number(a.incorrect));
         const bAttempts = Math.max(0, number(b.correct) + number(b.incorrect));
+        // SRS state must be selected by the newest *committed review*, not by
+        // historical correct/incorrect counters. Those counters are cumulative
+        // analytics and can legitimately be larger in an older cloud/vault copy.
+        const aSrsAt = Math.max(0, number(a.srsUpdatedAt), number(a.srsRevision));
+        const bSrsAt = Math.max(0, number(b.srsUpdatedAt), number(b.srsRevision));
         let chosen = a;
-        if (!Object.keys(a).length || bAttempts > aAttempts || (aAttempts === bAttempts && number(a.stage) === 0 && number(b.stage) > 0)) chosen = b;
+        if (!Object.keys(a).length) chosen = b;
+        else if (aSrsAt || bSrsAt) {
+          if (bSrsAt > aSrsAt) chosen = b;
+          else if (aSrsAt === bSrsAt && bAttempts > aAttempts) chosen = b;
+        } else if (bAttempts > aAttempts || (aAttempts === bAttempts && number(a.stage) === 0 && number(b.stage) > 0)) {
+          chosen = b;
+        }
+        const chosenSrsAt = Math.max(0, number(chosen.srsUpdatedAt), number(chosen.srsRevision));
         const result = {
           ...b,
           ...a,
           stage: Math.max(0, Math.min(9, number(chosen.stage))),
           availableAt: chosen.availableAt == null ? null : number(chosen.availableAt),
+          srsUpdatedAt: chosenSrsAt || undefined,
+          srsRevision: chosenSrsAt || undefined,
           correct: Math.max(0, number(a.correct), number(b.correct)),
           incorrect: Math.max(0, number(a.incorrect), number(b.incorrect)),
           guruPassed: Boolean(a.guruPassed || b.guruPassed || number(chosen.stage) >= 5),
@@ -607,7 +621,7 @@
       const compactVocabulary = vocabulary => (Array.isArray(vocabulary) ? vocabulary : []).map(item => {
         if (item?.sourceType !== "core") return clone(item);
         const compact = {};
-        ["id","packEntryId","word","reading","sourceType","stage","availableAt","createdAt","correct","incorrect","guruPassed","meanings","lrContexts","lrImportKey","lrMediaKey","lrHasAudio","lrHasImage"].forEach(key => {
+        ["id","packEntryId","word","reading","sourceType","stage","availableAt","srsUpdatedAt","srsRevision","createdAt","correct","incorrect","guruPassed","meanings","lrContexts","lrImportKey","lrMediaKey","lrHasAudio","lrHasImage"].forEach(key => {
           if (item[key] !== undefined) compact[key] = clone(item[key]);
         });
         return compact;
@@ -35567,6 +35581,7 @@ function vocabularyReviewPartialProgressBootstrap() {
   const VAULT_KEY = "kotobaQuestProgressVaultV1";
   const BACKUP_KEY = "kotobaQuestVocabReviewStateV2";
   const COMMIT_KEY = "kotobaQuestVocabReviewCommitJournalV1";
+  const SRS_LEDGER_KEY = "kotobaQuestVocabSrsLedgerV1";
   const ROOT_KEY = "vocabReviewPartials";
   const STATS_KEY = "vocabReviewStats";
   let wrappedStart = false;
@@ -35622,9 +35637,12 @@ function vocabularyReviewPartialProgressBootstrap() {
     }catch{}
   }
   function itemSnapshot(item){
+    const srsAt=Math.max(0,Number(item?.srsUpdatedAt||0),Number(item?.srsRevision||0));
     return {
       stage:Math.max(0,Math.min(9,Number(item?.stage||0))),
       availableAt:item?.availableAt==null?null:Number(item.availableAt),
+      srsUpdatedAt:srsAt||0,
+      srsRevision:srsAt||0,
       correct:Math.max(0,Number(item?.correct||0)),
       incorrect:Math.max(0,Number(item?.incorrect||0)),
       guruPassed:Boolean(item?.guruPassed)
@@ -35637,15 +35655,59 @@ function vocabularyReviewPartialProgressBootstrap() {
     if(!item||!snapshot)return;
     item.stage=Math.max(0,Math.min(9,Number(snapshot.stage||0)));
     item.availableAt=snapshot.availableAt==null?null:Number(snapshot.availableAt);
+    const srsAt=Math.max(0,Number(snapshot.srsUpdatedAt||0),Number(snapshot.srsRevision||0));
+    if(srsAt){item.srsUpdatedAt=srsAt;item.srsRevision=srsAt;}
     item.correct=Math.max(Number(item.correct||0),Number(snapshot.correct||0));
     item.incorrect=Math.max(Number(item.incorrect||0),Number(snapshot.incorrect||0));
     item.guruPassed=Boolean(item.guruPassed||snapshot.guruPassed||item.stage>=5);
   }
+  function emptySrsLedger(){return {version:"1.0",updatedAt:0,items:{}};}
+  function loadSrsLedger(){
+    try{
+      const raw=objectValue(JSON.parse(localStorage.getItem(SRS_LEDGER_KEY)||"null"));
+      const result=emptySrsLedger();result.updatedAt=Number(raw.updatedAt||0);
+      for(const [id,value] of Object.entries(objectValue(raw.items))){
+        const entry=objectValue(value),snapshot=objectValue(entry.after||entry.snapshot);
+        const updatedAt=Math.max(0,Number(entry.updatedAt||0),Number(snapshot.srsUpdatedAt||0),Number(snapshot.srsRevision||0));
+        if(!updatedAt||!Object.keys(snapshot).length)continue;
+        result.items[id]={id:String(id),updatedAt,after:clone(snapshot)};
+      }
+      return result;
+    }catch{return emptySrsLedger();}
+  }
+  let srsLedger=loadSrsLedger();
+  function writeSrsLedger(){
+    try{srsLedger.updatedAt=Date.now();localStorage.setItem(SRS_LEDGER_KEY,JSON.stringify(srsLedger));}catch(error){console.error("Kotoba Quest: SRS-Ledger konnte nicht gespeichert werden",error);}
+  }
+  function recordSrsLedger(item,after,completedAt){
+    if(!item?.id||!after)return;
+    const id=String(item.id),updatedAt=Math.max(1,Number(completedAt||after.srsUpdatedAt||Date.now()));
+    const snapshot=clone(after);snapshot.srsUpdatedAt=updatedAt;snapshot.srsRevision=updatedAt;
+    const previous=srsLedger.items[id];
+    if(!previous||updatedAt>=Number(previous.updatedAt||0))srsLedger.items[id]={id,updatedAt,after:snapshot};
+    writeSrsLedger();
+  }
+  function migrateJournalToSrsLedger(){
+    let changed=false;
+    for(const [id,list] of Object.entries(commitJournal.items||{})){
+      const entries=(Array.isArray(list)?list:[]).filter(Boolean).sort((a,b)=>Number(a.completedAt||0)-Number(b.completedAt||0));
+      const latestEntry=entries.at(-1);if(!latestEntry?.after)continue;
+      const updatedAt=Math.max(1,Number(latestEntry.completedAt||0),Number(latestEntry.after?.srsUpdatedAt||0));
+      if(!srsLedger.items[id]||updatedAt>Number(srsLedger.items[id].updatedAt||0)){
+        const snapshot=clone(latestEntry.after);snapshot.srsUpdatedAt=updatedAt;snapshot.srsRevision=updatedAt;
+        srsLedger.items[id]={id:String(id),updatedAt,after:snapshot};changed=true;
+      }
+    }
+    if(changed)writeSrsLedger();
+    return changed;
+  }
   function appendCommit(item,before,after,outcome){
     if(!item?.id)return;
     const id=String(item.id);
+    const completedAt=Math.max(1,Number(outcome?.committedAt||after?.srsUpdatedAt||Date.now()));
+    after.srsUpdatedAt=completedAt;after.srsRevision=completedAt;
     const entry={
-      id,kind:String(item.sourceType||"core"),completedAt:Date.now(),
+      id,kind:String(item.sourceType||"core"),completedAt,
       before:clone(before),after:clone(after),
       beforeCycle:snapshotCycle(before),afterCycle:snapshotCycle(after),
       errorCount:Number(outcome?.errorCount||0)
@@ -35656,6 +35718,7 @@ function vocabularyReviewPartialProgressBootstrap() {
       commitJournal.items[id]=list.slice(-8);
     }
     writeCommitJournal();
+    recordSrsLedger(item,entry.after,completedAt);
   }
   function writeMainDataAtomic(){
     try{
@@ -35668,29 +35731,29 @@ function vocabularyReviewPartialProgressBootstrap() {
     }
   }
   function reconcileCommitJournal(){
-    let changed=false;
-    for(const [id,list] of Object.entries(commitJournal.items||{})){
-      const item=currentItem(id);
-      if(!item)continue;
-      for(const entry of (Array.isArray(list)?list:[]).sort((a,b)=>Number(a.completedAt||0)-Number(b.completedAt||0))){
-        const currentCycle=cycle(item);
-        if(currentCycle===String(entry.beforeCycle||snapshotCycle(entry.before))){
-          applySnapshot(item,entry.after);
-          changed=true;
-          continue;
-        }
-        if(currentCycle===String(entry.afterCycle||snapshotCycle(entry.after))){
-          item.correct=Math.max(Number(item.correct||0),Number(entry.after?.correct||0));
-          item.incorrect=Math.max(Number(item.incorrect||0),Number(entry.after?.incorrect||0));
-          item.guruPassed=Boolean(item.guruPassed||entry.after?.guruPassed||Number(item.stage||0)>=5);
-        }
+    // The latest completed review is authoritative. Exact matching of an old
+    // due timestamp is intentionally NOT required: cloud/vault reconstruction
+    // may alter an obsolete availableAt value even though the review was done.
+    migrateJournalToSrsLedger();
+    let changed=false,restoredCount=0;
+    for(const [id,entry] of Object.entries(srsLedger.items||{})){
+      const item=currentItem(id);if(!item||!entry?.after)continue;
+      const ledgerAt=Math.max(0,Number(entry.updatedAt||0),Number(entry.after?.srsUpdatedAt||0));
+      const itemAt=Math.max(0,Number(item.srsUpdatedAt||0),Number(item.srsRevision||0));
+      const authoritative=entry.after;
+      const stateDiff=Number(item.stage||0)!==Number(authoritative.stage||0) ||
+        (item.availableAt==null?null:Number(item.availableAt))!==(authoritative.availableAt==null?null:Number(authoritative.availableAt));
+      if(ledgerAt>itemAt || (ledgerAt===itemAt && ledgerAt>0 && stateDiff) || (itemAt===0 && ledgerAt>0)){
+        applySnapshot(item,{...authoritative,srsUpdatedAt:ledgerAt,srsRevision:ledgerAt});
+        changed=true;restoredCount++;
       }
     }
     if(changed){
-      syncIntoData();writeBackup();writeCommitJournal();writeMainDataAtomic();
+      syncIntoData();writeBackup();writeCommitJournal();writeSrsLedger();writeMainDataAtomic();
       try{window.dispatchEvent(new CustomEvent("kotoba-progress-dirty"));}catch{}
+      if(restoredCount){setTimeout(()=>{try{if(typeof toast==="function")toast(`✅ ${restoredCount} bereits abgeschlossene Vokabelreview${restoredCount===1?"":"s"} aus dem SRS-Journal wiederhergestellt.`);}catch{}},350);}
     }
-    return changed;
+    return restoredCount;
   }
 
   function emptyStore() { return { version:VERSION, items:{} }; }
@@ -35992,7 +36055,10 @@ function vocabularyReviewPartialProgressBootstrap() {
     // true even if later reviews expose a weakness.
     if(item.stage>=5)item.guruPassed=true;
     scheduleReviewOutcome(item,delayStage);
-    return {errorCount,correctCount,oldStage,newStage,delayStage};
+    const committedAt=Date.now();
+    item.srsUpdatedAt=committedAt;
+    item.srsRevision=committedAt;
+    return {errorCount,correctCount,oldStage,newStage,delayStage,committedAt};
   }
 
   function preserveCoreUnlocks(callback) {
@@ -36155,7 +36221,7 @@ function vocabularyReviewPartialProgressBootstrap() {
   persistQuietly();
   install();setTimeout(install,0);setTimeout(install,400);
 
-  window.KotobaQuestVocabularyReviewPartials={version:VERSION,applyOutcome:(item,errors)=>applyDirectionalReviewOutcome(item,errors),count:validSavedCount,clear:itemId=>clearRecord(itemId),refresh:install,getStore:()=>clone(store),getStats:()=>clone(stats),getCommitJournal:()=>clone(commitJournal),summary:kind=>reviewSummary(kind),recover:()=>{store=mergeStores(store,rawStoredData()[ROOT_KEY],vaultData()[ROOT_KEY],backupState().partials);stats=mergeStats(stats,rawStoredData()[STATS_KEY],vaultData()[STATS_KEY],backupState().stats);reconcileCommitJournal();cleanInvalidRecords();migrateRecoveredDirectionsToStats();finalizePersistedCompleteRecords();persistQuietly({full:true});return validSavedCount();}};
+  window.KotobaQuestVocabularyReviewPartials={version:VERSION,applyOutcome:(item,errors)=>applyDirectionalReviewOutcome(item,errors),count:validSavedCount,clear:itemId=>clearRecord(itemId),refresh:install,getStore:()=>clone(store),getStats:()=>clone(stats),getCommitJournal:()=>clone(commitJournal),getSrsLedger:()=>clone(srsLedger),summary:kind=>reviewSummary(kind),recover:()=>{store=mergeStores(store,rawStoredData()[ROOT_KEY],vaultData()[ROOT_KEY],backupState().partials);stats=mergeStats(stats,rawStoredData()[STATS_KEY],vaultData()[STATS_KEY],backupState().stats);reconcileCommitJournal();cleanInvalidRecords();migrateRecoveredDirectionsToStats();finalizePersistedCompleteRecords();persistQuietly({full:true});return validSavedCount();}};
 }
 
 function smartReviewBootstrap() {
