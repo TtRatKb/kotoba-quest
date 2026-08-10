@@ -394,7 +394,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "storage-health-v7-bounded-history";
+    const CLOUD_FEATURE_VERSION = "storage-health-v8-core-progress-delta";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -670,25 +670,57 @@
         if (Array.isArray(a.lrContexts) || Array.isArray(b.lrContexts)) result.lrContexts = mergeContexts(b.lrContexts, a.lrContexts);
         return result;
       };
-      const compactVocabulary = vocabulary => (Array.isArray(vocabulary) ? vocabulary : []).map(item => {
-        // Only built-in Core cards can be rehydrated from the bundled Core pack.
-        // Custom Core cards and Mining cards must remain complete.
-        if (item?.sourceType !== "core" || !item?.packEntryId) return clone(item);
-        const compact = {};
-        [
-          "id","packEntryId","word","reading","meanings","sourceType","level","stage","availableAt",
-          "srsUpdatedAt","srsRevision","createdAt","correct","incorrect","guruPassed",
-          // word/reading/meanings stay because the Core-2000 migration uses them
-          // to preserve the established ordering and stable pack IDs. Large static
-          // examples, production cues and audio metadata are rebuilt from the pack.
-          "acceptedMeanings","synonyms","meaningAlternatives","closeMeanings",
-          "acceptedReadings","closeReadings","lrContexts","lrImportKey","lrMediaKey",
-          "lrHasAudio","lrHasImage"
-        ].forEach(key => {
-          if (item[key] !== undefined) compact[key] = clone(item[key]);
+      const compactVocabulary = vocabulary => {
+        const list = Array.isArray(vocabulary) ? vocabulary : [];
+        const levelSlots = new Map();
+        return list.map(item => {
+          // Only bundled Core cards have a packEntryId. They can be rehydrated from
+          // the immutable Core-2000 catalogue, so localStorage only needs their
+          // *progress delta*. Custom Core cards and Mining cards remain complete.
+          if (item?.sourceType !== "core" || !item?.packEntryId) return clone(item);
+
+          const level = Math.max(1, number(item.level) || 1);
+          const slot = levelSlots.get(level) || 0;
+          levelSlots.set(level, slot + 1);
+          const explicitIndex = Number(item.coreIndex);
+          const inferredIndex = (level - 1) * 20 + slot;
+          const coreIndex = Number.isFinite(explicitIndex) && explicitIndex >= 0 && explicitIndex < 2000
+            ? Math.floor(explicitIndex)
+            : Math.max(0, Math.min(1999, inferredIndex));
+
+          const compact = {
+            id:String(item.id || item.packEntryId),
+            packEntryId:String(item.packEntryId),
+            sourceType:"core",
+            level,
+            coreIndex,
+            stage:Math.max(0, Math.min(9, number(item.stage))),
+            availableAt:item.availableAt == null ? null : number(item.availableAt),
+            createdAt:number(item.createdAt) || Date.now(),
+            correct:Math.max(0, number(item.correct)),
+            incorrect:Math.max(0, number(item.incorrect)),
+            guruPassed:Boolean(item.guruPassed || number(item.stage) >= 5)
+          };
+
+          const srsAt = Math.max(0, number(item.srsUpdatedAt), number(item.srsRevision));
+          if (srsAt) {
+            compact.srsUpdatedAt = srsAt;
+            compact.srsRevision = srsAt;
+          }
+
+          // Keep only genuine user/card enrichments. Empty default arrays/strings
+          // were responsible for hundreds of kilobytes of needless duplication.
+          ["acceptedMeanings","synonyms","meaningAlternatives","closeMeanings","acceptedReadings","closeReadings","lrContexts"].forEach(key => {
+            if (Array.isArray(item[key]) && item[key].length) compact[key] = clone(item[key]);
+          });
+          ["lrImportKey","lrMediaKey"].forEach(key => {
+            if (item[key]) compact[key] = clone(item[key]);
+          });
+          if (item.lrHasAudio) compact.lrHasAudio = true;
+          if (item.lrHasImage) compact.lrHasImage = true;
+          return compact;
         });
-        return compact;
-      });
+      };
       const compactStoredData = source => {
         const copy = clone(objectValue(source));
         if (Array.isArray(copy.vocabulary)) copy.vocabulary = compactVocabulary(copy.vocabulary);
@@ -1228,7 +1260,7 @@
     }
 
     const progressVault = progressVaultFactory();
-    const STORAGE_MAINTENANCE_VERSION = "1.1";
+    const STORAGE_MAINTENANCE_VERSION = "1.2";
 
     const STORAGE_SAFE_BUDGET_BYTES = 4 * 1024 * 1024;
     const STORAGE_WARNING_RATIO = 0.70;
@@ -1967,14 +1999,48 @@
         console.warn("Kotoba Core 2000: Vorhandener Spielstand konnte für die Migration nicht gelesen werden.", error);
       }
 
-      const legacyCore = storedVocabulary
+      // A compact save intentionally does not repeat the static word/reading/
+      // meaning data for all 2,000 bundled cards. Rehydrate those fields here while
+      // preserving the exact historical packEntryId used by the user's progress.
+      const storedCoreRows = storedVocabulary
         .map((item, position) => ({ item, position }))
-        .filter(entry => entry.item?.sourceType === "core" && entry.item?.word && entry.item?.reading)
-        .sort((left, right) =>
-          Number(left.item.level || 999) - Number(right.item.level || 999) ||
-          left.position - right.position
-        )
-        .map(entry => entry.item);
+        .filter(entry => entry.item?.sourceType === "core" && entry.item?.packEntryId)
+        .sort((left, right) => {
+          const li = Number(left.item.coreIndex);
+          const ri = Number(right.item.coreIndex);
+          const lHas = Number.isFinite(li) && li >= 0;
+          const rHas = Number.isFinite(ri) && ri >= 0;
+          if (lHas && rHas && li !== ri) return li - ri;
+          if (lHas !== rHas) return lHas ? -1 : 1;
+          return Number(left.item.level || 999) - Number(right.item.level || 999) || left.position - right.position;
+        });
+
+      const levelSlots = new Map();
+      const legacyCore = storedCoreRows.map((entry, ordinal) => {
+        const item = entry.item || {};
+        const level = Math.max(1, Number(item.level || 1));
+        const slot = levelSlots.get(level) || 0;
+        levelSlots.set(level, slot + 1);
+        const explicitIndex = Number(item.coreIndex);
+        const inferredIndex = (level - 1) * 20 + slot;
+        const coreIndex = Number.isFinite(explicitIndex) && explicitIndex >= 0 && explicitIndex < 2000
+          ? Math.floor(explicitIndex)
+          : (inferredIndex >= 0 && inferredIndex < 2000 ? inferredIndex : ordinal);
+        if (item.word && item.reading) return item;
+        const built = BUILT_IN[coreIndex];
+        if (!built) return null;
+        const [word, reading, meaning, pos] = built;
+        const meanings = cleanList(meaning);
+        return {
+          ...item,
+          coreIndex,
+          word,
+          reading,
+          meanings,
+          productionCue: meanings.join("; "),
+          pos: pos || "Wort"
+        };
+      }).filter(Boolean);
 
       const merged = [];
       const seenKeys = new Set();
