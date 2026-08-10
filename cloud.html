@@ -20857,6 +20857,9 @@
         const vocab = vocabularyStats();
         const grammar = grammarStats();
         const vocabDue = dueVocabulary("core").length;
+        const vocabReviewSummary = window.KotobaQuestVocabularyReviewPartials?.summary?.("core") || null;
+        const vocabDirectionDue = Math.max(0, Number(vocabReviewSummary?.questions ?? (vocabDue * 2)));
+        const vocabPartialWords = Math.max(0, Number(vocabReviewSummary?.partialWords || 0));
         const grammarDueCount = dueGrammar().length;
         const lessons = availableCoreLessons();
         const placement = pendingPlacement();
@@ -20887,7 +20890,7 @@
                 ? "Vokabeln und Grammatik sind getrennt organisiert, aber hier gemeinsam im Blick."
                 : "Du kannst eine neue Lektion beginnen oder später zur nächsten Wiederholung zurückkommen."}</p>
               <div class="button-row">
-                <button class="primary" id="kqDashboardVocabReview" ${vocabDue ? "" : "disabled"}>${vocabDue} Vokabel-Reviews</button>
+                <button class="primary" id="kqDashboardVocabReview" ${vocabDue ? "" : "disabled"}>${vocabDue} Vokabeln · ${vocabDirectionDue} Fragen</button>
                 <button class="secondary" id="kqDashboardGrammarReview" ${grammarDueCount ? "" : "disabled"}>${grammarDueCount} Grammatik-Reviews</button>
               </div>
             </article>
@@ -20902,8 +20905,8 @@
             <article class="card kq-review-card">
               <div class="kq-card-heading"><span class="kq-card-icon">語</span><div><h3>Vokabeln</h3><p>Core-Level ${currentLevel}</p></div></div>
               <div class="kq-due-number">${vocabDue}</div>
-              <strong>${vocabDue ? "jetzt fällig" : `Nächste Wiederholung ${formatMoment(nextVocab)}`}</strong>
-              <p class="muted small">${placement ? "Die Einstufung des aktuellen Levels ist noch offen." : lessons ? `${lessons} neue Core-Vokabeln sind freigeschaltet.` : `${vocab.guru} Core-Wörter sind mindestens auf Guru.`}</p>
+              <strong>${vocabDue ? `${vocabDirectionDue} Richtungsfragen offen` : `Nächste Wiederholung ${formatMoment(nextVocab)}`}</strong>
+              <p class="muted small">${vocabDue && vocabPartialWords ? `${vocabPartialWords} Vokabel${vocabPartialWords===1?" ist":"n sind"} bereits zur Hälfte erledigt und behalten diesen Zwischenstand.` : placement ? "Die Einstufung des aktuellen Levels ist noch offen." : lessons ? `${lessons} neue Core-Vokabeln sind freigeschaltet.` : `${vocab.guru} Core-Wörter sind mindestens auf Guru.`}</p>
               <div class="button-row"><button class="primary" id="kqVocabPrimary">${vocabDue ? "Jetzt wiederholen" : placement ? "Einstufung fortsetzen" : lessons ? "Lektionen starten" : "Vokabeln öffnen"}</button><button class="ghost" id="kqVocabOpen">Übersicht</button></div>
             </article>
 
@@ -30949,15 +30952,12 @@ ${tooltipText(segment, status)}`)}"`
       if (dashboard) dashboardObserver.observe(dashboard, { childList: true });
     
       setInterval(() => {
-        // Story/RPG-Dashboard muss während eines Vokabelreviews nicht im Hintergrund
-        // auf jede Aktivitätsänderung reagieren.
-        if (document.getElementById("reviews")?.classList.contains("active")) return;
         const count = currentActivityCount();
         if (count === lastActivityCount) return;
         lastActivityCount = count;
         if (document.getElementById("storyReader")?.classList.contains("active")) renderStory();
         installDashboardCard();
-      }, 5000);
+      }, 1800);
     
       try {
         const originalSwitchView = switchView;
@@ -32887,14 +32887,13 @@ function renderProgressCenter() {
       setTimeout(refresh, 100);
       setTimeout(refresh, 500);
       setInterval(() => {
-        if (document.getElementById("reviews")?.classList.contains("active")) return;
         const nav = document.querySelector(".topbar .nav, .nav");
         const expected = MAIN_GROUPS.map(item => item.id).join("|");
         const actual = nav ? [...nav.querySelectorAll("[data-kq-main-group]")].map(button => button.dataset.kqMainGroup).join("|") : "";
         const extras = nav ? [...nav.children].filter(child => !child.matches?.("[data-kq-main-group]") && child.id !== "kqPastelThemePicker") : [];
         if (actual !== expected || extras.length) installNavigation();
         if (document.getElementById("dashboard")?.classList.contains("active")) installDashboardDistribution();
-      }, 8000);
+      }, 1200);
     
       window.KotobaQuestInterface = {
         version: VERSION,
@@ -35567,6 +35566,7 @@ function vocabularyReviewPartialProgressBootstrap() {
   const STORAGE_KEY = "kotobaQuestDataV3";
   const VAULT_KEY = "kotobaQuestProgressVaultV1";
   const BACKUP_KEY = "kotobaQuestVocabReviewStateV2";
+  const COMMIT_KEY = "kotobaQuestVocabReviewCommitJournalV1";
   const ROOT_KEY = "vocabReviewPartials";
   const STATS_KEY = "vocabReviewStats";
   let wrappedStart = false;
@@ -35593,6 +35593,104 @@ function vocabularyReviewPartialProgressBootstrap() {
 
   function backupState() {
     try { return objectValue(JSON.parse(localStorage.getItem(BACKUP_KEY) || "null")); } catch { return {}; }
+  }
+
+  function emptyCommitJournal() { return { version:"1.0", updatedAt:0, items:{} }; }
+  function loadCommitJournal() {
+    try {
+      const raw=objectValue(JSON.parse(localStorage.getItem(COMMIT_KEY) || "null"));
+      const result=emptyCommitJournal();
+      result.updatedAt=Number(raw.updatedAt||0);
+      for(const [id,list] of Object.entries(objectValue(raw.items))){
+        const entries=(Array.isArray(list)?list:[]).filter(entry=>entry&&typeof entry==="object")
+          .map(entry=>clone(entry)).sort((a,b)=>Number(a.completedAt||0)-Number(b.completedAt||0));
+        if(entries.length) result.items[id]=entries.slice(-8);
+      }
+      return result;
+    } catch { return emptyCommitJournal(); }
+  }
+  let commitJournal=loadCommitJournal();
+  function writeCommitJournal(){
+    try{
+      const cutoff=Date.now()-120*24*60*60*1000;
+      for(const [id,list] of Object.entries(commitJournal.items||{})){
+        const kept=(Array.isArray(list)?list:[]).filter(entry=>Number(entry?.completedAt||0)>=cutoff).slice(-8);
+        if(kept.length) commitJournal.items[id]=kept; else delete commitJournal.items[id];
+      }
+      commitJournal.updatedAt=Date.now();
+      localStorage.setItem(COMMIT_KEY,JSON.stringify(commitJournal));
+    }catch{}
+  }
+  function itemSnapshot(item){
+    return {
+      stage:Math.max(0,Math.min(9,Number(item?.stage||0))),
+      availableAt:item?.availableAt==null?null:Number(item.availableAt),
+      correct:Math.max(0,Number(item?.correct||0)),
+      incorrect:Math.max(0,Number(item?.incorrect||0)),
+      guruPassed:Boolean(item?.guruPassed)
+    };
+  }
+  function snapshotCycle(snapshot){
+    return `${Math.max(0,Math.min(9,Number(snapshot?.stage||0)))}|${snapshot?.availableAt==null?"null":String(Number(snapshot.availableAt))}`;
+  }
+  function applySnapshot(item,snapshot){
+    if(!item||!snapshot)return;
+    item.stage=Math.max(0,Math.min(9,Number(snapshot.stage||0)));
+    item.availableAt=snapshot.availableAt==null?null:Number(snapshot.availableAt);
+    item.correct=Math.max(Number(item.correct||0),Number(snapshot.correct||0));
+    item.incorrect=Math.max(Number(item.incorrect||0),Number(snapshot.incorrect||0));
+    item.guruPassed=Boolean(item.guruPassed||snapshot.guruPassed||item.stage>=5);
+  }
+  function appendCommit(item,before,after,outcome){
+    if(!item?.id)return;
+    const id=String(item.id);
+    const entry={
+      id,kind:String(item.sourceType||"core"),completedAt:Date.now(),
+      before:clone(before),after:clone(after),
+      beforeCycle:snapshotCycle(before),afterCycle:snapshotCycle(after),
+      errorCount:Number(outcome?.errorCount||0)
+    };
+    const list=Array.isArray(commitJournal.items[id])?commitJournal.items[id]:[];
+    if(!list.some(existing=>existing.beforeCycle===entry.beforeCycle&&existing.afterCycle===entry.afterCycle)){
+      list.push(entry);
+      commitJournal.items[id]=list.slice(-8);
+    }
+    writeCommitJournal();
+  }
+  function writeMainDataAtomic(){
+    try{
+      syncIntoData();
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData()));
+      return true;
+    }catch(error){
+      console.error("Kotoba Quest: Vokabel-SRS-Hauptsave konnte nicht geschrieben werden",error);
+      return false;
+    }
+  }
+  function reconcileCommitJournal(){
+    let changed=false;
+    for(const [id,list] of Object.entries(commitJournal.items||{})){
+      const item=currentItem(id);
+      if(!item)continue;
+      for(const entry of (Array.isArray(list)?list:[]).sort((a,b)=>Number(a.completedAt||0)-Number(b.completedAt||0))){
+        const currentCycle=cycle(item);
+        if(currentCycle===String(entry.beforeCycle||snapshotCycle(entry.before))){
+          applySnapshot(item,entry.after);
+          changed=true;
+          continue;
+        }
+        if(currentCycle===String(entry.afterCycle||snapshotCycle(entry.after))){
+          item.correct=Math.max(Number(item.correct||0),Number(entry.after?.correct||0));
+          item.incorrect=Math.max(Number(item.incorrect||0),Number(entry.after?.incorrect||0));
+          item.guruPassed=Boolean(item.guruPassed||entry.after?.guruPassed||Number(item.stage||0)>=5);
+        }
+      }
+    }
+    if(changed){
+      syncIntoData();writeBackup();writeCommitJournal();writeMainDataAtomic();
+      try{window.dispatchEvent(new CustomEvent("kotoba-progress-dirty"));}catch{}
+    }
+    return changed;
   }
 
   function emptyStore() { return { version:VERSION, items:{} }; }
@@ -35720,8 +35818,8 @@ function vocabularyReviewPartialProgressBootstrap() {
   let fullPersistTimer=null;
   function flushFullPersist() {
     if(fullPersistTimer){clearTimeout(fullPersistTimer);fullPersistTimer=null;}
-    syncIntoData();writeBackup();
-    try { if (typeof persist === "function") persist(); else localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData())); } catch {}
+    syncIntoData();writeBackup();writeCommitJournal();
+    writeMainDataAtomic();
     try { window.dispatchEvent(new CustomEvent("kotoba-progress-dirty")); } catch {}
   }
   function scheduleFullPersist() {
@@ -35909,15 +36007,40 @@ function vocabularyReviewPartialProgressBootstrap() {
     for(const [id,record] of [...Object.entries(store.items||{})]) {
       const item=currentItem(id); if(!item||String(record.cycle||"")!==cycle(item))continue;
       if(!record.directions.listening.complete||!record.directions.production.complete)continue;
-      applyDirectionalReviewOutcome(item,{
+      const before=itemSnapshot(item);
+      const outcome=applyDirectionalReviewOutcome(item,{
         listening:Boolean(record.directions.listening.error),
         production:Boolean(record.directions.production.error)
       });
+      const after=itemSnapshot(item);
+      appendCommit(item,before,after,outcome);
       if(item.sourceType==="core") preserveCoreUnlocks(()=>{if(typeof checkForLevelUps==="function")checkForLevelUps();});
       logCompletedWord(Number(record.updatedAt||Date.now()));
       delete store.items[id]; changed=true;
+      // A completed word is a transaction: journal first, then main save immediately.
+      syncIntoData();writeBackup();writeMainDataAtomic();
     }
-    if(changed)persistQuietly();
+    if(changed){writeCommitJournal();try{window.dispatchEvent(new CustomEvent("kotoba-progress-dirty"));}catch{}}
+  }
+
+  function reviewSummary(kind="core") {
+    cleanInvalidRecords();
+    let words=0,questions=0,partialWords=0,savedDirections=0;
+    let items=[];
+    try{items=(Array.isArray(data?.vocabulary)?data.vocabulary:[]).filter(item=>
+      String(item?.sourceType||"core")===String(kind)&&
+      Number(item?.stage||0)>0&&Number(item?.stage||0)<9&&
+      Number(item?.availableAt)<=Date.now()
+    );}catch{}
+    for(const item of items){
+      const record=recordFor(item,false);
+      const done=["listening","production"].filter(type=>record?.directions?.[type]?.complete).length;
+      words++;
+      questions+=Math.max(0,2-done);
+      savedDirections+=done;
+      if(done===1)partialWords++;
+    }
+    return {words,questions,partialWords,savedDirections};
   }
 
   function validSavedCount() {
@@ -35964,7 +36087,12 @@ function vocabularyReviewPartialProgressBootstrap() {
       if(result?.listening!==true||result?.production!==true)return false;
       const item=currentItem(itemId);if(!item)return false;
       const errors=reviewSession.errors?.[itemId]||{listening:false,production:false};
+      const before=itemSnapshot(item);
       const outcome=applyDirectionalReviewOutcome(item,errors);
+      const after=itemSnapshot(item);
+      // Journal is written synchronously before the normal save. Even if a later
+      // cloud/update merge resurrects the old due state, bootstrap can replay it.
+      appendCommit(item,before,after,outcome);
       reviewSession.stats ||= {correctQuestions:0,totalQuestions:0,completedItems:0,totalItems:0,levelsGained:0};
       reviewSession.stats.correctQuestions=Number(reviewSession.stats.correctQuestions||0)+outcome.correctCount;
       reviewSession.stats.completedItems=Number(reviewSession.stats.completedItems||0)+1;
@@ -35974,9 +36102,10 @@ function vocabularyReviewPartialProgressBootstrap() {
         preserveCoreUnlocks(()=>{if(typeof checkForLevelUps==="function")checkForLevelUps();});
         reviewSession.stats.levelsGained=Number(reviewSession.stats.levelsGained||0)+Math.max(0,Number(data?.currentLevel||1)-before);
       }
-      // Der SRS-Stufenwechsel ist wichtig genug für einen sofortigen Hauptsave,
-      // aber Dashboard/Core/Mining/Vokabelliste werden NICHT mitten im Review gerendert.
-      persistQuietly({full:true});
+      // Der SRS-Stufenwechsel wird als atomare Transaktion sofort in den
+      // Haupt-Spielstand geschrieben. Kein UI-Rerender ist dafür nötig.
+      syncIntoData();writeBackup();writeCommitJournal();writeMainDataAtomic();
+      try{window.dispatchEvent(new CustomEvent("kotoba-progress-dirty"));}catch{}
       try{
         if(window.KotobaQuestStoryEnergy?.recordVocabReview)window.KotobaQuestStoryEnergy.recordVocabReview(item.sourceType);
         else window.KotobaQuestStoryEnergy?.sync?.();
@@ -36017,13 +36146,16 @@ function vocabularyReviewPartialProgressBootstrap() {
   function install(){installStartWrapper();installFinalizeWrapper();installGradeWrapper();installRenderWrapper();}
 
   syncIntoData();
+  // Replay already-finished review transactions before partials are validated.
+  // This repairs a stale main/cloud save after an app update without re-asking words.
+  reconcileCommitJournal();
   cleanInvalidRecords();
   migrateRecoveredDirectionsToStats();
   finalizePersistedCompleteRecords();
   persistQuietly();
   install();setTimeout(install,0);setTimeout(install,400);
 
-  window.KotobaQuestVocabularyReviewPartials={version:VERSION,applyOutcome:(item,errors)=>applyDirectionalReviewOutcome(item,errors),count:validSavedCount,clear:itemId=>clearRecord(itemId),refresh:install,getStore:()=>clone(store),getStats:()=>clone(stats),recover:()=>{store=mergeStores(store,rawStoredData()[ROOT_KEY],vaultData()[ROOT_KEY],backupState().partials);stats=mergeStats(stats,rawStoredData()[STATS_KEY],vaultData()[STATS_KEY],backupState().stats);cleanInvalidRecords();migrateRecoveredDirectionsToStats();finalizePersistedCompleteRecords();persistQuietly();return validSavedCount();}};
+  window.KotobaQuestVocabularyReviewPartials={version:VERSION,applyOutcome:(item,errors)=>applyDirectionalReviewOutcome(item,errors),count:validSavedCount,clear:itemId=>clearRecord(itemId),refresh:install,getStore:()=>clone(store),getStats:()=>clone(stats),getCommitJournal:()=>clone(commitJournal),summary:kind=>reviewSummary(kind),recover:()=>{store=mergeStores(store,rawStoredData()[ROOT_KEY],vaultData()[ROOT_KEY],backupState().partials);stats=mergeStats(stats,rawStoredData()[STATS_KEY],vaultData()[STATS_KEY],backupState().stats);reconcileCommitJournal();cleanInvalidRecords();migrateRecoveredDirectionsToStats();finalizePersistedCompleteRecords();persistQuietly({full:true});return validSavedCount();}};
 }
 
 function smartReviewBootstrap() {
@@ -36065,17 +36197,6 @@ function smartReviewBootstrap() {
   }
 
   let smartFullSaveTimer=null;
-  function scheduleSmartFullSave() {
-    if(smartFullSaveTimer)clearTimeout(smartFullSaveTimer);
-    smartFullSaveTimer=setTimeout(()=>{
-      smartFullSaveTimer=null;
-      const input=document.getElementById("answerInput");
-      if(document.getElementById("reviews")?.classList.contains("active")&&input&&document.activeElement===input){
-        scheduleSmartFullSave();return;
-      }
-      try{if(typeof persist==="function")persist();else localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData()));}catch{}
-    },2200);
-  }
   function persistSmart() {
     const source = sourceData();
     source.smartReview = state();
@@ -36084,7 +36205,12 @@ function smartReviewBootstrap() {
       // Richtungsanalyse sofort in einem kleinen Backup sichern; der große Spielstand
       // wird erst in einer Tipp-Pause geschrieben.
       localStorage.setItem(SMART_BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),state:source.smartReview}));
-      scheduleSmartFullSave();
+      if(smartFullSaveTimer)clearTimeout(smartFullSaveTimer);
+      smartFullSaveTimer=setTimeout(()=>{
+        const input=document.getElementById("answerInput");
+        if(document.getElementById("reviews")?.classList.contains("active")&&input&&document.activeElement===input){persistSmart();return;}
+        try{if(typeof persist==="function")persist();else localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData()));}catch{}
+      },2200);
     } catch (error) {
       console.warn("Smart Review konnte nicht gespeichert werden", error);
     }
