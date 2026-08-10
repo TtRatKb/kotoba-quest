@@ -353,7 +353,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "smart-review-stable-nav-vocab-partials-v1";
+    const CLOUD_FEATURE_VERSION = "vocab-review-engine-v2-random-durable-partials";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -799,7 +799,7 @@
         if (hasOwn(a, "problemWordWorkshop") || hasOwn(b, "problemWordWorkshop")) result.problemWordWorkshop = mergeWorkshop(a.problemWordWorkshop, b.problemWordWorkshop);
         if (hasOwn(a, "resonanceTraining") || hasOwn(b, "resonanceTraining")) result.resonanceTraining = mergeResonanceTraining(a.resonanceTraining, b.resonanceTraining);
         if (hasOwn(a, "vocabReviewPartials") || hasOwn(b, "vocabReviewPartials")) result.vocabReviewPartials = mergeVocabReviewPartials(a.vocabReviewPartials, b.vocabReviewPartials);
-        ["particlePractice", "vocabContextPractice", "studyActivity"].forEach(key => {
+        ["particlePractice", "vocabContextPractice", "studyActivity", "vocabReviewStats"].forEach(key => {
           if (hasOwn(a, key) || hasOwn(b, key)) result[key] = mergeNumericObject(a[key], b[key]);
         });
         ["particlePracticeSettings", "vocabContextPracticeSettings", "grammarMiningScan", "studyAnalytics"].forEach(key => {
@@ -24447,7 +24447,7 @@
           }
           const correctDelta = Math.max(0, item.correct - old.correct);
           const incorrectDelta = Math.max(0, item.incorrect - old.incorrect);
-          if (correctDelta || incorrectDelta) {
+          if ((correctDelta || incorrectDelta) && !source.vocabReviewStats?.directionalAnalytics) {
             day.reviewCorrect += correctDelta;
             day.reviewIncorrect += incorrectDelta;
             day.vocabCorrect += correctDelta;
@@ -35445,12 +35445,12 @@ function renderProgressCenter() {
 }
 
 function vocabularyReviewMixBootstrap() {
-  if (window.__KOTOBA_VOCAB_REVIEW_MIX_V1__) return;
-  window.__KOTOBA_VOCAB_REVIEW_MIX_V1__ = true;
-  const VERSION = "1.0";
+  if (window.__KOTOBA_VOCAB_REVIEW_MIX_V2__) return;
+  window.__KOTOBA_VOCAB_REVIEW_MIX_V2__ = true;
+  const VERSION = "2.0";
 
-  function shuffled(values) {
-    const result = [...values];
+  function shuffleQuestions(values) {
+    const result = [...(Array.isArray(values) ? values : [])];
     for (let i = result.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [result[i], result[j]] = [result[j], result[i]];
@@ -35458,346 +35458,395 @@ function vocabularyReviewMixBootstrap() {
     return result;
   }
 
-  function spreadQuestions(questions) {
-    const pool = shuffled((questions || []).map((question, index) => ({ ...question, __mixIndex:index })));
-    if (pool.length < 3) return pool.map(({__mixIndex, ...question}) => question);
-    const uniqueItems = new Set(pool.map(question => String(question.itemId || ""))).size;
-    const desiredGap = Math.max(1, Math.min(6, Math.floor(uniqueItems / 2)));
-    const lastPosition = new Map();
-    const result = [];
-
-    while (pool.length) {
-      const position = result.length;
-      let candidates = pool.filter(question => {
-        const previous = lastPosition.get(String(question.itemId || ""));
-        return previous == null || position - previous > desiredGap;
-      });
-      if (!candidates.length) {
-        const previousItem = result.length ? String(result[result.length - 1].itemId || "") : null;
-        candidates = pool.filter(question => String(question.itemId || "") !== previousItem);
-      }
-      if (!candidates.length) candidates = pool;
-
-      // Prefer the item that has been absent longest; randomize ties.
-      const ranked = shuffled(candidates).sort((left, right) => {
-        const l = lastPosition.has(String(left.itemId || "")) ? lastPosition.get(String(left.itemId || "")) : -9999;
-        const r = lastPosition.has(String(right.itemId || "")) ? lastPosition.get(String(right.itemId || "")) : -9999;
-        return l - r;
-      });
-      const chosen = ranked[0];
-      const index = pool.indexOf(chosen);
-      pool.splice(index, 1);
-      lastPosition.set(String(chosen.itemId || ""), position);
-      result.push(chosen);
-    }
-
-    return result.map(({__mixIndex, ...question}) => question);
-  }
-
-  try {
-    if (typeof startReviews === "function" && !startReviews.__kqMixedDirections) {
+  function install() {
+    try {
+      if (typeof startReviews !== "function" || startReviews.__kqTrueRandomDirectionsV2) return;
       const originalStartReviews = startReviews;
       const replacement = function(kind) {
         const output = originalStartReviews.apply(this, arguments);
         try {
           if (reviewSession?.questions?.length > 1 && (kind === "core" || kind === "mining")) {
-            reviewSession.questions = spreadQuestions(reviewSession.questions);
+            // Truly random over the complete 2N-question pool. We deliberately do NOT
+            // maximize the distance between both directions of the same word anymore:
+            // a word may finish early and leave the active review pool immediately.
+            reviewSession.questions = shuffleQuestions(reviewSession.questions);
+            reviewSession.index = 0;
+            reviewSession.feedback = null;
+            reviewSession.locked = false;
             reviewSession.reviewMixVersion = VERSION;
+            if (typeof renderReview === "function") renderReview();
           }
         } catch (error) {
-          console.warn("Vokabel-Review konnte nicht neu gemischt werden", error);
+          console.warn("Vokabel-Reviews konnten nicht vollständig zufällig gemischt werden", error);
         }
         return output;
       };
-      replacement.__kqMixedDirections = true;
+      replacement.__kqTrueRandomDirectionsV2 = true;
       replacement.__kqOriginal = originalStartReviews;
       startReviews = replacement;
+    } catch (error) {
+      console.warn("Vokabel-Review-Mix V2 konnte nicht installiert werden", error);
     }
-  } catch (error) {
-    console.warn("Vokabel-Review-Mix konnte nicht installiert werden", error);
   }
 
-  window.KotobaQuestVocabularyReviewMix = { version:VERSION, spreadQuestions };
+  install();
+  setTimeout(install, 0);
+  setTimeout(install, 350);
+  window.KotobaQuestVocabularyReviewMix = { version:VERSION, shuffleQuestions, refresh:install };
 }
 
-
 function vocabularyReviewPartialProgressBootstrap() {
-  if (window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V1__) return;
-  window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V1__ = true;
+  if (window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V2__) return;
+  window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V2__ = true;
 
-  const VERSION = "1.0";
+  const VERSION = "2.0";
   const STORAGE_KEY = "kotobaQuestDataV3";
+  const VAULT_KEY = "kotobaQuestProgressVaultV1";
+  const BACKUP_KEY = "kotobaQuestVocabReviewStateV2";
   const ROOT_KEY = "vocabReviewPartials";
+  const STATS_KEY = "vocabReviewStats";
   let wrappedStart = false;
   let wrappedGrade = false;
   let wrappedRender = false;
+
+  const objectValue = value => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const clone = value => { try { return structuredClone(value); } catch { try { return JSON.parse(JSON.stringify(value)); } catch { return value; } } };
+  const latest = (...values) => Math.max(0, ...values.map(Number).filter(Number.isFinite));
 
   function sourceData() {
     try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
   }
 
-  function persistQuietly() {
-    try { if (typeof persist === "function") return persist(); } catch {}
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sourceData())); } catch {}
+  function rawStoredData() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
   }
 
-  function root() {
-    const source = sourceData();
-    if (!source[ROOT_KEY] || typeof source[ROOT_KEY] !== "object" || Array.isArray(source[ROOT_KEY])) {
-      source[ROOT_KEY] = { version:VERSION, items:{} };
+  function vaultData() {
+    try { return objectValue(JSON.parse(localStorage.getItem(VAULT_KEY) || "null")?.data); } catch { return {}; }
+  }
+
+  function backupState() {
+    try { return objectValue(JSON.parse(localStorage.getItem(BACKUP_KEY) || "null")); } catch { return {}; }
+  }
+
+  function emptyStore() { return { version:VERSION, items:{} }; }
+  function emptyStats() { return { version:VERSION, directionalAnalytics:true, totalAnswers:0, correctAnswers:0, incorrectAnswers:0, closeAnswers:0, completedWords:0, lastAnsweredAt:null, byDay:{} }; }
+
+  function normalizeDirection(value) {
+    const old=objectValue(value);
+    return {
+      complete:Boolean(old.complete),
+      error:Boolean(old.error),
+      completedAt:old.completedAt == null ? null : Number(old.completedAt),
+      statsMigrated:Boolean(old.statsMigrated)
+    };
+  }
+
+  function normalizeStore(value) {
+    const source=objectValue(value), result=emptyStore();
+    for (const [id, raw] of Object.entries(objectValue(source.items))) {
+      const item=objectValue(raw);
+      result.items[id]={
+        ...item,
+        id:String(item.id || id),
+        cycle:String(item.cycle || ""),
+        stage:Number(item.stage || 0),
+        availableAt:item.availableAt == null ? null : Number(item.availableAt),
+        kind:String(item.kind || "core"),
+        updatedAt:Number(item.updatedAt || 0),
+        directions:{
+          listening:normalizeDirection(objectValue(item.directions).listening),
+          production:normalizeDirection(objectValue(item.directions).production)
+        }
+      };
     }
-    source[ROOT_KEY].version = VERSION;
-    if (!source[ROOT_KEY].items || typeof source[ROOT_KEY].items !== "object" || Array.isArray(source[ROOT_KEY].items)) source[ROOT_KEY].items = {};
-    return source[ROOT_KEY];
+    return result;
+  }
+
+  function mergeStores(...stores) {
+    const result=emptyStore();
+    for (const rawStore of stores) {
+      const store=normalizeStore(rawStore);
+      for (const [id, incoming] of Object.entries(store.items)) {
+        const existing=result.items[id];
+        if (!existing) { result.items[id]=clone(incoming); continue; }
+        const newer=Number(incoming.updatedAt||0) >= Number(existing.updatedAt||0) ? incoming : existing;
+        const older=newer===incoming ? existing : incoming;
+        result.items[id]={
+          ...older,...newer,
+          directions:{
+            listening:{
+              ...older.directions.listening,...newer.directions.listening,
+              complete:Boolean(older.directions.listening.complete || newer.directions.listening.complete),
+              error:Boolean(older.directions.listening.error || newer.directions.listening.error),
+              completedAt:latest(older.directions.listening.completedAt,newer.directions.listening.completedAt)||null,
+              statsMigrated:Boolean(older.directions.listening.statsMigrated || newer.directions.listening.statsMigrated)
+            },
+            production:{
+              ...older.directions.production,...newer.directions.production,
+              complete:Boolean(older.directions.production.complete || newer.directions.production.complete),
+              error:Boolean(older.directions.production.error || newer.directions.production.error),
+              completedAt:latest(older.directions.production.completedAt,newer.directions.production.completedAt)||null,
+              statsMigrated:Boolean(older.directions.production.statsMigrated || newer.directions.production.statsMigrated)
+            }
+          }
+        };
+      }
+    }
+    return result;
+  }
+
+  function normalizeStats(value) {
+    const source=objectValue(value), stats=emptyStats();
+    for (const key of ["totalAnswers","correctAnswers","incorrectAnswers","closeAnswers","completedWords"]) stats[key]=Math.max(0,Number(source[key]||0));
+    stats.lastAnsweredAt=source.lastAnsweredAt == null ? null : Number(source.lastAnsweredAt);
+    stats.directionalAnalytics=true;
+    stats.byDay={};
+    for (const [day,raw] of Object.entries(objectValue(source.byDay))) {
+      const d=objectValue(raw);
+      stats.byDay[day]={correct:Math.max(0,Number(d.correct||0)),incorrect:Math.max(0,Number(d.incorrect||0)),close:Math.max(0,Number(d.close||0)),completedWords:Math.max(0,Number(d.completedWords||0))};
+    }
+    return stats;
+  }
+
+  function mergeStats(...values) {
+    const result=emptyStats();
+    for (const value of values) {
+      const stats=normalizeStats(value);
+      for (const key of ["totalAnswers","correctAnswers","incorrectAnswers","closeAnswers","completedWords"]) result[key]=Math.max(result[key],stats[key]);
+      result.lastAnsweredAt=Math.max(Number(result.lastAnsweredAt||0),Number(stats.lastAnsweredAt||0))||null;
+      for (const [day,d] of Object.entries(stats.byDay)) {
+        const current=result.byDay[day]||{correct:0,incorrect:0,close:0,completedWords:0};
+        result.byDay[day]={correct:Math.max(current.correct,d.correct),incorrect:Math.max(current.incorrect,d.incorrect),close:Math.max(current.close,d.close),completedWords:Math.max(current.completedWords,d.completedWords)};
+      }
+    }
+    return result;
+  }
+
+  let store = mergeStores(
+    sourceData()[ROOT_KEY],
+    rawStoredData()[ROOT_KEY],
+    vaultData()[ROOT_KEY],
+    backupState().partials
+  );
+  let stats = mergeStats(
+    sourceData()[STATS_KEY],
+    rawStoredData()[STATS_KEY],
+    vaultData()[STATS_KEY],
+    backupState().stats
+  );
+
+  function dateKey(value=Date.now()) {
+    const d=new Date(value); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+
+  function syncIntoData() {
+    const source=sourceData();
+    source[ROOT_KEY]=store;
+    source[STATS_KEY]=stats;
+    try { if (typeof data !== "undefined" && data && typeof data === "object") { data[ROOT_KEY]=store; data[STATS_KEY]=stats; } } catch {}
+  }
+
+  function writeBackup() {
+    try { localStorage.setItem(BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),partials:store,stats})); } catch {}
+  }
+
+  function persistQuietly() {
+    syncIntoData(); writeBackup();
+    try { if (typeof persist === "function") persist(); else localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData())); } catch {}
   }
 
   function cycle(item) {
-    const stage = Math.max(0, Math.min(9, Number(item?.stage || 0)));
-    const due = item?.availableAt == null ? "null" : String(Number(item.availableAt));
+    const stage=Math.max(0,Math.min(9,Number(item?.stage||0)));
+    const due=item?.availableAt==null ? "null" : String(Number(item.availableAt));
     return `${stage}|${due}`;
   }
 
-  function recordFor(item, create = false) {
-    const id = String(item?.id || "");
-    if (!id) return null;
-    const store = root();
-    let record = store.items[id] || null;
-    const currentCycle = cycle(item);
-    if (record && String(record.cycle || "") !== currentCycle) {
-      delete store.items[id];
-      record = null;
+  function currentItem(itemId) {
+    try { return (Array.isArray(data?.vocabulary)?data.vocabulary:[]).find(item=>String(item?.id||"")===String(itemId||""))||null; } catch { return null; }
+  }
+
+  function cleanInvalidRecords() {
+    let changed=false;
+    for (const [id,record] of Object.entries(store.items||{})) {
+      const item=currentItem(id);
+      if (!item || String(record.cycle||"")!==cycle(item)) { delete store.items[id]; changed=true; }
     }
-    if (!record && create) {
-      record = store.items[id] = {
-        id,
-        cycle:currentCycle,
-        stage:Number(item?.stage || 0),
-        availableAt:item?.availableAt == null ? null : Number(item.availableAt),
-        kind:String(item?.sourceType || "core"),
-        directions:{
-          listening:{complete:false,error:false,completedAt:null},
-          production:{complete:false,error:false,completedAt:null}
-        },
-        updatedAt:Date.now()
-      };
-    }
-    if (record) {
-      record.directions = record.directions && typeof record.directions === "object" ? record.directions : {};
-      for (const type of ["listening","production"]) {
-        const old = record.directions[type] || {};
-        record.directions[type] = {
-          complete:Boolean(old.complete),
-          error:Boolean(old.error),
-          completedAt:old.completedAt == null ? null : Number(old.completedAt)
-        };
-      }
+    if (changed) { syncIntoData(); writeBackup(); }
+    return changed;
+  }
+
+  function recordFor(item,create=false) {
+    if(!item?.id) return null;
+    const id=String(item.id), currentCycle=cycle(item);
+    let record=store.items[id]||null;
+    if(record && String(record.cycle||"")!==currentCycle) { delete store.items[id]; record=null; }
+    if(!record && create) {
+      record=store.items[id]={id,cycle:currentCycle,stage:Number(item.stage||0),availableAt:item.availableAt==null?null:Number(item.availableAt),kind:String(item.sourceType||"core"),directions:{listening:normalizeDirection(null),production:normalizeDirection(null)},updatedAt:Date.now()};
     }
     return record;
   }
 
-  function clearRecord(itemId, save = true) {
-    const store = root();
-    const id = String(itemId || "");
-    if (!id || !store.items[id]) return;
+  function clearRecord(itemId,save=true) {
+    const id=String(itemId||""); if(!id||!store.items[id]) return;
     delete store.items[id];
-    if (save) persistQuietly();
+    if(save) persistQuietly(); else { syncIntoData(); writeBackup(); }
   }
 
-  function saveDirection(item, type, {complete = null, error = null} = {}) {
-    if (!item?.id || !["listening","production"].includes(type)) return;
-    const record = recordFor(item, true);
-    if (!record) return;
-    const direction = record.directions[type];
-    if (complete != null) {
-      direction.complete = Boolean(complete);
-      if (direction.complete) direction.completedAt ||= Date.now();
-      else direction.completedAt = null;
-    }
-    if (error != null) direction.error = Boolean(error);
-    record.updatedAt = Date.now();
+  function ensureAnalyticsDay(source,dayKey) {
+    source.studyAnalytics = objectValue(source.studyAnalytics);
+    source.studyAnalytics.version = Number(source.studyAnalytics.version||1);
+    source.studyAnalytics.trackingStartedAt ||= Date.now();
+    source.studyAnalytics.days = objectValue(source.studyAnalytics.days);
+    source.studyAnalytics.events = Array.isArray(source.studyAnalytics.events) ? source.studyAnalytics.events : [];
+    const defaults={activeMs:0,reviewCorrect:0,reviewIncorrect:0,vocabCorrect:0,vocabIncorrect:0,grammarCorrect:0,grammarIncorrect:0,coreLessons:0,miningLessons:0,grammarLessons:0,vocabGuru:0,grammarGuru:0,burned:0,imports:0};
+    source.studyAnalytics.days[dayKey]={...defaults,...objectValue(source.studyAnalytics.days[dayKey])};
+    return source.studyAnalytics.days[dayKey];
+  }
+
+  function logAnswer(item,type,status,at=Date.now(),{migrated=false}={}) {
+    if(!["correct","incorrect","close"].includes(status)) return;
+    const dayKey=dateKey(at), day=stats.byDay[dayKey] ||= {correct:0,incorrect:0,close:0,completedWords:0};
+    stats.totalAnswers++;
+    stats.lastAnsweredAt=at;
+    if(status==="correct") { stats.correctAnswers++; day.correct++; }
+    if(status==="incorrect") { stats.incorrectAnswers++; day.incorrect++; }
+    if(status==="close") { stats.closeAnswers++; day.close++; }
+
+    // Direction-level analytics: unlike the old item.correct counter, this really
+    // counts each J→D / D→J answer that happened.
+    const source=sourceData();
+    source[STATS_KEY]=stats;
+    const analyticsDay=ensureAnalyticsDay(source,dayKey);
+    if(status==="correct") { analyticsDay.reviewCorrect++; analyticsDay.vocabCorrect++; }
+    if(status==="incorrect") { analyticsDay.reviewIncorrect++; analyticsDay.vocabIncorrect++; }
+    source.studyAnalytics.events.push({at,type:"vocab-review-direction",id:String(item?.id||""),label:String(item?.word||""),area:String(item?.sourceType||"core"),skill:type,status,migrated:Boolean(migrated)});
+    source.studyAnalytics.events=source.studyAnalytics.events.slice(-500);
+  }
+
+  function logCompletedWord(at=Date.now()) {
+    stats.completedWords++;
+    const day=stats.byDay[dateKey(at)] ||= {correct:0,incorrect:0,close:0,completedWords:0};
+    day.completedWords++;
+  }
+
+  function saveDirection(item,type,{complete=null,error=null}={}) {
+    if(!item?.id||!["listening","production"].includes(type)) return;
+    const record=recordFor(item,true); if(!record)return;
+    const direction=record.directions[type];
+    if(complete!=null){direction.complete=Boolean(complete);direction.completedAt=direction.complete?(direction.completedAt||Date.now()):null;}
+    if(error!=null)direction.error=Boolean(error);
+    record.updatedAt=Date.now();
     persistQuietly();
   }
 
-  function currentItem(itemId) {
-    try { return (Array.isArray(data?.vocabulary) ? data.vocabulary : []).find(item => String(item?.id || "") === String(itemId || "")) || null; }
-    catch { return null; }
+  function migrateRecoveredDirectionsToStats() {
+    let changed=false;
+    for(const record of Object.values(store.items||{})) {
+      const item=currentItem(record.id); if(!item||String(record.cycle||"")!==cycle(item))continue;
+      for(const type of ["listening","production"]) {
+        const direction=record.directions[type];
+        if(!direction?.complete||direction.statsMigrated)continue;
+        const at=Number(direction.completedAt||record.updatedAt||Date.now());
+        if(direction.error) logAnswer(item,type,"incorrect",at,{migrated:true});
+        logAnswer(item,type,"correct",at,{migrated:true});
+        direction.statsMigrated=true; changed=true;
+      }
+    }
+    if(changed)persistQuietly();
+  }
+
+  function finalizePersistedCompleteRecords() {
+    let changed=false;
+    for(const [id,record] of [...Object.entries(store.items||{})]) {
+      const item=currentItem(id); if(!item||String(record.cycle||"")!==cycle(item))continue;
+      if(!record.directions.listening.complete||!record.directions.production.complete)continue;
+      const hadError=Boolean(record.directions.listening.error||record.directions.production.error);
+      const correctCount=Number(!record.directions.listening.error)+Number(!record.directions.production.error);
+      if(!hadError){item.stage=Math.min(9,Number(item.stage||0)+1);item.correct=Number(item.correct||0)+1;try{data.xp=Number(data.xp||0)+10;}catch{}}
+      else{item.stage=Math.max(1,Number(item.stage||0)-1);item.incorrect=Number(item.incorrect||0)+1;try{data.xp=Number(data.xp||0)+correctCount*2;}catch{}}
+      if(item.stage>=5)item.guruPassed=true;
+      try{if(typeof schedule==="function")schedule(item);}catch{}
+      try{if(item.sourceType==="core"&&typeof checkForLevelUps==="function")checkForLevelUps();}catch{}
+      logCompletedWord(Number(record.updatedAt||Date.now()));
+      delete store.items[id]; changed=true;
+    }
+    if(changed)persistQuietly();
   }
 
   function validSavedCount() {
-    let count = 0;
-    const store = root();
-    for (const [id, saved] of Object.entries(store.items || {})) {
-      const item = currentItem(id);
-      if (!item || String(saved?.cycle || "") !== cycle(item)) continue;
-      count += ["listening","production"].filter(type => saved?.directions?.[type]?.complete).length;
-    }
+    cleanInvalidRecords(); let count=0;
+    for(const record of Object.values(store.items||{})) count += ["listening","production"].filter(type=>record.directions[type]?.complete).length;
     return count;
   }
 
   function restoreIntoSession() {
-    if (!reviewSession || !Array.isArray(reviewSession.questions) || !["core","mining"].includes(reviewSession.kind)) return;
-    let restored = 0;
-    const ids = Object.keys(reviewSession.results || {});
-    for (const id of ids) {
-      const item = currentItem(id);
-      if (!item) continue;
-      const saved = recordFor(item, false);
-      if (!saved) continue;
-      for (const type of ["listening","production"]) {
-        if (saved.directions[type]?.complete) {
-          reviewSession.results[id][type] = true;
-          restored++;
-        }
-        if (saved.directions[type]?.error) reviewSession.errors[id][type] = true;
-      }
-    }
-
-    if (restored) {
-      reviewSession.questions = reviewSession.questions.filter(question => reviewSession.results?.[question.itemId]?.[question.type] !== true);
-      reviewSession.index = 0;
-      reviewSession.feedback = null;
-      reviewSession.locked = false;
-      reviewSession.partialDirectionsRestored = restored;
-      // Defensive recovery: if both directions were persisted but a previous page closed
-      // between the second answer and finalization, finish that word now.
-      if (typeof finalizeReviewItemIfReady === "function") {
-        for (const id of ids) {
-          if (reviewSession.results?.[id]?.listening === true && reviewSession.results?.[id]?.production === true) {
-            try { finalizeReviewItemIfReady(id); } catch {}
-            if (reviewSession.finalized?.[id]) clearRecord(id, false);
-          }
-        }
-        reviewSession.questions = reviewSession.questions.filter(question => !reviewSession.finalized?.[question.itemId]);
-      }
-      persistQuietly();
-    }
+    if(!reviewSession||!Array.isArray(reviewSession.questions)||!["core","mining"].includes(reviewSession.kind))return;
+    cleanInvalidRecords(); let restored=0;
+    const ids=Object.keys(reviewSession.results||{});
+    for(const id of ids){const item=currentItem(id);if(!item)continue;const saved=recordFor(item,false);if(!saved)continue;for(const type of ["listening","production"]){if(saved.directions[type]?.complete){reviewSession.results[id][type]=true;restored++;}if(saved.directions[type]?.error)reviewSession.errors[id][type]=true;}}
+    reviewSession.questions=reviewSession.questions.filter(question=>reviewSession.results?.[question.itemId]?.[question.type]!==true);
+    reviewSession.index=0;reviewSession.feedback=null;reviewSession.locked=false;reviewSession.partialDirectionsRestored=restored;
+    // Shuffle the *remaining* questions again after removing saved directions.
+    try{reviewSession.questions=window.KotobaQuestVocabularyReviewMix?.shuffleQuestions?.(reviewSession.questions)||reviewSession.questions;}catch{}
+    persistQuietly();
   }
 
   function enhanceReviewUi() {
-    if (!reviewSession || !["core","mining"].includes(reviewSession.kind)) return;
-    const pause = document.getElementById("reviewPause");
-    const note = pause?.parentElement?.querySelector("span.small.muted");
-    const saved = validSavedCount();
-    if (note) note.textContent = `${saved} Richtungs-Check${saved === 1 ? "" : "s"} zwischengespeichert · eine Vokabel steigt erst nach beiden Richtungen auf.`;
-    const card = document.getElementById("reviewCard") || document.querySelector("#reviews .study-card");
-    if (card && !card.querySelector(".kq-review-partial-note")) {
-      const info = document.createElement("div");
-      info.className = "kq-review-partial-note small muted";
-      info.style.cssText = "margin:10px auto 0;max-width:680px;text-align:center;line-height:1.45";
-      info.textContent = "✓ Jede korrekt bestätigte Richtung wird sofort gespeichert. Du kannst die Session jederzeit verlassen; beim nächsten Mal wird nur die noch fehlende Richtung abgefragt.";
-      pause?.parentElement?.after(info);
+    if(!reviewSession||!["core","mining"].includes(reviewSession.kind))return;
+    const pause=document.getElementById("reviewPause");
+    const note=pause?.parentElement?.querySelector("span.small.muted");
+    const saved=validSavedCount(), today=stats.byDay[dateKey()]||{correct:0,incorrect:0,completedWords:0};
+    if(note)note.textContent=`${saved} Richtungs-Check${saved===1?"":"s"} offen gespeichert · heute ${today.correct} richtig / ${today.incorrect} falsch · ${today.completedWords} Vokabelzyklen abgeschlossen.`;
+    const card=document.getElementById("reviewCard")||document.querySelector("#reviews .study-card");
+    if(card&&!card.querySelector(".kq-review-partial-note")){const info=document.createElement("div");info.className="kq-review-partial-note small muted";info.style.cssText="margin:10px auto 0;max-width:680px;text-align:center;line-height:1.45";info.textContent="✓ Jede Richtung wird sofort und reload-sicher gespeichert. Die beiden Richtungen sind vollständig zufällig gemischt; sobald beide bestätigt sind, wird die Vokabel direkt abgeschlossen.";pause?.parentElement?.after(info);}
+
+    // Safari/IME: one Enter should both commit the Japanese composition and submit.
+    const input=document.getElementById("answerInput");
+    if(input&&!input.dataset.kqCompositionSubmitBound){
+      input.dataset.kqCompositionSubmitBound="1";
+      input.addEventListener("keydown",event=>{if(event.key==="Enter"&&event.isComposing)input.dataset.kqSubmitAfterComposition="1";});
+      input.addEventListener("compositionend",()=>{if(input.dataset.kqSubmitAfterComposition!=="1")return;delete input.dataset.kqSubmitAfterComposition;setTimeout(()=>{if(input.isConnected&&!input.disabled&&input.value.trim())input.form?.requestSubmit?.();},0);});
     }
   }
 
-  function installStartWrapper() {
-    if (wrappedStart) return;
-    try {
-      if (typeof startReviews !== "function" || startReviews.__kqPartialDirections) return;
-      const original = startReviews;
-      const replacement = function(kind) {
-        const output = original.apply(this, arguments);
-        try {
-          if (["core","mining"].includes(kind) && reviewSession?.questions) {
-            restoreIntoSession();
-            if (typeof renderReview === "function") renderReview();
+  function installStartWrapper(){if(wrappedStart)return;try{if(typeof startReviews!=="function"||startReviews.__kqPartialDirectionsV2)return;const original=startReviews;const replacement=function(kind){finalizePersistedCompleteRecords();const output=original.apply(this,arguments);try{if(["core","mining"].includes(kind)&&reviewSession?.questions){restoreIntoSession();if(typeof renderReview==="function")renderReview();}}catch(error){console.warn("Vokabel-Zwischenstand konnte nicht wiederhergestellt werden",error);}return output;};replacement.__kqPartialDirectionsV2=true;replacement.__kqOriginal=original;startReviews=replacement;wrappedStart=true;}catch{}}
+
+  function installGradeWrapper(){if(wrappedGrade)return;try{if(typeof gradeReview!=="function"||typeof evaluateAnswer!=="function"||gradeReview.__kqPartialDirectionsV2)return;const original=gradeReview;const replacement=function(question,item,answer){let result=null;try{result=evaluateAnswer(question,item,answer);}catch{}
+      const wasFinalized=Boolean(reviewSession?.finalized?.[item?.id]);
+      try{
+        if(item?.id&&["listening","production"].includes(question?.type)){
+          if(result?.status==="correct"){
+            saveDirection(item,question.type,{complete:true,error:Boolean(reviewSession?.errors?.[item.id]?.[question.type])});
+            logAnswer(item,question.type,"correct");
+          }else if(result?.status==="incorrect"){
+            saveDirection(item,question.type,{error:true});
+            logAnswer(item,question.type,"incorrect");
+          }else if(result?.status==="close"){
+            logAnswer(item,question.type,"close");
           }
-        } catch (error) { console.warn("Vokabel-Zwischenstand konnte nicht wiederhergestellt werden", error); }
-        return output;
-      };
-      replacement.__kqPartialDirections = true;
-      replacement.__kqOriginal = original;
-      startReviews = replacement;
-      wrappedStart = true;
-    } catch {}
-  }
+          persistQuietly();
+        }
+      }catch(error){console.warn("Vokabel-Richtungsfortschritt konnte nicht gespeichert werden",error);}
+      const output=original.apply(this,arguments);
+      try{if(item?.id&&!wasFinalized&&reviewSession?.finalized?.[item.id]){logCompletedWord();clearRecord(item.id,false);persistQuietly();}}catch{}
+      return output;};replacement.__kqPartialDirectionsV2=true;replacement.__kqOriginal=original;gradeReview=replacement;wrappedGrade=true;}catch{}}
 
-  function installGradeWrapper() {
-    if (wrappedGrade) return;
-    try {
-      if (typeof gradeReview !== "function" || typeof evaluateAnswer !== "function" || gradeReview.__kqPartialDirections) return;
-      const original = gradeReview;
-      const replacement = function(question, item, answer) {
-        let result = null;
-        try { result = evaluateAnswer(question, item, answer); } catch {}
-        const output = original.apply(this, arguments);
-        try {
-          if (item?.id && ["listening","production"].includes(question?.type)) {
-            if (reviewSession?.finalized?.[item.id]) {
-              clearRecord(item.id);
-            } else if (result?.status === "correct" && reviewSession?.results?.[item.id]?.[question.type] === true) {
-              saveDirection(item, question.type, {
-                complete:true,
-                error:Boolean(reviewSession?.errors?.[item.id]?.[question.type])
-              });
-            } else if (result?.status === "incorrect") {
-              saveDirection(item, question.type, { error:true });
-            }
-          }
-        } catch (error) { console.warn("Vokabel-Richtungsfortschritt konnte nicht gespeichert werden", error); }
-        return output;
-      };
-      replacement.__kqPartialDirections = true;
-      replacement.__kqOriginal = original;
-      gradeReview = replacement;
-      wrappedGrade = true;
-    } catch {}
-  }
+  function installRenderWrapper(){if(wrappedRender)return;try{if(typeof renderReview!=="function"||renderReview.__kqPartialDirectionsV2)return;const original=renderReview;const replacement=function(){const output=original.apply(this,arguments);try{enhanceReviewUi();}catch{}return output;};replacement.__kqPartialDirectionsV2=true;replacement.__kqOriginal=original;renderReview=replacement;wrappedRender=true;}catch{}}
 
-  function installRenderWrapper() {
-    if (wrappedRender) return;
-    try {
-      if (typeof renderReview !== "function" || renderReview.__kqPartialDirections) return;
-      const original = renderReview;
-      const replacement = function() {
-        const output = original.apply(this, arguments);
-        try { enhanceReviewUi(); } catch {}
-        return output;
-      };
-      replacement.__kqPartialDirections = true;
-      replacement.__kqOriginal = original;
-      renderReview = replacement;
-      wrappedRender = true;
-    } catch {}
-  }
+  document.addEventListener("click",event=>{const veto=event.target?.closest?.("[data-vocab-veto]");if(!veto)return;let snapshot=null;try{const feedback=reviewSession?.feedback;if(feedback?.sessionType==="review"&&feedback?.itemId&&feedback?.questionType)snapshot={itemId:feedback.itemId,type:feedback.questionType};}catch{}if(!snapshot)return;setTimeout(()=>{try{const item=currentItem(snapshot.itemId);if(!item)return;const complete=reviewSession?.results?.[snapshot.itemId]?.[snapshot.type]===true;const error=Boolean(reviewSession?.errors?.[snapshot.itemId]?.[snapshot.type]);saveDirection(item,snapshot.type,{complete,error});}catch{}},0);},true);
 
-  document.addEventListener("click", event => {
-    const veto = event.target?.closest?.("[data-vocab-veto]");
-    if (!veto) return;
-    let snapshot = null;
-    try {
-      const feedback = reviewSession?.feedback;
-      if (feedback?.sessionType === "review" && feedback?.itemId && feedback?.questionType) {
-        snapshot = { itemId:feedback.itemId, type:feedback.questionType };
-      }
-    } catch {}
-    if (!snapshot) return;
-    setTimeout(() => {
-      try {
-        const item = currentItem(snapshot.itemId);
-        if (!item) return;
-        const complete = reviewSession?.results?.[snapshot.itemId]?.[snapshot.type] === true;
-        const error = Boolean(reviewSession?.errors?.[snapshot.itemId]?.[snapshot.type]);
-        saveDirection(item, snapshot.type, { complete, error });
-      } catch {}
-    }, 0);
-  }, true);
+  function install(){installStartWrapper();installGradeWrapper();installRenderWrapper();}
 
-  function install() {
-    installStartWrapper();
-    installGradeWrapper();
-    installRenderWrapper();
-  }
+  syncIntoData();
+  cleanInvalidRecords();
+  migrateRecoveredDirectionsToStats();
+  finalizePersistedCompleteRecords();
+  persistQuietly();
+  install();setTimeout(install,0);setTimeout(install,400);
 
-  install();
-  setTimeout(install, 0);
-  setTimeout(install, 400);
-  window.KotobaQuestVocabularyReviewPartials = {
-    version:VERSION,
-    count:validSavedCount,
-    clear:itemId=>clearRecord(itemId),
-    refresh:install
-  };
+  window.KotobaQuestVocabularyReviewPartials={version:VERSION,count:validSavedCount,clear:itemId=>clearRecord(itemId),refresh:install,getStore:()=>clone(store),getStats:()=>clone(stats),recover:()=>{store=mergeStores(store,rawStoredData()[ROOT_KEY],vaultData()[ROOT_KEY],backupState().partials);stats=mergeStats(stats,rawStoredData()[STATS_KEY],vaultData()[STATS_KEY],backupState().stats);cleanInvalidRecords();migrateRecoveredDirectionsToStats();finalizePersistedCompleteRecords();persistQuietly();return validSavedCount();}};
 }
 
 function smartReviewBootstrap() {
