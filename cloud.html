@@ -353,7 +353,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "vocab-review-engine-v2-random-durable-partials";
+    const CLOUD_FEATURE_VERSION = "vocab-review-engine-v3-fair-directional-grading";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -35499,13 +35499,14 @@ function vocabularyReviewPartialProgressBootstrap() {
   if (window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V2__) return;
   window.__KOTOBA_VOCAB_REVIEW_PARTIAL_V2__ = true;
 
-  const VERSION = "2.0";
+  const VERSION = "3.0";
   const STORAGE_KEY = "kotobaQuestDataV3";
   const VAULT_KEY = "kotobaQuestProgressVaultV1";
   const BACKUP_KEY = "kotobaQuestVocabReviewStateV2";
   const ROOT_KEY = "vocabReviewPartials";
   const STATS_KEY = "vocabReviewStats";
   let wrappedStart = false;
+  let wrappedFinalize = false;
   let wrappedGrade = false;
   let wrappedRender = false;
 
@@ -35757,18 +35758,79 @@ function vocabularyReviewPartialProgressBootstrap() {
     if(changed)persistQuietly();
   }
 
+  function scheduleReviewOutcome(item, delayStage) {
+    if(!item) return;
+    const currentStage=Math.max(0,Math.min(9,Number(item.stage||0)));
+    if(currentStage>=9){item.availableAt=null;return;}
+    const safeDelayStage=Math.max(1,Math.min(8,Number(delayStage||currentStage||1)));
+    try {
+      if(typeof stageDelay==="function") {
+        item.availableAt=Date.now()+Number(stageDelay(safeDelayStage)||0);
+        return;
+      }
+    } catch {}
+    try {
+      if(typeof STAGES!=="undefined" && Array.isArray(STAGES)) {
+        const entry=STAGES[safeDelayStage];
+        const delay=sourceData().demoMode ? Number(entry?.demo||0) : Number(entry?.real||0);
+        if(Number.isFinite(delay)){item.availableAt=Date.now()+delay;return;}
+      }
+    } catch {}
+    try{if(typeof schedule==="function")schedule(item);}catch{}
+  }
+
+  function applyDirectionalReviewOutcome(item, errors) {
+    if(!item) return {errorCount:0,correctCount:0,oldStage:0,newStage:0,delayStage:0};
+    const oldStage=Math.max(1,Math.min(8,Number(item.stage||1)));
+    const errorCount=Number(Boolean(errors?.listening))+Number(Boolean(errors?.production));
+    const correctCount=2-errorCount;
+    let newStage=oldStage;
+    let delayStage=oldStage;
+
+    if(errorCount===0){
+      newStage=Math.min(9,oldStage+1);
+      delayStage=newStage;
+      item.correct=Number(item.correct||0)+1;
+      try{data.xp=Number(data.xp||0)+10;}catch{}
+    }else if(errorCount===1){
+      // One weak direction is not enough for a demotion. Keep the SRS stage,
+      // but rehearse on the cadence of the previous stage.
+      newStage=oldStage;
+      delayStage=Math.max(1,oldStage-1);
+      item.incorrect=Number(item.incorrect||0)+1;
+      try{data.xp=Number(data.xp||0)+correctCount*2;}catch{}
+    }else{
+      // Both directions failed: one real SRS step backwards.
+      newStage=Math.max(1,oldStage-1);
+      delayStage=newStage;
+      item.incorrect=Number(item.incorrect||0)+1;
+    }
+
+    item.stage=newStage;
+    // guruPassed is historical: once a word contributed to a Core unlock it stays
+    // true even if later reviews expose a weakness.
+    if(item.stage>=5)item.guruPassed=true;
+    scheduleReviewOutcome(item,delayStage);
+    return {errorCount,correctCount,oldStage,newStage,delayStage};
+  }
+
+  function preserveCoreUnlocks(callback) {
+    let unlockedBefore=1;
+    try{unlockedBefore=Math.max(1,Number(data?.currentLevel||1));}catch{}
+    try{if(typeof callback==="function")callback();}catch{}
+    try{data.currentLevel=Math.max(unlockedBefore,Number(data?.currentLevel||1));}catch{}
+  }
+
   function finalizePersistedCompleteRecords() {
     let changed=false;
     for(const [id,record] of [...Object.entries(store.items||{})]) {
       const item=currentItem(id); if(!item||String(record.cycle||"")!==cycle(item))continue;
       if(!record.directions.listening.complete||!record.directions.production.complete)continue;
-      const hadError=Boolean(record.directions.listening.error||record.directions.production.error);
-      const correctCount=Number(!record.directions.listening.error)+Number(!record.directions.production.error);
-      if(!hadError){item.stage=Math.min(9,Number(item.stage||0)+1);item.correct=Number(item.correct||0)+1;try{data.xp=Number(data.xp||0)+10;}catch{}}
-      else{item.stage=Math.max(1,Number(item.stage||0)-1);item.incorrect=Number(item.incorrect||0)+1;try{data.xp=Number(data.xp||0)+correctCount*2;}catch{}}
-      if(item.stage>=5)item.guruPassed=true;
-      try{if(typeof schedule==="function")schedule(item);}catch{}
-      try{if(item.sourceType==="core"&&typeof checkForLevelUps==="function")checkForLevelUps();}catch{}
+      applyDirectionalReviewOutcome(item,{
+        listening:Boolean(record.directions.listening.error),
+        production:Boolean(record.directions.production.error)
+      });
+      if(item.sourceType==="core") preserveCoreUnlocks(()=>{if(typeof checkForLevelUps==="function")checkForLevelUps();});
       logCompletedWord(Number(record.updatedAt||Date.now()));
       delete store.items[id]; changed=true;
     }
@@ -35800,7 +35862,7 @@ function vocabularyReviewPartialProgressBootstrap() {
     const saved=validSavedCount(), today=stats.byDay[dateKey()]||{correct:0,incorrect:0,completedWords:0};
     if(note)note.textContent=`${saved} Richtungs-Check${saved===1?"":"s"} offen gespeichert · heute ${today.correct} richtig / ${today.incorrect} falsch · ${today.completedWords} Vokabelzyklen abgeschlossen.`;
     const card=document.getElementById("reviewCard")||document.querySelector("#reviews .study-card");
-    if(card&&!card.querySelector(".kq-review-partial-note")){const info=document.createElement("div");info.className="kq-review-partial-note small muted";info.style.cssText="margin:10px auto 0;max-width:680px;text-align:center;line-height:1.45";info.textContent="✓ Jede Richtung wird sofort und reload-sicher gespeichert. Die beiden Richtungen sind vollständig zufällig gemischt; sobald beide bestätigt sind, wird die Vokabel direkt abgeschlossen.";pause?.parentElement?.after(info);}
+    if(card&&!card.querySelector(".kq-review-partial-note")){const info=document.createElement("div");info.className="kq-review-partial-note small muted";info.style.cssText="margin:10px auto 0;max-width:680px;text-align:center;line-height:1.45";info.textContent="✓ Jede Richtung wird sofort und reload-sicher gespeichert. 0 Richtungsfehler = Stufe hoch · 1 Fehler = Stufe bleibt, früheres Review · 2 Fehler = eine Stufe zurück. Bereits freigeschaltete Core-Level bleiben offen.";pause?.parentElement?.after(info);}
 
     // Safari/IME: one Enter should both commit the Japanese composition and submit.
     const input=document.getElementById("answerInput");
@@ -35812,6 +35874,30 @@ function vocabularyReviewPartialProgressBootstrap() {
   }
 
   function installStartWrapper(){if(wrappedStart)return;try{if(typeof startReviews!=="function"||startReviews.__kqPartialDirectionsV2)return;const original=startReviews;const replacement=function(kind){finalizePersistedCompleteRecords();const output=original.apply(this,arguments);try{if(["core","mining"].includes(kind)&&reviewSession?.questions){restoreIntoSession();if(typeof renderReview==="function")renderReview();}}catch(error){console.warn("Vokabel-Zwischenstand konnte nicht wiederhergestellt werden",error);}return output;};replacement.__kqPartialDirectionsV2=true;replacement.__kqOriginal=original;startReviews=replacement;wrappedStart=true;}catch{}}
+
+  function installFinalizeWrapper(){if(wrappedFinalize)return;try{if(typeof finalizeReviewItemIfReady!=="function"||finalizeReviewItemIfReady.__kqFairDirectionalV3)return;const replacement=function(itemId){
+      if(!reviewSession||reviewSession.finalized?.[itemId])return false;
+      const result=reviewSession.results?.[itemId];
+      if(result?.listening!==true||result?.production!==true)return false;
+      const item=currentItem(itemId);if(!item)return false;
+      const errors=reviewSession.errors?.[itemId]||{listening:false,production:false};
+      const outcome=applyDirectionalReviewOutcome(item,errors);
+      reviewSession.stats ||= {correctQuestions:0,totalQuestions:0,completedItems:0,totalItems:0,levelsGained:0};
+      reviewSession.stats.correctQuestions=Number(reviewSession.stats.correctQuestions||0)+outcome.correctCount;
+      reviewSession.stats.completedItems=Number(reviewSession.stats.completedItems||0)+1;
+      reviewSession.finalized ||= {};reviewSession.finalized[itemId]=true;
+      if(item.sourceType==="core"){
+        const before=Math.max(1,Number(data?.currentLevel||1));
+        preserveCoreUnlocks(()=>{if(typeof checkForLevelUps==="function")checkForLevelUps();});
+        reviewSession.stats.levelsGained=Number(reviewSession.stats.levelsGained||0)+Math.max(0,Number(data?.currentLevel||1)-before);
+      }
+      persistQuietly();
+      try{if(typeof renderDashboard==="function")renderDashboard();}catch{}
+      try{if(typeof renderCore==="function")renderCore();}catch{}
+      try{if(typeof renderMining==="function")renderMining();}catch{}
+      try{if(typeof renderVocabulary==="function")renderVocabulary();}catch{}
+      return true;
+    };replacement.__kqFairDirectionalV3=true;finalizeReviewItemIfReady=replacement;wrappedFinalize=true;}catch(error){console.warn("Faire Vokabel-SRS-Wertung konnte nicht installiert werden",error);}}
 
   function installGradeWrapper(){if(wrappedGrade)return;try{if(typeof gradeReview!=="function"||typeof evaluateAnswer!=="function"||gradeReview.__kqPartialDirectionsV2)return;const original=gradeReview;const replacement=function(question,item,answer){let result=null;try{result=evaluateAnswer(question,item,answer);}catch{}
       const wasFinalized=Boolean(reviewSession?.finalized?.[item?.id]);
@@ -35837,7 +35923,7 @@ function vocabularyReviewPartialProgressBootstrap() {
 
   document.addEventListener("click",event=>{const veto=event.target?.closest?.("[data-vocab-veto]");if(!veto)return;let snapshot=null;try{const feedback=reviewSession?.feedback;if(feedback?.sessionType==="review"&&feedback?.itemId&&feedback?.questionType)snapshot={itemId:feedback.itemId,type:feedback.questionType};}catch{}if(!snapshot)return;setTimeout(()=>{try{const item=currentItem(snapshot.itemId);if(!item)return;const complete=reviewSession?.results?.[snapshot.itemId]?.[snapshot.type]===true;const error=Boolean(reviewSession?.errors?.[snapshot.itemId]?.[snapshot.type]);saveDirection(item,snapshot.type,{complete,error});}catch{}},0);},true);
 
-  function install(){installStartWrapper();installGradeWrapper();installRenderWrapper();}
+  function install(){installStartWrapper();installFinalizeWrapper();installGradeWrapper();installRenderWrapper();}
 
   syncIntoData();
   cleanInvalidRecords();
@@ -35846,7 +35932,7 @@ function vocabularyReviewPartialProgressBootstrap() {
   persistQuietly();
   install();setTimeout(install,0);setTimeout(install,400);
 
-  window.KotobaQuestVocabularyReviewPartials={version:VERSION,count:validSavedCount,clear:itemId=>clearRecord(itemId),refresh:install,getStore:()=>clone(store),getStats:()=>clone(stats),recover:()=>{store=mergeStores(store,rawStoredData()[ROOT_KEY],vaultData()[ROOT_KEY],backupState().partials);stats=mergeStats(stats,rawStoredData()[STATS_KEY],vaultData()[STATS_KEY],backupState().stats);cleanInvalidRecords();migrateRecoveredDirectionsToStats();finalizePersistedCompleteRecords();persistQuietly();return validSavedCount();}};
+  window.KotobaQuestVocabularyReviewPartials={version:VERSION,applyOutcome:(item,errors)=>applyDirectionalReviewOutcome(item,errors),count:validSavedCount,clear:itemId=>clearRecord(itemId),refresh:install,getStore:()=>clone(store),getStats:()=>clone(stats),recover:()=>{store=mergeStores(store,rawStoredData()[ROOT_KEY],vaultData()[ROOT_KEY],backupState().partials);stats=mergeStats(stats,rawStoredData()[STATS_KEY],vaultData()[STATS_KEY],backupState().stats);cleanInvalidRecords();migrateRecoveredDirectionsToStats();finalizePersistedCompleteRecords();persistQuietly();return validSavedCount();}};
 }
 
 function smartReviewBootstrap() {
