@@ -163,6 +163,23 @@
       box-shadow: none;
     }
 
+    .storage-health-button { white-space: nowrap; }
+    .storage-health-button.good { color: var(--good); border-color: rgba(38,141,99,.32); background: rgba(38,141,99,.07); }
+    .storage-health-button.warn { color: var(--warning); border-color: rgba(169,109,18,.34); background: rgba(169,109,18,.08); }
+    .storage-health-button.bad { color: var(--bad); border-color: rgba(200,79,103,.35); background: rgba(200,79,103,.08); }
+    .storage-health-summary { margin:18px 0; padding:16px; border:1px solid var(--border); border-radius:16px; background:#faf8ff; }
+    .storage-health-summary strong,.storage-health-summary span { display:block; }
+    .storage-health-summary strong { font-size:1.25rem; }
+    .storage-health-summary span { margin-top:5px; color:var(--muted); line-height:1.45; }
+    .storage-meter { height:12px; margin:13px 0 7px; overflow:hidden; border-radius:999px; background:#ebe6f3; }
+    .storage-meter > span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--primary),#f58ab7); transition:width .2s ease; }
+    .storage-meter-labels { display:flex; justify-content:space-between; gap:12px; color:var(--muted); font-size:.78rem; font-weight:800; }
+    .storage-key-list { display:grid; gap:8px; margin:14px 0 0; }
+    .storage-key-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:white; }
+    .storage-key-row code { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-size:.78rem; }
+    .storage-key-row span { color:var(--muted); font-size:.78rem; font-weight:850; }
+    .storage-note { margin:12px 0 0; color:var(--muted); font-size:.82rem; line-height:1.5; }
+
     .app-frame {
       display: block;
       width: 100%;
@@ -278,6 +295,7 @@
           <span id="accountEmail"></span>
         </div>
         <div class="actions">
+          <button class="button ghost storage-health-button" id="storageHealthButton" type="button" title="Speicherstatus anzeigen">💾 Speicher</button>
           <button class="button" id="loginButton">Mit Google anmelden</button>
           <button class="button secondary" id="syncButton" hidden>Jetzt sichern</button>
           <button class="button ghost" id="reviewRecoveryButton" hidden>🛟 Verlorenen Reviewblock reparieren</button>
@@ -319,6 +337,26 @@
     </div>
   </dialog>
 
+  <dialog id="storageDialog">
+    <div class="dialog-content">
+      <h2>💾 Speicherstatus</h2>
+      <p>Kotoba Quest überwacht nur seinen lokalen Browser-Spielstand. Die Anzeige nutzt bewusst ein konservatives 4-MB-Sicherheitsbudget, damit wir reagieren, bevor der Browser seine tatsächliche Grenze erreicht.</p>
+      <div class="storage-health-summary">
+        <strong id="storageHealthTitle">Wird geprüft …</strong>
+        <span id="storageHealthDetail"></span>
+        <div class="storage-meter"><span id="storageHealthFill" style="width:0%"></span></div>
+        <div class="storage-meter-labels"><span id="storageHealthUsed">0 MB verwendet</span><span>4,0 MB Sicherheitsbudget</span></div>
+      </div>
+      <strong>Größte lokale Speicherblöcke</strong>
+      <div class="storage-key-list" id="storageKeyList"></div>
+      <p class="storage-note" id="storageMaintenanceNote">Alte Review-Historie wird automatisch begrenzt. Der jeweils letzte autoritative SRS-Zustand pro Vokabel bleibt erhalten.</p>
+      <div class="dialog-actions" style="margin-top:18px">
+        <button class="button ghost" id="storageCloseButton" type="button">Schließen</button>
+        <button class="button" id="storageOptimizeButton" type="button">Speicher optimieren</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="toast" id="toast"></div>
 
   <script type="module">
@@ -356,7 +394,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "storage-quota-fix-v6-compact-progress-indexeddb-auth";
+    const CLOUD_FEATURE_VERSION = "storage-health-v7-bounded-history";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -373,6 +411,16 @@
     const loginButton = document.getElementById("loginButton");
     const syncButton = document.getElementById("syncButton");
     const reviewRecoveryButton = document.getElementById("reviewRecoveryButton");
+    const storageHealthButton = document.getElementById("storageHealthButton");
+    const storageDialog = document.getElementById("storageDialog");
+    const storageHealthTitle = document.getElementById("storageHealthTitle");
+    const storageHealthDetail = document.getElementById("storageHealthDetail");
+    const storageHealthFill = document.getElementById("storageHealthFill");
+    const storageHealthUsed = document.getElementById("storageHealthUsed");
+    const storageKeyList = document.getElementById("storageKeyList");
+    const storageMaintenanceNote = document.getElementById("storageMaintenanceNote");
+    const storageOptimizeButton = document.getElementById("storageOptimizeButton");
+    const storageCloseButton = document.getElementById("storageCloseButton");
     const logoutButton = document.getElementById("logoutButton");
     const appFrame = document.getElementById("appFrame");
     const conflictDialog = document.getElementById("conflictDialog");
@@ -1180,7 +1228,117 @@
     }
 
     const progressVault = progressVaultFactory();
-    const STORAGE_MAINTENANCE_VERSION = "1.0";
+    const STORAGE_MAINTENANCE_VERSION = "1.1";
+
+    const STORAGE_SAFE_BUDGET_BYTES = 4 * 1024 * 1024;
+    const STORAGE_WARNING_RATIO = 0.70;
+    const STORAGE_CRITICAL_RATIO = 0.90;
+    const REVIEW_COMMIT_JOURNAL_KEY = "kotobaQuestVocabReviewCommitJournalV1";
+    const REVIEW_SRS_LEDGER_KEY = "kotobaQuestVocabSrsLedgerV1";
+    const REVIEW_PARTIAL_BACKUP_KEY = "kotobaQuestVocabReviewStateV2";
+
+    function storageKeyUsage() {
+      const rows = [];
+      try {
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index) || "";
+          const value = localStorage.getItem(key) || "";
+          rows.push({ key, bytes:(key.length + value.length) * 2 });
+        }
+      } catch {}
+      return rows.sort((a,b) => b.bytes - a.bytes);
+    }
+
+    function compactSrsSafetyHistory() {
+      const result = { ledgerPruned:0, journalPruned:0, partialsPruned:0 };
+      try {
+        const main = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        const vocabulary = Array.isArray(main?.vocabulary) ? main.vocabulary : [];
+        const validIds = new Set(vocabulary.map(item => String(item?.id || item?.packEntryId || "")).filter(Boolean));
+        const cycles = new Map(vocabulary.map(item => [
+          String(item?.id || item?.packEntryId || ""),
+          `${Math.max(0, Math.min(9, Number(item?.stage || 0)))}|${item?.availableAt == null ? "null" : String(Number(item.availableAt))}`
+        ]));
+
+        let ledger = {};
+        try { ledger = JSON.parse(localStorage.getItem(REVIEW_SRS_LEDGER_KEY) || "null") || {}; } catch {}
+        ledger.version ||= "1.0";
+        ledger.items = ledger.items && typeof ledger.items === "object" && !Array.isArray(ledger.items) ? ledger.items : {};
+
+        let journal = {};
+        try { journal = JSON.parse(localStorage.getItem(REVIEW_COMMIT_JOURNAL_KEY) || "null") || {}; } catch {}
+        const journalItems = journal.items && typeof journal.items === "object" && !Array.isArray(journal.items) ? journal.items : {};
+
+        // First promote the newest journal state into the one-record-per-word ledger.
+        for (const [id, list] of Object.entries(journalItems)) {
+          if (validIds.size && !validIds.has(String(id))) continue;
+          const entries = (Array.isArray(list) ? list : []).filter(entry => entry && typeof entry === "object")
+            .sort((a,b) => Number(a.completedAt || 0) - Number(b.completedAt || 0));
+          const latestEntry = entries.at(-1);
+          if (!latestEntry?.after) continue;
+          const updatedAt = Math.max(1, Number(latestEntry.completedAt || 0), Number(latestEntry.after?.srsUpdatedAt || 0), Number(latestEntry.after?.srsRevision || 0));
+          const previousAt = Number(ledger.items?.[id]?.updatedAt || 0);
+          if (updatedAt >= previousAt) {
+            const after = latestEntry.after || {};
+            ledger.items[id] = {
+              id:String(id), updatedAt,
+              after:{
+                stage:Math.max(0,Math.min(9,Number(after.stage || 0))),
+                availableAt:after.availableAt == null ? null : Number(after.availableAt),
+                srsUpdatedAt:updatedAt, srsRevision:updatedAt,
+                correct:Math.max(0,Number(after.correct || 0)),
+                incorrect:Math.max(0,Number(after.incorrect || 0)),
+                guruPassed:Boolean(after.guruPassed || Number(after.stage) >= 5)
+              }
+            };
+          }
+        }
+
+        // The ledger is bounded by the current vocabulary catalogue.
+        for (const id of Object.keys(ledger.items)) {
+          if (validIds.size && !validIds.has(String(id))) { delete ledger.items[id]; result.ledgerPruned += 1; }
+        }
+        ledger.updatedAt = Date.now();
+        localStorage.setItem(REVIEW_SRS_LEDGER_KEY, JSON.stringify(ledger));
+
+        // Once the ledger is safely written, the verbose journal only needs a small
+        // rolling recovery window. Keep max. 300 latest words from the last 30 days.
+        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const latestPerWord = [];
+        let originalJournalEntries = 0;
+        for (const [id, list] of Object.entries(journalItems)) {
+          const entries = (Array.isArray(list) ? list : []).filter(entry => entry && typeof entry === "object");
+          originalJournalEntries += entries.length;
+          if (validIds.size && !validIds.has(String(id))) continue;
+          const latestEntry = entries.sort((a,b) => Number(a.completedAt || 0) - Number(b.completedAt || 0)).at(-1);
+          if (latestEntry && Number(latestEntry.completedAt || 0) >= cutoff) latestPerWord.push([String(id), latestEntry]);
+        }
+        latestPerWord.sort((a,b) => Number(a[1]?.completedAt || 0) - Number(b[1]?.completedAt || 0));
+        const kept = latestPerWord.slice(-300);
+        const nextJournal = { version:"1.1", updatedAt:Date.now(), items:Object.fromEntries(kept.map(([id,entry]) => [id,[entry]])) };
+        result.journalPruned = Math.max(0, originalJournalEntries - kept.length);
+        localStorage.setItem(REVIEW_COMMIT_JOURNAL_KEY, JSON.stringify(nextJournal));
+
+        // Partial-direction backup only needs records for the exact current SRS cycle.
+        try {
+          const backup = JSON.parse(localStorage.getItem(REVIEW_PARTIAL_BACKUP_KEY) || "null");
+          const items = backup?.partials?.items;
+          if (items && typeof items === "object" && !Array.isArray(items)) {
+            for (const [id, record] of Object.entries(items)) {
+              if (!cycles.has(String(id)) || String(record?.cycle || "") !== cycles.get(String(id))) {
+                delete items[id];
+                result.partialsPruned += 1;
+              }
+            }
+            backup.updatedAt = Date.now();
+            localStorage.setItem(REVIEW_PARTIAL_BACKUP_KEY, JSON.stringify(backup));
+          }
+        } catch {}
+      } catch (error) {
+        console.warn("Kotoba Quest SRS-Historie konnte nicht vollständig komprimiert werden", error);
+      }
+      return result;
+    }
 
     function localStorageUsageBytes() {
       let total = 0;
@@ -1199,6 +1357,7 @@
       let compacted = false;
       let freedLegacy = false;
       let recoveredFromVault = false;
+      let historyCleanup = { ledgerPruned:0, journalPruned:0, partialsPruned:0 };
       try {
         const existingRaw = localStorage.getItem(STORAGE_KEY);
         if (!isValidProgress(existingRaw)) {
@@ -1242,6 +1401,10 @@
         // Recreate the vault in its compact representation after the main save
         // has successfully been reduced.
         progressVault.writeVault(mergedParsed);
+
+        // Bound recovery history after the authoritative compact main save exists.
+        // This never removes the latest SRS state: that lives in the one-record-per-word ledger.
+        historyCleanup = compactSrsSafetyHistory();
       } catch (error) {
         console.error("Kotoba Quest Speicherbereinigung fehlgeschlagen", error);
         if (!silent) {
@@ -1257,7 +1420,8 @@
         freedBytes: Math.max(0, beforeBytes - afterBytes),
         compacted,
         freedLegacy,
-        recoveredFromVault
+        recoveredFromVault,
+        historyCleanup
       };
       window.KotobaQuestStorageMaintenance = {
         version: STORAGE_MAINTENANCE_VERSION,
@@ -1268,144 +1432,51 @@
       return result;
     }
 
+    function formatStorageBytes(bytes) {
+      const value = Math.max(0, Number(bytes || 0));
+      if (value < 1024) return `${Math.round(value)} B`;
+      if (value < 1024 * 1024) return `${(value / 1024).toFixed(value < 10*1024 ? 1 : 0).replace(".",",")} KB`;
+      return `${(value / 1024 / 1024).toFixed(2).replace(".",",")} MB`;
+    }
+
+    function storageHealthSnapshot() {
+      const used = localStorageUsageBytes();
+      const ratio = used / STORAGE_SAFE_BUDGET_BYTES;
+      let tone = "good", label = "Gesund", detail = "Genügend Sicherheitsabstand für weitere Lern- und Story-Fortschritte.";
+      if (ratio >= STORAGE_CRITICAL_RATIO) {
+        tone = "bad"; label = "Kritisch"; detail = "Bitte jetzt optimieren. Kotoba Quest nähert sich seinem konservativen Sicherheitslimit.";
+      } else if (ratio >= STORAGE_WARNING_RATIO) {
+        tone = "warn"; label = "Beobachten"; detail = "Noch kein Speicherfehler, aber eine Optimierung ist sinnvoll.";
+      }
+      return { used, ratio, percent:Math.min(100,Math.round(ratio*100)), tone, label, detail, keys:storageKeyUsage().slice(0,6) };
+    }
+
+    function updateStorageHealthUi({ renderDialog = false } = {}) {
+      const health = storageHealthSnapshot();
+      if (storageHealthButton) {
+        storageHealthButton.textContent = `💾 ${formatStorageBytes(health.used)} · ${health.label}`;
+        storageHealthButton.classList.remove("good","warn","bad");
+        storageHealthButton.classList.add(health.tone);
+        storageHealthButton.title = `${health.percent}% des Kotoba-Quest-Sicherheitsbudgets verwendet`;
+      }
+      if (renderDialog) {
+        storageHealthTitle.textContent = `${health.label} · ${health.percent}% des Sicherheitsbudgets`;
+        storageHealthDetail.textContent = health.detail;
+        storageHealthFill.style.width = `${health.percent}%`;
+        storageHealthUsed.textContent = `${formatStorageBytes(health.used)} verwendet`;
+        storageKeyList.innerHTML = health.keys.length
+          ? health.keys.map(row => `<div class="storage-key-row"><code>${String(row.key).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}</code><span>${formatStorageBytes(row.bytes)}</span></div>`).join("")
+          : `<div class="storage-key-row"><code>Keine lokalen Daten</code><span>0 B</span></div>`;
+        const last = window.KotobaQuestStorageMaintenance?.lastResult;
+        const pruned = Number(last?.historyCleanup?.journalPruned || 0) + Number(last?.historyCleanup?.ledgerPruned || 0) + Number(last?.historyCleanup?.partialsPruned || 0);
+        storageMaintenanceNote.textContent = pruned
+          ? `Letzte Wartung: ${pruned} überholte Review-/SRS-Historieneinträge entfernt. Der jeweils letzte autoritative SRS-Zustand pro Vokabel bleibt erhalten.`
+          : "Review-Journal und Teilstände sind automatisch begrenzt. Der jeweils letzte autoritative SRS-Zustand pro Vokabel bleibt erhalten.";
+      }
+      return health;
+    }
+
     const initialStorageMaintenance = performStorageMaintenance({ silent:true });
-
-    const QUOTA_REVIEW_RECOVERY_KEY = "kotobaQuestQuotaReviewRecoveryV1";
-    const SRS_LEDGER_KEY = "kotobaQuestVocabSrsLedgerV1";
-    const REVIEW_REAL_DELAYS = {
-      1: 4 * 60 * 60 * 1000,
-      2: 8 * 60 * 60 * 1000,
-      3: 24 * 60 * 60 * 1000,
-      4: 2 * 24 * 60 * 60 * 1000,
-      5: 7 * 24 * 60 * 60 * 1000,
-      6: 14 * 24 * 60 * 60 * 1000,
-      7: 30 * 24 * 60 * 60 * 1000,
-      8: 120 * 24 * 60 * 60 * 1000
-    };
-
-    function dueCoreItemsForQuotaRecovery() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        const now = Date.now();
-        return (Array.isArray(parsed?.vocabulary) ? parsed.vocabulary : []).filter(item =>
-          String(item?.sourceType || "core") === "core" &&
-          Number(item?.stage || 0) > 0 &&
-          Number(item?.stage || 0) < 9 &&
-          Number(item?.availableAt || 0) > 0 &&
-          Number(item.availableAt) <= now
-        );
-      } catch {
-        return [];
-      }
-    }
-
-    function shouldOfferQuotaReviewRecovery() {
-      if (!reviewRecoveryButton) return false;
-      try {
-        const marker = JSON.parse(localStorage.getItem(QUOTA_REVIEW_RECOVERY_KEY) || "null");
-        if (marker?.completedAt) return false;
-      } catch {}
-      const due = dueCoreItemsForQuotaRecovery();
-      // Only surface this emergency tool after the new version actually freed a
-      // substantial amount of storage and a suspiciously large due block remains.
-      return Number(initialStorageMaintenance?.freedBytes || 0) >= 250000 && due.length >= 20;
-    }
-
-    function refreshQuotaReviewRecoveryButton() {
-      if (!reviewRecoveryButton) return;
-      const due = dueCoreItemsForQuotaRecovery();
-      const visible = shouldOfferQuotaReviewRecovery();
-      reviewRecoveryButton.hidden = !visible;
-      if (visible) reviewRecoveryButton.textContent = `🛟 Verlorenen Reviewblock reparieren (${due.length})`;
-    }
-
-    function repairLostQuotaReviewBatch() {
-      const due = dueCoreItemsForQuotaRecovery();
-      if (!due.length) {
-        refreshQuotaReviewRecoveryButton();
-        toast("Keine fälligen Core-Vokabeln für die Notfallreparatur gefunden.");
-        return;
-      }
-
-      const confirmed = confirm(
-        `Kotoba Quest hat ${due.length} aktuell fällige Core-Vokabeln gefunden.\n\n` +
-        "Diese Notfallreparatur ist für den Reviewblock gedacht, den du bereits vollständig bearbeitet hattest, " +
-        "dessen Speicherung wegen des vollen Browser-Speichers fehlgeschlagen ist.\n\n" +
-        "Die Vokabeln werden NICHT hochgestuft. Ihre aktuelle SRS-Stufe bleibt bestehen und das nächste Review " +
-        "wird konservativ mit dem Zeitabstand der vorherigen Stufe geplant.\n\n" +
-        "Nur fortfahren, wenn dieser fällige Block wirklich der verlorene, bereits bearbeitete Reviewblock ist."
-      );
-      if (!confirmed) return;
-
-      try {
-        const source = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        const vocabulary = Array.isArray(source.vocabulary) ? source.vocabulary : [];
-        const dueIds = new Set(due.map(item => String(item.id || item.packEntryId || "")));
-        let ledger = { version:"1.0", updatedAt:0, items:{} };
-        try {
-          const existing = JSON.parse(localStorage.getItem(SRS_LEDGER_KEY) || "null");
-          if (existing && typeof existing === "object") ledger = {
-            version:String(existing.version || "1.0"),
-            updatedAt:Number(existing.updatedAt || 0),
-            items: existing.items && typeof existing.items === "object" ? existing.items : {}
-          };
-        } catch {}
-
-        const now = Date.now();
-        let repaired = 0;
-        vocabulary.forEach((item, index) => {
-          const id = String(item?.id || item?.packEntryId || "");
-          if (!dueIds.has(id)) return;
-          const stage = Math.max(1, Math.min(8, Number(item.stage || 1)));
-          const delayStage = Math.max(1, stage - 1);
-          const updatedAt = now + repaired + 1;
-          item.availableAt = now + Number(REVIEW_REAL_DELAYS[delayStage] || REVIEW_REAL_DELAYS[1]);
-          item.srsUpdatedAt = updatedAt;
-          item.srsRevision = updatedAt;
-          item.guruPassed = Boolean(item.guruPassed || stage >= 5);
-          const after = {
-            stage,
-            availableAt:item.availableAt,
-            srsUpdatedAt:updatedAt,
-            srsRevision:updatedAt,
-            correct:Math.max(0, Number(item.correct || 0)),
-            incorrect:Math.max(0, Number(item.incorrect || 0)),
-            guruPassed:Boolean(item.guruPassed)
-          };
-          ledger.items[id] = { id, updatedAt, after };
-          repaired += 1;
-        });
-
-        // Old half-review records from the failed batch must not resurrect one
-        // direction after the neutral recovery.
-        if (source.vocabReviewPartials?.items && typeof source.vocabReviewPartials.items === "object") {
-          dueIds.forEach(id => { delete source.vocabReviewPartials.items[id]; });
-        }
-
-        ledger.updatedAt = now + repaired + 1;
-        localStorage.setItem(SRS_LEDGER_KEY, JSON.stringify(ledger));
-        const compactRaw = progressVault.compactRaw(JSON.stringify(source));
-        localStorage.setItem(STORAGE_KEY, compactRaw);
-        progressVault.writeVault(JSON.parse(compactRaw));
-        localStorage.setItem(QUOTA_REVIEW_RECOVERY_KEY, JSON.stringify({
-          version:1,
-          completedAt:Date.now(),
-          repairedCount:repaired,
-          mode:"keep-stage-previous-stage-delay"
-        }));
-
-        observedLocalRaw = compactRaw;
-        reviewRecoveryButton.hidden = true;
-        reloadAppDocument();
-        toast(`${repaired} verlorene Reviews neutral wiederhergestellt.`);
-        if (currentUser) setTimeout(() => saveLocalProgressToCloud({ force:true, reason:"manual" }), 250);
-      } catch (error) {
-        console.error("Kotoba Quest Review-Notfallreparatur fehlgeschlagen", error);
-        toast("Review-Notfallreparatur konnte nicht gespeichert werden.");
-      }
-    }
-
-    reviewRecoveryButton?.addEventListener("click", repairLostQuotaReviewBatch);
 
     function stabilizeAllProgress(raw = localStorage.getItem(STORAGE_KEY), preservedRaw = null) {
       const vaultMerged = progressVault.stabilizeRaw(raw, preservedRaw);
@@ -37392,6 +37463,20 @@ function smartReviewBootstrap() {
     }
 
     loginButton.addEventListener("click", handleLogin);
+    storageHealthButton.addEventListener("click", () => { updateStorageHealthUi({renderDialog:true}); storageDialog.showModal(); });
+    storageCloseButton.addEventListener("click", () => storageDialog.close());
+    storageOptimizeButton.addEventListener("click", () => {
+      storageOptimizeButton.disabled = true;
+      try {
+        const before = localStorageUsageBytes();
+        const result = performStorageMaintenance({silent:false});
+        const after = localStorageUsageBytes();
+        const freed = Math.max(0, before - after);
+        updateStorageHealthUi({renderDialog:true});
+        toast(freed > 1024 ? `Speicher optimiert · ${formatStorageBytes(freed)} freigegeben.` : "Speicher ist bereits optimal aufgeräumt.");
+        if (result?.historyCleanup) window.KotobaQuestStorageMaintenance.lastResult = result;
+      } finally { storageOptimizeButton.disabled = false; }
+    });
     syncButton.addEventListener("click", () => saveLocalProgressToCloud({ force: true, reason: "manual" }));
     logoutButton.addEventListener("click", async () => {
       clearTimeout(saveTimer);
@@ -37426,10 +37511,21 @@ function smartReviewBootstrap() {
     });
 
     window.addEventListener("storage", event => {
+      updateStorageHealthUi();
       if (event.key !== STORAGE_KEY || event.newValue === event.oldValue) return;
       observedLocalRaw = event.newValue;
       scheduleCloudSave();
     });
+
+    let lastAutomaticStorageMaintenanceAt = Date.now();
+    setInterval(() => {
+      const health = updateStorageHealthUi();
+      if (health.ratio >= STORAGE_WARNING_RATIO && Date.now() - lastAutomaticStorageMaintenanceAt > 30 * 60 * 1000) {
+        performStorageMaintenance({silent:true});
+        lastAutomaticStorageMaintenanceAt = Date.now();
+        updateStorageHealthUi();
+      }
+    }, 120000);
 
     window.addEventListener("online", () => {
       if (currentUser) reconcileLocalAndCloud();
@@ -37465,11 +37561,12 @@ function smartReviewBootstrap() {
 
     await loadAppDocument();
 
+    updateStorageHealthUi();
+
     if (Number(initialStorageMaintenance?.freedBytes || 0) > 50000) {
       const freedMb = (Number(initialStorageMaintenance.freedBytes) / 1024 / 1024).toFixed(1).replace(".", ",");
       setTimeout(() => toast(`Browser-Speicher bereinigt · ${freedMb} MB freigegeben.`), 350);
     }
-    refreshQuotaReviewRecoveryButton();
 
     try {
       // Keep Firebase Auth away from Kotoba Quest's progress localStorage.
