@@ -20067,7 +20067,7 @@
         const result = evaluateAnswer(question, item, answer);
         const priorError = Boolean(reviewSession?.errors?.[item.id]?.[question.type]);
         const output = originalGradeReview.apply(this, arguments);
-        if (result.status === "incorrect" && reviewSession?.feedback) {
+        if ((result.status === "incorrect" || result.status === "close") && reviewSession?.feedback) {
           reviewSession.feedback = {
             ...reviewSession.feedback,
             vetoEligible: true,
@@ -20087,7 +20087,7 @@
         const result = evaluateAnswer(question, item, answer);
         const priorError = Boolean(placementSession?.errors?.[item.id]?.[question.type]);
         const output = originalGradePlacementProof.apply(this, arguments);
-        if (result.status === "incorrect" && placementSession?.feedback) {
+        if ((result.status === "incorrect" || result.status === "close") && placementSession?.feedback) {
           placementSession.feedback = {
             ...placementSession.feedback,
             vetoEligible: true,
@@ -30949,12 +30949,15 @@ ${tooltipText(segment, status)}`)}"`
       if (dashboard) dashboardObserver.observe(dashboard, { childList: true });
     
       setInterval(() => {
+        // Story/RPG-Dashboard muss während eines Vokabelreviews nicht im Hintergrund
+        // auf jede Aktivitätsänderung reagieren.
+        if (document.getElementById("reviews")?.classList.contains("active")) return;
         const count = currentActivityCount();
         if (count === lastActivityCount) return;
         lastActivityCount = count;
         if (document.getElementById("storyReader")?.classList.contains("active")) renderStory();
         installDashboardCard();
-      }, 1800);
+      }, 5000);
     
       try {
         const originalSwitchView = switchView;
@@ -32884,13 +32887,14 @@ function renderProgressCenter() {
       setTimeout(refresh, 100);
       setTimeout(refresh, 500);
       setInterval(() => {
+        if (document.getElementById("reviews")?.classList.contains("active")) return;
         const nav = document.querySelector(".topbar .nav, .nav");
         const expected = MAIN_GROUPS.map(item => item.id).join("|");
         const actual = nav ? [...nav.querySelectorAll("[data-kq-main-group]")].map(button => button.dataset.kqMainGroup).join("|") : "";
         const extras = nav ? [...nav.children].filter(child => !child.matches?.("[data-kq-main-group]") && child.id !== "kqPastelThemePicker") : [];
         if (actual !== expected || extras.length) installNavigation();
         if (document.getElementById("dashboard")?.classList.contains("active")) installDashboardDistribution();
-      }, 1200);
+      }, 8000);
     
       window.KotobaQuestInterface = {
         version: VERSION,
@@ -32928,7 +32932,13 @@ function renderProgressCenter() {
       function saveSource(source) {
         try {
           if (typeof data !== "undefined" && data && typeof data === "object" && data !== source) Object.assign(data, source);
-          if (typeof saveData === "function") saveData();
+          // Story-Energie darf während einer Eingabe niemals renderAll()/saveData() auslösen.
+          // Persistieren reicht; die sichtbaren Energieelemente werden separat aktualisiert.
+          if (document.getElementById("reviews")?.classList.contains("active")) {
+            // Der zugrunde liegende Review-Fortschritt ist bereits gespeichert. Das
+            // Ledger lässt sich daraus beim nächsten Start deterministisch nachziehen;
+            // während des Tippens ist deshalb kein zweiter großer Hauptsave nötig.
+          } else if (typeof persist === "function") persist();
           else localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
         } catch { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); } catch {} }
       }
@@ -33010,7 +33020,8 @@ function renderProgressCenter() {
           const hadLedger = number(source.storyEnergyLedger?.version) >= VERSION && Boolean(source.storyEnergyLedger?.seen);
           const ledger = ensureLedger(source, current);
           const previous = objectValue(ledger.seen);
-          let changed = !hadLedger;
+          let changed = !hadLedger || Boolean(ledger.runtimeDirty);
+          ledger.runtimeDirty = false;
           let awarded = 0;
 
           for (const key of ["coreReviews","miningReviews","grammarReviews","particleReviews"]) {
@@ -33069,6 +33080,31 @@ function renderProgressCenter() {
           return summary();
         } finally { syncing = false; }
       }
+      function recordVocabReview(kind="core") {
+        const source=sourceData();
+        const existing=objectValue(source.storyEnergyLedger);
+        if(number(existing.version)<VERSION || !existing.seen) return sync();
+        const ledger=ensureLedger(source,existing.seen);
+        const key=kind==="mining"?"miningReviews":"coreReviews";
+        ledger.pendingReviews.push(domainLabel(key));
+        ledger.seen[key]=number(ledger.seen[key])+1;
+        let awarded=0;
+        while(ledger.pendingReviews.length>=REVIEW_TARGET){
+          const group=ledger.pendingReviews.splice(0,REVIEW_TARGET);
+          const counts=group.reduce((result,label)=>{result[label]=(result[label]||0)+1;return result;},{});
+          const details=Object.entries(counts).map(([label,count])=>`${count}× ${label}`).join(" · ");
+          addHistory(ledger,"reviews",1,"5 SRS-Reviews abgeschlossen",details);
+          awarded++;
+        }
+        ledger.updatedAt=Date.now();
+        ledger.runtimeDirty=true;
+        source.storyEnergyLedger=ledger;
+        lastSignature=JSON.stringify([ledger.totalEarned,ledger.pendingReviews.length,ledger.coreWordsIntoNext]);
+        updateUi();
+        if(awarded){try{if(typeof toast==="function")toast(`⚡ ${awarded} Story-Energie erhalten`);}catch{}}
+        return summary();
+      }
+
       function activeStoryProgress() {
         const source = sourceData();
         const reader = objectValue(source.storyReader);
@@ -33077,7 +33113,10 @@ function renderProgressCenter() {
       }
       function summary(progress = activeStoryProgress()) {
         const source = sourceData();
-        const ledger = ensureLedger(source);
+        const existingLedger=objectValue(source.storyEnergyLedger);
+        const ledger = number(existingLedger.version) >= VERSION && existingLedger.seen
+          ? ensureLedger(source, existingLedger.seen)
+          : ensureLedger(source, snapshot(source));
         const energy = objectValue(progress?.storyEnergy);
         const purchases = objectValue(energy.purchases);
         const spent = Object.entries(purchases).reduce((sum, [sceneId, storedCost]) => {
@@ -33360,10 +33399,15 @@ function renderProgressCenter() {
       }
 
       installStyles();
-      window.KotobaQuestStoryEnergy = { version:VERSION, sync, summary, renderGuide, open, requirementsMet, requirementLines, absoluteProgress, updateUi };
+      window.KotobaQuestStoryEnergy = { version:VERSION, sync, recordVocabReview, summary, renderGuide, open, requirementsMet, requirementLines, absoluteProgress, updateUi };
       setTimeout(() => { sync(); updateUi(); }, 250);
-      setInterval(() => sync(), 900);
-      new MutationObserver(() => updateUi()).observe(document.documentElement,{childList:true,subtree:true});
+      // Kein permanenter 0,9-s-Snapshot mehr. Während Reviews wird Story-Energie
+      // direkt beim abgeschlossenen Vokabelzyklus synchronisiert (siehe Review-Engine).
+      // Außerhalb von Reviews reicht ein seltener Sicherheits-Sync.
+      setInterval(() => {
+        if (document.getElementById("reviews")?.classList.contains("active")) return;
+        sync();
+      }, 8000);
     }
 
 
@@ -33396,6 +33440,9 @@ function renderProgressCenter() {
       }
       function shouldAttach(element) {
         if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return false;
+        // Das normale Vokabelreview besitzt bereits eine eigene IME-/Romaji-Engine.
+        // Ein zweiter globaler Converter am selben Feld kann Eingaben doppelt verändern.
+        if (element.id === "answerInput" && element.closest("#reviews")) return false;
         if (["search","email","password","url","number"].includes(element.type)) return false;
         if (element.closest(".kq-lr-import, #kqLanguageReactorImport") && !element.matches('[lang="ja"],[data-kq-kana-input]')) return false;
         const id=element.id||"", placeholder=(element.placeholder||"").toLowerCase();
@@ -33635,6 +33682,9 @@ function renderProgressCenter() {
         if(event.key!=="Enter"||event.shiftKey)return;
         if(target instanceof HTMLTextAreaElement && !target.matches('[lang="ja"],[data-kq-kana-input]'))return;
         if(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement){
+          // Vokabelreviews behandeln Enter/IME selbst (inkl. Safari compositionend).
+          // Der globale Capture-Handler darf dort nicht zusätzlich submitten.
+          if(target.id === "answerInput" && target.closest("#reviews")) return;
           if(shouldAttach(target)){target.value=toHiragana(target.value,true);target.dispatchEvent(new Event("input",{bubbles:true}));}
           if(target.form){event.preventDefault();event.stopImmediatePropagation();target.form.requestSubmit?.();return;}
         }
@@ -33673,9 +33723,23 @@ function renderProgressCenter() {
         const pairs=[['.feedback.good','#kqProblemNext'],['.kq-particle-feedback.good','#kqParticleNext'],['.kq-pp-review.good','#kqPpReviewNext']];
         for(const [feedbackSelector,nextSelector] of pairs){const feedback=document.querySelector(feedbackSelector);const next=document.querySelector(nextSelector);if(feedback&&visible(next)&&!next.dataset.kqAutoAdvanced){next.dataset.kqAutoAdvanced="1";setTimeout(()=>{if(document.contains(next))next.click();},70);}}
       }
-      let queued=false;function refresh(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;refreshInputs();installReviewVisibility();autoAdvanceCorrect();window.KotobaQuestStoryEnergy?.sync?.();});}
+      let queued=false;function refresh(){if(queued)return;queued=true;requestAnimationFrame(()=>{
+        queued=false;
+        const inVocabReview=document.getElementById("reviews")?.classList.contains("active");
+        if(inVocabReview){
+          // Im Review nur das aktuelle Eingabefeld anbinden. Keine Dashboard-Scans,
+          // keine Due-Zählungen und kein Story-Energy-Snapshot während des Tippens.
+          const input=document.getElementById("answerInput");
+          if(input)attach(input);
+          return;
+        }
+        refreshInputs();installReviewVisibility();autoAdvanceCorrect();window.KotobaQuestStoryEnergy?.sync?.();
+      });}
       new MutationObserver(refresh).observe(document.documentElement,{childList:true,subtree:true});
-      setInterval(refresh,1200);refresh();
+      setInterval(()=>{
+        if(document.getElementById("reviews")?.classList.contains("active"))return;
+        refresh();
+      },8000);refresh();
       window.KotobaQuestInteraction={version:2,refresh,launchReview:launch};
     }
 
@@ -35653,9 +35717,29 @@ function vocabularyReviewPartialProgressBootstrap() {
     try { localStorage.setItem(BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),partials:store,stats})); } catch {}
   }
 
-  function persistQuietly() {
-    syncIntoData(); writeBackup();
+  let fullPersistTimer=null;
+  function flushFullPersist() {
+    if(fullPersistTimer){clearTimeout(fullPersistTimer);fullPersistTimer=null;}
+    syncIntoData();writeBackup();
     try { if (typeof persist === "function") persist(); else localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData())); } catch {}
+    try { window.dispatchEvent(new CustomEvent("kotoba-progress-dirty")); } catch {}
+  }
+  function scheduleFullPersist() {
+    if(fullPersistTimer)clearTimeout(fullPersistTimer);
+    fullPersistTimer=setTimeout(()=>{
+      // Solange gerade aktiv eine Review-Antwort getippt wird, reicht der kleine
+      // reload-sichere Richtungs-Backup-Key. Den großen Hauptsave schreiben wir
+      // erst in einer Tipp-Pause, damit keine Tastendrücke blockiert werden.
+      const input=document.getElementById("answerInput");
+      if(document.getElementById("reviews")?.classList.contains("active") && input && document.activeElement===input){
+        scheduleFullPersist();return;
+      }
+      flushFullPersist();
+    },1800);
+  }
+  function persistQuietly({full=false}={}) {
+    syncIntoData();writeBackup();
+    if(full)flushFullPersist();else scheduleFullPersist();
   }
 
   function cycle(item) {
@@ -35739,7 +35823,6 @@ function vocabularyReviewPartialProgressBootstrap() {
     if(complete!=null){direction.complete=Boolean(complete);direction.completedAt=direction.complete?(direction.completedAt||Date.now()):null;}
     if(error!=null)direction.error=Boolean(error);
     record.updatedAt=Date.now();
-    persistQuietly();
   }
 
   function migrateRecoveredDirectionsToStats() {
@@ -35891,11 +35974,13 @@ function vocabularyReviewPartialProgressBootstrap() {
         preserveCoreUnlocks(()=>{if(typeof checkForLevelUps==="function")checkForLevelUps();});
         reviewSession.stats.levelsGained=Number(reviewSession.stats.levelsGained||0)+Math.max(0,Number(data?.currentLevel||1)-before);
       }
-      persistQuietly();
-      try{if(typeof renderDashboard==="function")renderDashboard();}catch{}
-      try{if(typeof renderCore==="function")renderCore();}catch{}
-      try{if(typeof renderMining==="function")renderMining();}catch{}
-      try{if(typeof renderVocabulary==="function")renderVocabulary();}catch{}
+      // Der SRS-Stufenwechsel ist wichtig genug für einen sofortigen Hauptsave,
+      // aber Dashboard/Core/Mining/Vokabelliste werden NICHT mitten im Review gerendert.
+      persistQuietly({full:true});
+      try{
+        if(window.KotobaQuestStoryEnergy?.recordVocabReview)window.KotobaQuestStoryEnergy.recordVocabReview(item.sourceType);
+        else window.KotobaQuestStoryEnergy?.sync?.();
+      }catch{}
       return true;
     };replacement.__kqFairDirectionalV3=true;finalizeReviewItemIfReady=replacement;wrappedFinalize=true;}catch(error){console.warn("Faire Vokabel-SRS-Wertung konnte nicht installiert werden",error);}}
 
@@ -35916,12 +36001,18 @@ function vocabularyReviewPartialProgressBootstrap() {
         }
       }catch(error){console.warn("Vokabel-Richtungsfortschritt konnte nicht gespeichert werden",error);}
       const output=original.apply(this,arguments);
-      try{if(item?.id&&!wasFinalized&&reviewSession?.finalized?.[item.id]){logCompletedWord();clearRecord(item.id,false);persistQuietly();}}catch{}
+      try{if(item?.id&&!wasFinalized&&reviewSession?.finalized?.[item.id]){
+        logCompletedWord();clearRecord(item.id,false);
+        // Der Stufenwechsel wurde bereits im Finalizer vollständig gespeichert.
+        // Hier nur den kleinen Backup-Stand aktualisieren; kein zweites großes JSON
+        // direkt nachdem das nächste Eingabefeld fokussiert wurde.
+        syncIntoData();writeBackup();scheduleFullPersist();
+      }}catch{}
       return output;};replacement.__kqPartialDirectionsV2=true;replacement.__kqOriginal=original;gradeReview=replacement;wrappedGrade=true;}catch{}}
 
   function installRenderWrapper(){if(wrappedRender)return;try{if(typeof renderReview!=="function"||renderReview.__kqPartialDirectionsV2)return;const original=renderReview;const replacement=function(){const output=original.apply(this,arguments);try{enhanceReviewUi();}catch{}return output;};replacement.__kqPartialDirectionsV2=true;replacement.__kqOriginal=original;renderReview=replacement;wrappedRender=true;}catch{}}
 
-  document.addEventListener("click",event=>{const veto=event.target?.closest?.("[data-vocab-veto]");if(!veto)return;let snapshot=null;try{const feedback=reviewSession?.feedback;if(feedback?.sessionType==="review"&&feedback?.itemId&&feedback?.questionType)snapshot={itemId:feedback.itemId,type:feedback.questionType};}catch{}if(!snapshot)return;setTimeout(()=>{try{const item=currentItem(snapshot.itemId);if(!item)return;const complete=reviewSession?.results?.[snapshot.itemId]?.[snapshot.type]===true;const error=Boolean(reviewSession?.errors?.[snapshot.itemId]?.[snapshot.type]);saveDirection(item,snapshot.type,{complete,error});}catch{}},0);},true);
+  document.addEventListener("click",event=>{const veto=event.target?.closest?.("[data-vocab-veto]");if(!veto)return;let snapshot=null;try{const feedback=reviewSession?.feedback;if(feedback?.sessionType==="review"&&feedback?.itemId&&feedback?.questionType)snapshot={itemId:feedback.itemId,type:feedback.questionType};}catch{}if(!snapshot)return;setTimeout(()=>{try{const item=currentItem(snapshot.itemId);if(!item)return;const complete=reviewSession?.results?.[snapshot.itemId]?.[snapshot.type]===true;const error=Boolean(reviewSession?.errors?.[snapshot.itemId]?.[snapshot.type]);saveDirection(item,snapshot.type,{complete,error});persistQuietly();}catch{}},0);},true);
 
   function install(){installStartWrapper();installFinalizeWrapper();installGradeWrapper();installRenderWrapper();}
 
@@ -35939,8 +36030,9 @@ function smartReviewBootstrap() {
   if (window.__KOTOBA_SMART_REVIEW_V1__) return;
   window.__KOTOBA_SMART_REVIEW_V1__ = true;
 
-  const VERSION = "1.0";
+  const VERSION = "1.1";
   const STORAGE_KEY = "kotobaQuestDataV3";
+  const SMART_BACKUP_KEY = "kotobaQuestSmartReviewBackupV1";
   const MAX_EVENTS = 160;
   let renderQueued = false;
   let wrappedGrade = false;
@@ -35954,10 +36046,16 @@ function smartReviewBootstrap() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
   }
 
+  function readSmartBackup() {
+    try { const parsed=JSON.parse(localStorage.getItem(SMART_BACKUP_KEY)||"null");return parsed&&typeof parsed==="object"?parsed:null; } catch { return null; }
+  }
   function state() {
     const source = sourceData();
     if (!source.smartReview || typeof source.smartReview !== "object" || Array.isArray(source.smartReview)) {
-      source.smartReview = { version:VERSION, vocabDirections:{}, events:[], lastOpenedAt:null };
+      const backup=readSmartBackup();
+      source.smartReview = backup?.state && typeof backup.state==="object"
+        ? backup.state
+        : { version:VERSION, vocabDirections:{}, events:[], lastOpenedAt:null };
     }
     source.smartReview.version = VERSION;
     source.smartReview.vocabDirections = source.smartReview.vocabDirections && typeof source.smartReview.vocabDirections === "object"
@@ -35966,17 +36064,28 @@ function smartReviewBootstrap() {
     return source.smartReview;
   }
 
+  let smartFullSaveTimer=null;
+  function scheduleSmartFullSave() {
+    if(smartFullSaveTimer)clearTimeout(smartFullSaveTimer);
+    smartFullSaveTimer=setTimeout(()=>{
+      smartFullSaveTimer=null;
+      const input=document.getElementById("answerInput");
+      if(document.getElementById("reviews")?.classList.contains("active")&&input&&document.activeElement===input){
+        scheduleSmartFullSave();return;
+      }
+      try{if(typeof persist==="function")persist();else localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData()));}catch{}
+    },2200);
+  }
   function persistSmart() {
     const source = sourceData();
     source.smartReview = state();
     try {
       if (typeof data !== "undefined" && data && typeof data === "object") data.smartReview = source.smartReview;
-      // Smart Review speichert häufig (z. B. nach jeder einzelnen Review-Antwort).
-      // saveData() würde dabei die komplette App neu rendern und sichtbares UI-Springen verursachen.
-      if (typeof persist === "function") persist();
-      else localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
+      // Richtungsanalyse sofort in einem kleinen Backup sichern; der große Spielstand
+      // wird erst in einer Tipp-Pause geschrieben.
+      localStorage.setItem(SMART_BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),state:source.smartReview}));
+      scheduleSmartFullSave();
     } catch (error) {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); } catch {}
       console.warn("Smart Review konnte nicht gespeichert werden", error);
     }
     scheduleRender();
@@ -36039,13 +36148,14 @@ function smartReviewBootstrap() {
       const replacement = function(question, item, answer) {
         let result = null;
         try { result = evaluateAnswer(question, item, answer); } catch {}
-        const output = originalGradeReview.apply(this, arguments);
+        // Tracking VOR dem Rendern der nächsten Frage: so kann kein Storage-Write
+        // ein bereits fokussiertes neues Eingabefeld blockieren.
         try {
           if (result?.status === "correct") recordVocabAnswer(item, question?.type, "correct");
           else if (result?.status === "incorrect") recordVocabAnswer(item, question?.type, "incorrect");
           else if (result?.status === "close") recordVocabAnswer(item, question?.type, "close");
         } catch (error) { console.warn("Smart-Review-Vokabeltracking fehlgeschlagen", error); }
-        return output;
+        return originalGradeReview.apply(this, arguments);
       };
       replacement.__kqSmartReviewTracked = true;
       replacement.__kqOriginal = originalGradeReview;
@@ -36349,11 +36459,12 @@ function smartReviewBootstrap() {
   scheduleRender();
   setTimeout(scheduleRender, 350);
   setTimeout(scheduleRender, 1300);
-  setInterval(() => {
-    installVocabTracking();
-    if (document.getElementById("dashboard")?.classList.contains("active") || document.getElementById("smartReview")?.classList.contains("active")) scheduleRender();
-  }, 3000);
-  window.addEventListener("storage", event => { if (event.key === STORAGE_KEY) scheduleRender(); });
+  // Smart Review ist jetzt ereignisgesteuert statt alle 3 Sekunden neu zu analysieren.
+  // Ein Wechsel auf Dashboard/Smart-Review reicht als Refresh-Trigger.
+  [document.getElementById("dashboard"),document.getElementById("smartReview")].filter(Boolean).forEach(view=>{
+    new MutationObserver(()=>{if(view.classList.contains("active"))scheduleRender();}).observe(view,{attributes:true,attributeFilter:["class"]});
+  });
+  window.addEventListener("storage", event => { if (event.key === STORAGE_KEY || event.key === SMART_BACKUP_KEY) scheduleRender(); });
 
   window.KotobaQuestSmartReview = { version:VERSION, open, analyze:diagnoses, refresh:scheduleRender, getState:() => state() };
 }
@@ -36829,11 +36940,28 @@ function smartReviewBootstrap() {
     });
 
     setInterval(() => {
-      const raw = stabilizeAllProgress(localStorage.getItem(STORAGE_KEY));
+      // Lokales Review-Speichern hat Priorität. Cloud-Stabilisierung ist vergleichsweise
+      // teuer (JSON parse/merge/stringify) und darf niemals mitten im Tippen laufen.
+      if (document.getElementById("reviews")?.classList.contains("active")) return;
+      const currentRaw = localStorage.getItem(STORAGE_KEY);
+      if (currentRaw === observedLocalRaw) return;
+      const raw = stabilizeAllProgress(currentRaw, observedLocalRaw);
       if (raw === observedLocalRaw) return;
       observedLocalRaw = raw;
       scheduleCloudSave();
-    }, 1500);
+    }, 5000);
+
+    window.addEventListener("kotoba-progress-dirty", () => {
+      // Kein sofortiger schwerer Merge während eines aktiven Reviews; nach dem Verlassen
+      // übernimmt der nächste Poll. Außerhalb von Reviews darf Cloud direkt nachziehen.
+      if (document.getElementById("reviews")?.classList.contains("active")) return;
+      const currentRaw=localStorage.getItem(STORAGE_KEY);
+      if(currentRaw===observedLocalRaw)return;
+      const raw=stabilizeAllProgress(currentRaw,observedLocalRaw);
+      if(raw===observedLocalRaw)return;
+      observedLocalRaw=raw;
+      scheduleCloudSave();
+    });
 
     await loadAppDocument();
 
