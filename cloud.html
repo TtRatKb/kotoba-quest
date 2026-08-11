@@ -280,7 +280,7 @@
 
   <style id="kqOuterMobileStyles">
     .kq-cloud-mobile-menu-button { display:none; }
-    @media (max-width:760px) {
+    @media (max-width:900px) and (hover:none) and (pointer:coarse) {
       .shell { grid-template-rows:auto minmax(0,1fr); }
       .cloud-bar {
         min-height:48px;
@@ -37209,7 +37209,7 @@ function smartReviewBootstrap() {
       const VERSION = "1.0";
       const viewportMeta = document.querySelector('meta[name="viewport"]');
       if (viewportMeta) viewportMeta.setAttribute("content", "width=device-width, initial-scale=1.0, viewport-fit=cover");
-      const mq = window.matchMedia("(max-width: 760px)");
+      const mq = window.matchMedia("(max-width: 900px) and (hover: none) and (pointer: coarse)");
       const FOCUS_VIEWS = new Set(["placement", "lessons", "reviews", "grammarLesson", "grammarReview", "n4Recap", "resonanceTraining"]);
       const PRIMARY_GROUPS = [
         { id: "overview", icon: "⌂", label: "Home" },
@@ -37254,7 +37254,7 @@ function smartReviewBootstrap() {
         style.id = "kqMobileExperienceStyles";
         style.textContent = `
           .kq-mobile-dock,.kq-mobile-sheet-backdrop,.kq-mobile-route-label,.kq-mobile-focus-menu{display:none}
-          @media (max-width:760px){
+          @media (max-width:900px) and (hover:none) and (pointer:coarse){
             html{scroll-padding-top:58px}
             body{overscroll-behavior-y:none}
             .app{width:min(100% - 12px,1120px)!important;margin:6px auto 0!important;padding-bottom:calc(82px + env(safe-area-inset-bottom))}
@@ -37462,9 +37462,8 @@ function smartReviewBootstrap() {
       }
 
       installStyles();
-      buildDock();
-      buildSheet();
-      installTopbarAddons();
+      // Desktop stays completely untouched: mobile DOM is created only on a real
+      // coarse-pointer / no-hover device that also fits the phone breakpoint.
       updateUi();
 
       let queued = false;
@@ -38103,7 +38102,8 @@ function smartReviewBootstrap() {
       window.addEventListener("kq-storage-health-updated", syncDialog);
     }
 
-    installOuterMobileMenu();
+    const outerMobileMq = window.matchMedia("(max-width: 900px) and (hover: none) and (pointer: coarse)");
+    if (outerMobileMq.matches) installOuterMobileMenu();
 
     if (location.protocol === "file:") {
       setStatus(
