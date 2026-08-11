@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <title>Kotoba Quest – Cloud</title>
   <style>
@@ -277,6 +277,57 @@
       .actions .button { flex: 1; }
     }
   </style>
+
+  <style id="kqOuterMobileStyles">
+    .kq-cloud-mobile-menu-button { display:none; }
+    @media (max-width:760px) {
+      .shell { grid-template-rows:auto minmax(0,1fr); }
+      .cloud-bar {
+        min-height:48px;
+        padding:6px 9px;
+        gap:8px;
+        flex-direction:row;
+        align-items:center;
+      }
+      .status-wrap { flex:1 1 auto; min-width:0; gap:8px; }
+      .status-dot { width:10px; height:10px; box-shadow:0 0 0 4px rgba(169,109,18,.10); }
+      .status-copy strong { font-size:.78rem; }
+      .status-copy span { display:none; }
+      .account-wrap { flex:0 0 auto; margin:0; min-width:0; }
+      .account-copy,.cloud-bar .actions { display:none!important; }
+      .kq-cloud-mobile-menu-button {
+        display:grid;
+        place-items:center;
+        width:39px;
+        height:39px;
+        padding:0;
+        border:1px solid var(--border);
+        border-radius:13px;
+        color:var(--primary-dark);
+        background:#f7f3ff;
+        font-size:1rem;
+        box-shadow:none;
+      }
+      #kqCloudMobileDialog {
+        inset:auto 6px max(6px,env(safe-area-inset-bottom));
+        width:calc(100% - 12px);
+        max-height:min(78dvh,620px);
+        margin:0;
+        overflow:auto;
+        border-radius:24px 24px 18px 18px;
+      }
+      #kqCloudMobileDialog .dialog-content { padding:16px; }
+      .kq-cloud-mobile-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .kq-cloud-mobile-head h2 { margin:0!important; font-size:1.15rem; }
+      .kq-cloud-mobile-close { width:40px; height:40px; padding:0; }
+      .kq-cloud-mobile-status { margin:12px 0; padding:12px; border:1px solid var(--border); border-radius:14px; background:#faf8ff; }
+      .kq-cloud-mobile-status strong,.kq-cloud-mobile-status span { display:block; }
+      .kq-cloud-mobile-status span { margin-top:4px; color:var(--muted); font-size:.82rem; line-height:1.4; }
+      .kq-cloud-mobile-actions { display:grid; gap:8px; }
+      .kq-cloud-mobile-actions button { width:100%; min-height:46px; }
+    }
+  </style>
+
 </head>
 <body>
   <div class="shell">
@@ -394,7 +445,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "storage-health-v8-core-progress-delta";
+    const CLOUD_FEATURE_VERSION = "mobile-experience-v1";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -37150,6 +37201,289 @@ function smartReviewBootstrap() {
   window.KotobaQuestSmartReview = { version:VERSION, open, analyze:diagnoses, refresh:scheduleRender, getState:() => state() };
 }
 
+
+    function mobileExperienceBootstrap() {
+      if (window.__KQ_MOBILE_EXPERIENCE_V1__) return;
+      window.__KQ_MOBILE_EXPERIENCE_V1__ = true;
+
+      const VERSION = "1.0";
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      if (viewportMeta) viewportMeta.setAttribute("content", "width=device-width, initial-scale=1.0, viewport-fit=cover");
+      const mq = window.matchMedia("(max-width: 760px)");
+      const FOCUS_VIEWS = new Set(["placement", "lessons", "reviews", "grammarLesson", "grammarReview", "n4Recap", "resonanceTraining"]);
+      const PRIMARY_GROUPS = [
+        { id: "overview", icon: "⌂", label: "Home" },
+        { id: "learning", icon: "学", label: "Lernen" },
+        { id: "practice", icon: "⚔", label: "Üben" },
+        { id: "story", icon: "📖", label: "Story" }
+      ];
+      const GROUP_META = {
+        overview: { icon: "⌂", label: "Übersicht" },
+        learning: { icon: "学", label: "Lernen" },
+        practice: { icon: "⚔", label: "Üben" },
+        story: { icon: "📖", label: "Story" },
+        mining: { icon: "⛏", label: "Mining" },
+        smart: { icon: "🧠", label: "Smart Review" },
+        progress: { icon: "🌱", label: "Fortschritt" }
+      };
+
+      function activeViewId() {
+        return document.querySelector("main .view.active")?.id || "dashboard";
+      }
+
+      function inferGroupFromView(view) {
+        if (view === "dashboard") return "overview";
+        if (["learningCenter","core","grammar","grammarLesson","grammarReview","n4Recap","lessons","reviews","placement"].includes(view)) return "learning";
+        if (["practiceCenter","vocabPractice","problemWords","resonanceTraining"].includes(view)) return "practice";
+        if (view === "particlePractice") return "practice";
+        if (view === "storyReader") return "story";
+        if (["mining","vocabulary"].includes(view)) return "mining";
+        if (view === "smartReview") return "smart";
+        if (["progressCenter","statistics","archive","masteryTree"].includes(view)) return "progress";
+        return "overview";
+      }
+
+      function activeGroup() {
+        const active = document.querySelector('.topbar .nav [data-kq-main-group].active');
+        return active?.dataset?.kqMainGroup || inferGroupFromView(activeViewId());
+      }
+
+      function installStyles() {
+        if (document.getElementById("kqMobileExperienceStyles")) return;
+        const style = document.createElement("style");
+        style.id = "kqMobileExperienceStyles";
+        style.textContent = `
+          .kq-mobile-dock,.kq-mobile-sheet-backdrop,.kq-mobile-route-label,.kq-mobile-focus-menu{display:none}
+          @media (max-width:760px){
+            html{scroll-padding-top:58px}
+            body{overscroll-behavior-y:none}
+            .app{width:min(100% - 12px,1120px)!important;margin:6px auto 0!important;padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+            main{margin-top:10px!important}
+            .topbar{position:sticky!important;top:0!important;z-index:30!important;min-height:50px!important;padding:6px 9px!important;gap:8px!important;flex-wrap:nowrap!important;border-radius:0 0 16px 16px!important;box-shadow:0 6px 20px rgba(41,36,58,.10)!important}
+            .topbar .brand{gap:8px!important;min-width:0!important;flex:1 1 auto!important}
+            .topbar .logo{width:34px!important;height:34px!important;min-width:34px!important;border-radius:11px!important;font-size:.9rem!important}
+            .topbar .brand h1{font-size:.92rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+            .topbar .brand p{display:none!important}
+            .topbar .nav{display:none!important}
+            .kq-mobile-route-label{display:flex;align-items:center;gap:5px;max-width:42vw;padding:7px 9px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.84);color:var(--primary-dark);font-size:.76rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+            .kq-mobile-dock{position:fixed;left:8px;right:8px;bottom:max(7px,env(safe-area-inset-bottom));z-index:9000;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;padding:5px;border:1px solid color-mix(in srgb,var(--border) 80%,white);border-radius:19px;background:rgba(255,255,255,.94);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 34px rgba(41,36,58,.18)}
+            .kq-mobile-dock button{min-width:0;min-height:51px;padding:5px 2px;border:0;border-radius:14px;background:transparent;color:var(--muted);display:grid;place-items:center;align-content:center;gap:1px;font-weight:850}
+            .kq-mobile-dock button .kq-mob-icon{font-size:1.12rem;line-height:1.1}
+            .kq-mobile-dock button .kq-mob-label{font-size:.64rem;line-height:1.1;white-space:nowrap}
+            .kq-mobile-dock button.active{color:white;background:var(--primary);box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 28%,transparent)}
+            .kq-mobile-focus-menu{position:fixed;top:max(8px,env(safe-area-inset-top));right:9px;z-index:9002;width:42px;height:42px;padding:0;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.94);color:var(--primary-dark);box-shadow:0 8px 22px rgba(41,36,58,.14);font-size:1.05rem}
+            body.kq-mobile-focus .topbar,body.kq-story-reading .topbar{display:none!important}
+            body.kq-mobile-focus .kq-mobile-dock,body.kq-story-reading .kq-mobile-dock{display:none!important}
+            body.kq-mobile-focus .kq-mobile-focus-menu{display:grid;place-items:center}
+            body.kq-mobile-focus .app,body.kq-story-reading .app{width:min(100% - 8px,1120px)!important;margin:4px auto!important;padding-bottom:8px!important}
+            body.kq-story-reading .kq-mobile-focus-menu{display:none!important}
+            .kq-mobile-sheet-backdrop{position:fixed;inset:0;z-index:9100;display:flex;align-items:flex-end;justify-content:center;padding:12px 8px max(8px,env(safe-area-inset-bottom));background:rgba(35,29,48,.36);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+            .kq-mobile-sheet-backdrop[hidden]{display:none!important}
+            .kq-mobile-sheet{width:min(100%,520px);max-height:min(78dvh,680px);overflow:auto;padding:13px;border:1px solid var(--border);border-radius:24px 24px 18px 18px;background:var(--panel,#fff);box-shadow:0 -14px 50px rgba(41,36,58,.22)}
+            .kq-mobile-sheet-handle{width:42px;height:5px;margin:0 auto 12px;border-radius:99px;background:var(--border)}
+            .kq-mobile-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+            .kq-mobile-sheet-head h3{margin:0;font-size:1.05rem}
+            .kq-mobile-sheet-close{width:40px;height:40px;border-radius:12px;background:#f5f1fb;color:var(--muted);font-weight:950}
+            .kq-mobile-sheet-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+            .kq-mobile-sheet-grid button{min-height:60px;padding:10px 11px;border:1px solid var(--border);border-radius:15px;background:#fff;color:var(--text);display:flex;align-items:center;gap:10px;text-align:left;font-weight:850}
+            .kq-mobile-sheet-grid button span:first-child{font-size:1.2rem}
+            .kq-mobile-sheet-grid button.active{border-color:color-mix(in srgb,var(--primary) 50%,var(--border));background:color-mix(in srgb,var(--primary) 8%,white);color:var(--primary-dark)}
+            .kq-mobile-theme{display:grid;gap:6px;margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
+            .kq-mobile-theme label{font-size:.76rem;color:var(--muted);font-weight:850}
+            .kq-mobile-theme select{width:100%;min-height:46px;font-size:16px}
+            .card{padding:16px!important;border-radius:18px!important}
+            .section-title{align-items:flex-start!important;gap:8px!important}
+            .section-title h2{font-size:1.35rem!important}
+            .section-title p{font-size:.88rem!important;line-height:1.45!important}
+            button,.primary,.secondary,.ghost,.mining-button,.danger{touch-action:manipulation}
+            .primary,.secondary,.ghost,.mining-button,.danger{min-height:44px}
+            input,textarea,select{font-size:16px!important;min-height:46px}
+            .review-form{grid-template-columns:1fr!important;gap:8px!important;width:100%!important}
+            .review-form button{width:100%!important}
+            .study-shell{max-width:100%!important;margin:0 auto!important}
+            .study-card{min-height:auto!important;padding:18px 14px!important}
+            body.kq-mobile-focus .study-card{min-height:calc(100dvh - 12px)!important;border-radius:18px!important}
+            .study-word{font-size:clamp(2.7rem,17vw,5rem)!important;overflow-wrap:anywhere}
+            .production-word{font-size:clamp(1.45rem,7vw,2.5rem)!important}
+            .word-audio-row{max-width:100%!important}
+            .feedback{width:100%!important}
+            .button-row{gap:8px!important}
+            .kq-ia-context-nav,.kq-ia-mining-nav{top:56px!important;max-width:calc(100vw - 14px)!important;scrollbar-width:none}
+            .kq-ia-context-nav::-webkit-scrollbar,.kq-ia-mining-nav::-webkit-scrollbar,.kq-ia-tabs::-webkit-scrollbar{display:none}
+            .kq-ia-tabs{max-width:calc(100vw - 18px)!important;scrollbar-width:none}
+            .kq-dashboard-hero,.kq-review-grid,.kq-learning-overview,.grid-two,.hero{gap:10px!important}
+            .kq-today-card{padding:20px!important}
+            .kq-today-card h2{font-size:clamp(1.45rem,8vw,2.1rem)!important}
+            .kq-due-number{font-size:3rem!important}
+            .kq-ia-learning-card,.kq-ia-domain-card{padding:15px!important}
+            .kq-story-reader-shell,.kq-story-reader-panel{max-width:100%!important}
+            dialog{width:calc(100% - 14px)!important;max-height:calc(100dvh - 14px)!important;overflow:auto!important;border-radius:20px!important}
+          }
+          @media (max-width:390px){
+            .kq-mobile-dock button .kq-mob-label{font-size:.59rem}
+            .kq-mobile-sheet-grid{grid-template-columns:1fr}
+            .kq-mobile-route-label{max-width:38vw;font-size:.7rem}
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      function originalGroupButton(group) {
+        return document.querySelector(`.topbar .nav [data-kq-main-group="${group}"]`);
+      }
+
+      function activateGroup(group) {
+        closeSheet();
+        const button = originalGroupButton(group);
+        if (button) {
+          button.click();
+          setTimeout(updateUi, 20);
+          return;
+        }
+        const fallbacks = { overview:"dashboard", learning:"learningCenter", practice:"practiceCenter", story:"storyReader", mining:"mining", smart:"smartReview", progress:"progressCenter" };
+        try { switchView(fallbacks[group] || "dashboard"); } catch {}
+        setTimeout(updateUi, 20);
+      }
+
+      let dock, sheetBackdrop, sheetGrid, routeLabel, focusMenu;
+
+      function buildDock() {
+        if (document.getElementById("kqMobileDock")) {
+          dock = document.getElementById("kqMobileDock");
+          return;
+        }
+        dock = document.createElement("nav");
+        dock.id = "kqMobileDock";
+        dock.className = "kq-mobile-dock";
+        dock.setAttribute("aria-label", "Mobile Hauptnavigation");
+        dock.innerHTML = PRIMARY_GROUPS.map(item => `<button type="button" data-kq-mobile-group="${item.id}"><span class="kq-mob-icon">${item.icon}</span><span class="kq-mob-label">${item.label}</span></button>`).join("") + `<button type="button" data-kq-mobile-more><span class="kq-mob-icon">•••</span><span class="kq-mob-label">Mehr</span></button>`;
+        document.body.appendChild(dock);
+        dock.querySelectorAll("[data-kq-mobile-group]").forEach(button => button.addEventListener("click", () => activateGroup(button.dataset.kqMobileGroup)));
+        dock.querySelector("[data-kq-mobile-more]")?.addEventListener("click", openSheet);
+      }
+
+      function buildSheet() {
+        if (document.getElementById("kqMobileSheetBackdrop")) {
+          sheetBackdrop = document.getElementById("kqMobileSheetBackdrop");
+          sheetGrid = sheetBackdrop.querySelector(".kq-mobile-sheet-grid");
+          return;
+        }
+        sheetBackdrop = document.createElement("div");
+        sheetBackdrop.id = "kqMobileSheetBackdrop";
+        sheetBackdrop.className = "kq-mobile-sheet-backdrop";
+        sheetBackdrop.hidden = true;
+        sheetBackdrop.innerHTML = `<section class="kq-mobile-sheet" role="dialog" aria-modal="true" aria-label="Navigation"><div class="kq-mobile-sheet-handle"></div><div class="kq-mobile-sheet-head"><h3>Wohin möchtest du?</h3><button class="kq-mobile-sheet-close" type="button" aria-label="Menü schließen">✕</button></div><div class="kq-mobile-sheet-grid"></div><div class="kq-mobile-theme" hidden><label for="kqMobileThemeSelect">🎨 Farbstimmung</label><select id="kqMobileThemeSelect"></select></div></section>`;
+        document.body.appendChild(sheetBackdrop);
+        sheetGrid = sheetBackdrop.querySelector(".kq-mobile-sheet-grid");
+        sheetBackdrop.querySelector(".kq-mobile-sheet-close")?.addEventListener("click", closeSheet);
+        sheetBackdrop.addEventListener("click", event => { if (event.target === sheetBackdrop) closeSheet(); });
+        document.addEventListener("keydown", event => { if (event.key === "Escape" && !sheetBackdrop.hidden) closeSheet(); });
+      }
+
+      function refreshSheet() {
+        if (!sheetGrid) return;
+        const current = activeGroup();
+        const buttons = [...document.querySelectorAll('.topbar .nav [data-kq-main-group]')];
+        const ids = buttons.length ? buttons.map(button => button.dataset.kqMainGroup).filter(Boolean) : Object.keys(GROUP_META);
+        sheetGrid.innerHTML = [...new Set(ids)].map(id => {
+          const meta = GROUP_META[id] || { icon:"•", label: originalGroupButton(id)?.textContent?.trim() || id };
+          return `<button type="button" data-kq-sheet-group="${id}" class="${id === current ? "active" : ""}"><span>${meta.icon}</span><span>${meta.label}</span></button>`;
+        }).join("");
+        sheetGrid.querySelectorAll("[data-kq-sheet-group]").forEach(button => button.addEventListener("click", () => activateGroup(button.dataset.kqSheetGroup)));
+
+        const themeBox = sheetBackdrop.querySelector(".kq-mobile-theme");
+        const mobileTheme = sheetBackdrop.querySelector("#kqMobileThemeSelect");
+        const sourceTheme = document.querySelector("#kqPastelThemePicker select");
+        if (themeBox && mobileTheme && sourceTheme) {
+          themeBox.hidden = false;
+          mobileTheme.innerHTML = sourceTheme.innerHTML;
+          mobileTheme.value = sourceTheme.value;
+          mobileTheme.onchange = () => {
+            sourceTheme.value = mobileTheme.value;
+            sourceTheme.dispatchEvent(new Event("change", { bubbles:true }));
+          };
+        } else if (themeBox) themeBox.hidden = true;
+      }
+
+      function openSheet() {
+        buildSheet();
+        refreshSheet();
+        sheetBackdrop.hidden = false;
+        document.body.style.overflow = "hidden";
+        setTimeout(() => sheetBackdrop.querySelector(".kq-mobile-sheet-close")?.focus(), 0);
+      }
+
+      function closeSheet() {
+        if (!sheetBackdrop) return;
+        sheetBackdrop.hidden = true;
+        document.body.style.overflow = "";
+      }
+
+      function installTopbarAddons() {
+        const topbar = document.querySelector(".topbar");
+        if (!topbar) return;
+        routeLabel = document.getElementById("kqMobileRouteLabel");
+        if (!routeLabel) {
+          routeLabel = document.createElement("span");
+          routeLabel.id = "kqMobileRouteLabel";
+          routeLabel.className = "kq-mobile-route-label";
+          topbar.appendChild(routeLabel);
+        }
+        focusMenu = document.getElementById("kqMobileFocusMenu");
+        if (!focusMenu) {
+          focusMenu = document.createElement("button");
+          focusMenu.id = "kqMobileFocusMenu";
+          focusMenu.className = "kq-mobile-focus-menu";
+          focusMenu.type = "button";
+          focusMenu.title = "Navigation öffnen";
+          focusMenu.setAttribute("aria-label", "Navigation öffnen");
+          focusMenu.textContent = "☰";
+          focusMenu.addEventListener("click", openSheet);
+          document.body.appendChild(focusMenu);
+        }
+      }
+
+      function updateUi() {
+        if (!mq.matches) {
+          document.body.classList.remove("kq-mobile-focus");
+          closeSheet();
+          return;
+        }
+        buildDock();
+        buildSheet();
+        installTopbarAddons();
+        const group = activeGroup();
+        const meta = GROUP_META[group] || { icon:"•", label:"Kotoba Quest" };
+        if (routeLabel) routeLabel.textContent = `${meta.icon} ${meta.label}`;
+        dock?.querySelectorAll("[data-kq-mobile-group]").forEach(button => button.classList.toggle("active", button.dataset.kqMobileGroup === group));
+        dock?.querySelector("[data-kq-mobile-more]")?.classList.toggle("active", !PRIMARY_GROUPS.some(item => item.id === group));
+        const view = activeViewId();
+        document.body.classList.toggle("kq-mobile-focus", FOCUS_VIEWS.has(view));
+      }
+
+      installStyles();
+      buildDock();
+      buildSheet();
+      installTopbarAddons();
+      updateUi();
+
+      let queued = false;
+      const schedule = () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; updateUi(); });
+      };
+      const mainRoot = document.querySelector("main");
+      const navRoot = document.querySelector(".topbar .nav");
+      if (mainRoot) new MutationObserver(schedule).observe(mainRoot, { subtree:true, attributes:true, attributeFilter:["class"] });
+      if (navRoot) new MutationObserver(schedule).observe(navRoot, { subtree:true, attributes:true, attributeFilter:["class"] });
+      new MutationObserver(schedule).observe(document.body, { attributes:true, attributeFilter:["class"] });
+      mq.addEventListener?.("change", schedule);
+      window.addEventListener("orientationchange", schedule);
+      window.addEventListener("resize", schedule, { passive:true });
+      window.KotobaQuestMobile = { version:VERSION, refresh:schedule, openMenu:openSheet };
+    }
+
         function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const n4RecapScript = "<script>(" + n4AdaptiveRecapBootstrap.toString() + ")();<" + "/script>";
@@ -37174,7 +37508,8 @@ function smartReviewBootstrap() {
       const vocabularyReviewMixScript = "<script>(" + vocabularyReviewMixBootstrap.toString() + ")();<" + "/script>";
       const vocabularyReviewPartialScript = "<script>(" + vocabularyReviewPartialProgressBootstrap.toString() + ")();<" + "/script>";
       const smartReviewScript = "<script>(" + smartReviewBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}`;
+      const mobileExperienceScript = "<script>(" + mobileExperienceBootstrap.toString() + ")();<" + "/script>";
+      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}\n${mobileExperienceScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
@@ -37716,6 +38051,59 @@ function smartReviewBootstrap() {
         );
       }
     });
+
+
+    function installOuterMobileMenu() {
+      if (document.getElementById("kqCloudMobileMenuButton")) return;
+      const account = document.querySelector(".account-wrap");
+      if (!account) return;
+      const trigger = document.createElement("button");
+      trigger.id = "kqCloudMobileMenuButton";
+      trigger.className = "kq-cloud-mobile-menu-button";
+      trigger.type = "button";
+      trigger.title = "Cloud & Speicher";
+      trigger.setAttribute("aria-label", "Cloud- und Speichermenü öffnen");
+      trigger.textContent = "☁️";
+      account.appendChild(trigger);
+
+      const dialog = document.createElement("dialog");
+      dialog.id = "kqCloudMobileDialog";
+      dialog.innerHTML = `<div class="dialog-content"><div class="kq-cloud-mobile-head"><h2>☁️ Cloud & Speicher</h2><button class="button ghost kq-cloud-mobile-close" type="button" aria-label="Schließen">✕</button></div><div class="kq-cloud-mobile-status"><strong id="kqCloudMobileTitle"></strong><span id="kqCloudMobileDetail"></span></div><div class="kq-cloud-mobile-actions" id="kqCloudMobileActions"></div></div>`;
+      document.body.appendChild(dialog);
+      const close = () => { try { dialog.close(); } catch {} };
+      dialog.querySelector(".kq-cloud-mobile-close")?.addEventListener("click", close);
+      dialog.addEventListener("click", event => {
+        const rect = dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close();
+      });
+
+      function proxyAction(original, label, className = "button secondary") {
+        if (!original || original.hidden) return "";
+        return `<button type="button" class="${className}" data-proxy-id="${original.id}">${label}</button>`;
+      }
+
+      function syncDialog() {
+        dialog.querySelector("#kqCloudMobileTitle").textContent = currentUser ? (currentUser.displayName || "Angemeldet") : statusTitle.textContent;
+        dialog.querySelector("#kqCloudMobileDetail").textContent = currentUser ? (currentUser.email || statusDetail.textContent) : statusDetail.textContent;
+        const health = storageHealthSnapshot();
+        const actions = dialog.querySelector("#kqCloudMobileActions");
+        actions.innerHTML =
+          proxyAction(storageHealthButton, `💾 Speicher · ${formatStorageBytes(health.used)} · ${health.label}`) +
+          proxyAction(loginButton, "Mit Google anmelden", "button") +
+          proxyAction(syncButton, "☁️ Jetzt in der Cloud sichern", "button secondary") +
+          proxyAction(reviewRecoveryButton, reviewRecoveryButton.textContent || "🛟 Reviewblock reparieren", "button ghost") +
+          proxyAction(logoutButton, "Abmelden", "button ghost");
+        actions.querySelectorAll("[data-proxy-id]").forEach(button => button.addEventListener("click", () => {
+          const original = document.getElementById(button.dataset.proxyId);
+          close();
+          setTimeout(() => original?.click(), 30);
+        }));
+      }
+      trigger.addEventListener("click", () => { syncDialog(); dialog.showModal(); });
+      window.addEventListener("kq-storage-health-updated", syncDialog);
+    }
+
+    installOuterMobileMenu();
 
     if (location.protocol === "file:") {
       setStatus(
