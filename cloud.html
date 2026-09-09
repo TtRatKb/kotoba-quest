@@ -446,7 +446,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "vocabulary-content-audio-repair-v1";
+    const CLOUD_FEATURE_VERSION = "vocabulary-synonym-persistence-repair-v1";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -20177,12 +20177,24 @@
           for (const item of data.vocabulary) {
             const additions = meaningOverrides[overrideKey(item)] || [];
             if (!additions.length) continue;
-            const seen = new Set((item.meanings || []).map(normalizeMeaning));
+            if (!Array.isArray(item.acceptedMeanings)) item.acceptedMeanings = [];
+            if (!Array.isArray(item.meanings)) item.meanings = [];
+            const acceptedSeen = new Set(item.acceptedMeanings.map(normalizeMeaning));
+            const displaySeen = new Set(item.meanings.map(normalizeMeaning));
             for (const addition of additions) {
               const normalized = normalizeMeaning(addition);
-              if (!normalized || seen.has(normalized)) continue;
-              item.meanings.push(addition);
-              seen.add(normalized);
+              if (!normalized) continue;
+              if (!acceptedSeen.has(normalized)) {
+                item.acceptedMeanings.push(addition);
+                acceptedSeen.add(normalized);
+              }
+              // Keep the old UI behaviour of showing user-approved alternatives
+              // alongside the built-in meanings, while acceptedMeanings remains the
+              // durable canonical field used by answer validation.
+              if (!displaySeen.has(normalized)) {
+                item.meanings.push(addition);
+                displaySeen.add(normalized);
+              }
             }
           }
         } catch (error) {
@@ -20212,12 +20224,37 @@
         const stored = Array.isArray(meaningOverrides[key]) ? meaningOverrides[key] : [];
         const normalized = normalizeMeaning(answer);
         const alreadyStored = stored.some(value => normalizeMeaning(value) === normalized);
-        const alreadyOnCard = (item.meanings || []).some(value => normalizeMeaning(value) === normalized);
         if (!alreadyStored) stored.push(answer);
         meaningOverrides[key] = stored;
+
+        // acceptedMeanings is part of the compact Core progress delta and therefore
+        // survives Core rehydration. Previously we only pushed the synonym into the
+        // temporary meanings array; after the next Core rebuild the UI said it had
+        // saved the synonym, but evaluateAnswer no longer saw it.
+        if (!Array.isArray(item.acceptedMeanings)) item.acceptedMeanings = [];
+        const alreadyAccepted = item.acceptedMeanings.some(value => normalizeMeaning(value) === normalized);
+        if (!alreadyAccepted) item.acceptedMeanings.push(answer);
+
+        if (!Array.isArray(item.meanings)) item.meanings = [];
+        const alreadyOnCard = item.meanings.some(value => normalizeMeaning(value) === normalized);
         if (!alreadyOnCard) item.meanings.push(answer);
+
+        // Be defensive if a rehydrated wrapper object was passed instead of the
+        // canonical data.vocabulary row. Mirror the durable alias onto the live row.
+        try {
+          const live = data.vocabulary.find(candidate =>
+            String(candidate?.packEntryId || candidate?.id || "") === String(item?.packEntryId || item?.id || "")
+          );
+          if (live && live !== item) {
+            if (!Array.isArray(live.acceptedMeanings)) live.acceptedMeanings = [];
+            if (!live.acceptedMeanings.some(value => normalizeMeaning(value) === normalized)) live.acceptedMeanings.push(answer);
+            if (!Array.isArray(live.meanings)) live.meanings = [];
+            if (!live.meanings.some(value => normalizeMeaning(value) === normalized)) live.meanings.push(answer);
+          }
+        } catch {}
+
         persistWithoutRerender();
-        return !alreadyStored && !alreadyOnCard;
+        return !alreadyStored && !alreadyAccepted && !alreadyOnCard;
       }
 
       function knownPool() {
@@ -23257,9 +23294,12 @@
       }
 
       function meaningsOf(item) {
-        const values = Array.isArray(item?.meanings)
-          ? item.meanings
-          : [item?.meaning, item?.productionCue].filter(Boolean);
+        const values = [
+          ...(Array.isArray(item?.meanings) ? item.meanings : [item?.meaning, item?.productionCue].filter(Boolean)),
+          ...(Array.isArray(item?.acceptedMeanings) ? item.acceptedMeanings : []),
+          ...(Array.isArray(item?.synonyms) ? item.synonyms : []),
+          ...(Array.isArray(item?.meaningAlternatives) ? item.meaningAlternatives : [])
+        ];
         return [...new Set(values.map(value => String(value || "").trim()).filter(Boolean))];
       }
 
@@ -32049,6 +32089,8 @@ ${tooltipText(segment, status)}`)}"`
         const values = [];
         if (Array.isArray(item?.meanings)) values.push(...item.meanings);
         if (Array.isArray(item?.acceptedMeanings)) values.push(...item.acceptedMeanings);
+        if (Array.isArray(item?.synonyms)) values.push(...item.synonyms);
+        if (Array.isArray(item?.meaningAlternatives)) values.push(...item.meaningAlternatives);
         if (typeof item?.meaning === "string") values.push(...item.meaning.split(/[;,/]/));
         if (typeof item?.productionCue === "string") values.push(...item.productionCue.split(/[;,/]/));
         return [...new Set(values.map(value => String(value || "").trim()).filter(Boolean))];

@@ -3339,9 +3339,25 @@
       });
     }
 
+    function acceptedMeaningTargets(item) {
+      const values=[
+        ...(Array.isArray(item?.meanings) ? item.meanings : []),
+        ...(Array.isArray(item?.acceptedMeanings) ? item.acceptedMeanings : []),
+        ...(Array.isArray(item?.synonyms) ? item.synonyms : []),
+        ...(Array.isArray(item?.meaningAlternatives) ? item.meaningAlternatives : [])
+      ].map(value => String(value || "").trim()).filter(Boolean);
+      const seen=new Set();
+      return values.filter(value => {
+        const key=normalizeLatin(value);
+        if(!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
     function evaluateAnswer(question,item,answer) {
       if(question.type==="listening") {
-        const exactTargets=[...item.meanings];
+        const exactTargets=acceptedMeaningTargets(item);
         const closeTargets=[...(item.closeMeanings || [])];
         const correct=exactTargets.some(
           meaning => normalizeLatin(meaning)===normalizeLatin(answer)
@@ -3360,7 +3376,7 @@
           correct,
           wrongType,
           close,
-          expected:item.meanings.join(" / ")
+          expected:exactTargets.join(" / ")
         };
       }
 
@@ -3381,7 +3397,7 @@
       const correct=
         exactReadings.some(reading => normalizeKana(reading)===enteredKana) ||
         String(answer || "").trim().normalize("NFKC")===String(item.word || "").trim().normalize("NFKC");
-      const wrongType=!correct && item.meanings.some(meaning =>
+      const wrongType=!correct && acceptedMeaningTargets(item).some(meaning =>
         normalizeLatin(meaning)===normalizeLatin(answer) ||
         normalizeKana(romajiToHiragana(meaning,true))===enteredKana
       );
