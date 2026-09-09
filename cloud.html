@@ -2366,11 +2366,12 @@
         throw new Error(`Kotoba Core 2000 enthält nach der Migration nur ${merged.length} eindeutige Wörter.`);
       }
 
-      const usedIds = new Set();
+      // Core IDs are canonical and position-stable. Older bridge builds generated
+      // hash IDs for rows without an existing id, which made compact progress and
+      // placement queues fragile across rebuilds. Normalize every Core-2000 row to
+      // kc2k-0001 ... kc2k-2000; progress is preserved through coreIndex.
       const entries = merged.slice(0, 2000).map((item, index) => {
-        let packEntryId = item.packEntryId || `kc2k-v2-${hash(keyOf(item))}`;
-        if (usedIds.has(packEntryId)) packEntryId = `${packEntryId}-${index + 1}`;
-        usedIds.add(packEntryId);
+        const packEntryId = `kc2k-${String(index + 1).padStart(4,"0")}`;
         return {
           ...item,
           packEntryId,
@@ -2384,7 +2385,7 @@
       window.KOTOBA_EXTERNAL_CORE_PACK = {
         id: "kotoba-core-2000",
         name: "Kotoba Core 2000",
-        version: "2.0.0-cloud",
+        version: "2.1.0-cloud-repair",
         targetWords: 2000,
         includedWords: 2000,
         includedLevels: 100,
