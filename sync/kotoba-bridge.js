@@ -32,7 +32,7 @@ import {
   writeBridgeState
 } from "./kotoba-events.js";
 
-const BRIDGE_VERSION = "2.0.0";
+const BRIDGE_VERSION = "2.1.0";
 const appFrame = document.getElementById("appFrame");
 let bridgeState = readBridgeState();
 let currentUser = null;
@@ -341,6 +341,16 @@ function liveReviewApi() {
   catch { return null; }
 }
 
+function liveGrammarApi() {
+  try { return appWindow()?.KotobaQuestGrammarSupportApi || null; }
+  catch { return null; }
+}
+
+function liveParticleApi() {
+  try { return appWindow()?.KotobaQuestParticlePath || null; }
+  catch { return null; }
+}
+
 async function waitForLiveReviewApi(timeoutMs = 12000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
@@ -349,6 +359,33 @@ async function waitForLiveReviewApi(timeoutMs = 12000) {
     await new Promise(resolve => setTimeout(resolve, 120));
   }
   throw new Error("Kotoba's live review engine is still loading. Open Kotoba Quest once, then retry Quick Japanese.");
+}
+
+async function waitForExtendedReviewApis(timeoutMs = 12000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const vocabulary = liveReviewApi();
+    const grammar = liveGrammarApi();
+    const particles = liveParticleApi();
+    if (vocabulary?.createVocabularySession && grammar?.createExternalSession && particles?.createExternalSession) {
+      return { vocabulary, grammar, particles };
+    }
+    await new Promise(resolve => setTimeout(resolve, 120));
+  }
+  const vocabulary = liveReviewApi();
+  return { vocabulary, grammar: liveGrammarApi(), particles: liveParticleApi() };
+}
+
+function adoptCurrentRuntimeWithoutEmission() {
+  const runtime = runtimeData();
+  const snapshot = buildQuickTrainingSnapshot(runtime);
+  const checkpoint = compactRuntimeCheckpoint(runtime);
+  bridgeState.checkpoint = checkpoint;
+  bridgeState.lastSnapshot = snapshot;
+  bridgeState.seenAnalytics = (checkpoint.analyticsEvents || []).map(analyticsFingerprint).filter(Boolean).slice(-600);
+  bridgeState = writeBridgeState(bridgeState);
+  scheduleCloudSync(80);
+  return snapshot;
 }
 
 function processedCommand(commandId) {
@@ -432,25 +469,148 @@ async function commitLiveVocabulary(payload = {}) {
     }
   });
 
-  const scan = await scanProgress({ reason: "external-review", forceSnapshot: true });
-  scheduleCloudSync(80);
-  return { ...clone(result), commandId, snapshot: clone(scan.snapshot) };
+  const snapshot = adoptCurrentRuntimeWithoutEmission();
+  return { ...clone(result), commandId, snapshot: clone(snapshot) };
+}
+
+
+async function createLiveMixedSession(payload = {}) {
+  const limitTotal = Math.max(1, Math.min(15, Number(payload.limit) || 5));
+  const sessionIdValue = String(payload.sessionId || `life-rpg-mixed-${Date.now().toString(36)}`);
+  const apis = await waitForExtendedReviewApis();
+  const vocabRaw = apis.vocabulary?.createVocabularySession
+    ? apis.vocabulary.createVocabularySession({ limit: limitTotal, sessionId: `${sessionIdValue}-vocab` })
+    : { items: [], questions: [] };
+  const grammarRaw = apis.grammar?.createExternalSession
+    ? apis.grammar.createExternalSession({ limit: limitTotal, sessionId: `${sessionIdValue}-grammar` })
+    : { tasks: [] };
+  const particleRaw = apis.particles?.createExternalSession
+    ? apis.particles.createExternalSession({ limit: limitTotal, sessionId: `${sessionIdValue}-particles` })
+    : { tasks: [] };
+
+  const vocabTasks = (vocabRaw.items || []).map(item => ({
+    kind: "vocab",
+    taskId: `vocab:${item.itemId}`,
+    item: clone(item),
+    questions: (vocabRaw.questions || []).filter(q => String(q.itemId) === String(item.itemId)).map(clone)
+  }));
+  const grammarTasks = (grammarRaw.tasks || []).map(task => ({ kind: "grammar", taskId: task.taskId, task: clone(task) }));
+  const particleTasks = (particleRaw.tasks || []).map(task => ({ kind: "particle", taskId: task.taskId, task: clone(task) }));
+
+  // A gentle mixed-study rhythm: vocabulary gets the largest share, while due
+  // grammar and particle skills are guaranteed room when they exist.
+  const queues = { vocab: vocabTasks, grammar: grammarTasks, particle: particleTasks };
+  const order = ["vocab", "grammar", "vocab", "particle", "vocab", "grammar", "particle"];
+  const tasks = [];
+  let cursor = 0;
+  while (tasks.length < limitTotal && Object.values(queues).some(queue => queue.length)) {
+    const key = order[cursor % order.length];
+    cursor += 1;
+    const queue = queues[key];
+    if (queue?.length) tasks.push(queue.shift());
+    if (cursor > 200) break;
+  }
+  for (const key of ["vocab", "grammar", "particle"]) {
+    while (tasks.length < limitTotal && queues[key].length) tasks.push(queues[key].shift());
+  }
+
+  return {
+    version: "mixed-v1",
+    sessionId: sessionIdValue,
+    createdAt: Date.now(),
+    tasks,
+    counts: {
+      vocabulary: tasks.filter(task => task.kind === "vocab").length,
+      grammar: tasks.filter(task => task.kind === "grammar").length,
+      particles: tasks.filter(task => task.kind === "particle").length,
+      total: tasks.length
+    },
+    snapshot: clone(bridgeState.lastSnapshot || buildQuickTrainingSnapshot(runtimeData()))
+  };
+}
+
+async function evaluateLiveGrammar(payload = {}) {
+  const api = liveGrammarApi();
+  if (!api?.evaluateExternalAnswer) throw new Error("Kotoba's grammar review bridge is not ready yet.");
+  return clone(api.evaluateExternalAnswer({
+    pointId: String(payload.pointId || ""),
+    skillId: String(payload.skillId || ""),
+    answer: String(payload.answer || ""),
+    question: payload.question && typeof payload.question === "object" ? clone(payload.question) : null
+  }));
+}
+
+async function commitLiveGrammar(payload = {}) {
+  const commandId = String(payload.commandId || "");
+  if (!commandId) throw new Error("Grammar review commit is missing its command ID.");
+  const api = liveGrammarApi();
+  if (!api?.commitExternalReview) throw new Error("Kotoba's grammar review bridge is not ready yet.");
+  if (processedCommand(commandId)) return { ok:true, committed:true, duplicate:true, commandId, snapshot:clone(bridgeState.lastSnapshot || buildQuickTrainingSnapshot(runtimeData())) };
+  const result = api.commitExternalReview({
+    pointId: String(payload.pointId || ""), skillId: String(payload.skillId || ""), grade: String(payload.grade || "bad"),
+    expectedStage: payload.expectedStage == null ? null : Number(payload.expectedStage),
+    expectedDueAt: payload.expectedDueAt == null ? null : Number(payload.expectedDueAt)
+  });
+  if (!result?.ok || !result?.committed) return clone(result);
+  rememberCommand(commandId);
+  const snapshot = adoptCurrentRuntimeWithoutEmission();
+  queueEvent({
+    origin:"life-rpg", type:"grammar-review", itemId:String(payload.pointId || ""), skill:String(payload.skillId || ""), result:String(result.grade || payload.grade || "good"),
+    label:String(result.title || result.pattern || payload.pointId || "Grammar"), area:"grammar", sessionId:String(payload.sessionId || ""), timestamp:Date.now(),
+    metadata:{ commandId, stageBefore:Number(result.stageBefore || 0), stageAfter:Number(result.stageAfter || 0), dueAt:result.dueAt == null ? null : Number(result.dueAt) }
+  });
+  return { ...clone(result), commandId, snapshot:clone(snapshot) };
+}
+
+async function evaluateLiveParticle(payload = {}) {
+  const api = liveParticleApi();
+  if (!api?.evaluateExternalAnswer) throw new Error("Kotoba's particle review bridge is not ready yet.");
+  return clone(api.evaluateExternalAnswer({ pointId:String(payload.pointId || ""), skillId:String(payload.skillId || ""), answer:String(payload.answer || ""), task:payload.task ? clone(payload.task) : null }));
+}
+
+async function commitLiveParticle(payload = {}) {
+  const commandId = String(payload.commandId || "");
+  if (!commandId) throw new Error("Particle review commit is missing its command ID.");
+  const api = liveParticleApi();
+  if (!api?.commitExternalReview) throw new Error("Kotoba's particle review bridge is not ready yet.");
+  if (processedCommand(commandId)) return { ok:true, committed:true, duplicate:true, commandId, snapshot:clone(bridgeState.lastSnapshot || buildQuickTrainingSnapshot(runtimeData())) };
+  const result = api.commitExternalReview({
+    pointId:String(payload.pointId || ""), skillId:String(payload.skillId || ""), correct:Boolean(payload.correct), entered:String(payload.entered || ""),
+    expectedStage:payload.expectedStage == null ? null : Number(payload.expectedStage), expectedDueAt:payload.expectedDueAt == null ? null : Number(payload.expectedDueAt)
+  });
+  if (!result?.ok || !result?.committed) return clone(result);
+  rememberCommand(commandId);
+  const snapshot = adoptCurrentRuntimeWithoutEmission();
+  queueEvent({
+    origin:"life-rpg", type:"particle-review", itemId:String(payload.pointId || ""), skill:String(payload.skillId || ""), result:result.correct ? "good" : "bad",
+    label:String(result.title || result.particle || payload.pointId || "Particle"), area:"particles", sessionId:String(payload.sessionId || ""), timestamp:Date.now(),
+    metadata:{ commandId, stageBefore:Number(result.stageBefore || 0), stageAfter:Number(result.stageAfter || 0), dueAt:result.dueAt == null ? null : Number(result.dueAt), entered:String(result.entered || "") }
+  });
+  return { ...clone(result), commandId, snapshot:clone(snapshot) };
 }
 
 async function handleLiveRequest(action, payload = {}) {
   if (action === "ping") {
     const api = await waitForLiveReviewApi();
+    const grammar = liveGrammarApi();
+    const particles = liveParticleApi();
     return {
       ok: true,
       bridgeVersion: BRIDGE_VERSION,
       reviewApiVersion: String(api.version || ""),
       reviewWriteBackAvailable: true,
+      reviewWriteBackKinds: { vocabulary:true, grammar:Boolean(grammar?.createExternalSession && grammar?.commitExternalReview), particles:Boolean(particles?.createExternalSession && particles?.commitExternalReview) },
       status: clone(api.getStatus?.() || {})
     };
   }
+  if (action === "create-mixed-session") return createLiveMixedSession(payload);
   if (action === "create-vocabulary-session") return createLiveVocabularySession(payload);
   if (action === "evaluate-vocabulary") return evaluateLiveVocabulary(payload);
   if (action === "commit-vocabulary-item") return commitLiveVocabulary(payload);
+  if (action === "evaluate-grammar") return evaluateLiveGrammar(payload);
+  if (action === "commit-grammar-review") return commitLiveGrammar(payload);
+  if (action === "evaluate-particle") return evaluateLiveParticle(payload);
+  if (action === "commit-particle-review") return commitLiveParticle(payload);
   if (action === "refresh-snapshot") return clone((await scanProgress({ reason: "life-rpg", forceSnapshot: true })).snapshot);
   throw new Error(`Unsupported Kotoba live-bridge action: ${String(action || "")}`);
 }
@@ -502,6 +662,11 @@ window.KotobaQuestBridge = {
   createLiveVocabularySession,
   evaluateLiveVocabulary,
   commitLiveVocabulary,
+  createLiveMixedSession,
+  evaluateLiveGrammar,
+  commitLiveGrammar,
+  evaluateLiveParticle,
+  commitLiveParticle,
   reviewWriteBackAvailable: true
 };
 

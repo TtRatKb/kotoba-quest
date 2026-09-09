@@ -19879,6 +19879,125 @@
       document.getElementById("dashboardGrammarOpen")?.addEventListener("click", () => openGrammarView("grammar"));
       document.getElementById("dashboardGrammarReview")?.addEventListener("click", () => startReviewSession(false));
 
+      function externalGrammarQuestion(item) {
+        if (!item) return null;
+        const point = POINTS.find(entry => entry.id === item.pointId);
+        const skill = SKILLS.find(entry => entry.id === item.skillId);
+        if (!point || !skill || !item.question) return null;
+        const question = item.question;
+        const shown = String(question.shown || "");
+        const audio = String(question.audio || "");
+        return {
+          kind: "grammar",
+          taskId: `grammar:${point.id}:${skill.id}`,
+          pointId: point.id,
+          skillId: skill.id,
+          skillLabel: skill.label,
+          skillIcon: skill.icon || "🧱",
+          title: point.title || point.pattern || point.id,
+          pattern: point.pattern || point.title || point.id,
+          subtitle: point.subtitle || "",
+          stage: Number(item.stage || grammarState.points[point.id]?.skills?.[skill.id]?.stage || 0),
+          dueAt: grammarState.points[point.id]?.skills?.[skill.id]?.dueAt == null ? null : Number(grammarState.points[point.id].skills[skill.id].dueAt),
+          difficulty: item.difficulty || "guided",
+          prompt: adaptiveReviewPrompt(question, skill.id, item.difficulty || "guided"),
+          shown,
+          audio,
+          model: String(question.model || ""),
+          selfCheck: Boolean(question.selfCheck),
+          required: Array.isArray(question.required) ? [...question.required] : [],
+          answers: Array.isArray(question.answers) ? [...question.answers] : [],
+          question: {
+            prompt: String(question.prompt || ""),
+            shown,
+            audio,
+            model: String(question.model || ""),
+            selfCheck: Boolean(question.selfCheck),
+            required: Array.isArray(question.required) ? [...question.required] : [],
+            answers: Array.isArray(question.answers) ? [...question.answers] : [],
+            keywords: Array.isArray(question.keywords) ? question.keywords.map(group => Array.isArray(group) ? [...group] : []) : []
+          }
+        };
+      }
+
+      function createExternalGrammarSession({ limit = 2, sessionId = "" } = {}) {
+        const max = Math.max(1, Math.min(10, Math.floor(Number(limit) || 2)));
+        reviewSentenceHistory = new Map();
+        const selected = dueItems().slice(0, max).map(item => makeReviewItem(item.pointId, item.skillId, false));
+        return {
+          version: "grammar-external-v1",
+          sessionId: String(sessionId || `life-rpg-grammar-${Date.now().toString(36)}`),
+          createdAt: Date.now(),
+          dueCountBefore: dueItems().length,
+          tasks: selected.map(externalGrammarQuestion).filter(Boolean)
+        };
+      }
+
+      function evaluateExternalGrammarAnswer({ pointId, skillId, answer = "", question = null } = {}) {
+        const point = POINTS.find(entry => entry.id === String(pointId || ""));
+        const skill = SKILLS.find(entry => entry.id === String(skillId || ""));
+        if (!point || !skill) return { ok:false, code:"item-missing", message:"Kotoba could not find this grammar review anymore." };
+        const source = question && typeof question === "object" ? question : null;
+        if (!source) return { ok:false, code:"question-missing", message:"This grammar prompt is no longer available." };
+        const assessment = assessAnswer(source, skill.id, String(answer || ""));
+        return {
+          ok: true,
+          pointId: point.id,
+          skillId: skill.id,
+          likely: assessment.likely,
+          note: String(assessment.note || ""),
+          model: String(source.model || ""),
+          title: point.title || point.pattern || point.id,
+          pattern: point.pattern || point.title || point.id,
+          selfCheck: Boolean(source.selfCheck)
+        };
+      }
+
+      function commitExternalGrammarReview({ pointId, skillId, grade = "good", expectedStage = null, expectedDueAt = null } = {}) {
+        const point = POINTS.find(entry => entry.id === String(pointId || ""));
+        const skill = SKILLS.find(entry => entry.id === String(skillId || ""));
+        if (!point || !skill) return { ok:false, code:"item-missing", message:"Kotoba could not find this grammar review anymore." };
+        const pointState = grammarState.points[point.id];
+        const skillState = pointState?.skills?.[skill.id];
+        if (!pointState?.lessonComplete || !skillState) return { ok:false, code:"not-learned", message:"This grammar point is not active in Kotoba's SRS." };
+        const stageBefore = Number(skillState.stage || 0);
+        const dueBefore = skillState.dueAt == null ? null : Number(skillState.dueAt);
+        if (expectedStage != null && Number(expectedStage) !== stageBefore) return { ok:false, code:"stale-review", message:"This grammar skill changed in another Kotoba session.", stageBefore, dueAt:dueBefore };
+        if (expectedDueAt != null && dueBefore != null && Number(expectedDueAt) !== dueBefore) return { ok:false, code:"stale-review", message:"This grammar skill changed in another Kotoba session.", stageBefore, dueAt:dueBefore };
+        if (!(stageBefore > 0 && stageBefore < 9 && dueBefore != null && dueBefore <= Date.now())) return { ok:false, code:"not-due", message:"This grammar review is no longer due in Kotoba.", stageBefore, dueAt:dueBefore };
+        const normalizedGrade = ["good","close","bad"].includes(String(grade)) ? String(grade) : "bad";
+        const now = Date.now();
+        skillState.lastReviewedAt = now;
+        if (normalizedGrade === "good") {
+          skillState.correct++;
+          skillState.stage = Math.min(9, Math.max(1, skillState.stage + 1));
+          skillState.rotationIndex = Math.max(0, Number(skillState.rotationIndex || 0)) + 1;
+          skillState.variantIndex = Math.max(0, Number(skillState.variantIndex || 0)) + 1;
+          skillState.dueAt = skillState.stage >= 9 ? null : now + STAGES[skillState.stage].delay;
+        } else if (normalizedGrade === "close") {
+          skillState.variantIndex = Math.max(0, Number(skillState.variantIndex || 0)) + 1;
+          skillState.dueAt = now + 60 * 60 * 1000;
+        } else {
+          skillState.incorrect++;
+          skillState.stage = Math.max(1, skillState.stage - 1);
+          skillState.variantIndex = Math.max(0, Number(skillState.variantIndex || 0)) + 1;
+          skillState.dueAt = now + 30 * 60 * 1000;
+        }
+        persistGrammar();
+        return {
+          ok:true,
+          committed:true,
+          pointId:point.id,
+          skillId:skill.id,
+          grade:normalizedGrade,
+          stageBefore,
+          stageAfter:Number(skillState.stage || 0),
+          dueAt:skillState.dueAt == null ? null : Number(skillState.dueAt),
+          title:point.title || point.pattern || point.id,
+          pattern:point.pattern || point.title || point.id
+        };
+      }
+
       window.KotobaQuestGrammarSupportApi = {
         getGrammarProgress: () => POINTS.filter(point => point.track !== "N4-Recap").map(point => {
           const pointState = grammarState.points[point.id];
@@ -19939,7 +20058,10 @@
         renderKnownVocabularyPool,
         refreshGrammarLesson: () => {
           try { renderLesson(); } catch {}
-        }
+        },
+        createExternalSession: createExternalGrammarSession,
+        evaluateExternalAnswer: evaluateExternalGrammarAnswer,
+        commitExternalReview: commitExternalGrammarReview
       };
 
       installKnownVocabularyPanel();
@@ -29397,7 +29519,73 @@ function shuffle(values) {
         if(/^[1-4]$/.test(event.key)){const button=document.querySelectorAll("[data-pp-choice]")[Number(event.key)-1];if(button){event.preventDefault();button.click();}}
       });
     
-      window.KotobaQuestParticlePath={version:VERSION,open:openPath,startReviews:()=>startReviews(false),startContrastTraining,getConfusions:()=>combinedConfusions(),getDueItems:dueItems,getProgress:()=>POINTS.map(point=>({id:point.id,level:point.level,particle:point.particle,title:point.title,lessonComplete:pointState(point.id).lessonComplete,stage:pointStage(point),skills:SKILLS.map(skill=>({id:skill.id,...pointState(point.id).skills[skill.id]}))})),refresh:()=>{state=normalizeState(sourceData().particlePath);scheduleInstall();}};
+      function compactExternalParticleQuestion(item) {
+        const q = buildReviewQuestion(item, false);
+        if (!q) return null;
+        const point = q.point, skill = q.skill, example = q.example;
+        const before = Array.isArray(example?.before) ? example.before.map(part => String(part?.[0] || "")).join("") : "";
+        const after = Array.isArray(example?.after) ? example.after.map(part => String(part?.[0] || "")).join("") : "";
+        const skillState = pointState(point.id).skills[skill.id];
+        return {
+          kind:"particle",
+          taskId:`particle:${point.id}:${skill.id}`,
+          pointId:point.id,
+          skillId:skill.id,
+          skillLabel:skill.label,
+          skillIcon:skill.icon || "🧩",
+          title:point.title,
+          particle:point.particle,
+          stage:Number(skillState.stage || 0),
+          dueAt:skillState.dueAt == null ? null : Number(skillState.dueAt),
+          type:q.type,
+          prompt:String(q.prompt || "Setze die passende Partikel ein"),
+          sentence:q.type === "function" ? `${before}${point.particle}${after}` : `${before}＿＿${after}`,
+          translation:String(example?.de || ""),
+          choices:Array.isArray(q.choices) ? [...q.choices] : [],
+          accepted:Array.isArray(q.accepted) ? [...q.accepted] : [point.particle],
+          correct:String(q.correct || point.particle),
+          summary:String(point.summary || ""),
+          contrast:String(point.contrast || "")
+        };
+      }
+
+      function createExternalParticleSession({limit=1,sessionId=""}={}) {
+        const max=Math.max(1,Math.min(10,Math.floor(Number(limit)||1)));
+        const selected=dueItems().slice(0,max);
+        return {version:"particle-external-v1",sessionId:String(sessionId||`life-rpg-particles-${Date.now().toString(36)}`),createdAt:Date.now(),dueCountBefore:dueItems().length,tasks:selected.map(compactExternalParticleQuestion).filter(Boolean)};
+      }
+
+      function evaluateExternalParticleAnswer({pointId,skillId,answer="",task=null}={}) {
+        const point=POINTS.find(entry=>entry.id===String(pointId||""));
+        const skill=SKILLS.find(entry=>entry.id===String(skillId||""));
+        if(!point||!skill)return {ok:false,code:"item-missing",message:"Kotoba could not find this particle review anymore."};
+        const raw=convertParticleInput(String(answer||""));
+        const entered=normalizeAnswer(raw);
+        const accepted=Array.isArray(task?.accepted)&&task.accepted.length?task.accepted:point.accepted;
+        const correct=accepted.map(normalizeAnswer).includes(entered);
+        return {ok:true,pointId:point.id,skillId:skill.id,correct,entered,expected:point.particle,title:point.title,summary:point.summary,contrast:point.contrast};
+      }
+
+      function commitExternalParticleReview({pointId,skillId,correct=false,entered="",expectedStage=null,expectedDueAt=null}={}) {
+        const point=POINTS.find(entry=>entry.id===String(pointId||""));
+        const skill=SKILLS.find(entry=>entry.id===String(skillId||""));
+        if(!point||!skill)return {ok:false,code:"item-missing",message:"Kotoba could not find this particle review anymore."};
+        const ps=pointState(point.id), s=ps?.skills?.[skill.id];
+        if(!ps?.lessonComplete||!s)return {ok:false,code:"not-learned",message:"This particle skill is not active in Kotoba's SRS."};
+        const stageBefore=Number(s.stage||0), dueBefore=s.dueAt==null?null:Number(s.dueAt);
+        if(expectedStage!=null&&Number(expectedStage)!==stageBefore)return {ok:false,code:"stale-review",message:"This particle skill changed in another Kotoba session.",stageBefore,dueAt:dueBefore};
+        if(expectedDueAt!=null&&dueBefore!=null&&Number(expectedDueAt)!==dueBefore)return {ok:false,code:"stale-review",message:"This particle skill changed in another Kotoba session.",stageBefore,dueAt:dueBefore};
+        if(!(stageBefore>0&&stageBefore<9&&dueBefore!=null&&dueBefore<=Date.now()))return {ok:false,code:"not-due",message:"This particle review is no longer due in Kotoba.",stageBefore,dueAt:dueBefore};
+        const now=Date.now(), isCorrect=Boolean(correct);
+        if(!isCorrect)recordConfusion(point.particle,String(entered||""));
+        s.lastReviewedAt=now;
+        if(isCorrect){s.correct++;s.stage=Math.min(9,Math.max(1,s.stage+1));s.dueAt=s.stage>=9?null:now+STAGES[s.stage].delay;state.stats.correct++;}
+        else{s.incorrect++;s.stage=Math.max(1,s.stage-1);s.dueAt=now+30*60*1000;state.stats.incorrect++;}
+        state.stats.reviews++;state.stats.lastStudiedAt=now;persist({activity:true});
+        return {ok:true,committed:true,pointId:point.id,skillId:skill.id,correct:isCorrect,entered:String(entered||""),stageBefore,stageAfter:Number(s.stage||0),dueAt:s.dueAt==null?null:Number(s.dueAt),particle:point.particle,title:point.title};
+      }
+
+      window.KotobaQuestParticlePath={version:VERSION,open:openPath,startReviews:()=>startReviews(false),startContrastTraining,getConfusions:()=>combinedConfusions(),getDueItems:dueItems,getProgress:()=>POINTS.map(point=>({id:point.id,level:point.level,particle:point.particle,title:point.title,lessonComplete:pointState(point.id).lessonComplete,stage:pointStage(point),skills:SKILLS.map(skill=>({id:skill.id,...pointState(point.id).skills[skill.id]}))})),createExternalSession:createExternalParticleSession,evaluateExternalAnswer:evaluateExternalParticleAnswer,commitExternalReview:commitExternalParticleReview,refresh:()=>{state=normalizeState(sourceData().particlePath);scheduleInstall();}};
     }
     
         function storyReaderBootstrap() {
@@ -37722,7 +37910,7 @@ function smartReviewBootstrap() {
       if (window.__KOTOBA_EXTERNAL_QUICK_REVIEW_V2__) return;
       window.__KOTOBA_EXTERNAL_QUICK_REVIEW_V2__ = true;
 
-      const VERSION = "2.0.0";
+      const VERSION = "2.1.0";
 
       function safeNumber(value, fallback = 0) {
         const parsed = Number(value);
