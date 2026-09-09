@@ -872,6 +872,57 @@
     let lessonSession = null;
     let reviewSession = null;
 
+    function repairMissingCoreContent() {
+      if(!data || !Array.isArray(data.vocabulary) || !Array.isArray(CORE_PACK?.entries)) return false;
+      const byPackId=new Map(CORE_PACK.entries.map((entry,index) => [String(entry.packEntryId || ""),{entry,index}]));
+      let changed=false;
+      data.vocabulary=data.vocabulary.map((item,position) => {
+        if(item?.sourceType!=="core" || (item.word && item.reading && Array.isArray(item.meanings) && item.meanings.length)) return item;
+        let hit=byPackId.get(String(item?.packEntryId || item?.id || ""));
+        if(!hit && Number.isFinite(Number(item?.coreIndex))) {
+          const index=Math.floor(Number(item.coreIndex));
+          if(CORE_PACK.entries[index]) hit={entry:CORE_PACK.entries[index],index};
+        }
+        if(!hit) {
+          const legacy=String(item?.packEntryId || item?.id || "").match(/^kc2k-(\d{4})$/i);
+          if(legacy) {
+            const index=Math.max(0,Number(legacy[1])-1);
+            if(CORE_PACK.entries[index]) hit={entry:CORE_PACK.entries[index],index};
+          }
+        }
+        if(!hit) {
+          const coreRows=data.vocabulary.filter(row => row?.sourceType==="core");
+          const ordinal=coreRows.indexOf(item);
+          if(ordinal>=0 && CORE_PACK.entries[ordinal]) hit={entry:CORE_PACK.entries[ordinal],index:ordinal};
+        }
+        if(!hit?.entry) return item;
+        changed=true;
+        return makeVocabulary({
+          ...hit.entry,
+          ...item,
+          id:hit.entry.packEntryId || item.id,
+          packEntryId:hit.entry.packEntryId || item.packEntryId,
+          word:item.word || hit.entry.word,
+          reading:item.reading || hit.entry.reading,
+          meanings:Array.isArray(item.meanings) && item.meanings.length ? item.meanings : hit.entry.meanings,
+          productionCue:item.productionCue || hit.entry.productionCue,
+          pos:item.pos || hit.entry.pos,
+          example:item.example || hit.entry.example,
+          exampleTranslation:item.exampleTranslation || hit.entry.exampleTranslation,
+          audioWord:item.audioWord || hit.entry.audioWord || hit.entry.wordAudio,
+          audioSentence:item.audioSentence || hit.entry.audioSentence || hit.entry.sentenceAudio,
+          coreIndex:hit.index,
+          sourceType:"core"
+        });
+      });
+      return changed;
+    }
+
+    const repairedMissingCoreContent=repairMissingCoreContent();
+    if(repairedMissingCoreContent) {
+      try { persist(); } catch(error) { console.warn("Kotoba Quest: reparierte Core-Vokabeln konnten noch nicht gespeichert werden.",error); }
+    }
+
     function makeId() {
       return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
@@ -908,6 +959,9 @@
         packId:String(item.packId || "").trim(),
         packEntryId:String(item.packEntryId || "").trim(),
         packVersion:String(item.packVersion || "").trim(),
+        coreIndex:Number.isFinite(Number(item.coreIndex)) && Number(item.coreIndex) >= 0
+          ? Math.floor(Number(item.coreIndex))
+          : null,
         stage:Math.max(0,Math.min(9,Number(item.stage || 0))),
         availableAt:item.availableAt == null ? null : Number(item.availableAt),
         createdAt:Number(item.createdAt || Date.now()),
@@ -937,32 +991,60 @@
       const byPackId=new Map(
         normalized.filter(item => item.packEntryId).map(item => [item.packEntryId,item])
       );
+      const byCoreIndex=new Map(
+        normalized
+          .filter(item => item.sourceType==="core" && Number.isFinite(Number(item.coreIndex)))
+          .map(item => [Math.floor(Number(item.coreIndex)),item])
+      );
+      const legacyByNumber=new Map();
+      normalized.forEach(item => {
+        const match=String(item.packEntryId || item.id || "").match(/^kc2k-(\d{4})$/i);
+        if(match) legacyByNumber.set(Math.max(0,Number(match[1])-1),item);
+      });
       const coreByWord=new Map(
         normalized
-          .filter(item => item.sourceType==="core")
+          .filter(item => item.sourceType==="core" && item.word && item.reading)
           .map(item => [`${item.word}|${item.reading}`,item])
       );
       const packKeys=new Set(CORE_PACK.entries.map(entry => `${entry.word}|${entry.reading}`));
 
-      const synced=CORE_PACK.entries.map(entry => {
-        const previous=byPackId.get(entry.packEntryId) || coreByWord.get(`${entry.word}|${entry.reading}`);
+      const synced=CORE_PACK.entries.map((entry,coreIndex) => {
+        const previous=byPackId.get(entry.packEntryId)
+          || byCoreIndex.get(coreIndex)
+          || legacyByNumber.get(coreIndex)
+          || coreByWord.get(`${entry.word}|${entry.reading}`);
         return makeVocabulary({
           ...entry,
           id:entry.packEntryId,
           sourceType:"core",
           packId:CORE_PACK.id,
           packVersion:CORE_PACK.version,
+          coreIndex,
           stage:previous?.stage || 0,
           availableAt:previous?.availableAt ?? null,
           createdAt:previous?.createdAt || Date.now(),
           correct:previous?.correct || 0,
           incorrect:previous?.incorrect || 0,
-          guruPassed:Boolean(previous?.guruPassed || Number(previous?.stage) >= 5)
+          guruPassed:Boolean(previous?.guruPassed || Number(previous?.stage) >= 5),
+          acceptedMeanings:previous?.acceptedMeanings || entry.acceptedMeanings,
+          synonyms:previous?.synonyms || entry.synonyms,
+          meaningAlternatives:previous?.meaningAlternatives || entry.meaningAlternatives,
+          closeMeanings:previous?.closeMeanings || entry.closeMeanings,
+          acceptedReadings:previous?.acceptedReadings || entry.acceptedReadings,
+          closeReadings:previous?.closeReadings || entry.closeReadings,
+          lrContexts:previous?.lrContexts || entry.lrContexts,
+          lrImportKey:previous?.lrImportKey || entry.lrImportKey,
+          lrMediaKey:previous?.lrMediaKey || entry.lrMediaKey,
+          lrHasAudio:Boolean(previous?.lrHasAudio || entry.lrHasAudio),
+          lrHasImage:Boolean(previous?.lrHasImage || entry.lrHasImage)
         });
       });
 
       const custom=normalized.filter(item => {
         if(item.packEntryId) return false;
+        // A compact/broken bundled Core row without text is recoverable from the
+        // catalogue above and must never survive as a second blank custom card.
+        if(item.sourceType==="core" && !item.word && !item.reading) return false;
         if(item.sourceType==="core" && packKeys.has(`${item.word}|${item.reading}`)) return false;
         return true;
       });
@@ -1291,7 +1373,7 @@
     async function playItemAudio(item,kind="word") {
       stopAudioPlayback();
       const token=audioRequestToken;
-      const text=kind==="sentence" ? item?.example : item?.reading;
+      const text=kind==="sentence" ? item?.example : (item?.reading || item?.word);
 
       if(data.nativeAudioEnabled) {
         for(const candidate of audioCandidates(item,kind)) {

@@ -429,7 +429,7 @@
       getFirestore,
       setDoc
     } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-    import { createKotobaDurableStorage } from "./storage/kotoba-durable-storage.js?v=3.0.0";
+    import { createKotobaDurableStorage } from "./storage/kotoba-durable-storage.js?v=3.1.0";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBONS67dSKsL-Bgi46tu2ZDCWLV3YJkqpY",
@@ -446,7 +446,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "mobile-experience-v1";
+    const CLOUD_FEATURE_VERSION = "vocabulary-content-audio-repair-v1";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -2278,7 +2278,11 @@
 
       let storedVocabulary = [];
       try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        let progressRaw = localStorage.getItem(STORAGE_KEY);
+        if (!progressRaw) {
+          try { progressRaw = window.parent?.KotobaQuestPrimaryStorageBridge?.readSync?.() || null; } catch {}
+        }
+        const parsed = JSON.parse(progressRaw || "null");
         if (Array.isArray(parsed?.vocabulary)) storedVocabulary = parsed.vocabulary;
       } catch (error) {
         console.warn("Kotoba Core 2000: Vorhandener Spielstand konnte für die Migration nicht gelesen werden.", error);
@@ -2370,6 +2374,9 @@
         return {
           ...item,
           packEntryId,
+          coreIndex: index,
+          audioWord: item.audioWord || item.wordAudio || null,
+          audioSentence: item.audioSentence || item.sentenceAudio || null,
           level: Math.floor(index / 20) + 1
         };
       });
