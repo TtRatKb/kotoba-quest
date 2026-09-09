@@ -396,14 +396,14 @@
         <strong id="storageHealthTitle">Wird geprüft …</strong>
         <span id="storageHealthDetail"></span>
         <div class="storage-meter"><span id="storageHealthFill" style="width:0%"></span></div>
-        <div class="storage-meter-labels"><span id="storageHealthUsed">0 MB verwendet</span><span>4,0 MB Sicherheitsbudget</span></div>
+        <div class="storage-meter-labels"><span id="storageHealthUsed">0 MB localStorage</span><span>4,0 MB Sicherheitsbudget</span></div>
       </div>
       <strong>Größte lokale Speicherblöcke</strong>
       <div class="storage-key-list" id="storageKeyList"></div>
-      <p class="storage-note" id="storageMaintenanceNote">Alte Review-Historie wird automatisch begrenzt. Der jeweils letzte autoritative SRS-Zustand pro Vokabel bleibt erhalten.</p>
+      <p class="storage-note" id="storageMaintenanceNote">Der aktive Lernstand bleibt lokal kompakt; ein zusätzlicher Recovery-Checkpoint liegt in IndexedDB. Optimieren entfernt keine SRS-Stufen oder gelernten Wörter.</p>
       <div class="dialog-actions" style="margin-top:18px">
         <button class="button ghost" id="storageCloseButton" type="button">Schließen</button>
-        <button class="button" id="storageOptimizeButton" type="button">Speicher optimieren</button>
+        <button class="button" id="storageOptimizeButton" type="button">Sicher optimieren</button>
       </div>
     </div>
   </dialog>
@@ -429,6 +429,7 @@
       getFirestore,
       setDoc
     } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+    import { createKotobaDurableStorage } from "./storage/kotoba-durable-storage.js?v=2.0.0";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBONS67dSKsL-Bgi46tu2ZDCWLV3YJkqpY",
@@ -497,6 +498,18 @@
     const CUMULATIVE_STATS_VERSION = 2;
     const PARTICLE_PATH_BACKUP_KEY = "kotobaQuestParticlePathBackupV1";
     const PARTICLE_PATH_BACKUP_VERSION = 1;
+
+    let durableStorage = null;
+    try {
+      durableStorage = await createKotobaDurableStorage({
+        storageKey: STORAGE_KEY,
+        legacyVaultKey: "kotobaQuestProgressVaultV1"
+      });
+      window.KotobaQuestDurableStorage = durableStorage;
+    } catch (error) {
+      console.error("Kotoba Quest durable storage initialization failed", error);
+      window.KotobaQuestDurableStorage = null;
+    }
 
 
     function progressVaultFactory() {
@@ -1005,13 +1018,30 @@
       };
       const readVault = () => {
         try {
+          let durable = window.KotobaQuestDurableStorage?.readVaultSync?.();
+          if ((!durable || typeof durable !== "object" || !Object.keys(durable).length) && window.parent && window.parent !== window) {
+            try { durable = window.parent.KotobaQuestDurableStorage?.readVaultSync?.(); } catch {}
+          }
+          if (durable && typeof durable === "object" && Object.keys(durable).length) return objectValue(durable);
           const parsed = JSON.parse(localStorage.getItem(VAULT_KEY) || "null");
           return objectValue(parsed?.data);
         } catch { return {}; }
       };
       const writeVault = source => {
         try {
-          localStorage.setItem(VAULT_KEY, JSON.stringify({ version: VERSION, updatedAtMs: Date.now(), data: snapshot(source) }));
+          const compact = snapshot(source);
+          let durableWriter = window.KotobaQuestDurableStorage?.writeVault ? window.KotobaQuestDurableStorage : null;
+          if (!durableWriter && window.parent && window.parent !== window) {
+            try { durableWriter = window.parent.KotobaQuestDurableStorage?.writeVault ? window.parent.KotobaQuestDurableStorage : null; } catch {}
+          }
+          if (durableWriter) {
+            durableWriter.writeVault(compact).catch(error => {
+              console.warn("Kotoba Quest IndexedDB-Fortschritts-Tresor konnte nicht geschrieben werden", error);
+            });
+            try { localStorage.removeItem(VAULT_KEY); } catch {}
+            return;
+          }
+          localStorage.setItem(VAULT_KEY, JSON.stringify({ version: VERSION, updatedAtMs: Date.now(), data: compact }));
         } catch (error) {
           console.warn("Kotoba Quest Fortschritts-Tresor konnte nicht geschrieben werden", error);
         }
@@ -1311,7 +1341,30 @@
     }
 
     const progressVault = progressVaultFactory();
-    const STORAGE_MAINTENANCE_VERSION = "1.2";
+    const STORAGE_MAINTENANCE_VERSION = "2.0";
+
+    window.KotobaQuestStorageBridge = {
+      version: "2.0",
+      compactRaw: raw => progressVault.compactRaw(raw),
+      afterMainWrite(raw, error = null) {
+        if (typeof raw === "string" && raw) {
+          durableStorage?.writeMainCheckpoint?.(raw).catch(storageError => {
+            console.error("Kotoba Quest IndexedDB checkpoint failed", storageError);
+          });
+        }
+        if (error) {
+          window.dispatchEvent(new CustomEvent("kq-storage-write-failed", { detail:{ message:String(error?.message || error) } }));
+          return;
+        }
+        window.dispatchEvent(new CustomEvent("kotoba-progress-dirty"));
+      },
+      emergencyCleanup() {
+        for (const key of ["kotobaQuestProgressVaultV1", "kotobaQuestDataV1", "kotobaQuestDataV2"]) {
+          try { localStorage.removeItem(key); } catch {}
+        }
+      },
+      flush: () => durableStorage?.flush?.() || Promise.resolve(true)
+    };
 
     const STORAGE_SAFE_BUDGET_BYTES = 4 * 1024 * 1024;
     const STORAGE_WARNING_RATIO = 0.70;
@@ -1481,9 +1534,12 @@
           }
         }
 
-        // Recreate the vault in its compact representation after the main save
-        // has successfully been reduced.
+        // Recreate the safety vault in IndexedDB, not localStorage. This removes
+        // the former near-full duplicate of the complete save from the tight
+        // localStorage quota while preserving recovery protection.
         progressVault.writeVault(mergedParsed);
+        try { localStorage.removeItem(progressVault.key); } catch {}
+        durableStorage?.writeMainCheckpoint?.(mergedCompactRaw).catch(() => {});
 
         // Bound recovery history after the authoritative compact main save exists.
         // This never removes the latest SRS state: that lives in the one-record-per-word ledger.
@@ -1525,11 +1581,11 @@
     function storageHealthSnapshot() {
       const used = localStorageUsageBytes();
       const ratio = used / STORAGE_SAFE_BUDGET_BYTES;
-      let tone = "good", label = "Gesund", detail = "Genügend Sicherheitsabstand für weitere Lern- und Story-Fortschritte.";
+      let tone = "good", label = "Gesund", detail = "Der aktive Lernstand hat genügend Abstand zur localStorage-Grenze. Sicherheitskopien liegen zusätzlich in IndexedDB.";
       if (ratio >= STORAGE_CRITICAL_RATIO) {
-        tone = "bad"; label = "Kritisch"; detail = "Bitte jetzt optimieren. Kotoba Quest nähert sich seinem konservativen Sicherheitslimit.";
+        tone = "bad"; label = "Kritisch"; detail = "Der aktive localStorage-Lernstand ist weiterhin sehr groß. Bitte sicher optimieren, bevor du eine längere Review-Session startest.";
       } else if (ratio >= STORAGE_WARNING_RATIO) {
-        tone = "warn"; label = "Beobachten"; detail = "Noch kein Speicherfehler, aber eine Optimierung ist sinnvoll.";
+        tone = "warn"; label = "Beobachten"; detail = "Der aktive Lernstand wird größer, ist aber weiterhin gespeichert. IndexedDB schützt zusätzlich einen Recovery-Checkpoint.";
       }
       return { used, ratio, percent:Math.min(100,Math.round(ratio*100)), tone, label, detail, keys:storageKeyUsage().slice(0,6) };
     }
@@ -1546,17 +1602,44 @@
         storageHealthTitle.textContent = `${health.label} · ${health.percent}% des Sicherheitsbudgets`;
         storageHealthDetail.textContent = health.detail;
         storageHealthFill.style.width = `${health.percent}%`;
-        storageHealthUsed.textContent = `${formatStorageBytes(health.used)} verwendet`;
-        storageKeyList.innerHTML = health.keys.length
+        storageHealthUsed.textContent = `${formatStorageBytes(health.used)} localStorage`;
+        const durableStatusForList = durableStorage?.getStatus?.();
+        const localRows = health.keys.length
           ? health.keys.map(row => `<div class="storage-key-row"><code>${String(row.key).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")}</code><span>${formatStorageBytes(row.bytes)}</span></div>`).join("")
-          : `<div class="storage-key-row"><code>Keine lokalen Daten</code><span>0 B</span></div>`;
+          : `<div class="storage-key-row"><code>Keine localStorage-Daten</code><span>0 B</span></div>`;
+        const durableRows = durableStatusForList
+          ? `<div class="storage-key-row"><code>IndexedDB · Recovery-Checkpoint</code><span>${formatStorageBytes(durableStatusForList.mainCheckpointBytes || 0)}</span></div>`
+            + `<div class="storage-key-row"><code>IndexedDB · Progress Vault</code><span>${formatStorageBytes(durableStatusForList.progressVaultBytes || 0)}</span></div>`
+          : "";
+        storageKeyList.innerHTML = localRows + durableRows;
         const last = window.KotobaQuestStorageMaintenance?.lastResult;
         const pruned = Number(last?.historyCleanup?.journalPruned || 0) + Number(last?.historyCleanup?.ledgerPruned || 0) + Number(last?.historyCleanup?.partialsPruned || 0);
+        const durableStatus = durableStorage?.getStatus?.();
+        const durableText = durableStatus
+          ? ` Zusätzlich: ${formatStorageBytes(durableStatus.mainCheckpointBytes || 0)} Recovery-Checkpoint in IndexedDB.`
+          : "";
         storageMaintenanceNote.textContent = pruned
-          ? `Letzte Wartung: ${pruned} überholte Review-/SRS-Historieneinträge entfernt. Der jeweils letzte autoritative SRS-Zustand pro Vokabel bleibt erhalten.`
-          : "Review-Journal und Teilstände sind automatisch begrenzt. Der jeweils letzte autoritative SRS-Zustand pro Vokabel bleibt erhalten.";
+          ? `Letzte Wartung: ${pruned} überholte Review-/SRS-Historieneinträge entfernt. Keine SRS-Stufe oder gelernte Vokabel wurde gelöscht.${durableText}`
+          : `Sicher optimieren entfernt nur alte Duplikate und begrenzte Recovery-Historie; Lernfortschritt bleibt erhalten.${durableText}`;
       }
       return health;
+    }
+
+    try {
+      const checkpointRaw = durableStorage?.readMainCheckpointSync?.();
+      const currentRaw = localStorage.getItem(STORAGE_KEY);
+      if (checkpointRaw && isValidProgress(checkpointRaw)) {
+        const mergedRecoveryRaw = stabilizeAllProgress(currentRaw || checkpointRaw, checkpointRaw);
+        if (isValidProgress(mergedRecoveryRaw) && mergedRecoveryRaw !== currentRaw) {
+          try {
+            localStorage.setItem(STORAGE_KEY, progressVault.compactRaw(mergedRecoveryRaw));
+          } catch (error) {
+            console.error("Kotoba Quest konnte den IndexedDB-Checkpoint nicht in localStorage spiegeln", error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Kotoba Quest IndexedDB recovery check failed", error);
     }
 
     const initialStorageMaintenance = performStorageMaintenance({ silent:true });
@@ -2008,10 +2091,44 @@
       };
     }
 
+    function durableStorageGuardBootstrap() {
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const parentBridge = (() => {
+        try { return window.parent?.KotobaQuestStorageBridge || null; } catch { return null; }
+      })();
+      if (!parentBridge || Storage.prototype.setItem.__kqDurableStorageGuard) return;
+
+      const nativeSetItem = Storage.prototype.setItem;
+      const wrapped = function(key, value) {
+        if (String(key) !== STORAGE_KEY) return nativeSetItem.call(this, key, value);
+        let nextValue = String(value || "{}");
+        try { nextValue = parentBridge.compactRaw(nextValue) || nextValue; } catch {}
+        try {
+          const result = nativeSetItem.call(this, key, nextValue);
+          try { parentBridge.afterMainWrite(nextValue); } catch {}
+          return result;
+        } catch (error) {
+          try { parentBridge.emergencyCleanup?.(); } catch {}
+          try {
+            const result = nativeSetItem.call(this, key, nextValue);
+            try { parentBridge.afterMainWrite(nextValue); } catch {}
+            return result;
+          } catch (retryError) {
+            try { parentBridge.afterMainWrite(nextValue, retryError); } catch {}
+            throw retryError;
+          }
+        }
+      };
+      wrapped.__kqDurableStorageGuard = true;
+      wrapped.__kqOriginal = nativeSetItem;
+      Storage.prototype.setItem = wrapped;
+    }
+
     function injectCumulativeStatsGuard(html) {
+      const durableScript = "<script>(" + durableStorageGuardBootstrap.toString() + ")();<" + "/script>";
       const vaultScript = "<script>window.KotobaQuestProgressVault=(" + progressVaultFactory.toString() + ")();window.KotobaQuestProgressVault.install();<" + "/script>";
       const guardScript = "<script>(" + cumulativeStatsGuardBootstrap.toString() + ")();<" + "/script>";
-      const scripts = `${vaultScript}\n${guardScript}`;
+      const scripts = `${durableScript}\n${vaultScript}\n${guardScript}`;
       if (/<head(?:\s[^>]*)?>/i.test(html)) {
         return html.replace(/<head(?:\s[^>]*)?>/i, match => `${match}\n${scripts}`);
       }
@@ -37801,18 +37918,23 @@ function smartReviewBootstrap() {
       return String(error?.message || "Unbekannter Fehler").replace(/^Firebase:\s*/i, "");
     }
 
-    function restoreCloudProgress(cloudProgress) {
+    async function restoreCloudProgress(cloudProgress) {
       const localBeforeRestore = localStorage.getItem(STORAGE_KEY);
       const restoredRaw = stabilizeAllProgress(cloudProgress.raw, localBeforeRestore);
-      localStorage.setItem(STORAGE_KEY, restoredRaw);
-      progressVault.writeVault(JSON.parse(restoredRaw));
-      const cloudWasExpanded = restoredRaw !== cloudProgress.raw;
+      const compactRestoredRaw = progressVault.compactRaw(restoredRaw);
+      localStorage.setItem(STORAGE_KEY, compactRestoredRaw);
+      progressVault.writeVault(JSON.parse(compactRestoredRaw));
+      await durableStorage?.writeMainCheckpoint?.(compactRestoredRaw);
+      await durableStorage?.flush?.();
+      const persistedRaw = localStorage.getItem(STORAGE_KEY);
+      if (!isValidProgress(persistedRaw)) throw new Error("Der Cloudstand konnte lokal nicht verifiziert werden.");
+      const cloudWasExpanded = compactRestoredRaw !== cloudProgress.raw;
       writeMeta({
         uid: currentUser.uid,
         lastSyncedHash: cloudWasExpanded ? null : cloudProgress.hash,
         lastCloudUpdatedAtMs: cloudProgress.updatedAtMs
       });
-      observedLocalRaw = restoredRaw;
+      observedLocalRaw = compactRestoredRaw;
       reloadAppDocument();
       setStatus("good", cloudWasExpanded ? "Cloudstand sicher zusammengeführt" : "Cloudstand geladen", `Wiederhergestellt · ${formatTime()} Uhr`);
       toast(cloudWasExpanded ? "Cloudstand und geschützter Fortschritt wurden zusammengeführt." : "Dein Cloud-Spielstand wurde wiederhergestellt.");
@@ -37839,7 +37961,7 @@ function smartReviewBootstrap() {
         }
 
         if (!localRaw) {
-          restoreCloudProgress(cloudProgress);
+          await restoreCloudProgress(cloudProgress);
           return;
         }
 
@@ -37861,7 +37983,7 @@ function smartReviewBootstrap() {
         const cloudMatchesLastSync = metaBelongsToUser && meta.lastSyncedHash === cloudProgress.hash;
 
         if (localMatchesLastSync && cloudProgress.updatedAtMs > Number(meta.lastCloudUpdatedAtMs || 0)) {
-          restoreCloudProgress(cloudProgress);
+          await restoreCloudProgress(cloudProgress);
           return;
         }
 
@@ -37912,15 +38034,19 @@ function smartReviewBootstrap() {
     loginButton.addEventListener("click", handleLogin);
     storageHealthButton.addEventListener("click", () => { updateStorageHealthUi({renderDialog:true}); storageDialog.showModal(); });
     storageCloseButton.addEventListener("click", () => storageDialog.close());
-    storageOptimizeButton.addEventListener("click", () => {
+    storageOptimizeButton.addEventListener("click", async () => {
       storageOptimizeButton.disabled = true;
       try {
         const before = localStorageUsageBytes();
+        await durableStorage?.clearLegacyDuplicates?.();
         const result = performStorageMaintenance({silent:false});
+        const currentRaw = localStorage.getItem(STORAGE_KEY);
+        if (currentRaw) await durableStorage?.writeMainCheckpoint?.(currentRaw);
+        await durableStorage?.flush?.();
         const after = localStorageUsageBytes();
         const freed = Math.max(0, before - after);
         updateStorageHealthUi({renderDialog:true});
-        toast(freed > 1024 ? `Speicher optimiert · ${formatStorageBytes(freed)} freigegeben.` : "Speicher ist bereits optimal aufgeräumt.");
+        toast(freed > 1024 ? `Sicher optimiert · ${formatStorageBytes(freed)} aus localStorage freigegeben. Lernfortschritt bleibt erhalten.` : "Speicher ist bereits sicher aufgeräumt; Lernfortschritt wurde nicht verändert.");
         if (result?.historyCleanup) window.KotobaQuestStorageMaintenance.lastResult = result;
       } finally { storageOptimizeButton.disabled = false; }
     });
@@ -37943,12 +38069,18 @@ function smartReviewBootstrap() {
       await saveLocalProgressToCloud({ force: true, reason: "manual" });
     });
 
-    useCloudButton.addEventListener("click", () => {
+    useCloudButton.addEventListener("click", async () => {
       if (!pendingConflict) return;
       conflictDialog.close();
       const cloudProgress = pendingConflict.cloudProgress;
       pendingConflict = null;
-      restoreCloudProgress(cloudProgress);
+      try {
+        await restoreCloudProgress(cloudProgress);
+      } catch (error) {
+        console.error("Cloud restore persistence failed", error);
+        setStatus("bad", "Cloudstand konnte nicht sicher gespeichert werden", readableError(error));
+        toast("⚠️ Bitte noch nicht weiterlernen: Der Cloudstand konnte lokal nicht verifiziert werden.");
+      }
     });
 
     conflictLaterButton.addEventListener("click", () => {
@@ -37973,6 +38105,18 @@ function smartReviewBootstrap() {
         updateStorageHealthUi();
       }
     }, 120000);
+
+    window.addEventListener("kq-storage-write-failed", event => {
+      const message = String(event?.detail?.message || "Lokaler Schreibvorgang fehlgeschlagen.");
+      console.error("Kotoba Quest local persistence failed", message);
+      setStatus("bad", "Lokales Speichern fehlgeschlagen", "Bitte Review-Session pausieren und den Speicherstatus öffnen. Der letzte Stand wird zusätzlich in IndexedDB gesichert.");
+      toast("⚠️ Speichern fehlgeschlagen – bitte kurz pausieren und Speicher prüfen.");
+    });
+
+    window.addEventListener("kq-durable-storage-error", event => {
+      console.error("Kotoba Quest IndexedDB persistence failed", event?.detail?.message || event);
+      setStatus("bad", "Recovery-Speicher konnte nicht geschrieben werden", "Bitte vor einer längeren Lernsession neu laden und den Speicherstatus prüfen.");
+    });
 
     window.addEventListener("online", () => {
       if (currentUser) reconcileLocalAndCloud();
