@@ -20839,10 +20839,23 @@
 
         if (mode === "synonym" && feedback.questionType === "listening") {
           const added = addMeaningOverride(item, feedback.enteredAnswer);
+          // Never claim success unless the same validator used by placement/reviews
+          // accepts the translation immediately. This catches future persistence or
+          // normalization regressions instead of showing a false-positive toast.
+          let acceptedNow = false;
           try {
-            toast(added
-              ? `„${feedback.enteredAnswer}“ wurde als gültige Übersetzung gespeichert.`
-              : "Diese Übersetzung war bereits gespeichert.");
+            acceptedNow = Boolean(evaluateAnswer({ type:"listening" }, item, feedback.enteredAnswer)?.correct);
+          } catch (error) {
+            console.error("Saved synonym could not be verified by the answer validator", error);
+          }
+          try {
+            if (!acceptedNow) {
+              toast("Die Übersetzung konnte nicht als gültiges Synonym aktiviert werden. Bitte nicht weiterlernen und den Fehler melden.");
+            } else {
+              toast(added
+                ? `„${feedback.enteredAnswer}“ wurde als gültige Übersetzung gespeichert.`
+                : "Diese Übersetzung war bereits gespeichert und wird als richtig akzeptiert.");
+            }
           } catch {}
         } else {
           persistWithoutRerender();

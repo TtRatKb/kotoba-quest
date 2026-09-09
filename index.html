@@ -995,6 +995,18 @@
         meanings:Array.isArray(item.meanings)
           ? item.meanings.map(String).map(v => v.trim()).filter(Boolean)
           : String(item.meanings || "").split(",").map(v => v.trim()).filter(Boolean),
+        // User-approved German translations are durable learning state, not Core
+        // catalogue content. Keep them on every normalized vocabulary object so
+        // Core rehydration/review queue rebuilds cannot silently drop synonyms.
+        acceptedMeanings:Array.isArray(item.acceptedMeanings)
+          ? item.acceptedMeanings.map(String).map(v => v.trim()).filter(Boolean)
+          : String(item.acceptedMeanings || "").split(",").map(v => v.trim()).filter(Boolean),
+        synonyms:Array.isArray(item.synonyms)
+          ? item.synonyms.map(String).map(v => v.trim()).filter(Boolean)
+          : String(item.synonyms || "").split(",").map(v => v.trim()).filter(Boolean),
+        meaningAlternatives:Array.isArray(item.meaningAlternatives)
+          ? item.meaningAlternatives.map(String).map(v => v.trim()).filter(Boolean)
+          : String(item.meaningAlternatives || "").split(",").map(v => v.trim()).filter(Boolean),
         closeMeanings:Array.isArray(item.closeMeanings)
           ? item.closeMeanings.map(String).map(v => v.trim()).filter(Boolean)
           : String(item.closeMeanings || "").split(",").map(v => v.trim()).filter(Boolean),
@@ -1167,6 +1179,11 @@
           placementProgress:parsed.placementProgress &&
             typeof parsed.placementProgress==="object"
               ? parsed.placementProgress
+              : {},
+          vocabularyMeaningOverrides:parsed.vocabularyMeaningOverrides &&
+            typeof parsed.vocabularyMeaningOverrides==="object" &&
+            !Array.isArray(parsed.vocabularyMeaningOverrides)
+              ? parsed.vocabularyMeaningOverrides
               : {},
           xp:Number(parsed.xp || 0),
           demoMode:false,
