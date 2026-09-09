@@ -1,4 +1,4 @@
-export const KOTOBA_BRIDGE_SCHEMA_VERSION = 1;
+export const KOTOBA_BRIDGE_SCHEMA_VERSION = 2;
 export const KOTOBA_BRIDGE_STORAGE_KEY = "kotobaQuestBridgeV1";
 export const KOTOBA_PROGRESS_STORAGE_KEY = "kotobaQuestDataV3";
 export const KOTOBA_BRIDGE_MAX_QUEUE = 500;

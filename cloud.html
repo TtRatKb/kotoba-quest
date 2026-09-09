@@ -37717,6 +37717,192 @@ function smartReviewBootstrap() {
       window.KotobaQuestMobile = { version:VERSION, refresh:schedule, openMenu:openSheet };
     }
 
+
+    function externalQuickReviewBootstrap() {
+      if (window.__KOTOBA_EXTERNAL_QUICK_REVIEW_V2__) return;
+      window.__KOTOBA_EXTERNAL_QUICK_REVIEW_V2__ = true;
+
+      const VERSION = "2.0.0";
+
+      function safeNumber(value, fallback = 0) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function cloneValue(value) {
+        try { return structuredClone(value); }
+        catch {
+          try { return JSON.parse(JSON.stringify(value)); }
+          catch { return value; }
+        }
+      }
+
+      function compactItem(item) {
+        if (!item) return null;
+        return {
+          itemId: String(item.id || ""),
+          source: String(item.sourceType || "core") === "mining" ? "mining" : "core",
+          word: String(item.word || ""),
+          reading: String(item.reading || ""),
+          meanings: Array.isArray(item.meanings) ? item.meanings.map(value => String(value || "")).filter(Boolean) : [],
+          productionCue: String(item.productionCue || (Array.isArray(item.meanings) ? item.meanings.join(" / ") : "")),
+          stage: safeNumber(item.stage),
+          dueAt: item.availableAt == null ? null : safeNumber(item.availableAt, null),
+          example: String(item.example || ""),
+          exampleTranslation: String(item.exampleTranslation || "")
+        };
+      }
+
+      function dueVocabulary() {
+        const list = Array.isArray(data?.vocabulary) ? data.vocabulary : [];
+        const now = Date.now();
+        return list
+          .filter(item => safeNumber(item?.stage) > 0 && safeNumber(item?.stage) < 9 && Number(item?.availableAt) <= now)
+          .sort((left, right) => safeNumber(left?.availableAt, Number.MAX_SAFE_INTEGER) - safeNumber(right?.availableAt, Number.MAX_SAFE_INTEGER));
+      }
+
+      function findItem(itemId) {
+        return (Array.isArray(data?.vocabulary) ? data.vocabulary : []).find(item => String(item?.id || "") === String(itemId || "")) || null;
+      }
+
+      function normalizeDirection(value) {
+        return String(value || "") === "de-jp" ? "de-jp" : "jp-de";
+      }
+
+      function questionType(direction) {
+        return normalizeDirection(direction) === "de-jp" ? "production" : "listening";
+      }
+
+      function createVocabularySession({ limit = 5, sessionId = "" } = {}) {
+        const max = Math.max(1, Math.min(20, Math.floor(safeNumber(limit, 5))));
+        const selected = dueVocabulary().slice(0, max);
+        const questions = [];
+        for (const item of selected) {
+          const pair = Math.random() < 0.5
+            ? ["jp-de", "de-jp"]
+            : ["de-jp", "jp-de"];
+          pair.forEach(direction => questions.push({ itemId: String(item.id || ""), direction }));
+        }
+        // Keep neighbouring prompts from feeling too mechanical while preserving the
+        // two-direction contract for every selected vocabulary item.
+        for (let index = questions.length - 1; index > 0; index -= 1) {
+          const other = Math.floor(Math.random() * (index + 1));
+          [questions[index], questions[other]] = [questions[other], questions[index]];
+        }
+        return {
+          version: VERSION,
+          sessionId: String(sessionId || `life-rpg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`),
+          createdAt: Date.now(),
+          items: selected.map(compactItem),
+          questions,
+          dueCountBefore: dueVocabulary().length
+        };
+      }
+
+      function evaluateVocabularyAnswer({ itemId, direction, answer } = {}) {
+        const item = findItem(itemId);
+        if (!item) return { ok: false, code: "item-missing", message: "Kotoba could not find this vocabulary item anymore." };
+        const type = questionType(direction);
+        const question = { itemId: String(item.id || ""), type };
+        let result;
+        try {
+          const entered = type === "production" && typeof romajiToHiragana === "function"
+            ? romajiToHiragana(String(answer || ""), true)
+            : String(answer || "");
+          result = evaluateAnswer(question, item, entered);
+        }
+        catch (error) {
+          return { ok: false, code: "evaluation-failed", message: String(error?.message || error || "Answer evaluation failed.") };
+        }
+        return {
+          ok: true,
+          itemId: String(item.id || ""),
+          direction: normalizeDirection(direction),
+          type,
+          status: String(result?.status || "incorrect"),
+          correct: Boolean(result?.correct),
+          close: Boolean(result?.close),
+          wrongType: Boolean(result?.wrongType),
+          expected: String(result?.expected || ""),
+          item: compactItem(item)
+        };
+      }
+
+      function commitVocabularyItemReview({ itemId, errors = {}, expectedStage = null } = {}) {
+        const item = findItem(itemId);
+        if (!item) return { ok: false, code: "item-missing", message: "Kotoba could not find this vocabulary item anymore." };
+        const stageBefore = safeNumber(item.stage);
+        if (expectedStage != null && safeNumber(expectedStage, -1) !== stageBefore) {
+          return {
+            ok: false,
+            code: "stale-review",
+            message: "This Kotoba item changed in another session. Refresh the Quick Japanese queue instead of applying it twice.",
+            item: compactItem(item)
+          };
+        }
+        if (!(stageBefore > 0 && stageBefore < 9 && Number(item.availableAt) <= Date.now())) {
+          return {
+            ok: false,
+            code: "not-due",
+            message: "This vocabulary item is no longer due in Kotoba Quest.",
+            item: compactItem(item)
+          };
+        }
+
+        const previousSession = typeof reviewSession === "undefined" ? null : reviewSession;
+        const scratch = {
+          kind: String(item.sourceType || "core") === "mining" ? "mining" : "core",
+          questions: [],
+          index: 0,
+          results: { [item.id]: { listening: true, production: true } },
+          errors: { [item.id]: { listening: Boolean(errors?.listening), production: Boolean(errors?.production) } },
+          finalized: {},
+          stats: { correctQuestions: 0, totalQuestions: 2, completedItems: 0, totalItems: 1, levelsGained: 0 },
+          feedback: null,
+          locked: false,
+          empty: false,
+          externalQuickReview: true
+        };
+
+        let committed = false;
+        try {
+          reviewSession = scratch;
+          committed = Boolean(finalizeReviewItemIfReady(String(item.id || "")));
+        } catch (error) {
+          return { ok: false, code: "commit-failed", message: String(error?.message || error || "Kotoba review commit failed.") };
+        } finally {
+          reviewSession = previousSession;
+        }
+
+        if (!committed) {
+          return { ok: false, code: "commit-rejected", message: "Kotoba did not confirm the review commit.", item: compactItem(item) };
+        }
+
+        const updated = findItem(itemId);
+        return {
+          ok: true,
+          committed: true,
+          itemId: String(itemId || ""),
+          stageBefore,
+          stageAfter: safeNumber(updated?.stage),
+          dueAt: updated?.availableAt == null ? null : safeNumber(updated.availableAt, null),
+          source: String(updated?.sourceType || item.sourceType || "core") === "mining" ? "mining" : "core",
+          errors: { listening: Boolean(errors?.listening), production: Boolean(errors?.production) },
+          item: compactItem(updated)
+        };
+      }
+
+      window.KotobaQuestExternalReviewApi = {
+        version: VERSION,
+        getStatus: () => ({ version: VERSION, ready: true, dueVocabulary: dueVocabulary().length }),
+        createVocabularySession,
+        evaluateVocabularyAnswer,
+        commitVocabularyItemReview,
+        getDueVocabulary: ({ limit = 20 } = {}) => dueVocabulary().slice(0, Math.max(1, Math.min(40, safeNumber(limit, 20)))).map(compactItem),
+        getItem: itemId => cloneValue(compactItem(findItem(itemId)))
+      };
+    }
+
         function injectGrammarPath(html) {
       const grammarScript = "<script>(" + grammarPathBootstrap.toString() + ")();<" + "/script>";
       const n4RecapScript = "<script>(" + n4AdaptiveRecapBootstrap.toString() + ")();<" + "/script>";
@@ -37741,8 +37927,9 @@ function smartReviewBootstrap() {
       const vocabularyReviewMixScript = "<script>(" + vocabularyReviewMixBootstrap.toString() + ")();<" + "/script>";
       const vocabularyReviewPartialScript = "<script>(" + vocabularyReviewPartialProgressBootstrap.toString() + ")();<" + "/script>";
       const smartReviewScript = "<script>(" + smartReviewBootstrap.toString() + ")();<" + "/script>";
+      const externalQuickReviewScript = "<script>(" + externalQuickReviewBootstrap.toString() + ")();<" + "/script>";
       const mobileExperienceScript = "<script>(" + mobileExperienceBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}\n${mobileExperienceScript}`;
+      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}\n${externalQuickReviewScript}\n${mobileExperienceScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }

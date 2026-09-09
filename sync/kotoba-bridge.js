@@ -32,7 +32,7 @@ import {
   writeBridgeState
 } from "./kotoba-events.js";
 
-const BRIDGE_VERSION = "1.0.0";
+const BRIDGE_VERSION = "2.0.0";
 const appFrame = document.getElementById("appFrame");
 let bridgeState = readBridgeState();
 let currentUser = null;
@@ -332,6 +332,149 @@ async function initializeFirebaseBridge() {
   });
 }
 
+
+const LIVE_REQUEST_TYPE = "life-rpg:kotoba-request";
+const LIVE_RESPONSE_TYPE = "kotoba:life-rpg-response";
+
+function liveReviewApi() {
+  try { return appWindow()?.KotobaQuestExternalReviewApi || null; }
+  catch { return null; }
+}
+
+async function waitForLiveReviewApi(timeoutMs = 12000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const api = liveReviewApi();
+    if (api?.createVocabularySession && api?.evaluateVocabularyAnswer && api?.commitVocabularyItemReview) return api;
+    await new Promise(resolve => setTimeout(resolve, 120));
+  }
+  throw new Error("Kotoba's live review engine is still loading. Open Kotoba Quest once, then retry Quick Japanese.");
+}
+
+function processedCommand(commandId) {
+  const id = String(commandId || "");
+  return id && (bridgeState.processedCommandIds || []).includes(id);
+}
+
+function rememberCommand(commandId) {
+  const id = String(commandId || "");
+  if (!id) return;
+  bridgeState.processedCommandIds = [...new Set([...(bridgeState.processedCommandIds || []), id])].slice(-600);
+  bridgeState = writeBridgeState(bridgeState);
+}
+
+async function createLiveVocabularySession(payload = {}) {
+  const api = await waitForLiveReviewApi();
+  const result = api.createVocabularySession({
+    limit: Math.max(1, Math.min(20, Number(payload.limit) || 5)),
+    sessionId: String(payload.sessionId || "")
+  });
+  return clone(result);
+}
+
+async function evaluateLiveVocabulary(payload = {}) {
+  const api = await waitForLiveReviewApi();
+  return clone(api.evaluateVocabularyAnswer({
+    itemId: String(payload.itemId || ""),
+    direction: String(payload.direction || "jp-de"),
+    answer: String(payload.answer || "")
+  }));
+}
+
+async function commitLiveVocabulary(payload = {}) {
+  const commandId = String(payload.commandId || "");
+  if (!commandId) throw new Error("Quick Japanese commit is missing its command ID.");
+  const api = await waitForLiveReviewApi();
+
+  if (processedCommand(commandId)) {
+    const snapshot = (await scanProgress({ reason: "external-review-retry", forceSnapshot: true })).snapshot;
+    return {
+      ok: true,
+      committed: true,
+      duplicate: true,
+      commandId,
+      item: clone(api.getItem?.(String(payload.itemId || "")) || null),
+      snapshot: clone(snapshot)
+    };
+  }
+
+  const result = api.commitVocabularyItemReview({
+    itemId: String(payload.itemId || ""),
+    expectedStage: payload.expectedStage == null ? null : Number(payload.expectedStage),
+    errors: {
+      listening: Boolean(payload.errors?.listening),
+      production: Boolean(payload.errors?.production)
+    }
+  });
+
+  if (!result?.ok || !result?.committed) return clone(result);
+
+  // Persist the command marker before exporting an event. If the browser retries
+  // the same command after a reload, Kotoba's SRS can never be advanced twice.
+  rememberCommand(commandId);
+
+  queueEvent({
+    origin: "life-rpg",
+    type: "vocab-review",
+    itemId: String(payload.itemId || ""),
+    skill: "paired",
+    result: "completed",
+    label: String(result.item?.word || payload.itemId || "Vocabulary"),
+    area: String(result.source || "core") === "mining" ? "mining" : "vocabulary",
+    sessionId: String(payload.sessionId || ""),
+    timestamp: Date.now(),
+    metadata: {
+      commandId,
+      stageBefore: Number(result.stageBefore || 0),
+      stageAfter: Number(result.stageAfter || 0),
+      dueAt: result.dueAt == null ? null : Number(result.dueAt),
+      errors: clone(result.errors || {})
+    }
+  });
+
+  const scan = await scanProgress({ reason: "external-review", forceSnapshot: true });
+  scheduleCloudSync(80);
+  return { ...clone(result), commandId, snapshot: clone(scan.snapshot) };
+}
+
+async function handleLiveRequest(action, payload = {}) {
+  if (action === "ping") {
+    const api = await waitForLiveReviewApi();
+    return {
+      ok: true,
+      bridgeVersion: BRIDGE_VERSION,
+      reviewApiVersion: String(api.version || ""),
+      reviewWriteBackAvailable: true,
+      status: clone(api.getStatus?.() || {})
+    };
+  }
+  if (action === "create-vocabulary-session") return createLiveVocabularySession(payload);
+  if (action === "evaluate-vocabulary") return evaluateLiveVocabulary(payload);
+  if (action === "commit-vocabulary-item") return commitLiveVocabulary(payload);
+  if (action === "refresh-snapshot") return clone((await scanProgress({ reason: "life-rpg", forceSnapshot: true })).snapshot);
+  throw new Error(`Unsupported Kotoba live-bridge action: ${String(action || "")}`);
+}
+
+window.addEventListener("message", event => {
+  const bridgeMode = new URLSearchParams(location.search).get("lifeRpgBridge") === "1";
+  if (!bridgeMode || window.parent === window || event.source !== window.parent || event.origin !== location.origin) return;
+  const message = event.data;
+  if (!message || message.type !== LIVE_REQUEST_TYPE || !message.requestId) return;
+  Promise.resolve(handleLiveRequest(String(message.action || ""), message.payload || {}))
+    .then(result => event.source?.postMessage({
+      type: LIVE_RESPONSE_TYPE,
+      requestId: String(message.requestId),
+      ok: true,
+      result: clone(result)
+    }, event.origin))
+    .catch(error => event.source?.postMessage({
+      type: LIVE_RESPONSE_TYPE,
+      requestId: String(message.requestId),
+      ok: false,
+      error: String(error?.message || error || "Kotoba live bridge failed.").slice(0, 500)
+    }, event.origin));
+});
+
 function publicStatus() {
   return {
     version: BRIDGE_VERSION,
@@ -340,6 +483,7 @@ function publicStatus() {
     online: navigator.onLine,
     pendingEvents: bridgeState.pendingEvents?.length || 0,
     recentEvents: bridgeState.recentEvents?.length || 0,
+    processedCommands: bridgeState.processedCommandIds?.length || 0,
     lastCloudSuccessAt: bridgeState.cloud?.lastSuccessAt || null,
     lastCloudError: bridgeState.cloud?.lastError || ""
   };
@@ -355,9 +499,10 @@ window.KotobaQuestBridge = {
   getRecentCloudActivityEvents: recentCloudEvents,
   syncNow: async () => { await scanProgress({ reason: "manual", forceSnapshot: true }); await syncPendingEvents(); return publicStatus(); },
   getStatus: publicStatus,
-  // V1 is intentionally read-only from the Life RPG perspective. A future bridge
-  // version will expose a server-validated review submission contract here.
-  reviewWriteBackAvailable: false
+  createLiveVocabularySession,
+  evaluateLiveVocabulary,
+  commitLiveVocabulary,
+  reviewWriteBackAvailable: true
 };
 
 installParentStorageTrigger();

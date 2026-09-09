@@ -23,6 +23,7 @@ export function emptyBridgeState() {
     pendingEvents: [],
     recentEvents: [],
     seenAnalytics: [],
+    processedCommandIds: [],
     checkpoint: null,
     lastSnapshot: null,
     cloud: {
@@ -46,6 +47,7 @@ export function readBridgeState(storage = localStorage) {
       pendingEvents: Array.isArray(parsed.pendingEvents) ? parsed.pendingEvents.slice(-KOTOBA_BRIDGE_MAX_QUEUE) : [],
       recentEvents: Array.isArray(parsed.recentEvents) ? parsed.recentEvents.slice(-KOTOBA_BRIDGE_MAX_RECENT) : [],
       seenAnalytics: Array.isArray(parsed.seenAnalytics) ? parsed.seenAnalytics.slice(-600) : [],
+      processedCommandIds: Array.isArray(parsed.processedCommandIds) ? parsed.processedCommandIds.map(String).slice(-600) : [],
       cloud: { ...base.cloud, ...objectValue(parsed.cloud) }
     };
   } catch {
@@ -61,7 +63,8 @@ export function writeBridgeState(state, storage = localStorage) {
     updatedAt: Date.now(),
     pendingEvents: (Array.isArray(state?.pendingEvents) ? state.pendingEvents : []).slice(-KOTOBA_BRIDGE_MAX_QUEUE),
     recentEvents: (Array.isArray(state?.recentEvents) ? state.recentEvents : []).slice(-KOTOBA_BRIDGE_MAX_RECENT),
-    seenAnalytics: (Array.isArray(state?.seenAnalytics) ? state.seenAnalytics : []).slice(-600)
+    seenAnalytics: (Array.isArray(state?.seenAnalytics) ? state.seenAnalytics : []).slice(-600),
+    processedCommandIds: (Array.isArray(state?.processedCommandIds) ? state.processedCommandIds : []).map(String).slice(-600)
   };
   storage.setItem(KOTOBA_BRIDGE_STORAGE_KEY, JSON.stringify(safe));
   return safe;
