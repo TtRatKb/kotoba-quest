@@ -1,0 +1,208 @@
+/* Life RPG V0.31.4af2 — focused Skills hub */
+body.life-rpg-skills-route-v314af2 main > .view:not(#view-skills) {
+  display: none !important;
+}
+body.life-rpg-skills-route-v314af2 main > #view-skills {
+  display: block !important;
+}
+
+#view-skills.skills-view-v314aa {
+  max-width: 100%;
+}
+
+.skills-section-heading-v314af2 {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 26px 0 12px;
+}
+.skills-section-heading-v314af2 h2 { margin-bottom: 5px; }
+.skills-section-heading-v314af2 p:not(.eyebrow) {
+  margin: 0;
+  max-width: 760px;
+  color: var(--muted, #725f6d);
+}
+.skills-realm-heading-v314af2 > span {
+  padding: 7px 11px;
+  border: 1px solid rgba(74,39,67,.1);
+  border-radius: 999px;
+  background: rgba(255,255,255,.72);
+  color: var(--muted, #725f6d);
+  font-size: .78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.skills-talent-hub-v314af2 {
+  margin: 22px 0 26px;
+  padding: 22px;
+  border: 1px solid rgba(74,39,67,.11);
+  border-radius: 26px;
+  background: linear-gradient(145deg, rgba(255,250,246,.96), rgba(249,232,239,.78));
+  box-shadow: 0 16px 40px rgba(66,37,59,.08);
+}
+.skills-talent-hub-v314af2 > .skills-section-heading-v314af2 { margin: 0 0 15px; }
+.skills-tree-active-bank-v314af2 {
+  min-width: 170px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74,39,67,.1);
+  border-radius: 16px;
+  background: rgba(255,255,255,.7);
+  text-align: right;
+}
+.skills-tree-active-bank-v314af2 small,
+.skills-tree-active-bank-v314af2 span { display: block; color: var(--muted, #725f6d); }
+.skills-tree-active-bank-v314af2 small { font-size: .68rem; font-weight: 850; text-transform: uppercase; letter-spacing: .07em; }
+.skills-tree-active-bank-v314af2 strong { display: block; margin: 2px 0; color: #45263f; font-size: 1.15rem; }
+.skills-tree-active-bank-v314af2 span { font-size: .72rem; }
+
+.skills-tree-tabs-v314af2 {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(104px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.skills-tree-tab-v314af2 {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 8px;
+  min-width: 104px;
+  padding: 10px 11px;
+  border: 1px solid rgba(74,39,67,.1);
+  border-radius: 15px;
+  color: #56364f;
+  text-align: left;
+  background: rgba(255,255,255,.72);
+}
+.skills-tree-tab-v314af2 > span { grid-row: 1 / 3; font-size: 1.15rem; }
+.skills-tree-tab-v314af2 strong { font-size: .78rem; }
+.skills-tree-tab-v314af2 small { color: var(--muted, #725f6d); font-size: .66rem; }
+.skills-tree-tab-v314af2.active {
+  border-color: rgba(154,77,113,.28);
+  background: linear-gradient(145deg, rgba(250,225,236,.95), rgba(255,250,246,.96));
+  box-shadow: inset 0 0 0 1px rgba(154,77,113,.08), 0 8px 20px rgba(86,54,79,.08);
+}
+
+.skills-tree-stage-v314af2 {
+  min-height: 210px;
+}
+.skills-tree-stage-v314af2 > .panel {
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+.skills-tree-panel-hidden-v314af2,
+.skills-tree-stage-v314af2 > [hidden] {
+  display: none !important;
+}
+.skills-tree-panel-active-v314af2 {
+  display: block;
+}
+.skills-tree-coming-v314af2 {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 190px;
+  padding: 28px;
+  border: 1px dashed rgba(91,53,78,.18);
+  border-radius: 22px;
+  background: rgba(255,255,255,.58);
+}
+.skills-tree-coming-v314af2 > span { font-size: 2.3rem; }
+.skills-tree-coming-v314af2 small { color: #9a4d71; font-weight: 850; letter-spacing: .08em; }
+.skills-tree-coming-v314af2 h3 { margin: 4px 0 6px; color: #45263f; }
+.skills-tree-coming-v314af2 p { margin: 0; max-width: 720px; color: var(--muted, #725f6d); line-height: 1.5; }
+
+/* The skill list stays visible, but becomes a compact atlas instead of a second long page. */
+.skills-realm-grid-v314aa {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px !important;
+}
+.skills-realm-v314aa {
+  padding: 16px !important;
+  border-radius: 20px !important;
+}
+.skills-realm-v314aa > header { margin-bottom: 9px !important; }
+.skills-realm-v314aa > header > div:first-child > span { font-size: 1.35rem !important; }
+.skills-realm-v314aa h2 { font-size: 1.25rem !important; }
+.skills-points-v314aa strong { font-size: 1.15rem !important; }
+.skills-points-v314aa small { display: none !important; }
+.skills-card-grid-v314aa {
+  grid-template-columns: 1fr !important;
+  gap: 6px !important;
+}
+.skill-card-v314aa {
+  padding: 10px 11px !important;
+  border-radius: 14px !important;
+}
+.skill-card-head-v314aa {
+  grid-template-columns: auto minmax(0,1fr) auto !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+.skill-card-head-v314aa > span { font-size: 1.08rem !important; }
+.skill-card-head-v314aa small { display: none !important; }
+.skill-card-head-v314aa b { font-size: .76rem; }
+.skill-progress-v314aa { margin-top: 7px !important; }
+.skill-progress-v314aa > i { height: 6px !important; }
+.skill-progress-v314aa > div { margin-top: 4px !important; font-size: .69rem !important; }
+.skill-progress-v314aa em { display: none; }
+
+.skills-habit-map-v314aa.skills-habit-mapping-finished-v314af2 {
+  display: none !important;
+}
+
+.skills-history-panel-v314aa {
+  margin-top: 15px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 20px !important;
+}
+.skills-recent-details-v314af2 > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 17px;
+  cursor: pointer;
+  list-style: none;
+}
+.skills-recent-details-v314af2 > summary::-webkit-details-marker { display: none; }
+.skills-recent-details-v314af2 > summary > span { font-size: 1.1rem; }
+.skills-recent-details-v314af2 > summary small,
+.skills-recent-details-v314af2 > summary strong,
+.skills-recent-details-v314af2 > summary em { display: block; }
+.skills-recent-details-v314af2 > summary small { color: #9a4d71; font-size: .64rem; font-weight: 850; letter-spacing: .08em; }
+.skills-recent-details-v314af2 > summary strong { margin: 1px 0; color: #45263f; }
+.skills-recent-details-v314af2 > summary em { color: var(--muted, #725f6d); font-size: .72rem; font-style: normal; }
+.skills-recent-details-v314af2 > summary > b { color: #8f5577; transition: transform .15s ease; }
+.skills-recent-details-v314af2[open] > summary > b { transform: rotate(90deg); }
+.skills-recent-details-body-v314af2 {
+  padding: 0 14px 14px;
+  border-top: 1px solid rgba(74,39,67,.08);
+}
+.skills-recent-details-body-v314af2 .skills-recent-v314aa {
+  max-height: 420px;
+  overflow: auto;
+  padding-top: 10px;
+}
+
+@media (max-width: 1050px) {
+  .skills-tree-tabs-v314af2 { grid-template-columns: repeat(4, minmax(115px, 1fr)); }
+}
+@media (max-width: 800px) {
+  .skills-section-heading-v314af2 { align-items: stretch; flex-direction: column; }
+  .skills-tree-active-bank-v314af2 { text-align: left; }
+  .skills-tree-tabs-v314af2 { display: flex; }
+  .skills-tree-tab-v314af2 { flex: 0 0 132px; }
+  .skills-realm-grid-v314aa { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .skills-talent-hub-v314af2 { padding: 15px; border-radius: 20px; }
+  .skills-tree-coming-v314af2 { padding: 20px 16px; align-items: flex-start; }
+}
