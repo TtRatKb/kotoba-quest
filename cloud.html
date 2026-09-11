@@ -2405,9 +2405,10 @@
     }
 
     function injectCore2000Pack(html) {
-      // index.html now contains the complete canonical Core-2000 catalogue.
-      // Do not override it with the older category-ordered cloud bootstrap:
-      // fresh browsers would otherwise receive a different low-level curriculum.
+      // index.html contains the complete canonical Core-2000 catalogue and its
+      // full Levels 1–100 frequency/pedagogy ordering. Do not override it with
+      // the older category-ordered cloud bootstrap: fresh browsers would
+      // otherwise receive a different curriculum.
       return html;
     }
 
