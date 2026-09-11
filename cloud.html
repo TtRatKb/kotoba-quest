@@ -980,10 +980,20 @@
         const b = objectValue(preserved);
         const result = { ...b, ...a };
         result.vocabulary = mergeVocabulary(a.vocabulary, b.vocabulary, hasOwn(a, "vocabulary"));
-        result.currentLevel = Math.max(1, number(a.currentLevel), number(b.currentLevel));
+        const currentCoreOrderRevision = Math.max(0, number(a.coreOrderRevision));
+        const preservedCoreOrderRevision = Math.max(0, number(b.coreOrderRevision));
+        const intentionalCoreOrderMigration = currentCoreOrderRevision > preservedCoreOrderRevision;
+        result.coreOrderRevision = Math.max(currentCoreOrderRevision, preservedCoreOrderRevision);
+        result.currentLevel = intentionalCoreOrderMigration
+          ? Math.max(1, number(a.currentLevel) || 1)
+          : Math.max(1, number(a.currentLevel), number(b.currentLevel));
         result.xp = Math.max(0, number(a.xp), number(b.xp));
-        result.placementCompletedLevels = [...new Set([...(Array.isArray(b.placementCompletedLevels) ? b.placementCompletedLevels : []), ...(Array.isArray(a.placementCompletedLevels) ? a.placementCompletedLevels : [])].map(Number).filter(Number.isFinite))];
-        if (hasOwn(a, "placementProgress") || hasOwn(b, "placementProgress")) {
+        result.placementCompletedLevels = intentionalCoreOrderMigration
+          ? [...new Set((Array.isArray(a.placementCompletedLevels) ? a.placementCompletedLevels : []).map(Number).filter(Number.isFinite))]
+          : [...new Set([...(Array.isArray(b.placementCompletedLevels) ? b.placementCompletedLevels : []), ...(Array.isArray(a.placementCompletedLevels) ? a.placementCompletedLevels : [])].map(Number).filter(Number.isFinite))];
+        if (intentionalCoreOrderMigration) {
+          result.placementProgress = clone(objectValue(a.placementProgress));
+        } else if (hasOwn(a, "placementProgress") || hasOwn(b, "placementProgress")) {
           result.placementProgress = mergePlacementProgress(a.placementProgress, b.placementProgress, result.placementCompletedLevels);
         }
         if (hasOwn(a, "grammar") || hasOwn(b, "grammar")) result.grammar = mergePointPath(a.grammar, b.grammar);
@@ -2395,20 +2405,10 @@
     }
 
     function injectCore2000Pack(html) {
-      const packScript = "<script>(" + core2000PackBootstrap.toString() + ")();<" + "/script>";
-      const externalPackPattern = /<script\b[^>]*src=["'][^"']*content-packs\/core-2000\/core-pack\.js[^"']*["'][^>]*>\s*<\/script>/i;
-      if (externalPackPattern.test(html)) {
-        return html.replace(externalPackPattern, match => `${match}\n${packScript}`);
-      }
-
-      const embeddedMarker = html.indexOf("const EMBEDDED_CORE_PACK");
-      if (embeddedMarker >= 0) {
-        const scriptStart = html.lastIndexOf("<script", embeddedMarker);
-        if (scriptStart >= 0) return `${html.slice(0, scriptStart)}${packScript}\n${html.slice(scriptStart)}`;
-      }
-
-      if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${packScript}\n</head>`);
-      return `${packScript}${html}`;
+      // index.html now contains the complete canonical Core-2000 catalogue.
+      // Do not override it with the older category-ordered cloud bootstrap:
+      // fresh browsers would otherwise receive a different low-level curriculum.
+      return html;
     }
 
     function grammarPathBootstrap() {
@@ -30257,7 +30257,7 @@ function shuffle(values) {
         let planned = learned;
         if (!planned) {
           try {
-            const entries = window.KOTOBA_EXTERNAL_CORE_PACK?.entries || window.CORE_PACK?.entries || [];
+            const entries = window.KOTOBA_CORE_PACK?.entries || window.KOTOBA_EXTERNAL_CORE_PACK?.entries || window.CORE_PACK?.entries || [];
             const found = Array.isArray(entries) ? entries.find(matches) : null;
             if (found) planned = { ...found, sourceType: "core", stage: 0, guruPassed: false };
           } catch {}
