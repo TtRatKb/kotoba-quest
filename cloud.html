@@ -446,7 +446,7 @@
     const COMPREHENSIVE_PROGRESS_VAULT_VERSION = "5.1"; // Complete update-safe progress vault pass 5.0
     const MAX_PAYLOAD_LENGTH = 900000;
     const APP_URL = "./index.html";
-    const CLOUD_FEATURE_VERSION = "vocabulary-synonym-persistence-repair-v1";
+    const CLOUD_FEATURE_VERSION = "runtime-hydration-and-cloud-restore-repair-v10";
     const LEGACY_SETTING_IDS = [
       "demoMode",
       "audioAutoplay",
@@ -1081,10 +1081,10 @@
           try {
             const previousRaw = localStorage.getItem(STORAGE_KEY);
             nextValue = stabilizeRaw(String(value || "{}"), previousRaw);
-            const merged = parseRaw(nextValue);
-            try {
-              if (typeof data !== "undefined" && data && typeof data === "object") Object.assign(data, merged);
-            } catch {}
+            // IMPORTANT: nextValue is the intentionally compact *storage* form.
+            // Never copy it back into the live app object: doing so strips word,
+            // reading and meanings from bundled Core rows and produces blank lesson
+            // cards until the next full rehydration.
           } catch (error) {
             console.warn("Kotoba Quest Fortschritts-Tresor konnte einen Schreibvorgang nicht stabilisieren", error);
           }
@@ -21034,8 +21034,13 @@
       }
 
       function checkpointItem(question) {
-        return data.vocabulary.find(item => item.id === question?.itemId)
-          || lessonSession?.items?.find(item => item.id === question?.itemId)
+        const id=question?.itemId;
+        try {
+          const hydrated=typeof findVocabularyItem === "function" ? findVocabularyItem(id) : null;
+          if(hydrated) return hydrated;
+        } catch {}
+        return data.vocabulary.find(item => item.id === id || item.packEntryId === id)
+          || lessonSession?.items?.find(item => item.id === id || item.packEntryId === id)
           || null;
       }
 
@@ -21051,7 +21056,9 @@
         checkpoint.committed = true;
 
         for (const sessionItem of lessonSession.items) {
-          const target = data.vocabulary.find(item => item.id === sessionItem.id);
+          let target = null;
+          try { target = typeof findVocabularyItem === "function" ? findVocabularyItem(sessionItem.id || sessionItem.packEntryId) : null; } catch {}
+          target = target || data.vocabulary.find(item => item.id === sessionItem.id || item.packEntryId === sessionItem.packEntryId);
           if (!target || Number(target.stage || 0) > 0) continue;
           target.stage = 1;
           schedule(target);
@@ -38005,15 +38012,27 @@ function smartReviewBootstrap() {
       }
 
       function dueVocabulary() {
+        try { if (typeof ensureCoreVocabularyContent === "function") ensureCoreVocabularyContent(); } catch {}
         const list = Array.isArray(data?.vocabulary) ? data.vocabulary : [];
         const now = Date.now();
         return list
           .filter(item => safeNumber(item?.stage) > 0 && safeNumber(item?.stage) < 9 && Number(item?.availableAt) <= now)
+          .map(item => {
+            try { return item?.sourceType === "core" && typeof findVocabularyItem === "function" ? (findVocabularyItem(item.id || item.packEntryId) || item) : item; }
+            catch { return item; }
+          })
+          .filter(item => item && String(item.word || "").trim() && String(item.reading || "").trim())
           .sort((left, right) => safeNumber(left?.availableAt, Number.MAX_SAFE_INTEGER) - safeNumber(right?.availableAt, Number.MAX_SAFE_INTEGER));
       }
 
       function findItem(itemId) {
-        return (Array.isArray(data?.vocabulary) ? data.vocabulary : []).find(item => String(item?.id || "") === String(itemId || "")) || null;
+        try {
+          if (typeof findVocabularyItem === "function") {
+            const hydrated=findVocabularyItem(itemId);
+            if(hydrated) return hydrated;
+          }
+        } catch {}
+        return (Array.isArray(data?.vocabulary) ? data.vocabulary : []).find(item => String(item?.id || item?.packEntryId || "") === String(itemId || "")) || null;
       }
 
       function normalizeDirection(value) {
@@ -38481,9 +38500,15 @@ function smartReviewBootstrap() {
       progressVault.writeVault(JSON.parse(compactRestoredRaw));
       await durableStorage?.writeMainCheckpoint?.(compactRestoredRaw);
       await durableStorage?.flush?.();
-      const primaryVerified = await durableStorage?.verifyPrimary?.();
       const persistedRaw = localStorage.getItem(STORAGE_KEY);
-      if (!primaryVerified || !isValidProgress(persistedRaw)) throw new Error("Der Cloudstand konnte im IndexedDB-Primärspeicher nicht verifiziert werden.");
+      const primaryVerified = durableStorage?.verifyPrimary
+        ? await durableStorage.verifyPrimary()
+        : isValidProgress(persistedRaw);
+      if (!primaryVerified || !isValidProgress(persistedRaw)) {
+        throw new Error(durableStorage
+          ? "Der Cloudstand konnte im IndexedDB-Primärspeicher nicht verifiziert werden."
+          : "Der Cloudstand konnte im lokalen Fallback-Speicher nicht verifiziert werden.");
+      }
       const cloudWasExpanded = compactRestoredRaw !== cloudProgress.raw;
       writeMeta({
         uid: currentUser.uid,
@@ -38627,15 +38652,21 @@ function smartReviewBootstrap() {
 
     useCloudButton.addEventListener("click", async () => {
       if (!pendingConflict) return;
+      const conflict = pendingConflict;
       conflictDialog.close();
-      const cloudProgress = pendingConflict.cloudProgress;
-      pendingConflict = null;
+      useCloudButton.disabled = true;
       try {
-        await restoreCloudProgress(cloudProgress);
+        await restoreCloudProgress(conflict.cloudProgress);
+        pendingConflict = null;
       } catch (error) {
+        // Keep the conflict available so a transient IndexedDB/browser failure does
+        // not discard the user's one-click chance to retry the cloud restore.
+        pendingConflict = conflict;
         console.error("Cloud restore persistence failed", error);
         setStatus("bad", "Cloudstand konnte nicht sicher gespeichert werden", readableError(error));
-        toast("⚠️ Bitte noch nicht weiterlernen: Der Cloudstand konnte lokal nicht verifiziert werden.");
+        toast("⚠️ Cloudstand noch nicht übernommen. Du kannst die Auswahl erneut öffnen und wiederholen.");
+      } finally {
+        useCloudButton.disabled = false;
       }
     });
 

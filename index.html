@@ -2423,12 +2423,18 @@
       if(kind==="mining") {
         return data.vocabulary.filter(v => v.sourceType==="mining" && v.stage===0);
       }
-      return data.vocabulary.filter(v =>
-        v.sourceType==="core" &&
-        v.stage===0 &&
-        v.level<=data.currentLevel &&
-        placementDone(v.level)
-      );
+      // Core rows are stored compactly in IndexedDB/Cloud. Keep lesson callers on
+      // fully hydrated catalogue rows even if a storage/save hook has just run.
+      ensureCoreVocabularyContent();
+      return data.vocabulary
+        .filter(v =>
+          v.sourceType==="core" &&
+          v.stage===0 &&
+          v.level<=data.currentLevel &&
+          placementDone(v.level)
+        )
+        .map(item => findVocabularyItem(item.id || item.packEntryId) || hydrateCoreVocabularyItem(item,Number(item.coreIndex)))
+        .filter(validStudyItem);
     }
 
     function getDueItems(kind) {
@@ -2504,10 +2510,14 @@
       document.getElementById("dashboardMiningReviews").disabled=!miningReviews;
       document.getElementById("miningReviewsBtn").disabled=!miningReviews;
 
-      document.getElementById("demoMode").checked=data.demoMode;
-      document.getElementById("audioAutoplay").checked=data.audioAutoplay;
-      document.getElementById("nativeAudioEnabled").checked=data.nativeAudioEnabled;
-      document.getElementById("onlineHumanAudio").checked=data.onlineHumanAudio;
+      const demoModeControl=document.getElementById("demoMode");
+      const audioAutoplayControl=document.getElementById("audioAutoplay");
+      const nativeAudioControl=document.getElementById("nativeAudioEnabled");
+      const onlineHumanAudioControl=document.getElementById("onlineHumanAudio");
+      if(demoModeControl) demoModeControl.checked=data.demoMode;
+      if(audioAutoplayControl) audioAutoplayControl.checked=data.audioAutoplay;
+      if(nativeAudioControl) nativeAudioControl.checked=data.nativeAudioEnabled;
+      if(onlineHumanAudioControl) onlineHumanAudioControl.checked=data.onlineHumanAudio;
       document.getElementById("bluetoothKeepAlive").checked=data.bluetoothKeepAlive;
       document.getElementById("bluetoothLeadMs").value=String(
         [0,120,250,450].includes(Number(data.bluetoothLeadMs))
@@ -2619,6 +2629,8 @@
     }
 
     function renderVocabulary() {
+      // The archive should never render compact Core progress deltas as blank rows.
+      ensureCoreVocabularyContent();
       const list=document.getElementById("vocabList");
       document.getElementById("vocabTotal").textContent=`${data.vocabulary.length} Wörter`;
       list.innerHTML="";
@@ -2640,7 +2652,7 @@
           row.innerHTML=`
             <div class="vocab-jp">${escapeHtml(item.word)}</div>
             <div class="vocab-meta">
-              <strong>${escapeHtml(item.meanings.join(", "))}</strong>
+              <strong>${escapeHtml((Array.isArray(item.meanings) ? item.meanings : []).join(", "))}</strong>
               <span>${escapeHtml(item.reading)} · ${locked ? "Noch gesperrt" : formatNext(item)}</span>
               ${item.sourceType==="mining" && item.collection ? `<span>Quelle: ${escapeHtml(item.collection)}</span>` : ""}
             </div>
@@ -3073,7 +3085,43 @@
         return;
       }
 
-      const item=lessonSession.items[lessonSession.index];
+      let item=lessonSession.items[lessonSession.index];
+      if(item?.sourceType==="core") {
+        const hydrated=findVocabularyItem(item.id || item.packEntryId)
+          || hydrateCoreVocabularyItem(item,Number(item.coreIndex));
+        if(hydrated) {
+          item=hydrated;
+          lessonSession.items[lessonSession.index]=hydrated;
+        }
+      }
+      if(!validStudyItem(item)) {
+        // Do not leave the user on an apparently broken card. Rehydrate once and
+        // offer a safe retry without changing any SRS state.
+        ensureCoreVocabularyContent({persistRepair:true});
+        const repaired=item ? findVocabularyItem(item.id || item.packEntryId) : null;
+        if(repaired && validStudyItem(repaired)) {
+          lessonSession.items[lessonSession.index]=repaired;
+          item=repaired;
+        } else {
+          card.innerHTML=`
+            <div class="counter">Lektionen · Datenreparatur</div>
+            <div class="study-word" style="font-size:4rem">🛠️</div>
+            <h2>Diese Vokabel konnte nicht vollständig geladen werden</h2>
+            <p class="muted">Dein Lernfortschritt bleibt erhalten. Die Core-Daten können neu aus dem eingebauten Katalog geladen werden.</p>
+            <div class="button-row" style="justify-content:center;margin-top:18px">
+              <button class="primary" id="lessonRepairRetry">Core-Daten neu laden</button>
+              <button class="secondary" id="lessonRepairBack">Zur Übersicht</button>
+            </div>`;
+          document.getElementById("lessonRepairRetry").onclick=() => {
+            ensureCoreVocabularyContent({persistRepair:true});
+            startLessons(lessonSession?.kind || "core");
+          };
+          document.getElementById("lessonRepairBack").onclick=() => switchView("dashboard");
+          focusFirstEnabledAction("lessonRepairRetry","lessonRepairBack");
+          return;
+        }
+      }
+      const itemMeanings=Array.isArray(item.meanings) ? item.meanings : [];
       const label=lessonSession.kind==="core" ? `Core · Level ${item.level}` : `Mining · ${item.collection || "Eigene Sammlung"}`;
       card.innerHTML=`
         <div class="counter">${label} · Lektion ${lessonSession.index+1} von ${lessonSession.items.length}</div>
@@ -3083,7 +3131,7 @@
         </div>
         ${lessonSession.revealed
           ? `<div class="study-reading">${escapeHtml(item.reading)}</div>
-             <div class="study-meaning">${escapeHtml(item.meanings.join(", "))}</div>
+             <div class="study-meaning">${escapeHtml(itemMeanings.join(", "))}</div>
              ${item.pos ? `<div class="small muted" style="margin-top:7px">${escapeHtml(item.pos)}</div>` : ""}
              ${(item.example || item.exampleTranslation)
                ? `<div class="context-area">
@@ -3132,7 +3180,12 @@
       setTimeout(() => lessonPrimaryButton?.focus(),0);
 
       document.getElementById("lessonNext")?.addEventListener("click",() => {
-        const target=findVocabularyItem(item.id);
+        const target=findVocabularyItem(item.id || item.packEntryId);
+        if(!target) {
+          toast("Diese Vokabel konnte nicht gespeichert werden. Bitte Core-Daten neu laden.");
+          ensureCoreVocabularyContent({persistRepair:true});
+          return;
+        }
         target.stage=1;
         schedule(target);
         data.xp+=5;
@@ -3210,6 +3263,23 @@
     }
 
     function renderQuestionCard(card,question,item,options) {
+      if(item?.sourceType==="core") {
+        item=findVocabularyItem(item.id || item.packEntryId)
+          || hydrateCoreVocabularyItem(item,Number(item.coreIndex))
+          || item;
+      }
+      if(!validStudyItem(item)) {
+        card.className="card study-card";
+        card.innerHTML=`<div class="counter">Review · Datenreparatur</div><div class="study-word" style="font-size:4rem">🛠️</div><h2>Vokabeldaten konnten nicht geladen werden</h2><p class="muted">Dein Fortschritt wurde nicht verändert. Lade die Core-Daten neu und versuche es erneut.</p><button class="primary" id="questionRepairRetry">Core-Daten neu laden</button>`;
+        document.getElementById("questionRepairRetry")?.addEventListener("click",() => {
+          ensureCoreVocabularyContent({persistRepair:true});
+          if(document.getElementById("reviews")?.classList.contains("active")) renderReview();
+          else if(document.getElementById("placement")?.classList.contains("active")) renderPlacement();
+          else renderLesson();
+        });
+        return;
+      }
+      const itemMeanings=Array.isArray(item.meanings) ? item.meanings : [];
       const isListening=question.type==="listening";
       const prompt=isListening ? "Listening" : "Aktiv abrufen";
       const promptIcon=isListening ? "🔊" : "言";
@@ -3261,7 +3331,7 @@
              <button class="icon-audio" id="questionAudio" type="button" title="Noch einmal abspielen" aria-label="Wort noch einmal abspielen">🔊</button>
            </div>
            ${contextMarkup}`
-        : `<div class="production-word">${escapeHtml(item.productionCue || item.meanings.join(" / "))}</div>
+        : `<div class="production-word">${escapeHtml(item.productionCue || itemMeanings.join(" / "))}</div>
            ${contextMarkup}`;
 
       card.className=`card study-card ${isListening ? "review-reading" : "review-meaning"}`;
@@ -3601,27 +3671,27 @@
       actionButton.click();
     });
 
-    document.getElementById("demoMode").addEventListener("change",event => {
+    document.getElementById("demoMode")?.addEventListener("change",event => {
       data.demoMode=event.target.checked;
       saveData();
       toast(data.demoMode ? "Demo-Modus aktiviert." : "Echte SRS-Zeiten aktiviert.");
     });
 
-    document.getElementById("audioAutoplay").addEventListener("change",event => {
+    document.getElementById("audioAutoplay")?.addEventListener("change",event => {
       data.audioAutoplay=event.target.checked;
       if(!data.audioAutoplay) stopAudioPlayback();
       saveData();
       toast(data.audioAutoplay ? "Listening wird automatisch abgespielt." : "Automatische Audioausgabe ausgeschaltet.");
     });
 
-    document.getElementById("nativeAudioEnabled").addEventListener("change",event => {
+    document.getElementById("nativeAudioEnabled")?.addEventListener("change",event => {
       data.nativeAudioEnabled=event.target.checked;
       stopAudioPlayback();
       saveData();
       toast(data.nativeAudioEnabled ? "Native Audio-Packs aktiviert." : "Browserstimme als Audioquelle aktiviert.");
     });
 
-    document.getElementById("onlineHumanAudio").addEventListener("change",event => {
+    document.getElementById("onlineHumanAudio")?.addEventListener("change",event => {
       data.onlineHumanAudio=event.target.checked;
       missingNativeAudio.clear();
       stopAudioPlayback();
