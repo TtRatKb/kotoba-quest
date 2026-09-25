@@ -1,0 +1,52 @@
+/* Kotoba Dungeon V0.1 — pure turn-based roguelite engine. No canonical SRS writes. */
+(() => {
+ 'use strict';
+ const STORE='kotobaQuestDungeonV1';
+ const clone=v=>JSON.parse(JSON.stringify(v));
+ const now=()=>Date.now();
+ const random=()=>Math.random();
+ const bounded=(n,a,b)=>Math.max(a,Math.min(b,n));
+ const norm=v=>String(v??'').normalize('NFKC').trim().toLocaleLowerCase('de-DE').replace(/[.!?。！？\s]+$/g,'').replace(/\s+/g,' ');
+ const kana=v=>String(v??'').normalize('NFKC').replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-96));
+ const romaji={kya:'きゃ',kyu:'きゅ',kyo:'きょ',gya:'ぎゃ',gyu:'ぎゅ',gyo:'ぎょ',sha:'しゃ',shu:'しゅ',sho:'しょ',shi:'し',chi:'ち',tsu:'つ',cha:'ちゃ',chu:'ちゅ',cho:'ちょ',ja:'じゃ',ju:'じゅ',jo:'じょ',nya:'にゃ',nyu:'にゅ',nyo:'にょ',hya:'ひゃ',hyu:'ひゅ',hyo:'ひょ',mya:'みゃ',myu:'みゅ',myo:'みょ',rya:'りゃ',ryu:'りゅ',ryo:'りょ',kye:'きぇ',kka:'っか',ka:'か',ki:'き',ku:'く',ke:'け',ko:'こ',ga:'が',gi:'ぎ',gu:'ぐ',ge:'げ',go:'ご',sa:'さ',si:'し',su:'す',se:'せ',so:'そ',za:'ざ',ji:'じ',zi:'じ',zu:'ず',ze:'ぜ',zo:'ぞ',ta:'た',ti:'ち',te:'て',to:'と',da:'だ',de:'で',do:'ど',na:'な',ni:'に',nu:'ぬ',ne:'ね',no:'の',ha:'は',hi:'ひ',hu:'ふ',fu:'ふ',he:'へ',ho:'ほ',ba:'ば',bi:'び',bu:'ぶ',be:'べ',bo:'ぼ',pa:'ぱ',pi:'ぴ',pu:'ぷ',pe:'ぺ',po:'ぽ',ma:'ま',mi:'み',mu:'む',me:'め',mo:'も',ya:'や',yu:'ゆ',yo:'よ',ra:'ら',ri:'り',ru:'る',re:'れ',ro:'ろ',wa:'わ',wo:'を',a:'あ',i:'い',u:'う',e:'え',o:'お',n:'ん'};
+ function toHiragana(v){let s=norm(v).replace(/[-_ ]/g,'').replace(/[āá]/g,'a').replace(/[īí]/g,'i').replace(/[ūú]/g,'u').replace(/[ēé]/g,'e').replace(/[ōó]/g,'o');if(/[ぁ-ゖァ-ヶ]/u.test(s))return kana(s);if(!/^[a-z']+$/i.test(s))return kana(s);let out='';while(s){if(s[0]==="'"){s=s.slice(1);continue;}if(s.length>=2&&s[0]===s[1]&&/[bcdfghjklmpqrstvwxyz]/.test(s[0])&&s[0]!=='n'){out+='っ';s=s.slice(1);continue;}if(s[0]==='n'&&(s.length===1||s[1]==="'"||!/[aiueoy]/.test(s[1]))){out+='ん';s=s.slice(s[1]==="'"?2:1);continue;}let found=false;for(const n of [3,2,1]){const key=s.slice(0,n);if(romaji[key]){out+=romaji[key];s=s.slice(n);found=true;break;}}if(!found)return kana(v);}return out;}
+ function read(){try{const s=JSON.parse(localStorage.getItem(STORE)||'null');if(s&&s.version===1&&s.meta&&typeof s.meta==='object')return s;}catch(_){}return{version:1,meta:{shards:0,wins:0,runs:0,bestFloor:0,perks:{heart:0,strike:0},history:[]},run:null,weak:{}};}
+ let state=read(),deck=[];
+ function persist(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(err){state.lastSaveError=String(err);}}
+ function setDeck(cards){deck=(cards||[]).filter(v=>v?.id&&v.word&&v.reading&&Array.isArray(v.meanings)&&v.meanings.length);return deck.length;}
+ const PRICES={blade:18,ward:17,tea:12,ribbon:14,focus:18,hourglass:18};
+ const stageTypes=['jpMeaning','deJapanese','reading','kanaWord','cloze'];
+ function poolPick(){const weighted=deck.map(v=>({v,w:1+(state.weak[v.id]||0)*0.8+((v.stage||0)<5?0.8:0)}));const recent=state.run?.recent||[];let candidates=weighted.filter(x=>!recent.includes(x.v.id));if(!candidates.length)candidates=weighted;const total=candidates.reduce((sum,x)=>sum+x.w,0);let roll=random()*total;return(candidates.find(x=>(roll-=x.w)<=0)||candidates[candidates.length-1]).v;}
+ function pick(arr){return arr[Math.floor(random()*arr.length)];}
+ function shuffle(items){const a=items.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+ function makeQuestion(){if(!deck.length)return null;const v=poolPick();const valid=stageTypes.filter(t=>t!=='reading'||v.word!==v.reading).filter(t=>t!=='cloze'||(v.example&&v.example.includes(v.word)&&v.example!==v.word&&!v.example.includes('という言葉')&&!v.example.includes('「'))).filter(t=>t!=='kanaWord'||v.reading!==v.word);
+ let type=pick(valid.length?valid:['jpMeaning']);const run=state.run;if(run?.timed&&type==='reading'&&random()<.7)type='jpMeaning';const answer=v.meanings[0],reading=v.reading,word=v.word;
+ const bank=deck.filter(w=>w.id!==v.id);
+ let prompt='',label='',correct='',options=null,hint='',alt=[];
+ if(type==='jpMeaning'){prompt=word;label='Was bedeutet das Wort?';correct=answer;alt=[...v.meanings,...v.acceptedMeanings||[],...v.synonyms||[],...v.meaningAlternatives||[]];options=shuffle([answer,...shuffle([...new Set(bank.map(w=>w.meanings[0]).filter(x=>norm(x)!==norm(answer))) ]).slice(0,3)]);}
+ if(type==='deJapanese'){prompt=answer;label='Welches japanische Wort passt?';correct=word;options=shuffle([word,...shuffle([...new Set(bank.map(w=>w.word).filter(x=>x!==word))]).slice(0,3)]);}
+ if(type==='reading'){prompt=word;label='Gib die Lesung ein (Kana oder Rōmaji).';correct=reading;alt=[reading,...v.acceptedReadings||[]];}
+ if(type==='kanaWord'){prompt=reading;label='Welches Wort hat diese Lesung?';correct=word;options=shuffle([word,...shuffle([...new Set(bank.map(w=>w.word).filter(x=>x!==word))]).slice(0,3)]);}
+ if(type==='cloze'){prompt=v.example.replace(v.word,'＿＿＿');label='Welches Wort ergänzt den Satz?';correct=word;options=shuffle([word,...shuffle([...new Set(bank.map(w=>w.word).filter(x=>x!==word))]).slice(0,3)]);}
+ if(!options&&type!=='reading')options=[correct];
+ hint=`${word} · ${reading} · ${v.meanings.join(' / ')}${v.example&&type!=='cloze'?` · ${v.example}`:''}`;
+ return{id:v.id,type,prompt,label,correct,options,alt,hint,example:v.example,translation:v.exampleTranslation};}
+ function start({starter=false}={}){if(state.run&&!['ended'].includes(state.run.phase))return false;if(deck.length<3)throw Error('Mindestens drei Wörter für einen Dungeon-Run nötig.');const m=state.meta;const hp=80+m.perks.heart*12;m.runs++;state.run={id:`kd-${now()}-${Math.floor(random()*1e8)}`,phase:'battle',floor:1,mode:'normal',timed:false,startedAt:new Date().toISOString(),hp,maxHp:hp,shield:0,atk:10+m.perks.strike*2,gold:0,kills:0,streak:0,correct:0,attempts:0,gear:[],recent:[],enemy:{name:'Paper Wisp',hp:38,maxHp:38,atk:7},question:null,feedback:null,bossDeadline:null,result:null,source:starter?'starter':'known'};state.run.question=makeQuestion();persist();return true;}
+ const foes=[{name:'Paper Wisp',hp:38,atk:7},{name:'Ink Imp',hp:54,atk:9},{name:'Mist Fox',hp:65,atk:10}];
+ function heal(n){const r=state.run;r.hp=bounded(r.hp+n,0,r.maxHp);}
+ function chooseLoot(key){const r=state.run;if(!r||r.phase!=='loot'||(key!=='skip'&&!r.loot?.includes(key)))return false;if(key!=='skip'&&r.gold<PRICES[key])return false;const gear={blade:{name:'Ink Blade',desc:'+4 attack',apply:()=>r.atk+=4},ward:{name:'Paper Ward',desc:'+18 maximum HP and heal',apply:()=>{r.maxHp+=18;heal(18)}},tea:{name:'Warm Tea',desc:'Recover 28 HP',apply:()=>heal(28)},ribbon:{name:'Spirit Ribbon',desc:'+10 shield',apply:()=>r.shield+=10},focus:{name:'Focus Charm',desc:'Every third correct answer deals +10 damage',apply:()=>{}},hourglass:{name:'Hourglass',desc:'+10 seconds for timed boss',apply:()=>{}}};const item=gear[key];if(key!=='skip'){if(!item)return false;r.gold-=PRICES[key];item.apply();r.gear.push(key);}r.loot=null;if(r.floor===3){r.phase='bossSelect';}else{r.floor++;const f=foes[r.floor-1];r.enemy={...f,maxHp:f.hp};r.phase='battle';r.question=makeQuestion();}persist();return true;}
+ function nextLoot(){const keys=['blade','ward','tea','ribbon','focus','hourglass'];return shuffle(keys).slice(0,3);}
+ function boss(timed){const r=state.run;if(!r||r.phase!=='bossSelect')return false;r.phase='battle';r.floor=4;r.mode='boss';r.timed=Boolean(timed);const hp=Math.max(50,100-r.kills*10);r.enemy={name:'The Archivist',hp,maxHp:hp,atk:12};r.bossDeadline=r.timed?now()+(60+(r.gear.includes('hourglass')?10:0))*1000:null;r.question=makeQuestion();persist();return true;}
+ function expired(){const r=state.run;return Boolean(r&&r.phase==='battle'&&r.timed&&r.bossDeadline&&now()>=r.bossDeadline);}
+ function finish(won,reason){const r=state.run;if(!r||r.phase==='ended')return;const shards=Math.max(1,r.kills*2+(won?8:0)+(won&&r.timed?4:0)+Math.floor(r.gold/25));state.meta.shards+=shards;if(won)state.meta.wins++;state.meta.bestFloor=Math.max(state.meta.bestFloor,r.floor);state.meta.history.unshift({id:r.id,at:new Date().toISOString(),won,reason,correct:r.correct,attempts:r.attempts,kills:r.kills,shards});state.meta.history=state.meta.history.slice(0,30);r.result={won,reason,shards};r.phase='ended';r.question=null;r.feedback=null;persist();}
+ function timeout(){if(expired()){finish(false,'Die Boss-Zeit ist abgelaufen.');return true;}return false;}
+ function answer(input){const r=state.run;if(!r||r.phase!=='battle'||!r.question||r.feedback)return null;if(expired()){timeout();return null;}const q=r.question;const chosen=String(input??'').trim();if(!chosen)return null;const correct=q.type==='reading'?q.alt.some(x=>kana(x)===kana(chosen)||toHiragana(x)===toHiragana(chosen)):q.type==='jpMeaning'?q.alt.some(x=>norm(x)===norm(chosen)):norm(chosen)===norm(q.correct);r.attempts++;r.recent.push(q.id);r.recent=r.recent.slice(-Math.min(5,Math.max(1,deck.length-1)));state.weak[q.id]=bounded((state.weak[q.id]||0)+(correct?-0.35:1),0,6);
+ let damage=0,hurt=0;if(correct){r.correct++;r.streak++;damage=r.atk+(r.gear.includes('focus')&&r.streak%3===0?10:0);r.enemy.hp=Math.max(0,r.enemy.hp-damage);r.gold+=2;if(r.enemy.hp<=0){r.kills++;r.gold+=12;}}else{r.streak=0;hurt=Math.max(0,r.enemy.atk-r.shield);r.shield=Math.max(0,r.shield-r.enemy.atk);r.hp=Math.max(0,r.hp-hurt);}
+ r.feedback={correct,chosen,damage,hurt,hint:q.hint,expiresAt:now()};if(r.hp<=0)finish(false,'Die Gruppe braucht eine Pause.');else if(r.enemy.hp<=0){if(r.floor===4)finish(true,'Boss besiegt!');else{r.phase='loot';r.loot=nextLoot();}}persist();return{correct,damage,hurt,enemyDefeated:r.enemy.hp<=0,runFinished:r.phase==='ended'};}
+ function advance(){const r=state.run;if(!r||r.phase!=='battle'||!r.feedback)return false;if(expired()){timeout();return false;}r.feedback=null;r.question=makeQuestion();persist();return true;}
+ function abandon(){if(!state.run||state.run.phase==='ended')return false;finish(false,'Run freiwillig beendet.');return true;}
+ function resetRun(){if(state.run&&state.run.phase!=='ended')return false;state.run=null;persist();return true;}
+ function perk(key){const m=state.meta;const lvl=m.perks[key]||0;if(!['heart','strike'].includes(key)||lvl>=4)return false;const price=10+lvl*10;if(m.shards<price)return false;m.shards-=price;m.perks[key]=lvl+1;persist();return true;}
+ function snapshot(){return clone(state);}
+ window.KotobaDungeonEngine={version:1,setDeck,start,answer,advance,chooseLoot,boss,timeout,expired,abandon,resetRun,perk,snapshot,getQuestion:makeQuestion,prices:PRICES,_test:{norm,toHiragana,kana,read}};
+})();
