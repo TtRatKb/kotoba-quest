@@ -462,6 +462,10 @@
       .review-form { grid-template-columns:1fr; }
     }
   </style>
+  <style id="kqDungeonIndexStyles">
+    .kq-dungeon-index-entry{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 13px;text-decoration:none;color:#fff!important;background:linear-gradient(115deg,#63438a,#96599c);font-weight:850;border-radius:12px;border:1px solid #7d5099;white-space:nowrap;box-shadow:0 7px 18px #563d8033}
+    .kq-dungeon-index-entry:hover,.kq-dungeon-index-entry:focus-visible{filter:brightness(1.09);outline:2px solid #d1a9df;outline-offset:2px}
+  </style>
 </head>
 <body>
   <div class="app">
@@ -478,6 +482,7 @@
         <button data-view="vocabulary">Vokabeln</button>
         <button data-view="core">Core Path</button>
         <button data-view="mining">Mining</button>
+        <a id="kqDungeonIndexEntry" class="kq-dungeon-index-entry" href="./dungeon.html" aria-label="Little Dungeon öffnen">⚔ Dungeon</a>
       </nav>
     </header>
 

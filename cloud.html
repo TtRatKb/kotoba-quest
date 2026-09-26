@@ -328,6 +328,12 @@
     }
   </style>
 
+  <style id="kqDungeonNativeEntryStyles">
+    #kqDungeonCloudEntry{display:inline-flex;align-items:center;justify-content:center;gap:.5em;flex:0 0 auto;min-height:42px;padding:9px 14px;border-radius:13px;text-decoration:none;font-weight:850;white-space:nowrap;color:#fff;background:linear-gradient(120deg,#63428c,#985d9a);box-shadow:0 7px 17px #49306036;border:1px solid #73528d}
+    #kqDungeonCloudEntry:hover,#kqDungeonCloudEntry:focus-visible{filter:brightness(1.08);outline:2px solid #d69cc3;outline-offset:2px}
+    @media (max-width:900px){#kqDungeonCloudEntry{min-height:36px;padding:6px 10px;font-size:.81rem}}
+    @media (max-width:520px){#kqDungeonCloudEntry{font-size:0;gap:0;min-width:42px}#kqDungeonCloudEntry span{font-size:1.22rem}}
+  </style>
 </head>
 <body>
   <div class="shell">
@@ -340,6 +346,7 @@
         </div>
       </div>
 
+      <a id="kqDungeonCloudEntry" href="./dungeon.html" title="Little Dungeon öffnen" aria-label="Little Dungeon öffnen"><span aria-hidden="true">⚔</span> Dungeon</a>
       <div class="account-wrap">
         <div class="account-copy" id="accountCopy" hidden>
           <strong id="accountName">Angemeldet</strong>
@@ -32939,6 +32946,7 @@ ${tooltipText(segment, status)}`)}"`
         { id: "learning", label: "Lernen" },
         { id: "practice", label: "Üben" },
         { id: "story", label: "Story" },
+        { id: "dungeon", label: "⚔ Dungeon" },
         { id: "mining", label: "Mining" },
         { id: "smart", label: "🧠 Smart Review" },
         { id: "progress", label: "Fortschritt" }
@@ -33244,6 +33252,7 @@ ${tooltipText(segment, status)}`)}"`
             else if (item.id === "learning") openLearning(learningTab);
             else if (item.id === "practice") openPracticeCenter();
             else if (item.id === "story") { setGroup("story"); window.KotobaQuestStoryReader?.open?.(); }
+            else if (item.id === "dungeon") window.top.location.assign(new URL("./dungeon.html", document.baseURI).href);
             else if (item.id === "mining") safeSwitch("mining", "mining");
             else if (item.id === "smart") { setGroup("smart"); window.KotobaQuestSmartReview?.open?.(); }
             else if (item.id === "progress") openProgress(progressTab);
