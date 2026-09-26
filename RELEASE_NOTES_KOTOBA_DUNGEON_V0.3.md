@@ -1,0 +1,18 @@
+# Kotoba Quest — Little Dungeon V0.3 · Camp & Typed Combat
+
+**Basis:** V0.2 Keyboard Flow. Copy these complete four runtime files into the Kotoba Quest repository **root**, replacing the V0.2 equivalents: `dungeon.html`, `dungeon.css`, `dungeon-engine.js`, `dungeon.js`. Keep the existing `dungeon-source.js`. Do not replace ordinary Kotoba `index.html`, `cloud.html`, its PWA, Core/Mining, or Life RPG files. Make a Kotoba save export before updating and wait for deployment before reloading `dungeon.html`.
+
+## Core changes
+- **Free input is the default.** Type German meaning, Japanese word, Kana or Rōmaji according to the prompt, press Enter to attack, Enter for the next attack. Valid stored meaning/reading alternatives are accepted. German -> Japanese accepts its matching known word or reading (Kana/Rōmaji). No fake Kanji generation, no new vocabulary corpus; reads existing Kotoba Core/Mining via the unchanged read-only adapter. Authored context fill-in questions use existing examples, not fabricated grammar. Typing is subject to exact recorded meanings; free semantic grading is not claimed.
+- Multiple Choice can be selected at camp or during combat; 1–4 direct answer/Enter continues. Mode switch retains the same target word and does not advance the SRS. An existing V0.2 resumed prompt migrates to the selected display mode after its deck is loaded.
+- Three normal fights **without a merchant interruption**. Each meaningful correct answer grants local Dungeon Gold + Adventure XP; defeating a monster adds a larger bonus. After a kill Enter advances directly to the next opponent, or to the unchanged normal/optional 60-second boss choice.
+- Persistent **Camp** is the only place to buy permanent gear (`Ink Blade`, `Paper Ward`, `Focus Charm`, `Hourglass`) with Dungeon Gold. Every Adventure Level earns a Training Point to invest in permanent HP or Attack at camp. Purchases affect subsequent runs. Old shard perks continue to apply; existing shards can voluntarily be exchanged at camp (1 shard = 6 gold), with no forced conversion. No new shards are minted under V0.3.
+- Starter demo has lower, isolated Dungeon Gold/XP. Currency is earned once per answered question and once per defeated opponent, immediately saved. Abandon, death, reload, and boss timeout do not pay the same reward again. There is no Life-RPG or Kotoba SRS reward bridge in this prototype.
+
+## Save compatibility
+- Uses existing separate localStorage key `kotobaQuestDungeonV1`, with only additive metadata. V0.2 shards, perks, run record, weak-word weights and history remain available; a saved V0.2 `loot` phase becomes the now-normal victory/next-opponent phase without rewinding the run. The old purchased *temporary* items of an already active legacy run remain in that run, but new runs acquire items only at camp.
+- Never writes `kotobaQuestDataV3`, Kotoba stage/availableAt/review timestamps, or Life RPG balances. Current actual Kotoba vocabulary is read-only. Backup/export and cross-device syncing of the Dungeon itself are **not** implemented; Dungeon save remains browser-local as in V0.2.
+
+## QA
+- 11 Node engine tests: legacy migration, typed answer alternatives, full normal/boss flow, level and camp economy, one-time gold/XP, choice switching, reload, timeout, no SRS writes, starter-mode earnings.
+- Local Chromium injected-page integration check: complete **keyboard-only** run through three normal fights and normal boss, Enter-to-camp, gold shopping/training, option-mode switch; 390px mobile typed entry with no horizontal overflow. This harness injects a representative local deck; it is not a full test of actual user account/cloud data. Safari and personal browser save still need device verification.
