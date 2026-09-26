@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#392b56">
   <title>Kotoba Quest · Little Dungeon</title>
-  <link rel="stylesheet" href="dungeon.css?v=0.3.0">
+  <link rel="stylesheet" href="dungeon.css?v=0.4.0">
   <script defer src="dungeon-source.js?v=0.1.0"></script>
-  <script defer src="dungeon-engine.js?v=0.3.0"></script>
-  <script defer src="dungeon.js?v=0.3.0"></script>
+  <script defer src="dungeon-bridge.js?v=0.4.0"></script>
+  <script defer src="dungeon-engine.js?v=0.4.0"></script>
+  <script defer src="dungeon.js?v=0.4.0"></script>
 </head>
 <body>
   <div class="shell">
@@ -19,8 +20,8 @@
     </header>
     <div class="alert" id="alert" role="status" hidden></div>
     <main id="game" tabindex="-1"><div class="loading"><span class="loading-crest">✿</span><h1>Dein Dungeon wird vorbereitet …</h1><p>Vokabular wird aus Kotoba Quest gelesen.</p></div></main>
-    <footer class="foot">Ein freier Dungeon-Modus: Gold und XP gelten nur hier. SRS und Life-RPG-Rewards bleiben unverändert. · <a href="./cloud.html">Zurück zum Lernen</a></footer>
+    <footer class="foot">Ein freier Dungeon-Modus: Gold und XP gelten nur im Dungeon. Bestätigte Siege können getrennt in Life RPG belohnt werden; SRS bleibt unverändert. · <a href="./cloud.html">Zurück zum Lernen</a></footer>
   </div>
-  <dialog id="helpDialog"><div class="help-body"><button type="button" data-close-help aria-label="Schließen" class="cross">×</button><p class="eyebrow">LITTLE DUNGEON V0.3</p><h2>Spielregeln</h2><p>Besiege drei Gegner und anschließend den Boss. Normale Kämpfe haben <strong>keinen Timer</strong>; die freiwillige Boss-Challenge dauert 60 Sekunden. Du sammelst durch echte Treffer und besiegte Gegner Gold und XP. Gold kauft permanente Ausrüstung im Camp; ein Levelaufstieg bringt einen Trainingspunkt.</p><p><strong>Eingabe ist Standard:</strong> Antwort tippen und Enter drücken, dann mit Enter zur nächsten Aufgabe. Lesungen verstehen Kana oder Rōmaji. Bei Deutsch → Japanisch akzeptiert der Dungeon das japanische Wort oder seine Lesung. Für Multiple Choice kannst du jederzeit „Auswahl“ aktivieren: 1–4 antworten, Enter führt weiter.</p><p>Nach jedem normalen Gegner geht es direkt weiter – keine Händler-Unterbrechung. Deine Camp-Ausrüstung bleibt über alle Runs hinweg. Falsche Antworten zeigen die korrekte Verbindung und ändern keine echten Kotoba-SRS-Daten.</p><p>Deine V0.2-Scherben und früher gekauften Perks bleiben erhalten. Im Camp kannst du alte Scherben freiwillig in Dungeon-Gold umtauschen. Dungeon-Gold sind keine Life-RPG-Coins; normaler Review-Fortschritt wird nicht verändert.</p><p>Der Wortschatz stammt aus deiner lokalen Kotoba-Sammlung oder einem manuell eingelesenen Export. Es werden keine Vokabeln an einen fremden Server geschickt.</p><button type="button" class="main-btn" data-close-help>Verstanden</button></div></dialog>
+  <dialog id="helpDialog"><div class="help-body"><button type="button" data-close-help aria-label="Schließen" class="cross">×</button><p class="eyebrow">LITTLE DUNGEON V0.4</p><h2>Spielregeln</h2><p>Besiege drei Gegner und anschließend den Boss. Normale Kämpfe haben <strong>keinen Timer</strong>; die freiwillige Boss-Challenge dauert 60 Sekunden. Du sammelst durch echte Treffer und besiegte Gegner Gold und XP. Gold kauft permanente Ausrüstung im Camp; ein Levelaufstieg bringt einen Trainingspunkt.</p><p><strong>Eingabe ist Standard:</strong> Antwort tippen und Enter drücken, dann mit Enter zur nächsten Aufgabe. Lesungen verstehen Kana oder Rōmaji. Bei Deutsch → Japanisch akzeptiert der Dungeon das japanische Wort oder seine Lesung. Für Multiple Choice kannst du jederzeit „Auswahl“ aktivieren: 1–4 antworten, Enter führt weiter.</p><p>Nach jedem normalen Gegner geht es direkt weiter – keine Händler-Unterbrechung. Deine Camp-Ausrüstung bleibt über alle Runs hinweg. Falsche Antworten zeigen die korrekte Verbindung und ändern keine echten Kotoba-SRS-Daten.</p><p>Deine V0.2-Scherben und früher gekauften Perks bleiben erhalten. Im Camp kannst du alte Scherben freiwillig in Dungeon-Gold umtauschen. Dungeon-Gold sind keine Life-RPG-Coins. Siege legen separate, eindeutig identifizierte Life-RPG-Belege ab; die Einlösung erfolgt im verbundenen Life RPG.</p><p>Der Wortschatz stammt aus deiner lokalen Kotoba-Sammlung oder einem manuell eingelesenen Export. Es werden keine Vokabeln an einen fremden Server geschickt.</p><button type="button" class="main-btn" data-close-help>Verstanden</button></div></dialog>
 </body>
 </html>
