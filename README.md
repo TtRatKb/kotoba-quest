@@ -48,3 +48,11 @@ Meine persönliche Vokabel-SRS-App
 - The catalogue remains exactly 2,000 cards / 100 levels / 20 cards per level and keeps stable pack IDs so existing SRS progress migrates by lexical identity.
 - Core order revision is now 3. Existing V11/revision-2 learners who are still within Levels 1–20 keep their current placement untouched. A save that had already crossed into changed Levels 21–100 reopens placement from Level 21 while preserving all SRS progress.
 - `cloud.html` continues to defer to the canonical embedded pack so cloud/fresh-browser launches use the same full ordering.
+
+## V13 Review dashboard + live Dungeon deck filters
+- Rebuilt the Overview as a WaniKani-style SRS dashboard: total due reviews, per-domain queue counts, vocabulary distribution across A1–A4 / Guru / Master / Enlightened / Burned, the due-stage breakdown, and the next vocabulary review waves with exact transition counts and timing.
+- Removed Story/quest progression, Smart Review teaser and duplicate review/SRS cards from the Overview so the landing page is focused on the current review workload and upcoming SRS schedule.
+- Moved the full “Heutige Quest” / next Story target / guided session hub into the Story home below the Story path header.
+- Fixed the Little Dungeon source adapter for storage V3: it now reads the authoritative Kotoba Quest save from IndexedDB (`primaryLearningState`) before falling back to legacy localStorage saves.
+- Dungeon V0.5 can now build a run from all learned words, only A1–A4 words, Guru+ words, learned Core words, learned Mining words, or the 20-word Starter demo.
+- Dungeon run state preserves the selected vocabulary source across refreshes and resumed runs; all new live-save source modes receive normal Dungeon rewards while the Starter demo remains reduced-reward.

@@ -21738,119 +21738,124 @@
         if (!root) return;
 
         const source = currentData();
-        const streak = activityStats();
-        const vocab = vocabularyStats();
-        const grammar = grammarStats();
-        const vocabDue = dueVocabulary("core").length;
+        const coreItems = vocabularyItems("core");
+        const miningItems = vocabularyItems("mining");
+        const dueCoreItems = dueVocabulary("core");
+        const dueMiningItems = dueVocabulary("mining");
+        const grammarDueItems = dueGrammar();
+        const particleProgress = (() => {
+          try {
+            const points = window.KotobaQuestParticlePath?.getProgress?.();
+            return Array.isArray(points) ? points : [];
+          } catch { return []; }
+        })();
+        const particleSkills = particleProgress.flatMap(point => Array.isArray(point?.skills) && point.skills.length ? point.skills : [point]);
+        const now = Date.now();
+        const particleDueItems = particleSkills.filter(skill => {
+          const stage = Number(skill?.stage || 0);
+          const dueAt = Number(skill?.dueAt ?? skill?.availableAt);
+          return stage > 0 && stage < 9 && Number.isFinite(dueAt) && dueAt <= now;
+        });
+        const nextParticle = particleSkills
+          .filter(skill => Number(skill?.stage || 0) > 0 && Number(skill?.stage || 0) < 9)
+          .map(skill => Number(skill?.dueAt ?? skill?.availableAt))
+          .filter(value => Number.isFinite(value) && value > now)
+          .sort((a,b) => a-b)[0] || null;
+
         const vocabReviewSummary = window.KotobaQuestVocabularyReviewPartials?.summary?.("core") || null;
-        const vocabDirectionDue = Math.max(0, Number(vocabReviewSummary?.questions ?? (vocabDue * 2)));
-        const vocabPartialWords = Math.max(0, Number(vocabReviewSummary?.partialWords || 0));
-        const grammarDueCount = dueGrammar().length;
-        const lessons = availableCoreLessons();
-        const placement = pendingPlacement();
-        const miningDue = dueVocabulary("mining").length;
-        const miningNew = vocabularyItems("mining").filter(item => Number(item?.stage || 0) === 0).length;
-        const nextVocab = nextVocabularyDue("core");
+        const coreDirectionDue = Math.max(0, Number(vocabReviewSummary?.questions ?? (dueCoreItems.length * 2)));
+        const corePartialWords = Math.max(0, Number(vocabReviewSummary?.partialWords || 0));
+        const nextCore = nextVocabularyDue("core");
+        const nextMining = nextVocabularyDue("mining");
         const nextGrammar = nextGrammarDue();
-        const totalDue = vocabDue + grammarDueCount;
-        const currentLevel = Math.max(1, Number(source.currentLevel || 1));
+        const totalDue = dueCoreItems.length + dueMiningItems.length + grammarDueItems.length + particleDueItems.length;
+
+        const learnedVocabulary = [...coreItems, ...miningItems].filter(item => Number(item?.stage || 0) > 0 || item?.guruPassed);
+        const stageCounts = Object.fromEntries(Array.from({length:10}, (_,stage) => [stage, learnedVocabulary.filter(item => Number(item?.stage || 0) === stage).length]));
+        const dueStageCounts = Object.fromEntries(Array.from({length:10}, (_,stage) => [stage, [...dueCoreItems, ...dueMiningItems].filter(item => Number(item?.stage || 0) === stage).length]));
+        const apprentice = [1,2,3,4].reduce((sum,stage) => sum + Number(stageCounts[stage] || 0), 0);
+        const guru = [5,6].reduce((sum,stage) => sum + Number(stageCounts[stage] || 0), 0);
+        const coreLearned = coreItems.filter(item => Number(item?.stage || 0) > 0 || item?.guruPassed).length;
+        const miningLearned = miningItems.filter(item => Number(item?.stage || 0) > 0 || item?.guruPassed).length;
+        const stageShort = stage => ({1:"A1",2:"A2",3:"A3",4:"A4",5:"G1",6:"G2",7:"Master",8:"Erleuchtet",9:"Burned"}[stage] || `S${stage}`);
+        const nextStageShort = stage => ({1:"A2",2:"A3",3:"A4",4:"G1",5:"G2",6:"Master",7:"Erleuchtet",8:"Burned"}[stage] || "");
+
+        const upcomingVocabulary = [...coreItems, ...miningItems]
+          .filter(item => {
+            const stage = Number(item?.stage || 0);
+            const dueAt = Number(item?.availableAt);
+            return stage > 0 && stage < 9 && Number.isFinite(dueAt) && dueAt > now;
+          })
+          .sort((a,b) => Number(a.availableAt) - Number(b.availableAt));
+
+        const upcomingWaves = [];
+        let cursor = 0;
+        while (cursor < upcomingVocabulary.length && upcomingWaves.length < 5) {
+          const firstAt = Number(upcomingVocabulary[cursor].availableAt);
+          const waveEnd = firstAt + 10 * 60 * 1000;
+          const items = [];
+          while (cursor < upcomingVocabulary.length && Number(upcomingVocabulary[cursor].availableAt) <= waveEnd) {
+            items.push(upcomingVocabulary[cursor]);
+            cursor += 1;
+          }
+          upcomingWaves.push({ at:firstAt, items });
+        }
+
+        const exactTime = timestamp => timestamp ? new Intl.DateTimeFormat("de-DE", { weekday:"short", hour:"2-digit", minute:"2-digit" }).format(new Date(timestamp)) : "";
+        const waveHtml = upcomingWaves.length ? upcomingWaves.map(wave => {
+          const byTransition = new Map();
+          for (const item of wave.items) {
+            const stage = Number(item?.stage || 0);
+            const key = `${stageShort(stage)} → ${nextStageShort(stage)}`;
+            byTransition.set(key, (byTransition.get(key) || 0) + 1);
+          }
+          const transitions = [...byTransition.entries()].map(([label,count]) => `${label}: ${count}`).join(" · ");
+          const coreCount = wave.items.filter(item => item?.sourceType === "core").length;
+          const miningCount = wave.items.length - coreCount;
+          const sourceBits = [coreCount ? `${coreCount} Core` : "", miningCount ? `${miningCount} Mining` : ""].filter(Boolean).join(" · ");
+          return `<div class="kq-wk-wave"><div><strong>${wave.items.length} Vokabel${wave.items.length === 1 ? "" : "n"}</strong><span>${esc(formatMoment(wave.at))} · ${esc(exactTime(wave.at))}</span></div><small>${esc(transitions)}${sourceBits ? ` · ${esc(sourceBits)}` : ""}</small></div>`;
+        }).join("") : `<div class="kq-wk-wave empty"><div><strong>Keine weitere Vokabelwelle geplant</strong><span>Neue Termine entstehen nach deinen nächsten Reviews.</span></div></div>`;
+
+        const dueStageHtml = [1,2,3,4,5,6,7,8].filter(stage => Number(dueStageCounts[stage] || 0) > 0)
+          .map(stage => `<span><b>${stageShort(stage)}</b>${dueStageCounts[stage]}</span>`).join("") || `<span class="empty"><b>✓</b>Keine Vokabelreviews jetzt fällig</span>`;
+
+        const reviewCard = ({id,icon,title,count,detail,next}) => `<button type="button" class="kq-wk-review-source" id="${id}" ${count ? "" : "disabled"}><span class="kq-wk-review-icon">${icon}</span><div><small>${esc(title)}</small><strong>${count}</strong><span>${count ? esc(detail) : `Nächste: ${esc(formatMoment(next))}`}</span></div></button>`;
 
         root.innerHTML = `
-          <div class="kq-dashboard-hero">
-            ${placement ? `<article class="card kq-placement-alert">
-              <div class="kq-placement-alert-copy">
-                <p class="eyebrow">🌱 Core-Vokabeln · Level ${currentLevel}</p>
-                <h2>Deine nächste Einstufung ist offen</h2>
-                <p>Die Core-Vokabeln sind der zentrale Lernpfad. Bevor die Einstufung zwischen Reviews und anderen Bereichen untergeht, kannst du sie hier direkt fortsetzen.</p>
-              </div>
-              <div class="kq-placement-alert-action">
-                <span class="badge">Priorität · Core</span>
-                <button class="primary" id="kqDashboardPlacement" type="button">Einstufung fortsetzen</button>
-              </div>
-            </article>` : ""}
-            <article class="card kq-today-card">
-              <p class="eyebrow">Dein Lernzentrum</p>
-              <h2>${totalDue ? `${totalDue} Wiederholungen warten auf dich` : "Für den Moment ist alles wiederholt"}</h2>
-              <p>${totalDue
-                ? "Vokabeln und Grammatik sind getrennt organisiert, aber hier gemeinsam im Blick."
-                : "Du kannst eine neue Lektion beginnen oder später zur nächsten Wiederholung zurückkommen."}</p>
-              <div class="button-row">
-                <button class="primary" id="kqDashboardVocabReview" ${vocabDue ? "" : "disabled"}>${vocabDue} Vokabeln · ${vocabDirectionDue} Fragen</button>
-                <button class="secondary" id="kqDashboardGrammarReview" ${grammarDueCount ? "" : "disabled"}>${grammarDueCount} Grammatik-Reviews</button>
-              </div>
-            </article>
-            <article class="card kq-streak-card">
-              <span class="kq-streak-icon">🔥</span>
-              <div><span class="muted small">Aktueller Streak</span><strong>${streak.current}</strong><span>${streak.current === 1 ? "Tag" : "Tage"}</span></div>
-              <div class="kq-streak-detail"><span>Heute: ${streak.todayActions ? "erledigt" : "noch offen"}</span><span>Bester Streak: ${streak.best} Tage</span></div>
-            </article>
-          </div>
+          <section class="card kq-wk-review-hero">
+            <div class="kq-wk-review-hero-copy"><p class="eyebrow">Wiederholungen</p><h1>${totalDue ? `${totalDue} Reviews warten auf dich` : "Gerade ist nichts fällig"}</h1><p>${totalDue ? "Du siehst sofort, aus welchen Bereichen die Queue besteht und auf welchen SRS-Stufen die Vokabeln gerade stehen." : "Unten siehst du exakt, wann die nächsten Vokabeln wieder in die Review-Queue kommen."}</p></div>
+            <div class="kq-wk-review-total"><strong>${totalDue}</strong><span>jetzt fällig</span></div>
+          </section>
 
-          <div class="kq-review-grid">
-            <article class="card kq-review-card">
-              <div class="kq-card-heading"><span class="kq-card-icon">語</span><div><h3>Vokabeln</h3><p>Core-Level ${currentLevel}</p></div></div>
-              <div class="kq-due-number">${vocabDue}</div>
-              <strong>${vocabDue ? `${vocabDirectionDue} Richtungsfragen offen` : `Nächste Wiederholung ${formatMoment(nextVocab)}`}</strong>
-              <p class="muted small">${vocabDue && vocabPartialWords ? `${vocabPartialWords} Vokabel${vocabPartialWords===1?" ist":"n sind"} bereits zur Hälfte erledigt und behalten diesen Zwischenstand.` : placement ? "Die Einstufung des aktuellen Levels ist noch offen." : lessons ? `${lessons} neue Core-Vokabeln sind freigeschaltet.` : `${vocab.guru} Core-Wörter sind mindestens auf Guru.`}</p>
-              <div class="button-row"><button class="primary" id="kqVocabPrimary">${vocabDue ? "Jetzt wiederholen" : placement ? "Einstufung fortsetzen" : lessons ? "Lektionen starten" : "Vokabeln öffnen"}</button><button class="ghost" id="kqVocabOpen">Übersicht</button></div>
-            </article>
+          <section class="kq-wk-review-sources" aria-label="Fällige Reviews nach Bereich">
+            ${reviewCard({id:"kqWkCoreReviews",icon:"語",title:"Core-Vokabeln",count:dueCoreItems.length,detail:`${coreDirectionDue} Richtungsfragen${corePartialWords ? ` · ${corePartialWords} halb erledigt` : ""}`,next:nextCore})}
+            ${reviewCard({id:"kqWkMiningReviews",icon:"⛏",title:"Mining-Vokabeln",count:dueMiningItems.length,detail:"persönliche Mining-Wörter",next:nextMining})}
+            ${reviewCard({id:"kqWkGrammarReviews",icon:"文",title:"Grammatik",count:grammarDueItems.length,detail:"Grammatik-SRS",next:nextGrammar})}
+            ${reviewCard({id:"kqWkParticleReviews",icon:"粒",title:"Partikel",count:particleDueItems.length,detail:"Partikel-SRS",next:nextParticle})}
+          </section>
 
-            <article class="card kq-review-card">
-              <div class="kq-card-heading"><span class="kq-card-icon">文</span><div><h3>Grammatik</h3><p>${grammar.learned} von ${grammar.total} Punkten gelernt</p></div></div>
-              <div class="kq-due-number">${grammarDueCount}</div>
-              <strong>${grammarDueCount ? "jetzt fällig" : `Nächste Wiederholung ${formatMoment(nextGrammar)}`}</strong>
-              <p class="muted small">${grammar.guru} Grammatikpunkte sind vollständig auf Guru, ${grammar.skillGuru} einzelne Skills gefestigt.</p>
-              <div class="button-row"><button class="primary" id="kqGrammarPrimary">${grammarDueCount ? "Jetzt wiederholen" : "Grammatik fortsetzen"}</button><button class="ghost" id="kqGrammarOpen">Übersicht</button></div>
-            </article>
-          </div>
+          <section class="card kq-wk-vocab-srs">
+            <div class="section-title"><div><h2>Vokabel-SRS</h2><p>${coreLearned} gelernte Core-Wörter · ${miningLearned} gelernte Mining-Wörter</p></div><button class="ghost" id="kqWkOpenVocab">Vokabeln öffnen</button></div>
+            <div class="kq-wk-stage-groups">
+              <div class="kq-wk-stage-group apprentice"><span>Apprentice</span><strong>${apprentice}</strong><small>A1 ${stageCounts[1]} · A2 ${stageCounts[2]} · A3 ${stageCounts[3]} · A4 ${stageCounts[4]}</small></div>
+              <div class="kq-wk-stage-group guru"><span>Guru</span><strong>${guru}</strong><small>G1 ${stageCounts[5]} · G2 ${stageCounts[6]}</small></div>
+              <div class="kq-wk-stage-group master"><span>Master</span><strong>${stageCounts[7]}</strong><small>30-Tage-Stufe</small></div>
+              <div class="kq-wk-stage-group enlightened"><span>Erleuchtet</span><strong>${stageCounts[8]}</strong><small>letzte aktive Stufe</small></div>
+              <div class="kq-wk-stage-group burned"><span>Burned</span><strong>${stageCounts[9]}</strong><small>abgeschlossen</small></div>
+            </div>
+            <div class="kq-wk-due-stage"><strong>Davon jetzt fällig:</strong><div>${dueStageHtml}</div></div>
+          </section>
 
-          <div class="kq-stat-grid">
-            <article class="card kq-compact-stat"><span>Core begonnen</span><strong>${vocab.started}</strong><small>von ${vocab.total || 2000}</small></article>
-            <article class="card kq-compact-stat"><span>Vokabeln auf Guru</span><strong>${vocab.guru}</strong><small>${vocab.burned} abgeschlossen</small></article>
-            <article class="card kq-compact-stat"><span>Als bekannt markiert</span><strong>${vocab.known}</strong><small>im Archiv</small></article>
-            <article class="card kq-compact-stat"><span>Aktive Lerntage</span><strong>${streak.totalDays}</strong><small>${streak.totalActions} Lernaktionen</small></article>
-          </div>
+          <section class="card kq-wk-upcoming">
+            <div class="section-title"><div><h2>Nächste Vokabel-Reviews</h2><p>Die nächsten Review-Wellen – inklusive aktueller Stufe und Zielstufe.</p></div></div>
+            <div class="kq-wk-wave-list">${waveHtml}</div>
+          </section>`;
 
-          <div class="grid-two kq-lower-grid">
-            <article class="card">
-              <div class="section-title"><div><h3>Als Nächstes</h3><p>Die nächsten geplanten Wiederholungen.</p></div></div>
-              <div class="kq-schedule-row"><span class="kq-schedule-dot vocab"></span><div><strong>Vokabeln</strong><span>${placement ? `Core-Einstufung für Level ${currentLevel} offen` : vocabDue ? `${vocabDue} jetzt fällig` : formatMoment(nextVocab)}</span></div></div>
-              <div class="kq-schedule-row"><span class="kq-schedule-dot grammar"></span><div><strong>Grammatik</strong><span>${grammarDueCount ? `${grammarDueCount} jetzt fällig` : formatMoment(nextGrammar)}</span></div></div>
-              <div class="kq-schedule-row"><span class="kq-schedule-dot mining"></span><div><strong>Mining</strong><span>${miningDue ? `${miningDue} Reviews fällig` : miningNew ? `${miningNew} neue Wörter` : "Keine offenen Karten"}</span></div></div>
-            </article>
-            <article class="card">
-              <div class="section-title"><div><h3>Schnellzugriff</h3><p>Direkt in den passenden Lernbereich.</p></div></div>
-              <div class="kq-quick-grid">
-                <button class="secondary" id="kqQuickVocab">🎴 Vokabeln</button>
-                <button class="secondary" id="kqQuickGrammar">🧩 Grammatik</button>
-                <button class="secondary" id="kqQuickArchive">📚 Archiv</button>
-                <button class="secondary" id="kqQuickMining">⛏️ Mining</button>
-              </div>
-            </article>
-          </div>`;
-
-        const startVocab = () => {
-          if (vocabDue) startReviews("core");
-          else if (placement) startPlacement();
-          else if (lessons) startLessons("core");
-          else switchView("core");
-        };
-        const startGrammar = () => {
-          if (grammarDueCount) grammarApi()?.startReviewSession?.(false);
-          else grammarApi()?.openGrammarView?.("grammar");
-        };
-
-        root.querySelector("#kqDashboardPlacement")?.addEventListener("click", () => startPlacement());
-        root.querySelector("#kqDashboardVocabReview")?.addEventListener("click", () => startReviews("core"));
-        root.querySelector("#kqDashboardGrammarReview")?.addEventListener("click", () => grammarApi()?.startReviewSession?.(false));
-        root.querySelector("#kqVocabPrimary")?.addEventListener("click", startVocab);
-        root.querySelector("#kqVocabOpen")?.addEventListener("click", () => switchView("core"));
-        root.querySelector("#kqGrammarPrimary")?.addEventListener("click", startGrammar);
-        root.querySelector("#kqGrammarOpen")?.addEventListener("click", () => grammarApi()?.openGrammarView?.("grammar"));
-        root.querySelector("#kqQuickVocab")?.addEventListener("click", () => switchView("core"));
-        root.querySelector("#kqQuickGrammar")?.addEventListener("click", () => grammarApi()?.openGrammarView?.("grammar"));
-        root.querySelector("#kqQuickArchive")?.addEventListener("click", () => { switchView("archive"); renderArchive(); });
-        root.querySelector("#kqQuickMining")?.addEventListener("click", () => switchView("mining"));
+        root.querySelector("#kqWkCoreReviews")?.addEventListener("click", () => { if (dueCoreItems.length) startReviews("core"); });
+        root.querySelector("#kqWkMiningReviews")?.addEventListener("click", () => { if (dueMiningItems.length) startReviews("mining"); });
+        root.querySelector("#kqWkGrammarReviews")?.addEventListener("click", () => { if (grammarDueItems.length) grammarApi()?.startReviewSession?.(false); });
+        root.querySelector("#kqWkParticleReviews")?.addEventListener("click", () => { if (particleDueItems.length) window.KotobaQuestParticlePath?.startReviews?.(); });
+        root.querySelector("#kqWkOpenVocab")?.addEventListener("click", () => switchView("core"));
       }
 
       function renderVocabularyOverview() {
@@ -21984,6 +21989,36 @@
         .kq-streak-icon { font-size:2.7rem; }
         .kq-streak-card strong { display:inline-block; margin-right:7px; color:var(--primary); font-size:4rem; line-height:1; }
         .kq-streak-detail { display:grid; gap:4px; color:var(--muted); font-size:.88rem; }
+        .kq-wk-review-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:28px 30px; background:linear-gradient(135deg,var(--kq-a,#d8c9f2),var(--kq-b,#f2d6e5)); }
+        .kq-wk-review-hero-copy h1 { margin:5px 0 9px; font-size:clamp(1.8rem,4vw,3rem); line-height:1.06; }
+        .kq-wk-review-hero-copy p:not(.eyebrow) { max-width:760px; margin:0; line-height:1.55; color:var(--muted); }
+        .kq-wk-review-total { flex:0 0 auto; display:grid; min-width:150px; padding:18px 22px; border-radius:20px; background:rgba(255,255,255,.68); text-align:center; }
+        .kq-wk-review-total strong { color:var(--primary); font-size:3.5rem; line-height:1; }
+        .kq-wk-review-total span { margin-top:5px; color:var(--muted); font-weight:850; }
+        .kq-wk-review-sources { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+        .kq-wk-review-source { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; min-height:112px; padding:16px; border:1px solid var(--border); border-radius:18px; background:var(--panel); color:var(--text); text-align:left; box-shadow:var(--shadow); }
+        .kq-wk-review-source:not(:disabled):hover { border-color:var(--primary); transform:translateY(-1px); }
+        .kq-wk-review-source:disabled { cursor:default; opacity:.72; }
+        .kq-wk-review-icon { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:var(--kq-wash,#f2edff); color:var(--primary-dark); font-size:1.25rem; font-weight:950; }
+        .kq-wk-review-source>div { min-width:0; display:grid; gap:2px; }
+        .kq-wk-review-source small { color:var(--muted); font-weight:850; }
+        .kq-wk-review-source strong { color:var(--primary); font-size:2rem; line-height:1; }
+        .kq-wk-review-source>div>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:.75rem; }
+        .kq-wk-stage-groups { display:grid; grid-template-columns:1.35fr 1fr repeat(3,.8fr); gap:10px; }
+        .kq-wk-stage-group { display:grid; align-content:center; min-height:116px; padding:14px; border:1px solid var(--border); border-radius:16px; background:white; }
+        .kq-wk-stage-group>span { color:var(--muted); font-size:.78rem; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+        .kq-wk-stage-group>strong { margin:3px 0; color:var(--primary); font-size:2.2rem; line-height:1; }
+        .kq-wk-stage-group>small { color:var(--muted); line-height:1.4; }
+        .kq-wk-stage-group.apprentice { background:#fff3f7; }.kq-wk-stage-group.guru { background:#f4efff; }.kq-wk-stage-group.master { background:#fff7dd; }.kq-wk-stage-group.enlightened { background:#edf8ff; }.kq-wk-stage-group.burned { background:#eaf8f0; }
+        .kq-wk-due-stage { display:flex; align-items:center; gap:12px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+        .kq-wk-due-stage>div { display:flex; flex-wrap:wrap; gap:7px; }
+        .kq-wk-due-stage>div>span { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:999px; background:var(--kq-wash,#f2edff); color:var(--primary-dark); font-size:.76rem; font-weight:850; }
+        .kq-wk-due-stage>div>span b { display:grid; place-items:center; min-width:25px; padding:2px 5px; border-radius:999px; background:white; }
+        .kq-wk-due-stage>div>span.empty { color:var(--muted); background:#f6f5f8; }
+        .kq-wk-wave-list { display:grid; gap:8px; }
+        .kq-wk-wave { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:12px 14px; border:1px solid var(--border); border-radius:14px; background:white; }
+        .kq-wk-wave>div { display:grid; gap:2px; }.kq-wk-wave>div>span,.kq-wk-wave>small { color:var(--muted); font-size:.8rem; }.kq-wk-wave>small { text-align:right; }
+        .kq-wk-wave.empty { grid-template-columns:1fr; }
         .kq-review-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
         .kq-review-card { display:grid; gap:12px; }
         .kq-card-heading { display:flex; align-items:center; gap:12px; }
@@ -22028,6 +22063,9 @@
         @media (max-width:900px) {
           .kq-dashboard-hero,.kq-review-grid,.kq-learning-overview { grid-template-columns:1fr; }
           .kq-stat-grid { grid-template-columns:1fr 1fr; }
+          .kq-wk-review-sources { grid-template-columns:1fr 1fr; }
+          .kq-wk-stage-groups { grid-template-columns:1fr 1fr; }
+          .kq-wk-review-hero { align-items:flex-start; flex-direction:column; }
           .kq-overview-main { flex-direction:column; align-items:flex-start; }
         }
         @media (max-width:620px) {
@@ -22035,6 +22073,11 @@
           .kq-placement-alert-action { justify-items:stretch; }
           .kq-placement-alert-action .primary { width:100%; min-width:0; }
           .kq-stat-grid,.kq-quick-grid { grid-template-columns:1fr; }
+          .kq-wk-review-sources,.kq-wk-stage-groups { grid-template-columns:1fr; }
+          .kq-wk-review-total { width:100%; min-width:0; }
+          .kq-wk-due-stage { align-items:flex-start; flex-direction:column; }
+          .kq-wk-wave { grid-template-columns:1fr; }
+          .kq-wk-wave>small { text-align:left; }
           .kq-archive-entry { grid-template-columns:1fr auto; }
           .kq-archive-meaning { grid-column:1 / -1; }
         }
@@ -31722,29 +31765,10 @@ ${tooltipText(segment, status)}`)}"`
       }
     
       function installDashboardCard() {
-        const dashboard = document.getElementById("kqLearningDashboard");
-        if (!dashboard) return;
-        const pack = activePack();
-        const progress = pack ? activeProgress() : null;
-        if (!pack || !progress) return;
-        let card = document.getElementById("kqStoryDashboardCard");
-        if (!card) {
-          card = document.createElement("article");
-          card.id = "kqStoryDashboardCard";
-          card.className = "card kq-sr-dashboard-card";
-          dashboard.append(card);
-        }
-        const energy = storyEnergySummary(progress);
-        const next = pack.scenes.find(scene => !progress.completedScenes.includes(scene.id)) || sceneById(pack, progress.lastSceneId) || firstScene(pack);
-        const ready = next ? sceneUnlocked(next, pack, progress) : false;
-        const missing = next ? Math.max(0, sceneEnergyCost(next) - energy.available) : 0;
-        card.innerHTML = `<div><span class="kq-sr-dashboard-symbol">⚡</span><div><span class="kq-sr-side-kicker">${esc(pack.title)}</span><h3>${esc(next?.title || "Story fortsetzen")}</h3><p>${next ? (ready ? `${energy.available} Story-Energie verfügbar` : `Noch ${missing} Story-Energie nötig`) : "Aktueller Story-Path vollständig abgeschlossen"}</p></div></div><button type="button" class="secondary" ${next && !ready ? "disabled" : ""}>${progress.completedScenes.length ? "Weiterlesen" : "Beginnen"}</button>`;
-        card.querySelector("button")?.addEventListener("click", () => {
-          if (next && !ready) return;
-          openStory();
-        });
+        // Story information belongs in the Story area, not on the review dashboard.
+        document.getElementById("kqStoryDashboardCard")?.remove();
       }
-    
+
       function installStyles() {
         if (document.getElementById("kqStoryReaderStyles")) return;
         const style = document.createElement("style");
@@ -33740,30 +33764,12 @@ function renderProgressCenter() {
       }
     
       function installDashboardDistribution() {
-        const root = document.getElementById("kqLearningDashboard");
-        if (!root) return;
-        let section = document.getElementById("kqIaDashboardSrs");
-        if (!section) {
-          section = document.createElement("section");
-          section.id = "kqIaDashboardSrs";
-          section.className = "kq-ia-dashboard-srs";
-          const hero = root.querySelector(".kq-dashboard-hero");
-          if (hero) hero.after(section); else root.prepend(section);
-        }
-        section.innerHTML = `<div class="section-title"><div><h2>SRS-Verteilung</h2><p>Die exakten Stufen deines aktiven Lernpools.</p></div><button class="ghost" id="kqIaDashboardLearning">Lernen öffnen</button></div>
-          <div class="kq-ia-domain-grid">
-            ${dashboardDomainCard("Vokabeln", "vocabulary", vocabDistribution())}
-            ${dashboardDomainCard("Grammatik", "grammar", grammarDistribution())}
-            ${dashboardDomainCard("Partikel", "particles", particleDistribution())}
-          </div>`;
-        section.querySelector("#kqIaDashboardLearning")?.addEventListener("click", () => openLearning("vocabulary"));
-        section.querySelectorAll("[data-kq-dashboard-domain]").forEach(card => {
-          const open = () => openLearning(card.dataset.kqDashboardDomain);
-          card.addEventListener("click", open);
-          card.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
-        });
+        // The review dashboard already contains its WaniKani-style vocabulary
+        // stage summary and upcoming review waves. Keep detailed cross-domain
+        // distributions in Fortschritt instead of duplicating them here.
+        document.getElementById("kqIaDashboardSrs")?.remove();
       }
-    
+
       function installMiningQuickNav() {
         const section = document.getElementById("mining");
         if (!section) return;
@@ -34714,8 +34720,7 @@ function renderProgressCenter() {
       function dueCardHtml(){const counts={core:dueVocab("core"),mining:dueVocab("mining"),grammar:dueGrammar(),particles:dueParticles()};return `<div class="kq-review-queue-grid">${[["core","Core-Vokabeln","🌱"],["mining","Mining-Vokabeln","🎬"],["grammar","Grammatik","🧱"],["particles","Partikel","🧩"]].map(([id,label,icon])=>`<button type="button" data-kq-review-queue="${id}" ${counts[id] ? "" : "disabled"}><span>${icon}</span><strong>${counts[id]}</strong><small>${label} fällig</small></button>`).join("")}</div>`;}
       function installReviewVisibility(){
         if(!document.getElementById("kqReviewQueueStyles")){const style=document.createElement("style");style.id="kqReviewQueueStyles";style.textContent=`.kq-review-queue{margin:16px 0}.kq-review-queue-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kq-review-queue-grid button{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'icon count' 'label label';align-items:center;gap:3px 10px;padding:13px;border:1px solid var(--border);border-radius:14px;background:white;color:var(--text);text-align:left}.kq-review-queue-grid button:not(:disabled):hover{border-color:var(--primary);transform:translateY(-1px)}.kq-review-queue-grid button>span{grid-area:icon;font-size:1.5rem}.kq-review-queue-grid button>strong{grid-area:count;color:var(--primary);font-size:1.8rem}.kq-review-queue-grid button>small{grid-area:label;color:var(--muted)}.kq-review-queue-grid button:disabled{opacity:.55}.kq-mining-review-card{border-top:6px solid var(--accent)}@media(max-width:720px){.kq-review-queue-grid{grid-template-columns:1fr 1fr}}`;document.head.appendChild(style);}
-        const dashboard=document.getElementById("kqLearningDashboard");
-        if(dashboard){let section=document.getElementById("kqReviewQueueDashboard");if(!section){section=document.createElement("section");section.id="kqReviewQueueDashboard";section.className="card kq-review-queue";const hero=dashboard.querySelector(".kq-dashboard-hero");if(hero)hero.after(section);else dashboard.prepend(section);}const queueSignature=`${dueVocab("core")}|${dueVocab("mining")}|${dueGrammar()}|${dueParticles()}`;if(section.dataset.queueSignature!==queueSignature){section.dataset.queueSignature=queueSignature;section.innerHTML=`<div class="section-title"><div><h3>Heute fällige Reviews</h3><p>Core, Mining, Grammatik und Partikel werden getrennt sichtbar angezeigt.</p></div></div>${dueCardHtml()}`;section.querySelectorAll('[data-kq-review-queue]').forEach(button=>button.addEventListener("click",()=>launch(button.dataset.kqReviewQueue)));}}
+        document.getElementById("kqReviewQueueDashboard")?.remove();
         const practice=document.getElementById("kqPracticeCenterRoot");
         const grid=practice?.querySelector(".kq-ia-practice-grid");
         if(grid){let card=document.getElementById("kqMiningReviewPracticeCard");if(!card){card=document.createElement("article");card.id="kqMiningReviewPracticeCard";card.className="card kq-ia-practice-card kq-mining-review-card";grid.prepend(card);}const miningDue=dueVocab("mining");const miningSignature=String(miningDue);if(card.dataset.miningSignature!==miningSignature){card.dataset.miningSignature=miningSignature;card.innerHTML=`<span class="mode-icon">🎬</span><h3>Mining-Reviews</h3><p><strong>${miningDue}</strong> Mining-Wörter sind aktuell fällig. Sie sind hier direkt erreichbar, ohne den Umweg über die Mining-Sammlung.</p><div class="button-row"><button class="primary" type="button" ${miningDue?"":"disabled"}>Mining-Reviews starten</button></div>`;card.querySelector("button")?.addEventListener("click",()=>launch("mining"));}}
@@ -36333,10 +36338,13 @@ function renderProgressCenter() {
   }
 
   function renderQuest() {
-    const root = document.getElementById("kqLearningDashboard");
-    if (!root) return;
-    const hero = root.querySelector(".kq-dashboard-hero");
-    if (!hero) return;
+    const root = document.getElementById("kqStoryReaderRoot");
+    const storyHome = root?.querySelector(".kq-sr-home");
+    const hero = storyHome?.querySelector(".kq-sr-path-hero");
+    if (!root || !storyHome || !hero) {
+      document.getElementById("kqQuestDashboard")?.remove();
+      return;
+    }
 
     const target = storyTarget();
     const mission = target?.mission || null;
@@ -36412,9 +36420,9 @@ function renderProgressCenter() {
       card = document.createElement("article");
       card.id = "kqQuestDashboard";
       card.className = "card kq-quest-hub";
-      const placementCard = hero.querySelector(".kq-placement-alert");
-      if (placementCard) placementCard.after(card); else hero.prepend(card);
+      hero.after(card);
     }
+    if (card.parentElement !== storyHome || card.previousElementSibling !== hero) hero.after(card);
     if (card.dataset.signature === signature) return;
     card.dataset.signature = signature;
 
@@ -36468,7 +36476,7 @@ function renderProgressCenter() {
     style.id = "kqQuestDashboardStyles";
     style.textContent = `
       #kqStoryEnergyDashboard{display:none!important}
-      .kq-quest-hub{grid-column:1/-1;padding:24px;border:2px solid color-mix(in srgb,var(--primary) 25%,var(--border));background:linear-gradient(145deg,color-mix(in srgb,var(--kq-wash,#f4efff) 80%,white),white 68%);box-shadow:0 16px 36px color-mix(in srgb,var(--primary) 10%,transparent)}
+      .kq-quest-hub{margin-top:18px;padding:24px;border:2px solid color-mix(in srgb,var(--primary) 25%,var(--border));background:linear-gradient(145deg,color-mix(in srgb,var(--kq-wash,#f4efff) 80%,white),white 68%);box-shadow:0 16px 36px color-mix(in srgb,var(--primary) 10%,transparent)}
       .kq-quest-head{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:18px}.kq-quest-head h2{margin:4px 0 7px;font-size:clamp(1.35rem,2.5vw,2rem)}.kq-quest-head p:not(.eyebrow){margin:0;max-width:780px;color:var(--muted);line-height:1.5}
       .kq-quest-energy{flex:0 0 auto;display:grid;grid-template-columns:auto auto;align-items:center;column-gap:7px;padding:11px 14px;border:1px solid var(--border);border-radius:16px;background:white}.kq-quest-energy>span{grid-row:1/3;font-size:1.6rem}.kq-quest-energy strong{color:var(--primary);font-size:1.35rem}.kq-quest-energy small{color:var(--muted);font-size:.7rem;font-weight:800}.kq-quest-energy.done strong{color:var(--good)}
       .kq-quest-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(270px,.65fr);gap:18px}.kq-quest-route,.kq-quest-next{padding:17px;border:1px solid var(--border);border-radius:18px;background:rgba(255,255,255,.82)}
@@ -36501,10 +36509,10 @@ function renderProgressCenter() {
   setTimeout(scheduleRender, 300);
   setTimeout(scheduleRender, 1200);
   setInterval(() => {
-    if (document.getElementById("dashboard")?.classList.contains("active")) scheduleRender();
+    if (document.getElementById("storyReader")?.classList.contains("active")) scheduleRender();
   }, 2500);
   const observer = new MutationObserver(mutations => {
-    if (mutations.some(mutation => mutation.target?.closest?.("#kqLearningDashboard") || mutation.target?.id === "kqLearningDashboard")) scheduleRender();
+    if (mutations.some(mutation => mutation.target?.closest?.("#kqStoryReaderRoot") || mutation.target?.id === "kqStoryReaderRoot")) scheduleRender();
   });
   observer.observe(document.body, { childList:true, subtree:true });
   window.addEventListener("storage", event => { if (event.key === STORAGE_KEY) scheduleRender(); });
@@ -37655,25 +37663,8 @@ function smartReviewBootstrap() {
   }
 
   function renderDashboardTeaser() {
-    ensureView();
-    const all = diagnoses();
-    const dashboard = document.getElementById("dashboard");
-    if (!dashboard) return;
-    let card = document.getElementById("kqSmartReviewTeaser");
-    if (!card) {
-      card = document.createElement("article");
-      card.id = "kqSmartReviewTeaser";
-      card.className = "card kq-smart-teaser";
-      const quest = document.getElementById("kqQuestDashboard");
-      const host = document.getElementById("kqLearningDashboard") || dashboard;
-      if (quest?.parentElement) quest.insertAdjacentElement("afterend", card); else host.prepend(card);
-    }
-    const top = all[0];
-    const signature = `${all.length}|${top?.key || "none"}|${Math.round(Number(top?.score || 0))}`;
-    if (card.dataset.smartSignature === signature) return;
-    card.dataset.smartSignature = signature;
-    card.innerHTML = `<span>🧠</span><div><h3>Smart Review</h3><p>${top ? `<em>${all.length} Muster erkannt.</em> Wichtigster Fokus: ${esc(top.title)}.` : "Aktuell kein wiederholtes Fehlermuster – normales SRS reicht gerade aus."}</p></div><button type="button" class="${top ? "primary" : "secondary"}">${top ? "Trainingszentrum öffnen" : "Analyse ansehen"}</button>`;
-    card.querySelector("button")?.addEventListener("click", open);
+    // Smart Review has its own top-level area. Overview stays a pure SRS queue.
+    document.getElementById("kqSmartReviewTeaser")?.remove();
   }
 
   function scheduleRender() {
