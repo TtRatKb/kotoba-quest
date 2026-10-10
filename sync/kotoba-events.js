@@ -56,6 +56,12 @@ export function readBridgeState(storage = localStorage) {
 }
 
 export function writeBridgeState(state, storage = localStorage) {
+  const checkpoint = state?.checkpoint && typeof state.checkpoint === "object"
+    ? {
+        grammar: clone(objectValue(state.checkpoint.grammar)),
+        particles: clone(objectValue(state.checkpoint.particles))
+      }
+    : null;
   const safe = {
     ...emptyBridgeState(),
     ...state,
@@ -63,8 +69,12 @@ export function writeBridgeState(state, storage = localStorage) {
     updatedAt: Date.now(),
     pendingEvents: (Array.isArray(state?.pendingEvents) ? state.pendingEvents : []).slice(-KOTOBA_BRIDGE_MAX_QUEUE),
     recentEvents: (Array.isArray(state?.recentEvents) ? state.recentEvents : []).slice(-KOTOBA_BRIDGE_MAX_RECENT),
-    seenAnalytics: (Array.isArray(state?.seenAnalytics) ? state.seenAnalytics : []).slice(-600),
-    processedCommandIds: (Array.isArray(state?.processedCommandIds) ? state.processedCommandIds : []).map(String).slice(-600)
+    seenAnalytics: (Array.isArray(state?.seenAnalytics) ? state.seenAnalytics : []).slice(-520),
+    processedCommandIds: (Array.isArray(state?.processedCommandIds) ? state.processedCommandIds : []).map(String).slice(-300),
+    // analyticsEvents can contain up to 500 full review records. They are only
+    // needed transiently to discover new events; seenAnalytics already carries
+    // the deduplication fingerprints. Persist only grammar/particle checkpoints.
+    checkpoint
   };
   storage.setItem(KOTOBA_BRIDGE_STORAGE_KEY, JSON.stringify(safe));
   return safe;

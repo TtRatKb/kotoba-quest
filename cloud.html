@@ -398,7 +398,7 @@
   <dialog id="storageDialog">
     <div class="dialog-content">
       <h2>💾 Speicherstatus</h2>
-      <p>Kotoba Quest trennt jetzt den großen Lernstand (IndexedDB) vom kleinen gemeinsamen localStorage. Das konservative 4-MB-Warnbudget gilt nur noch für Kotoba-eigene localStorage-Hilfsdaten; Life-RPG-Daten werden separat angezeigt und niemals verändert.</p>
+      <p>Kotoba Quest trennt den großen Lernstand (IndexedDB) vom kleinen gemeinsamen localStorage. Die angezeigten 4 MB sind nur ein konservatives Kotoba-Warnbudget – nicht das Browser-Gesamtlager. Review-Hilfsdaten werden automatisch kompakt und begrenzt gehalten; Life-RPG-Daten werden separat angezeigt und niemals verändert.</p>
       <div class="storage-health-summary">
         <strong id="storageHealthTitle">Wird geprüft …</strong>
         <span id="storageHealthDetail"></span>
@@ -1422,64 +1422,93 @@
           `${Math.max(0, Math.min(9, Number(item?.stage || 0)))}|${item?.availableAt == null ? "null" : String(Number(item.availableAt))}`
         ]));
 
+        const canonical = {};
+        const consider = (id, updatedAt, after) => {
+          id = String(id || "");
+          updatedAt = Math.max(0, Number(updatedAt || 0), Number(after?.srsUpdatedAt || 0), Number(after?.srsRevision || 0));
+          if (!id || !updatedAt || !after || typeof after !== "object") return;
+          if (validIds.size && !validIds.has(id)) return;
+          if (canonical[id] && Number(canonical[id].updatedAt || 0) > updatedAt) return;
+          canonical[id] = {
+            updatedAt,
+            stage:Math.max(0,Math.min(9,Number(after.stage || 0))),
+            availableAt:after.availableAt == null ? null : Number(after.availableAt),
+            correct:Math.max(0,Number(after.correct || 0)),
+            incorrect:Math.max(0,Number(after.incorrect || 0)),
+            guruPassed:Boolean(after.guruPassed || Number(after.stage) >= 5)
+          };
+        };
+
+        // Read both the former verbose ledger and the new compact tuple format.
         let ledger = {};
         try { ledger = JSON.parse(localStorage.getItem(REVIEW_SRS_LEDGER_KEY) || "null") || {}; } catch {}
-        ledger.version ||= "1.0";
-        ledger.items = ledger.items && typeof ledger.items === "object" && !Array.isArray(ledger.items) ? ledger.items : {};
-
-        let journal = {};
-        try { journal = JSON.parse(localStorage.getItem(REVIEW_COMMIT_JOURNAL_KEY) || "null") || {}; } catch {}
-        const journalItems = journal.items && typeof journal.items === "object" && !Array.isArray(journal.items) ? journal.items : {};
-
-        // First promote the newest journal state into the one-record-per-word ledger.
-        for (const [id, list] of Object.entries(journalItems)) {
-          if (validIds.size && !validIds.has(String(id))) continue;
-          const entries = (Array.isArray(list) ? list : []).filter(entry => entry && typeof entry === "object")
-            .sort((a,b) => Number(a.completedAt || 0) - Number(b.completedAt || 0));
-          const latestEntry = entries.at(-1);
-          if (!latestEntry?.after) continue;
-          const updatedAt = Math.max(1, Number(latestEntry.completedAt || 0), Number(latestEntry.after?.srsUpdatedAt || 0), Number(latestEntry.after?.srsRevision || 0));
-          const previousAt = Number(ledger.items?.[id]?.updatedAt || 0);
-          if (updatedAt >= previousAt) {
-            const after = latestEntry.after || {};
-            ledger.items[id] = {
-              id:String(id), updatedAt,
-              after:{
-                stage:Math.max(0,Math.min(9,Number(after.stage || 0))),
-                availableAt:after.availableAt == null ? null : Number(after.availableAt),
-                srsUpdatedAt:updatedAt, srsRevision:updatedAt,
-                correct:Math.max(0,Number(after.correct || 0)),
-                incorrect:Math.max(0,Number(after.incorrect || 0)),
-                guruPassed:Boolean(after.guruPassed || Number(after.stage) >= 5)
-              }
-            };
+        const oldLedgerItems = ledger.items && typeof ledger.items === "object" && !Array.isArray(ledger.items) ? ledger.items : {};
+        for (const [id, value] of Object.entries(oldLedgerItems)) {
+          if (Array.isArray(value)) {
+            consider(id, value[0], {
+              stage:value[1], availableAt:value[2], correct:value[3], incorrect:value[4], guruPassed:Boolean(value[5]),
+              srsUpdatedAt:value[0], srsRevision:value[0]
+            });
+          } else if (value && typeof value === "object") {
+            const after = value.after && typeof value.after === "object" ? value.after : (value.snapshot && typeof value.snapshot === "object" ? value.snapshot : {});
+            consider(id, value.updatedAt, after);
           }
         }
 
-        // The ledger is bounded by the current vocabulary catalogue.
-        for (const id of Object.keys(ledger.items)) {
-          if (validIds.size && !validIds.has(String(id))) { delete ledger.items[id]; result.ledgerPruned += 1; }
+        // The primary IndexedDB state is authoritative and already exposed
+        // synchronously through the virtual STORAGE_KEY. Fold every committed
+        // vocabulary SRS timestamp into the safety ledger.
+        for (const item of vocabulary) {
+          const id = String(item?.id || item?.packEntryId || "");
+          const updatedAt = Math.max(0, Number(item?.srsUpdatedAt || 0), Number(item?.srsRevision || 0));
+          if (!id || !updatedAt) continue;
+          consider(id, updatedAt, item);
         }
-        ledger.updatedAt = Date.now();
-        localStorage.setItem(REVIEW_SRS_LEDGER_KEY, JSON.stringify(ledger));
 
-        // Once the ledger is safely written, the verbose journal only needs a small
-        // rolling recovery window. Keep max. 300 latest words from the last 30 days.
-        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        const latestPerWord = [];
+        // Promote any journal transaction that is newer than both sources.
+        let journal = {};
+        try { journal = JSON.parse(localStorage.getItem(REVIEW_COMMIT_JOURNAL_KEY) || "null") || {}; } catch {}
+        const journalItems = journal.items && typeof journal.items === "object" && !Array.isArray(journal.items) ? journal.items : {};
         let originalJournalEntries = 0;
         for (const [id, list] of Object.entries(journalItems)) {
-          const entries = (Array.isArray(list) ? list : []).filter(entry => entry && typeof entry === "object");
+          const entries = (Array.isArray(list) ? list : []).filter(entry => entry && typeof entry === "object")
+            .sort((a,b) => Number(a.completedAt || 0) - Number(b.completedAt || 0));
           originalJournalEntries += entries.length;
-          if (validIds.size && !validIds.has(String(id))) continue;
-          const latestEntry = entries.sort((a,b) => Number(a.completedAt || 0) - Number(b.completedAt || 0)).at(-1);
-          if (latestEntry && Number(latestEntry.completedAt || 0) >= cutoff) latestPerWord.push([String(id), latestEntry]);
+          const latestEntry = entries.at(-1);
+          if (latestEntry?.after) {
+            consider(id, Math.max(Number(latestEntry.completedAt || 0), Number(latestEntry.after?.srsUpdatedAt || 0), Number(latestEntry.after?.srsRevision || 0)), latestEntry.after);
+          }
         }
-        latestPerWord.sort((a,b) => Number(a[1]?.completedAt || 0) - Number(b[1]?.completedAt || 0));
-        const kept = latestPerWord.slice(-300);
-        const nextJournal = { version:"1.1", updatedAt:Date.now(), items:Object.fromEntries(kept.map(([id,entry]) => [id,[entry]])) };
-        result.journalPruned = Math.max(0, originalJournalEntries - kept.length);
-        localStorage.setItem(REVIEW_COMMIT_JOURNAL_KEY, JSON.stringify(nextJournal));
+
+        const compactItems = {};
+        for (const [id, row] of Object.entries(canonical)) {
+          compactItems[id] = [
+            Number(row.updatedAt || 0),
+            Number(row.stage || 0),
+            row.availableAt == null ? null : Number(row.availableAt),
+            Number(row.correct || 0),
+            Number(row.incorrect || 0),
+            row.guruPassed ? 1 : 0
+          ];
+        }
+        const previousLedgerCount = Object.keys(oldLedgerItems).length;
+        localStorage.setItem(REVIEW_SRS_LEDGER_KEY, JSON.stringify({
+          version:"2.0",
+          compact:true,
+          updatedAt:Date.now(),
+          items:compactItems
+        }));
+        result.ledgerPruned = Math.max(0, previousLedgerCount - Object.keys(compactItems).length);
+
+        // The compact ledger now contains the newest committed state for every
+        // reviewed word, so the verbose transaction journal can be emptied.
+        // Future writes keep only unresolved crash-recovery transactions.
+        localStorage.setItem(REVIEW_COMMIT_JOURNAL_KEY, JSON.stringify({
+          version:"1.1",
+          updatedAt:Date.now(),
+          items:{}
+        }));
+        result.journalPruned = originalJournalEntries;
 
         // Partial-direction backup only needs records for the exact current SRS cycle.
         try {
@@ -1502,6 +1531,84 @@
       return result;
     }
 
+    function compactAuxiliaryReviewBackups() {
+      const result = { smartCompacted:false, analyticsEventsRemoved:0, bridgeCompacted:false };
+
+      // Smart Review: keep only the directional counters needed to recover the
+      // diagnostic model. Word/reading strings and event history live in the
+      // IndexedDB primary save and must not be duplicated in localStorage.
+      try {
+        const key = "kotobaQuestSmartReviewBackupV1";
+        const parsed = JSON.parse(localStorage.getItem(key) || "null");
+        const state = parsed?.state;
+        if (state && typeof state === "object") {
+          const compactDirections = {};
+          for (const [id, record] of Object.entries(state.vocabDirections || {})) {
+            if (Array.isArray(record)) {
+              compactDirections[id] = record.slice(0, 9);
+              continue;
+            }
+            if (!record || typeof record !== "object") continue;
+            compactDirections[id] = [
+              Math.max(0,Number(record?.listening?.correct || 0)),
+              Math.max(0,Number(record?.listening?.incorrect || 0)),
+              Math.max(0,Number(record?.listening?.close || 0)),
+              record?.listening?.lastWrongAt || 0,
+              Math.max(0,Number(record?.production?.correct || 0)),
+              Math.max(0,Number(record?.production?.incorrect || 0)),
+              Math.max(0,Number(record?.production?.close || 0)),
+              record?.production?.lastWrongAt || 0,
+              Number(record?.updatedAt || 0)
+            ];
+          }
+          localStorage.setItem(key, JSON.stringify({
+            version:parsed.version || "1.1",
+            updatedAt:Date.now(),
+            compact:true,
+            state:{version:state.version || "1.1",vocabDirections:compactDirections,lastOpenedAt:state.lastOpenedAt || null}
+          }));
+          result.smartCompacted = true;
+        }
+      } catch {}
+
+      // Cumulative backup only needs day/action aggregates for disaster recovery.
+      // The 500-event timeline is already in the IndexedDB primary state and was
+      // one of the largest linearly-growing localStorage duplicates.
+      try {
+        const key = "kotobaQuestCumulativeStatsV2";
+        const parsed = JSON.parse(localStorage.getItem(key) || "null");
+        if (parsed && typeof parsed === "object" && parsed.studyAnalytics && typeof parsed.studyAnalytics === "object") {
+          const count = Array.isArray(parsed.studyAnalytics.events) ? parsed.studyAnalytics.events.length : 0;
+          parsed.studyAnalytics = { ...parsed.studyAnalytics, events:[] };
+          parsed.updatedAtMs = Date.now();
+          localStorage.setItem(key, JSON.stringify(parsed));
+          result.analyticsEventsRemoved = count;
+        }
+      } catch {}
+
+      // Compact an existing Life-RPG bridge state immediately instead of waiting
+      // for the next bridge scan. Unsynced events stay intact; only redundant
+      // persisted analytics/checkpoint history is reduced.
+      try {
+        const key = "kotobaQuestBridgeV1";
+        const parsed = JSON.parse(localStorage.getItem(key) || "null");
+        if (parsed && typeof parsed === "object") {
+          const checkpoint = parsed.checkpoint && typeof parsed.checkpoint === "object"
+            ? { grammar:parsed.checkpoint.grammar || {}, particles:parsed.checkpoint.particles || {} }
+            : null;
+          parsed.checkpoint = checkpoint;
+          parsed.recentEvents = Array.isArray(parsed.recentEvents) ? parsed.recentEvents.slice(-60) : [];
+          parsed.seenAnalytics = Array.isArray(parsed.seenAnalytics) ? parsed.seenAnalytics.slice(-520) : [];
+          parsed.processedCommandIds = Array.isArray(parsed.processedCommandIds) ? parsed.processedCommandIds.slice(-300) : [];
+          parsed.updatedAt = Date.now();
+          localStorage.setItem(key, JSON.stringify(parsed));
+          result.bridgeCompacted = true;
+        }
+      } catch {}
+
+      return result;
+    }
+
     function localStorageUsageBytes() {
       let total = 0;
       try {
@@ -1520,6 +1627,7 @@
       let freedLegacy = false;
       let recoveredFromVault = false;
       let historyCleanup = { ledgerPruned:0, journalPruned:0, partialsPruned:0 };
+      let auxiliaryCleanup = { smartCompacted:false, analyticsEventsRemoved:0, bridgeCompacted:false };
       try {
         const existingRaw = localStorage.getItem(STORAGE_KEY);
         if (!isValidProgress(existingRaw)) {
@@ -1570,6 +1678,7 @@
         // Bound recovery history after the authoritative compact main save exists.
         // This never removes the latest SRS state: that lives in the one-record-per-word ledger.
         historyCleanup = compactSrsSafetyHistory();
+        auxiliaryCleanup = compactAuxiliaryReviewBackups();
       } catch (error) {
         console.error("Kotoba Quest Speicherbereinigung fehlgeschlagen", error);
         if (!silent) {
@@ -1586,7 +1695,8 @@
         compacted,
         freedLegacy,
         recoveredFromVault,
-        historyCleanup
+        historyCleanup,
+        auxiliaryCleanup
       };
       window.KotobaQuestStorageMaintenance = {
         version: STORAGE_MAINTENANCE_VERSION,
@@ -1704,9 +1814,11 @@
         const migrationText = durableStatus?.migration?.migrated
           ? " Der frühere kotobaQuestDataV3-localStorage-Stand wurde erfolgreich nach IndexedDB migriert und anschließend aus localStorage entfernt."
           : "";
+        const aux = last?.auxiliaryCleanup || {};
+        const auxText = Number(aux.analyticsEventsRemoved || 0) > 0 ? ` Zusätzlich wurden ${Number(aux.analyticsEventsRemoved || 0)} doppelte Analytics-Ereignisse aus dem localStorage-Backup entfernt.` : "";
         storageMaintenanceNote.textContent = pruned
-          ? `Letzte Wartung: ${pruned} überholte Kotoba-Review-/SRS-Historieneinträge entfernt. Keine SRS-Stufe oder gelernte Vokabel wurde gelöscht.${migrationText}`
-          : `Sicher optimieren verwaltet ausschließlich Kotoba-eigene Legacy-/Recovery-Daten. Life-RPG-Daten werden weder verändert noch gelöscht. Der aktive Kotoba-Lernstand liegt in IndexedDB.${migrationText}`;
+          ? `Letzte Wartung: ${pruned} überholte Kotoba-Review-/SRS-Historieneinträge entfernt. Keine SRS-Stufe oder gelernte Vokabel wurde gelöscht.${auxText}${migrationText}`
+          : `Sicher optimieren verwaltet ausschließlich Kotoba-eigene Legacy-/Recovery-Daten. Review-Hilfsdaten sind begrenzt; der aktive Kotoba-Lernstand liegt in IndexedDB. Life-RPG-Daten werden weder verändert noch gelöscht.${auxText}${migrationText}`;
       }
       try { window.dispatchEvent(new CustomEvent("kq-storage-health-updated", { detail:health })); } catch {}
       return health;
@@ -2107,11 +2219,14 @@
       };
       const nativeSetItem = Storage.prototype.setItem;
       const saveBackup = source => {
+        const analytics = source.studyAnalytics && typeof source.studyAnalytics === "object"
+          ? { ...source.studyAnalytics, events:[] }
+          : {};
         nativeSetItem.call(localStorage, BACKUP_KEY, JSON.stringify({
           version: VERSION,
           updatedAtMs: Date.now(),
           studyActivity: source.studyActivity || {},
-          studyAnalytics: source.studyAnalytics || {}
+          studyAnalytics: analytics
         }));
         if (source.particlePath && typeof source.particlePath === "object") {
           nativeSetItem.call(localStorage, PARTICLE_BACKUP_KEY, JSON.stringify({
@@ -36645,10 +36760,16 @@ function vocabularyReviewPartialProgressBootstrap() {
   function writeCommitJournal(){
     const write=()=>localStorage.setItem(COMMIT_KEY,JSON.stringify(commitJournal));
     try{
-      const cutoff=Date.now()-120*24*60*60*1000;
+      const cutoff=Date.now()-14*24*60*60*1000;
+      const newest=[];
       for(const [id,list] of Object.entries(commitJournal.items||{})){
-        const kept=(Array.isArray(list)?list:[]).filter(entry=>Number(entry?.completedAt||0)>=cutoff).slice(-8);
-        if(kept.length) commitJournal.items[id]=kept; else delete commitJournal.items[id];
+        const kept=(Array.isArray(list)?list:[]).filter(entry=>Number(entry?.completedAt||0)>=cutoff).slice(-2);
+        for(const entry of kept)newest.push([String(id),entry]);
+      }
+      newest.sort((a,b)=>Number(a[1]?.completedAt||0)-Number(b[1]?.completedAt||0));
+      commitJournal.items={};
+      for(const [id,entry] of newest.slice(-40)){
+        (commitJournal.items[id] ||= []).push(entry);
       }
       commitJournal.updatedAt=Date.now();
       write();
@@ -36687,23 +36808,59 @@ function vocabularyReviewPartialProgressBootstrap() {
     item.incorrect=Math.max(Number(item.incorrect||0),Number(snapshot.incorrect||0));
     item.guruPassed=Boolean(item.guruPassed||snapshot.guruPassed||item.stage>=5);
   }
-  function emptySrsLedger(){return {version:"1.0",updatedAt:0,items:{}};}
+  function emptySrsLedger(){return {version:"2.0",updatedAt:0,items:{}};}
+  function inflateCompactLedgerEntry(id,value){
+    if(Array.isArray(value)){
+      const updatedAt=Math.max(0,Number(value[0]||0));
+      if(!updatedAt)return null;
+      return {
+        id:String(id),updatedAt,
+        after:{
+          stage:Math.max(0,Math.min(9,Number(value[1]||0))),
+          availableAt:value[2]==null?null:Number(value[2]),
+          srsUpdatedAt:updatedAt,srsRevision:updatedAt,
+          correct:Math.max(0,Number(value[3]||0)),
+          incorrect:Math.max(0,Number(value[4]||0)),
+          guruPassed:Boolean(value[5])
+        }
+      };
+    }
+    const entry=objectValue(value),snapshot=objectValue(entry.after||entry.snapshot);
+    const updatedAt=Math.max(0,Number(entry.updatedAt||0),Number(snapshot.srsUpdatedAt||0),Number(snapshot.srsRevision||0));
+    if(!updatedAt||!Object.keys(snapshot).length)return null;
+    return {id:String(id),updatedAt,after:clone(snapshot)};
+  }
   function loadSrsLedger(){
     try{
       const raw=objectValue(JSON.parse(localStorage.getItem(SRS_LEDGER_KEY)||"null"));
       const result=emptySrsLedger();result.updatedAt=Number(raw.updatedAt||0);
       for(const [id,value] of Object.entries(objectValue(raw.items))){
-        const entry=objectValue(value),snapshot=objectValue(entry.after||entry.snapshot);
-        const updatedAt=Math.max(0,Number(entry.updatedAt||0),Number(snapshot.srsUpdatedAt||0),Number(snapshot.srsRevision||0));
-        if(!updatedAt||!Object.keys(snapshot).length)continue;
-        result.items[id]={id:String(id),updatedAt,after:clone(snapshot)};
+        const entry=inflateCompactLedgerEntry(id,value);
+        if(entry)result.items[id]=entry;
       }
       return result;
     }catch{return emptySrsLedger();}
   }
+  function compactLedgerForStorage(){
+    const items={};
+    for(const [id,entry] of Object.entries(srsLedger.items||{})){
+      const after=objectValue(entry?.after);
+      const updatedAt=Math.max(0,Number(entry?.updatedAt||0),Number(after.srsUpdatedAt||0),Number(after.srsRevision||0));
+      if(!updatedAt)continue;
+      items[id]=[
+        updatedAt,
+        Math.max(0,Math.min(9,Number(after.stage||0))),
+        after.availableAt==null?null:Number(after.availableAt),
+        Math.max(0,Number(after.correct||0)),
+        Math.max(0,Number(after.incorrect||0)),
+        after.guruPassed?1:0
+      ];
+    }
+    return {version:"2.0",updatedAt:Number(srsLedger.updatedAt||Date.now()),compact:true,items};
+  }
   let srsLedger=loadSrsLedger();
   function writeSrsLedger(){
-    const write=()=>localStorage.setItem(SRS_LEDGER_KEY,JSON.stringify(srsLedger));
+    const write=()=>localStorage.setItem(SRS_LEDGER_KEY,JSON.stringify(compactLedgerForStorage()));
     try{srsLedger.updatedAt=Date.now();write();return true;}
     catch(error){
       if(isQuotaError(error)&&emergencyStorageCleanup()){try{write();return true;}catch{}}
@@ -36713,12 +36870,12 @@ function vocabularyReviewPartialProgressBootstrap() {
     }
   }
   function recordSrsLedger(item,after,completedAt){
-    if(!item?.id||!after)return;
+    if(!item?.id||!after)return false;
     const id=String(item.id),updatedAt=Math.max(1,Number(completedAt||after.srsUpdatedAt||Date.now()));
     const snapshot=clone(after);snapshot.srsUpdatedAt=updatedAt;snapshot.srsRevision=updatedAt;
     const previous=srsLedger.items[id];
     if(!previous||updatedAt>=Number(previous.updatedAt||0))srsLedger.items[id]={id,updatedAt,after:snapshot};
-    writeSrsLedger();
+    return writeSrsLedger();
   }
   function migrateJournalToSrsLedger(){
     let changed=false;
@@ -36745,13 +36902,19 @@ function vocabularyReviewPartialProgressBootstrap() {
       beforeCycle:snapshotCycle(before),afterCycle:snapshotCycle(after),
       errorCount:Number(outcome?.errorCount||0)
     };
+    // Crash-safety order: journal first, then the compact one-record-per-word
+    // ledger. Once the ledger write succeeds, the verbose transaction is
+    // redundant and gets removed immediately instead of accumulating.
     const list=Array.isArray(commitJournal.items[id])?commitJournal.items[id]:[];
     if(!list.some(existing=>existing.beforeCycle===entry.beforeCycle&&existing.afterCycle===entry.afterCycle)){
       list.push(entry);
-      commitJournal.items[id]=list.slice(-8);
+      commitJournal.items[id]=list.slice(-2);
     }
     writeCommitJournal();
-    recordSrsLedger(item,entry.after,completedAt);
+    if(recordSrsLedger(item,entry.after,completedAt)){
+      delete commitJournal.items[id];
+      writeCommitJournal();
+    }
   }
   function writeMainDataAtomic(){
     const write=()=>localStorage.setItem(STORAGE_KEY,JSON.stringify(sourceData()));
@@ -37295,7 +37458,23 @@ function smartReviewBootstrap() {
   }
 
   function readSmartBackup() {
-    try { const parsed=JSON.parse(localStorage.getItem(SMART_BACKUP_KEY)||"null");return parsed&&typeof parsed==="object"?parsed:null; } catch { return null; }
+    try {
+      const parsed=JSON.parse(localStorage.getItem(SMART_BACKUP_KEY)||"null");
+      if(!parsed||typeof parsed!=="object")return null;
+      const rawState=parsed.state&&typeof parsed.state==="object"?parsed.state:{};
+      if(!parsed.compact)return parsed;
+      const vocabDirections={};
+      for(const [id,value] of Object.entries(rawState.vocabDirections||{})){
+        if(!Array.isArray(value))continue;
+        vocabDirections[id]={
+          id:String(id),
+          listening:{correct:Math.max(0,Number(value[0]||0)),incorrect:Math.max(0,Number(value[1]||0)),close:Math.max(0,Number(value[2]||0)),lastWrongAt:value[3]||null},
+          production:{correct:Math.max(0,Number(value[4]||0)),incorrect:Math.max(0,Number(value[5]||0)),close:Math.max(0,Number(value[6]||0)),lastWrongAt:value[7]||null},
+          updatedAt:Number(value[8]||0)
+        };
+      }
+      return {version:parsed.version||VERSION,updatedAt:parsed.updatedAt||0,state:{version:rawState.version||VERSION,vocabDirections,events:[],lastOpenedAt:rawState.lastOpenedAt||null}};
+    } catch { return null; }
   }
   function state() {
     const source = sourceData();
@@ -37312,15 +37491,34 @@ function smartReviewBootstrap() {
     return source.smartReview;
   }
 
+  function compactSmartStateForBackup(sourceState){
+    const compactDirections={};
+    for(const [id,record] of Object.entries(sourceState?.vocabDirections||{})){
+      compactDirections[id]=[
+        Math.max(0,Number(record?.listening?.correct||0)),
+        Math.max(0,Number(record?.listening?.incorrect||0)),
+        Math.max(0,Number(record?.listening?.close||0)),
+        record?.listening?.lastWrongAt||0,
+        Math.max(0,Number(record?.production?.correct||0)),
+        Math.max(0,Number(record?.production?.incorrect||0)),
+        Math.max(0,Number(record?.production?.close||0)),
+        record?.production?.lastWrongAt||0,
+        Number(record?.updatedAt||0)
+      ];
+    }
+    return {version:VERSION,vocabDirections:compactDirections,lastOpenedAt:sourceState?.lastOpenedAt||null};
+  }
+
   let smartFullSaveTimer=null;
   function persistSmart() {
     const source = sourceData();
     source.smartReview = state();
     try {
       if (typeof data !== "undefined" && data && typeof data === "object") data.smartReview = source.smartReview;
-      // Richtungsanalyse sofort in einem kleinen Backup sichern; der große Spielstand
-      // wird erst in einer Tipp-Pause geschrieben.
-      localStorage.setItem(SMART_BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),state:source.smartReview}));
+      // The full Smart Review state is part of the IndexedDB primary save.
+      // localStorage keeps only compact counters so helper storage does not grow
+      // with repeated review history or duplicate word/reading strings.
+      localStorage.setItem(SMART_BACKUP_KEY,JSON.stringify({version:VERSION,updatedAt:Date.now(),compact:true,state:compactSmartStateForBackup(source.smartReview)}));
       if(smartFullSaveTimer)clearTimeout(smartFullSaveTimer);
       smartFullSaveTimer=setTimeout(()=>{
         const input=document.getElementById("answerInput");

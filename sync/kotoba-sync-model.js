@@ -2,7 +2,7 @@ export const KOTOBA_BRIDGE_SCHEMA_VERSION = 2;
 export const KOTOBA_BRIDGE_STORAGE_KEY = "kotobaQuestBridgeV1";
 export const KOTOBA_PROGRESS_STORAGE_KEY = "kotobaQuestDataV3";
 export const KOTOBA_BRIDGE_MAX_QUEUE = 500;
-export const KOTOBA_BRIDGE_MAX_RECENT = 250;
+export const KOTOBA_BRIDGE_MAX_RECENT = 60;
 export const KOTOBA_QUICK_ITEM_LIMIT = 40;
 
 export function clone(value) {
