@@ -33195,6 +33195,7 @@ ${tooltipText(segment, status)}`)}"`
       }));
 
       let currentLessonId = "";
+      let confirmedListeningAt = 0;
       let mode = "library";
       let quizIndex = 0;
       let quizAnswers = [];
@@ -33407,6 +33408,7 @@ ${tooltipText(segment, status)}`)}"`
         const lesson = LESSONS.find(item => item.id === id);
         if (!lesson) return;
         currentLessonId = id;
+        confirmedListeningAt = 0;
         mode = "listen";
         quizIndex = 0;
         quizAnswers = [];
@@ -33434,7 +33436,14 @@ ${tooltipText(segment, status)}`)}"`
           <div class="kq-listen-guide"><div><strong>1 · Blind hören</strong><span>Audio/Video einmal komplett ohne Text hören.</span></div><div><strong>2 · Verstehen prüfen</strong><span>Fünf Inhaltsfragen beantworten – nicht Grammatikformen benennen.</span></div><div><strong>3 · Lücken schließen</strong><span>Danach Wortschatz/Grammatik sehen, Mining wählen und später erneut hören.</span></div></div>
           <div class="kq-listen-actions"><button class="primary" id="kqListeningHeard">Ich habe einmal komplett gehört → Fragen</button><button class="ghost" data-kq-listen-library>Abbrechen</button></div></div>`;
         bindCommon(root);
-        root.querySelector("#kqListeningHeard")?.addEventListener("click", () => { mode = "quiz"; quizIndex = 0; quizFeedback = null; renderQuiz(); });
+        root.querySelector("#kqListeningHeard")?.addEventListener("click", () => {
+          confirmedListeningAt = Date.now();
+          const progress = progressFor(lesson.id);
+          progress.lastHeardAt = confirmedListeningAt;
+          progress.lastConfirmedMinutes = Math.max(1, Number(lesson.minutes) || 1);
+          persist();
+          mode = "quiz"; quizIndex = 0; quizFeedback = null; renderQuiz();
+        });
       }
 
       function renderQuiz() {
@@ -33483,9 +33492,19 @@ ${tooltipText(segment, status)}`)}"`
       }
 
       function emitActivity(lesson, score, correct, total, analysis) {
-        const base = { itemId: lesson.id, label: lesson.title, area: "listening", timestamp: Date.now(), metadata: { level: lesson.level, minutes: lesson.minutes, score, correct, total, vocabCoverage: analysis.vocabPercent, grammarCoverage: analysis.grammarPercent } };
-        try { window.parent?.postMessage({ type: "kotoba-listening-activity", payload: { ...base, type: "listening-practice", skill: "listening", result: "completed" } }, "*"); } catch {}
-        try { window.parent?.postMessage({ type: "kotoba-listening-activity", payload: { ...base, type: "comprehension-practice", skill: "comprehension", result: score >= 80 ? "good" : score >= 50 ? "partial" : "hard" } }, "*"); } catch {}
+        const now = Date.now();
+        const day = new Date(now).toLocaleDateString("sv-SE");
+        const token = String(lesson.id).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+        const heard = confirmedListeningAt > 0 && confirmedListeningAt <= now && now - confirmedListeningAt < 3 * 60 * 60 * 1000;
+        const base = { itemId: lesson.id, label: lesson.title, area: "listening", timestamp: now,
+          metadata: { level: lesson.level, minutes: lesson.minutes, confirmed: heard, score, correct, total,
+            vocabCoverage: analysis.vocabPercent, grammarCoverage: analysis.grammarPercent } };
+        const origin = window.location.origin;
+        if (heard) try { window.parent?.postMessage({type:"kotoba-listening-activity",payload:{...base,
+          eventId:`kq-lab-${token}-${day}-heard`,type:"listening-practice",skill:"listening",result:"completed"}},origin); } catch {}
+        try { window.parent?.postMessage({type:"kotoba-listening-activity",payload:{...base,
+          eventId:`kq-lab-${token}-${day}-quiz`,type:"comprehension-practice",skill:"comprehension",
+          result:score >= 80 ? "good" : score >= 50 ? "partial" : "hard"}},origin); } catch {}
       }
 
       function addMining(target, lesson) {
@@ -33502,6 +33521,15 @@ ${tooltipText(segment, status)}`)}"`
         source.vocabulary.push(item);
         try { if (typeof data !== "undefined") data.vocabulary = source.vocabulary; } catch {}
         persist();
+        // Only genuinely new Mining entries, never an existing Core 2000 word.
+        const day = new Date().toLocaleDateString("sv-SE");
+        const lexeme = `${target.word}|${target.reading}`;
+        let wordHash = 2166136261;
+        for (let i = 0; i < lexeme.length; i++) wordHash = Math.imul(wordHash ^ lexeme.charCodeAt(i), 16777619) >>> 0;
+        const miningReceipt = `kq-lab-mine-${wordHash.toString(36)}-${day}`;
+        try { window.parent?.postMessage({type:"kotoba-listening-activity", payload:{eventId:miningReceipt,
+          type:"listening-mining",itemId:lesson.id,skill:"vocabulary",area:"listening",label:"Listening Lab · Mining",
+          result:"added",timestamp:Date.now(),metadata:{confirmed:true}}}, window.location.origin); } catch {}
         return true;
       }
 
@@ -36540,6 +36568,15 @@ function renderProgressCenter() {
         session = null;
         clearActiveSession();
         persist();
+        const totalAnswered = Math.max(0, Number(finished.correct || 0)) + Math.max(0, Number(finished.incorrect || 0));
+        if (totalAnswered > 0) {
+          const token = String(finished.id || "").replace(/[^a-z0-9-]/gi,"-").toLowerCase();
+          try { window.parent?.postMessage({type:"kotoba-n4-activity",payload:{
+            eventId:`kq-n4-${token}`,type:"n4-placement-block",itemId:String(finished.id || ""),
+            label:"N4 Standorttest",area:"grammar",skill:"grammar",result:"completed",timestamp:Date.now(),
+            metadata:{correct:Number(finished.correct)||0,total:totalAnswered,confirmed:true}
+          }},window.location.origin); } catch {}
+        }
         const screened = CORE_POINTS.filter(point => pointStatus(point.id).screenTried).length;
         const safe = allKnownCount();
         const confirmOpen = confirmationOpen(CORE_POINTS).length;
@@ -39996,6 +40033,6 @@ function smartReviewBootstrap() {
   </script>
 
 
-  <script type="module" src="./sync/kotoba-bridge.js"></script>
+  <script type="module" src="./sync/kotoba-bridge.js?v=2.4.0-dz42"></script>
 </body>
 </html>
