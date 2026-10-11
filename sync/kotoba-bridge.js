@@ -32,7 +32,7 @@ import {
   writeBridgeState
 } from "./kotoba-events.js";
 
-const BRIDGE_VERSION = "2.4.0-dz42-production";
+const BRIDGE_VERSION = "2.2.0";
 const appFrame = document.getElementById("appFrame");
 let bridgeState = readBridgeState();
 let currentUser = null;
@@ -43,7 +43,6 @@ let syncTimer = null;
 let iframeCleanup = null;
 let parentStorageInstalled = false;
 let cloudSyncInFlight = false;
-let cloudSyncRequestedAgain = false;
 let sessionWindow = { id: "", lastAt: 0, category: "" };
 
 function progressRaw() {
@@ -86,9 +85,6 @@ function queueEvent(payload) {
   const at = Number(payload?.timestamp) || Date.now();
   const category = payload?.area || payload?.type || "study";
   const event = createActivityEvent({ ...payload, timestamp: at, sessionId: payload?.sessionId || sessionId(category, at) });
-  // Deterministic receipt keys survive iframe refreshes, browser retries and replays.
-  const requestedId = String(payload?.eventId || "");
-  if (/^kq-[a-z0-9-]{6,140}$/.test(requestedId)) event.eventId = requestedId;
   enqueueEvent(bridgeState, event);
   bridgeState = writeBridgeState(bridgeState);
   scheduleCloudSync(250);
@@ -203,103 +199,6 @@ async function scanProgress({ reason = "change", forceSnapshot = false } = {}) {
   return { initialized: false, snapshot: clone(snapshot) };
 }
 
-// DZ42: one authoritative iframe event handler; never accept other windows/origins.
-// Event IDs are stable per unique task/day (and per completed N4 block) so a
-// retry, iframe reload or normal Kotoba scan cannot double-award the same work.
-const STUDY_EVENT_TYPES = new Set([
-  "listening-practice", "comprehension-practice", "listening-mining", "n4-placement-block",
-  "speaking-practice", "production-practice"
-]);
-function receiptForStudyEvent(payload) {
-  const type = String(payload.type || "").toLowerCase();
-  const item = String(payload.itemId || "").replace(/[^a-z0-9-]/gi, "-").toLowerCase().slice(0,75);
-  const at = timestamp(payload.timestamp) || Date.now();
-  const day = new Date(at).toLocaleDateString("sv-SE");
-  if (type === "n4-placement-block") return `kq-n4-${item}`;
-  if (type === "listening-practice") return `kq-lab-${item}-${day}-heard`;
-  if (type === "comprehension-practice") return `kq-lab-${item}-${day}-quiz`;
-  return `kq-${type}-${item}-${day}`;
-}
-function receiveStudyActivity(event) {
-  if (!appFrame?.contentWindow || event.source !== appFrame.contentWindow || event.origin !== location.origin) return;
-  if (!["kotoba-listening-activity", "kotoba-n4-activity", "kotoba-skill-activity"].includes(event.data?.type)) return;
-  const payload = objectValue(event.data?.payload);
-  const type = String(payload.type || "");
-  if (!STUDY_EVENT_TYPES.has(type)) return;
-  const required = {"listening-practice":"listening", "comprehension-practice":"comprehension",
-    "listening-mining":"vocabulary", "n4-placement-block":"grammar",
-    "speaking-practice":"speaking", "production-practice":"production"};
-  if (String(payload.skill || "") !== required[type]) return;
-  const itemId = String(payload.itemId || "").slice(0,90);
-  if (!itemId || !Number.isFinite(Number(payload.timestamp))) return;
-  const safeAt = Number(payload.timestamp);
-  if (safeAt > Date.now() + 60000 || safeAt < Date.now() - 31*86400000) return;
-  const eventId = String(payload.eventId || receiptForStudyEvent(payload));
-  if (!/^kq-[a-z0-9-]{6,140}$/.test(eventId)) return;
-  const m = objectValue(payload.metadata);
-  const bounded = (value, max=100) => Math.min(max,Math.max(0,Number(value)||0));
-  queueEvent({eventId,type,itemId,label:String(payload.label || type).slice(0,90),
-    area:type === "n4-placement-block" ? "grammar" : ["speaking-practice","production-practice"].includes(type) ? "production" : "listening",
-    result:String(payload.result || "completed").slice(0,30),skill:required[type],timestamp:safeAt,
-    metadata:{minutes:bounded(m.minutes,20),score:bounded(m.score),correct:bounded(m.correct,50),total:bounded(m.total,50),
-      confirmed:m.confirmed === true,mode:String(m.mode||"").slice(0,20),chars:bounded(m.chars,3000),
-      level:String(m.level||"").slice(0,20)}
-  });
-}
-window.addEventListener("message", receiveStudyActivity);
-
-// Existing recent sessions can be safely backfilled only with true completion
-// timestamps; replay uses the same stable IDs as live events and the Life RPG
-// connection baseline suppresses anything before first connection.
-let recoveredDz42 = false;
-function recoverRecentStudyCompletions() {
-  if (recoveredDz42) return;
-  const source = readProgress(progressRaw());
-  const listening = objectValue(source.listeningLab?.progress);
-  const production = objectValue(source.productionLab);
-  if (!Object.keys(listening).length && !Object.keys(objectValue(production.shadowing)).length
-      && !Object.keys(objectValue(production.writing)).length) return;
-  recoveredDz42 = true;
-  const lastWeek = Date.now() - 7*86400000;
-  for(const [id, raw] of Object.entries(listening).slice(0,50)) {
-    const record = objectValue(raw);
-    const at = Number(record.lastAttemptAt)||0;
-    if (!at || at < lastWeek || at > Date.now()+30000 || !Number(record.attempts)) continue;
-    const stable = id.replace(/[^a-z0-9-]/gi,"-").toLowerCase().slice(0,70);
-    const day = new Date(at).toLocaleDateString("sv-SE");
-    const total = 5; const correct = Math.round(boundedCompletion(record.lastScore)*total/100);
-    queueEvent({eventId:`kq-lab-${stable}-${day}-quiz`,type:"comprehension-practice",itemId:id,
-      skill:"comprehension",area:"listening",result:"completed",label:"Listening Lab",timestamp:at,
-      metadata:{score:boundedCompletion(record.lastScore),correct,total,confirmed:false}});
-    // In v13.4 the only route to the quiz was explicitly clicking "Ich habe
-    // einmal komplett gehört → Fragen". A saved quiz completion is therefore
-    // a user-confirmed listening receipt, NOT proof of actual YouTube playback.
-    const heardAt = Number(record.lastHeardAt)||0;
-    const catalog = (()=>{try{return appWindow()?.KotobaQuestListeningLab?.getCatalog?.()||[];}catch{return [];}})();
-    const lesson = Array.isArray(catalog) ? catalog.find(x=>String(x.id)===String(id)) : null;
-    const gateConfirmed = Boolean(Number(record.attempts)>0 && lesson);
-    const explicitConfirmed = heardAt > 0 && heardAt <= at && at-heardAt <= 3*3600000;
-    if (explicitConfirmed || gateConfirmed) queueEvent({
-      eventId:`kq-lab-${stable}-${day}-heard`,type:"listening-practice",itemId:id,
-      skill:"listening",area:"listening",result:"completed",label:"Listening Lab",timestamp:at,
-      metadata:{minutes:Math.max(1,Math.min(20,Number(record.lastConfirmedMinutes)||Number(lesson?.minutes)||1)),confirmed:true,
-        confirmationMethod:explicitConfirmed?'explicit':'quiz-gated'}});
-  }
-  for (const [kind, entries] of [["speaking-practice",objectValue(production.shadowing)],
-       ["production-practice",objectValue(production.writing)]]) {
-    for (const [id, raw] of Object.entries(entries).slice(0,30)) {
-      const record = objectValue(raw), at = Number(record.lastAt)||0;
-      if (at < lastWeek || at > Date.now()+30000 || !(Number(record.sessions)||Number(record.completed))) continue;
-      const type = kind, skill = type === "speaking-practice" ? "speaking" : "production";
-      queueEvent({eventId:receiptForStudyEvent({type,itemId:id,timestamp:at}),type,itemId:id,area:"production",skill,
-        label:type==="speaking-practice"?"Shadowing":"Writing Lab",timestamp:at,result:"completed",
-        metadata:{score:boundedCompletion(type==="speaking-practice"?record.lastScore:record.lastTargetScore),
-          minutes:0,mode:type==="speaking-practice"?"shadowing":"writing",confirmed:true,historical:true}});
-    }
-  }
-}
-function boundedCompletion(value) { return Math.min(100,Math.max(0,Number(value)||0)); }
-
 function scheduleScan(delay = 120, options = {}) {
   clearTimeout(scanTimer);
   scanTimer = setTimeout(() => scanProgress(options).catch(error => console.warn("Kotoba Bridge scan failed", error)), delay);
@@ -336,7 +235,6 @@ function attachIframeTriggers() {
     try { win.removeEventListener("kotoba-progress-dirty", dirty); } catch {}
   };
   scheduleScan(250, { reason: "iframe-load", forceSnapshot: true });
-  setTimeout(() => { try { recoverRecentStudyCompletions(); } catch(e) { console.warn('Kotoba Listening Lab recovery delayed', e); } }, 1200);
 }
 
 function installParentStorageTrigger() {
@@ -361,63 +259,8 @@ function metaDocument(uid) {
   return doc(db, "users", uid, "bridgeState", "meta");
 }
 
-// DZ41: compact per-user lexicon goes to separate Firestore docs (never into
-// the Life RPG save). Only sanitized word/reading, source, Core level, SRS stage
-// and first translations travel to the owner's existing Firebase collection.
-let publishedLexiconSignature = '';
-let lastPublishedHash = String(bridgeState?.cloud?.lexiconUid || '') === String(currentUser?.uid || '') ? String(bridgeState?.cloud?.lexiconHash || '') : '';
-let publishedForUid = '';
-let lastLexiconTry = 0;
-function lexiconSnapshot() {
-  const vocabulary = readProgress(progressRaw())?.vocabulary;
-  if (!Array.isArray(vocabulary)) return null;
-  const rows = vocabulary.filter(v => v && v.word && v.reading).slice(0, 5000).map(v => [
-    String(v.word).slice(0,70), String(v.reading).slice(0,90),
-    v.sourceType === 'mining' ? 'mining' : 'core', Math.max(0, Number(v.level)||0),
-    Math.max(0,Math.min(9,Number(v.stage)||0)),
-    (Array.isArray(v.meanings) ? v.meanings : []).slice(0,3).map(x=>String(x).slice(0,100))
-  ]);
-  const coreCount = rows.filter(row => row[2] === 'core').length;
-  if (coreCount < 1900 || coreCount > 2300) return null;
-  const signature = JSON.stringify(rows);
-  let hash=2166136261;
-  for(let i=0;i<signature.length;i++) hash=Math.imul(hash ^ signature.charCodeAt(i),16777619) >>> 0;
-  return {rows,signature,hash:hash.toString(36)};
-}
-async function publishLexiconIfChanged() {
-  if (!currentUser || !db) return;
-  if (publishedForUid !== currentUser.uid) {
-    publishedForUid = currentUser.uid;
-    publishedLexiconSignature = '';
-    lastPublishedHash = bridgeState?.cloud?.lexiconUid === currentUser.uid ? String(bridgeState.cloud.lexiconHash || '') : '';
-    lastLexiconTry = 0;
-  }
-  if (Date.now() - lastLexiconTry < 20000) return;
-  lastLexiconTry = Date.now();
-  const lex = lexiconSnapshot();
-  if (!lex || lex.signature === publishedLexiconSignature || lex.hash === lastPublishedHash) return;
-  // Persistent signature is only an optimization, never an authority for writes.
-  const chunks = [];
-  for (let i=0;i<lex.rows.length;i+=240) chunks.push(lex.rows.slice(i,i+240));
-  // One revision per completed upload. Readers reject any mixed old/new set.
-  const revision = `r${Date.now().toString(36)}-${lex.hash}`;
-  for(let i=0;i<chunks.length;i++) {
-    await setDoc(doc(db, 'users', currentUser.uid,'bridgeState',`lexiconChunk-${i}`), {rows:chunks[i],index:i,version:1,revision});
-  }
-  await setDoc(doc(db,'users',currentUser.uid,'bridgeState','lexicon'), {
-    version:1, revision, chunkCount:chunks.length, wordCount:lex.rows.length,
-    signatureLength:lex.signature.length, // little sanity check; not a security token
-    updatedAt: serverTimestamp(), syncedAt: Date.now()
-  });
-  publishedLexiconSignature = lex.signature;
-  lastPublishedHash = lex.hash;
-  bridgeState.cloud = {...objectValue(bridgeState.cloud),lexiconHash:lex.hash,lexiconUid:currentUser.uid};
-  bridgeState = writeBridgeState(bridgeState);
-}
-
 async function syncPendingEvents() {
-  if (!currentUser || !db || !navigator.onLine) return;
-  if (cloudSyncInFlight) { cloudSyncRequestedAgain = true; return; }
+  if (!currentUser || !db || !navigator.onLine || cloudSyncInFlight) return;
   cloudSyncInFlight = true;
   try {
     const pending = [...(bridgeState.pendingEvents || [])];
@@ -447,8 +290,6 @@ async function syncPendingEvents() {
       lastLocalUpdateAt: Date.now()
     }, { merge: true });
     bridgeState = writeBridgeState(bridgeState);
-    try { await publishLexiconIfChanged(); }
-    catch (lexError) { console.warn('Kotoba lexicon read-only bridge upload pending', lexError); }
   } catch (error) {
     markCloudError(bridgeState, error);
     bridgeState = writeBridgeState(bridgeState);
@@ -459,10 +300,6 @@ async function syncPendingEvents() {
     }
   } finally {
     cloudSyncInFlight = false;
-    if (cloudSyncRequestedAgain) {
-      cloudSyncRequestedAgain = false;
-      scheduleCloudSync(400);
-    }
   }
 }
 
@@ -778,6 +615,63 @@ async function handleLiveRequest(action, payload = {}) {
   throw new Error(`Unsupported Kotoba live-bridge action: ${String(action || "")}`);
 }
 
+const LISTENING_ACTIVITY_MESSAGE_TYPE = "kotoba-listening-activity";
+const SKILL_ACTIVITY_MESSAGE_TYPE = "kotoba-skill-activity";
+
+function acceptSkillActivityMessage(event) {
+  if (!appFrame?.contentWindow || event.source !== appFrame.contentWindow) return;
+  const message = event.data;
+  if (!message || ![LISTENING_ACTIVITY_MESSAGE_TYPE, SKILL_ACTIVITY_MESSAGE_TYPE].includes(message.type)) return;
+  const payload = objectValue(message.payload);
+  const type = String(payload.type || "");
+  const skill = String(payload.skill || "");
+  const allowed = {
+    "listening-practice": "listening",
+    "comprehension-practice": "comprehension",
+    "speaking-practice": "speaking",
+    "production-practice": "production",
+    "kanji-placement": "kanji",
+    "kanji-placement-complete": "kanji",
+    "kanji-component-lesson": "kanji",
+    "kanji-lesson": "kanji",
+    "kanji-mnemonic": "kanji",
+    "kanji-review": "kanji"
+  };
+  if (!Object.prototype.hasOwnProperty.call(allowed, type) || allowed[type] !== skill) return;
+  const itemId = String(payload.itemId || "").slice(0, 160);
+  if (!itemId) return;
+  const rawMetadata = objectValue(payload.metadata);
+  const finiteNumber = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+  const metadata = {
+    level: String(rawMetadata.level || "").slice(0, 40),
+    minutes: Math.max(0, Math.min(240, finiteNumber(rawMetadata.minutes))),
+    score: Math.max(0, Math.min(100, finiteNumber(rawMetadata.score))),
+    correct: Math.max(0, finiteNumber(rawMetadata.correct)),
+    total: Math.max(0, finiteNumber(rawMetadata.total)),
+    vocabCoverage: rawMetadata.vocabCoverage == null ? null : Math.max(0, Math.min(100, finiteNumber(rawMetadata.vocabCoverage))),
+    grammarCoverage: rawMetadata.grammarCoverage == null ? null : Math.max(0, Math.min(100, finiteNumber(rawMetadata.grammarCoverage))),
+    mode: String(rawMetadata.mode || "").slice(0, 60),
+    chars: Math.max(0, Math.min(20000, finiteNumber(rawMetadata.chars))),
+    kind: String(rawMetadata.kind || "").slice(0, 40),
+    jlpt: String(rawMetadata.jlpt || "").slice(0, 20),
+    stage: Math.max(0, Math.min(9, finiteNumber(rawMetadata.stage))),
+    count: Math.max(0, Math.min(500, finiteNumber(rawMetadata.count))),
+    rewardWeight: Math.max(0, Math.min(10, finiteNumber(rawMetadata.rewardWeight, 1)))
+  };
+  queueEvent({
+    type,
+    itemId,
+    skill,
+    result: String(payload.result || "completed").slice(0, 40),
+    label: String(payload.label || itemId).slice(0, 200),
+    area: skill === "kanji" ? "kanji" : ["speaking", "production"].includes(skill) ? "production" : "listening",
+    timestamp: Number(payload.timestamp) || Date.now(),
+    metadata
+  });
+}
+
+window.addEventListener("message", acceptSkillActivityMessage);
+
 window.addEventListener("message", event => {
   const bridgeMode = new URLSearchParams(location.search).get("lifeRpgBridge") === "1";
   if (!bridgeMode || window.parent === window || event.source !== window.parent || event.origin !== location.origin) return;
@@ -841,4 +735,3 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 initializeFirebaseBridge().catch(error => console.warn("Kotoba Bridge Firebase initialization failed", error));
 if (appFrame?.contentWindow) setTimeout(attachIframeTriggers, 250);
 scheduleScan(500, { reason: "startup", forceSnapshot: true });
-setTimeout(() => { try { recoverRecentStudyCompletions(); } catch(e) { console.warn('Kotoba DZ41 history recovery', e); } }, 1800);
