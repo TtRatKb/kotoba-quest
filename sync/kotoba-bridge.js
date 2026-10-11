@@ -674,6 +674,7 @@ function acceptSkillActivityMessage(event) {
     "comprehension-practice": "comprehension",
     "speaking-practice": "speaking",
     "production-practice": "production",
+    "kanji-placement-item": "kanji",
     "kanji-placement": "kanji",
     "kanji-placement-complete": "kanji",
     "kanji-component-lesson": "kanji",

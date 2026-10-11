@@ -24668,9 +24668,41 @@
         const rows=Array.isArray(source.vocabulary)?source.vocabulary:[];
         return rows.filter(item=>String(item?.word||"").includes(kanji.char)).sort((a,b)=>Number(b?.stage||0)-Number(a?.stage||0)||Number(a?.coreIndex||99999)-Number(b?.coreIndex||99999)).slice(0,6);
       }
-      function emitActivity(type,item,label,metadata={}){
-        const payload={type,skill:"kanji",itemId:String(item?.id||item||type),label:String(label||item?.char||item?.glyph||type),result:"completed",timestamp:now(),metadata:{...metadata}};
-        try { window.parent?.postMessage({type:"kotoba-skill-activity",payload},"*"); } catch {}
+      function emitActivity(type,item,label,metadata={},answeredAt=now()){
+        const payload={type,skill:"kanji",itemId:String(item?.id||item||type),label:String(label||item?.char||item?.glyph||type),result:"completed",timestamp:Number(answeredAt)||now(),metadata:{...metadata}};
+        if (window.parent === window) return false;
+        try { window.parent.postMessage({type:"kotoba-skill-activity",payload},"*"); return true; } catch { return false; }
+      }
+      // DZ47: Each checked kanji gets a separate event, even if the answer was
+      // wrong. The bridge stores only the kanji ID and outcome, never what the
+      // learner typed. Do not count the same answer twice on UI re-renders.
+      function emitPlacementItemReward(item, result, recovery=false){
+        if(!item || !result || result.placementRewardV2EmittedAt || !Number(result.at)) return false;
+        const sent=emitActivity("kanji-placement-item",item,`Kanji-Einstufung ${item.char}`,
+          {mode:recovery?"placement-recovery":"placement-item",kind:"kanji",count:1,
+           correct:result.passed?1:0,total:1,rewardWeight:1},Number(result.at));
+        if(sent) result.placementRewardV2EmittedAt=now();
+        return sent;
+      }
+      function reconcileRecentPartialPlacement(){
+        const state=ensureState();
+        // DZ46 paid only complete 10-item milestones. Recover at most nine
+        // recently answered items in the unfinished group (e.g. today's two),
+        // never an old completed group or an entire restored placement.
+        if(state.placementComplete) return;
+        const index=Math.max(0,Math.min(KANJI.length,Number(state.placementIndex||0)));
+        const batchStart=Math.floor(index/10)*10;
+        const candidates=KANJI.slice(batchStart,Math.min(KANJI.length,batchStart+10))
+          .filter(item=>Boolean(state.placementResults[item.id] && Number(state.placementResults[item.id].at)>0));
+        if(!candidates.length || candidates.length>=10) return;
+        const cutoff=now()-48*60*60*1000;
+        let changed=false;
+        for(const item of candidates){
+          const result=state.placementResults[item.id];
+          if(Number(result.at)<cutoff || Number(result.at)>now()+60000) continue;
+          if(emitPlacementItemReward(item,result,true)) changed=true;
+        }
+        if(changed) persist("placement-recover-recent");
       }
       function inferComponentsFromPassedKanji(kanji){
         for(const component of componentsForKanji(kanji)){
@@ -24716,7 +24748,7 @@
             <button class="primary" id="kqKanjiLessons" ${lessons.length?"":"disabled"}>Lektionen (${lessons.length})</button>
             <button class="secondary" id="kqKanjiReviews" ${dueCount?"":"disabled"}>Reviews (${dueCount})</button>
             <button class="ghost" id="kqKanjiCatalog">100-Kanji-Katalog</button>
-          </div>${!state.placementComplete?`<div class="kq-kanji-note"><strong>Placement belohnt dich ebenfalls im Live RPG.</strong> Alle 10 geprüften Kanji wird ein Kanji-Placement-Event erzeugt; der Abschluss bekommt einen zusätzlichen Bonus. Bestehst du Bedeutung + eine akzeptierte Lesung, startet das Kanji auf Guru 1.</div>`:""}</section>
+          </div>${!state.placementComplete?`<div class="kq-kanji-note"><strong>Placement belohnt dich ebenfalls im Live RPG.</strong> Jedes geprüfte Kanji wird einzeln belohnt – auch wenn du es noch nicht kennst. Der Abschluss bekommt einen zusätzlichen Bonus. Bestehst du Bedeutung + eine akzeptierte Lesung, startet das Kanji auf Guru 1.</div>`:""}</section>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>Lernpfad</h3><p>Je 10 Kanji. Das nächste Level öffnet sich bei 90% Guru+ im vorherigen Level.</p></div></div><div class="kq-kanji-path">${LEVELS.map(level=>{const ratio=levelGuruRatio(level);const locked=level>unlocked;return `<div class="kq-kanji-level ${locked?"locked":level===unlocked?"active":""}"><div class="kq-kanji-level-head"><span>Level ${level}</span><span>${Math.round(ratio*100)}%</span></div><div class="kq-kanji-mini"><span style="width:${Math.round(ratio*100)}%"></span></div><div class="small muted" style="margin-top:6px">${levelKanji(level).map(k=>k.char).join(" ")}</div></div>`;}).join("")}</div></section>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>Furigana passt sich deinem Kanji-Stand an</h3><p>Bekannte Kanji können in Grammatik, Story und anderen Kotoba-Bereichen ohne Furigana erscheinen. Unbekannte Kanji behalten ihre Hilfe.</p></div></div><div class="kq-kanji-settings"><label><strong>Furigana ausblenden ab</strong> <select id="kqKanjiFuriganaMode"><option value="guru">Guru 1+</option><option value="learned">ab Apprentice 1</option><option value="always">nie ausblenden</option></select></label><span class="small muted">Standard: Guru 1+, damit „gesehen“ nicht automatisch „sicher“ bedeutet.</span></div></section>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>SRS-Verteilung</h3><p>Meaning und Reading müssen bei Kanji zusammen sitzen; Bausteine fragen nur ihre Bedeutung ab.</p></div></div><div class="kq-kanji-stage-grid">${[1,2,3,4,5,6,7,8,9].map(stage=>`<div class="kq-kanji-stage"><strong>${counts[stage]}</strong><span>${esc(stageLabel(stage))}</span></div>`).join("")}</div></section>`;
@@ -24742,7 +24774,7 @@
           if(passed){ record.stage=Math.max(5,Number(record.stage||0)); record.lessonComplete=true; scheduleRecord(record); inferComponentsFromPassedKanji(item); }
           else if(Number(record.stage||0)===0){ record.stage=0; record.dueAt=null; }
           state.placementResults[item.id]={meaning:mOk,reading:rOk,passed,at:now()}; state.stats.placementAnswered=Math.max(Number(state.stats.placementAnswered||0),state.placementIndex+1); state.stats.placementPassed=placementPassCount();
-          const checkpoint=(state.placementIndex+1)%10===0; if(checkpoint) emitActivity("kanji-placement",`kanji-placement-${Math.floor(state.placementIndex/10)+1}`,`Kanji-Placement ${state.placementIndex+1}/${KANJI.length}`,{mode:"placement-checkpoint",count:10,correct:Object.values(state.placementResults).slice(-10).filter(r=>r?.passed).length,total:10,rewardWeight:1.5});
+          emitPlacementItemReward(item,state.placementResults[item.id]);
           placementFeedback={ok:passed,html:`<strong>${passed?"✓ Sicher erkannt":"Noch nicht sicher"}</strong><br>Bedeutung: ${mOk?"✓":"✕"} ${esc(item.meanings.join(" / "))}<br>Lesung: ${rOk?"✓":"✕"} ${esc(item.readings.join(" · "))}<br><span class="small muted">Klicke noch einmal auf „Weiter“, um zum nächsten Kanji zu gehen.</span>`}; persist("placement-answer"); renderPlacement();
           const btn=root()?.querySelector("#kqKanjiPlacementCheck"); if(btn) btn.textContent="Weiter →";
         };
@@ -24799,6 +24831,7 @@
       const observer=new MutationObserver(()=>{installLearningEntry();scheduleFurigana();});observer.observe(document.body,{subtree:true,childList:true});
       try { const originalSwitch=switchView;if(typeof originalSwitch==="function"&&!originalSwitch.__kqKanjiWrapped){const wrapped=function(viewName){const result=originalSwitch.apply(this,arguments);if(viewName==="kanjiLab")setTimeout(render,0);setTimeout(()=>{installLearningEntry();scheduleFurigana();},0);return result;};wrapped.__kqKanjiWrapped=true;switchView=wrapped;} } catch {}
       installView();installStyles();ensureState();installLearningEntry();scheduleFurigana();
+      window.setTimeout(reconcileRecentPartialPlacement,900);
       window.KotobaQuestKanjiPilot={version:VERSION,open,refresh:()=>{render();scheduleFurigana();},getStats:()=>({total:KANJI.length,learned:learnedCount(),guru:guruCount(),burned:burnedCount(),due:dueItems().length,lessons:availableLessons().length,placementIndex:ensureState().placementIndex,placementComplete:ensureState().placementComplete,unlockedLevel:highestUnlockedLevel()}),getKnownKanji:()=>[...knownKanjiSet()],getCoverage:text=>{const chars=[...new Set((String(text||"").match(KANJI_RE)||[]))];const known=knownKanjiSet();return {total:chars.length,known:chars.filter(ch=>known.has(ch)).length,percent:chars.length?Math.round(chars.filter(ch=>known.has(ch)).length/chars.length*100):100};},getCatalog:()=>KANJI.map(k=>({char:k.char,jlpt:k.jlpt,level:k.level,stage:Number(kanjiState(k,false)?.stage||0),meanings:[...k.meanings],readings:[...k.readings]}))};
     }
 
