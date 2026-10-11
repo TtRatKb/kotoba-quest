@@ -1007,6 +1007,7 @@
         if (hasOwn(a, "particlePath") || hasOwn(b, "particlePath")) result.particlePath = mergePointPath(a.particlePath, b.particlePath);
         if (hasOwn(a, "storyReader") || hasOwn(b, "storyReader")) result.storyReader = mergeStoryReader(a.storyReader, b.storyReader);
         if (hasOwn(a, "knownVocabulary") || hasOwn(b, "knownVocabulary")) result.knownVocabulary = mergeKnownVocabulary(a.knownVocabulary, b.knownVocabulary);
+        if (hasOwn(a, "corePriorityIds") || hasOwn(b, "corePriorityIds")) result.corePriorityIds = unionStrings(b.corePriorityIds, a.corePriorityIds);
         if (hasOwn(a, "vocabularyMeaningOverrides") || hasOwn(b, "vocabularyMeaningOverrides")) result.vocabularyMeaningOverrides = mergeMeaningOverrides(a.vocabularyMeaningOverrides, b.vocabularyMeaningOverrides);
         if (hasOwn(a, "problemWordWorkshop") || hasOwn(b, "problemWordWorkshop")) result.problemWordWorkshop = mergeWorkshop(a.problemWordWorkshop, b.problemWordWorkshop);
         if (hasOwn(a, "resonanceTraining") || hasOwn(b, "resonanceTraining")) result.resonanceTraining = mergeResonanceTraining(a.resonanceTraining, b.resonanceTraining);
@@ -33078,7 +33079,7 @@ ${tooltipText(segment, status)}`)}"`
       if (window.__KOTOBA_LISTENING_LAB_V1__) return;
       window.__KOTOBA_LISTENING_LAB_V1__ = true;
 
-      const VERSION = "0.1";
+      const VERSION = "0.2";
       const STORAGE_KEY = "kotobaQuestDataV3";
       const LESSONS = [
         {
@@ -33092,8 +33093,12 @@ ${tooltipText(segment, status)}`)}"`
           blurb: "Alltag, Tagesablauf und natürliche N4-Sprache. Erst blind hören, danach Verständnis prüfen und gezielt Wortschatz schließen.",
           vocabulary: [
             ["目を覚ます","めをさます","aufwachen"], ["二度寝","にどね","wieder einschlafen"], ["朝ごはん","あさごはん","Frühstück","朝ご飯"],
+            ["毎朝","まいあさ","jeden Morgen"], ["得意","とくい","gut in etwas sein; Stärke"], ["代わり","かわり","Ersatz; anstelle von"],
+            ["匂い","におい","Geruch","におい"], ["嗅ぐ","かぐ","riechen; schnuppern"], ["砂糖","さとう","Zucker"],
             ["気分","きぶん","Stimmung; Gefühl"], ["生徒","せいと","Schüler; Lernender"], ["一生懸命","いっしょうけんめい","mit großer Anstrengung"],
             ["休憩","きゅうけい","Pause"], ["夕方","ゆうがた","später Nachmittag; Abend"], ["過ごす","すごす","Zeit verbringen"],
+            ["簡単","かんたん","einfach"], ["紹介","しょうかい","Vorstellung; vorstellen"], ["だいたい","だいたい","ungefähr; meistens"],
+            ["一度","いちど","einmal"], ["動画","どうが","Video"], ["スケジュール","すけじゅーる","Zeitplan; Tagesplan"],
             ["終わる","おわる","enden; fertig werden"], ["掃除","そうじ","Putzen; Reinigung"], ["洗濯","せんたく","Wäsche; waschen"],
             ["台本","だいほん","Skript"], ["録音","ろくおん","Aufnahme; aufnehmen"], ["編集","へんしゅう","Bearbeitung; editieren"],
             ["確認","かくにん","überprüfen; Bestätigung"], ["予定","よてい","Plan; Termin"], ["ストレッチ","すとれっち","Stretching"]
@@ -33106,11 +33111,11 @@ ${tooltipText(segment, status)}`)}"`
             { id: "nagara", label: "〜ながら" }
           ],
           questions: [
-            { q: "Wann beginnt Sayuris Tag normalerweise ungefähr?", a: ["Gegen 6 Uhr", "Gegen 8 Uhr", "Gegen 10 Uhr", "Erst mittags"], correct: 0, why: "Sie beschreibt einen frühen Start gegen 6 Uhr." },
-            { q: "Was trinkt sie statt eines normalen Frühstücks?", a: ["Grünen Tee", "Schwarzen Kaffee", "Orangensaft", "Milch"], correct: 1, why: "Sie erwähnt schwarzen Kaffee anstelle eines Frühstücks." },
-            { q: "Welche Inhalte kommen in ihren Online-Lektionen vor?", a: ["Nur Kanji", "Nur Aussprache", "Grammatik, Konversation und Kanji", "Nur Prüfungstaktik"], correct: 2, why: "Die Lektionen umfassen mehrere Bereiche, darunter Grammatik, Konversation und Kanji." },
-            { q: "Was macht sie im Tagesverlauf, wenn Zeit zwischen Aufgaben ist?", a: ["Sie fährt jedes Mal in die Stadt", "Sie macht eine kurze Pause und arbeitet später weiter", "Sie schläft mehrere Stunden", "Sie beendet grundsätzlich den Arbeitstag"], correct: 1, why: "Sie beschreibt kurze Pausen zwischen Unterricht und weiterer Arbeit." },
-            { q: "Was gehört zu ihrer Routine vor dem Schlafen?", a: ["Den nächsten Plan prüfen und sich dehnen", "Noch einmal einkaufen", "Eine Stunde joggen", "Das Frühstück vorbereiten"], correct: 0, why: "Vor dem Schlafen prüft sie den nächsten Tagesplan und macht Stretching." }
+            { q: "Welche Beschreibung ihres Morgens trifft am genauesten zu?", a: ["Der Tag beginnt meist gegen 6 Uhr; an freien Unterrichtstagen schläft sie manchmal noch einmal ein.", "Sie steht immer um 6 Uhr auf und beginnt sofort ohne Ausnahme mit der ersten Lektion.", "Sie wacht gegen 6 Uhr auf, frühstückt ausführlich und schläft danach häufig wieder.", "Ihr Tag beginnt je nach Unterricht entweder gegen 8 oder gegen 10 Uhr."], correct: 0, why: "Sie nennt ungefähr 6 Uhr als normalen Start und sagt zugleich, dass sie ohne Lektion manchmal 二度寝 macht." },
+            { q: "Welche Kombination beschreibt ihr Frühstück bzw. den Ersatz dafür korrekt?", a: ["Sie isst nur etwas Süßes und trinkt Kaffee mit Milch.", "Sie lässt das Frühstück meistens aus und trinkt schwarzen Kaffee ohne Zucker und Milch.", "Sie frühstückt selten, nimmt dann aber Tee statt Kaffee.", "Sie trinkt schwarzen Kaffee erst nach einem kleinen Frühstück."], correct: 1, why: "Sie sagt, dass sie meist kein Frühstück isst und stattdessen schwarzen Kaffee ohne Zucker und Milch trinkt." },
+            { q: "Welche Aussage passt zu ihren Online-Lektionen und ihrem weiteren Arbeitstag?", a: ["Die Lektionen bestehen fast nur aus Kanji; andere Arbeit erledigt sie grundsätzlich abends.", "Sie unterrichtet ausschließlich Konversation und nutzt Pausen nur zum Essen.", "Die Lektionen können Grammatik, Konversation und Kanji enthalten; zwischen Aufgaben macht sie kurze Pausen und arbeitet weiter.", "Nach jeder Lektion beendet sie den Arbeitstag und macht erst am nächsten Morgen weiter."], correct: 2, why: "Im Audio werden mehrere Unterrichtsbereiche genannt; kurze Pausen trennen Unterricht und weitere Arbeit." },
+            { q: "Welche Rolle spielt der Geruch des Kaffees in ihrer Beschreibung?", a: ["Er erinnert sie daran, dass sie noch frühstücken muss.", "Er gibt ihr das Gefühl, den Tag motiviert anzugehen.", "Er macht sie müde, weshalb sie morgens Stretching macht.", "Er ist der Grund, warum sie Kaffee nur am Nachmittag trinkt."], correct: 1, why: "Sie beschreibt, dass der Kaffeegeruch bei ihr die Stimmung „今日も頑張ろう“ auslöst." },
+            { q: "Welche Reihenfolge gehört zu ihrem Abend vor dem Schlafen?", a: ["Alarm und nächsten Tagesplan prüfen, etwas Stretching machen, dann schlafen.", "Erst schlafen, später den Alarm stellen und anschließend den Tagesplan prüfen.", "Stretching, danach noch einmal arbeiten und erst morgens den Plan kontrollieren.", "Den nächsten Tagesplan schreiben, frühstücken vorbereiten und danach joggen."], correct: 0, why: "Sie stellt den Alarm, kontrolliert den nächsten Tagesplan und macht vor dem Schlafen etwas Stretching." }
           ]
         },
         {
@@ -33123,13 +33128,17 @@ ${tooltipText(segment, status)}`)}"`
           sourceUrl: "https://blog.nihongo-sayuri.com/posts/japan-train-manners/",
           blurb: "Sehr praktische Reisesprache: Bahnhofsansagen, Regeln und typische Ausdrücke, die du in Japan wirklich hören kannst.",
           vocabulary: [
+            ["旅行","りょこう","Reise"], ["計画","けいかく","Plan; planen"], ["交通","こうつう","Verkehr; Verkehrsmittel"], ["新幹線","しんかんせん","Shinkansen"],
+            ["経験","けいけん","Erfahrung"], ["緊張","きんちょう","Anspannung; nervös sein"], ["静か","しずか","ruhig; leise"], ["紹介","しょうかい","Vorstellung; vorstellen"],
             ["並ぶ","ならぶ","Schlange stehen"], ["左右","さゆう","links und rechts"], ["順番","じゅんばん","Reihenfolge"],
-            ["到着","とうちゃく","Ankunft; ankommen"], ["車内","しゃない","im Zug; Fahrzeuginnenraum"], ["着信音","ちゃくしんおん","Klingelton"],
-            ["通話","つうわ","Telefonat"], ["優先席","ゆうせんせき","Prioritätssitz"], ["高齢","こうれい","hohes Alter"],
-            ["妊娠","にんしん","Schwangerschaft"], ["譲る","ゆずる","überlassen; Platz anbieten"], ["荷物","にもつ","Gepäck"],
-            ["通路","つうろ","Gang; Durchgang"], ["駆け込み乗車","かけこみじょうしゃ","in einen schließenden Zug springen","かけこみ乗車"],
-            ["危険","きけん","gefährlich; Gefahr"], ["足元","あしもと","Bereich bei den Füßen"], ["遠慮","えんりょ","Zurückhaltung; Rücksicht"],
-            ["付近","ふきん","Umgebung; Nähe"]
+            ["到着","とうちゃく","Ankunft; ankommen"], ["車内","しゃない","im Zug; Fahrzeuginnenraum"], ["控えめ","ひかえめ","zurückhaltend; gedämpft"],
+            ["着信音","ちゃくしんおん","Klingelton"], ["通話","つうわ","Telefonat"], ["動画","どうが","Video"], ["優先席","ゆうせんせき","Prioritätssitz"],
+            ["不自由","ふじゆう","eingeschränkt; Unfreiheit"], ["高齢","こうれい","hohes Alter"], ["妊娠","にんしん","Schwangerschaft"], ["連れ","つれ","Begleitung"],
+            ["譲る","ゆずる","überlassen; Platz anbieten"], ["荷物","にもつ","Gepäck"], ["混む","こむ","voll sein; überfüllt sein"], ["通路","つうろ","Gang; Durchgang"],
+            ["塞ぐ","ふさぐ","blockieren; versperren","ふさぐ"], ["駆け込み乗車","かけこみじょうしゃ","in einen schließenden Zug springen","かけこみ乗車"],
+            ["危険","きけん","gefährlich; Gefahr"], ["安全","あんぜん","Sicherheit; sicher"], ["足元","あしもと","Bereich bei den Füßen"], ["隙間","すきま","Spalt; Zwischenraum"],
+            ["携帯電話","けいたいでんわ","Mobiltelefon"], ["設定","せってい","Einstellung; einstellen"], ["遠慮","えんりょ","Zurückhaltung; Rücksicht"],
+            ["付近","ふきん","Umgebung; Nähe"], ["空く","あく","frei werden; leer sein"], ["乗り物","のりもの","Verkehrsmittel; Fahrzeug"]
           ],
           grammar: [
             { id: "te-connect", label: "〜て / Handlungen verbinden" },
@@ -33139,11 +33148,11 @@ ${tooltipText(segment, status)}`)}"`
             { id: "temo", label: "〜ても" }
           ],
           questions: [
-            { q: "Wo wartet man laut Podcast auf den Zug?", a: ["Direkt mitten vor der Tür", "Links und rechts der Tür hinter der gelben Linie", "Auf der Treppe", "Am anderen Ende des Bahnsteigs"], correct: 1, why: "Man wartet seitlich der Tür und hinter der gelben Linie, damit Aussteigende zuerst herauskönnen." },
-            { q: "Wie soll man sich beim Sprechen im Zug verhalten?", a: ["Möglichst leise und zurückhaltend", "Nur flüstern ist erlaubt", "Telefonieren ist besser als reden", "Es gibt keine Empfehlung"], correct: 0, why: "Im Wagen soll die Stimme klein/leise gehalten werden." },
-            { q: "Was wird für Smartphones empfohlen?", a: ["Lautsprecher einschalten", "Telefonate nur an der Tür", "Stumm-/Maniermodus und keine Telefonate", "Das Handy vollständig ausschalten"], correct: 2, why: "Der Klingelton soll aus sein; Telefonate im Wagen sollen vermieden werden." },
-            { q: "Für wen sind die Prioritätssitze besonders gedacht?", a: ["Nur für Touristen", "Für ältere, schwangere, körperlich eingeschränkte Personen und Menschen mit kleinen Kindern", "Nur für Bahnmitarbeiter", "Für alle mit großem Gepäck"], correct: 1, why: "Diese Gruppen werden ausdrücklich als Beispiele genannt." },
-            { q: "Was soll man in einem vollen Zug mit einem Rucksack machen?", a: ["Auf den Boden in den Gang stellen", "Auf dem Rücken lassen", "Vorne tragen und Gepäck nah am Körper halten", "Auf einen Sitz legen"], correct: 2, why: "So blockiert man weder andere Fahrgäste noch den Durchgang." }
+            { q: "Welche Abfolge beschreibt das Einsteigen laut Podcast korrekt?", a: ["Vor der Tür warten, sofort einsteigen und danach für Aussteigende Platz machen.", "Seitlich der Tür hinter der gelben Linie warten, zuerst alle aussteigen lassen und dann einsteigen.", "Hinter der gelben Linie warten, aber vor den Aussteigenden einsteigen, solange man in einer Reihe steht.", "Seitlich warten und einsteigen, sobald die Türen öffnen; die Reihenfolge der Aussteigenden spielt keine Rolle."], correct: 1, why: "Die Reihenfolge ist: seitlich/hinter der Linie warten, Aussteigende zuerst, danach einsteigen." },
+            { q: "Welche Kombination entspricht den Hinweisen für Gespräche und Smartphones im Wagen?", a: ["Leise reden; Klingelton aus; Nachrichten sind okay, Telefonate werden vermieden.", "Leise reden; Telefonate sind okay, solange Kopfhörer benutzt werden.", "Normale Lautstärke; dafür sollen Nachrichten und Videos vermieden werden.", "Gespräche möglichst vermeiden; dafür sind Telefonate im Maniermodus erlaubt."], correct: 0, why: "Gespräche sollen leise sein, der Ton des Smartphones aus; Nachrichten sind okay, Telefonate im Wagen nicht." },
+            { q: "Was wird zu Videos oder Musik auf dem Smartphone gesagt?", a: ["Sie sind nur in leeren Wagen erlaubt.", "Sie sollen grundsätzlich ausgeschaltet bleiben.", "Man kann sie hören, wenn man Kopfhörer benutzt.", "Sie sind nur in der Nähe der Tür erlaubt."], correct: 2, why: "Für Video und Musik werden Kopfhörer empfohlen; die Regel richtet sich gegen hörbaren Ton im Wagen." },
+            { q: "Welche Personengruppe wird in der Erklärung der 優先席 NICHT als Beispiel genannt?", a: ["Schwangere Personen", "Menschen mit kleinen Kindern", "Personen mit körperlicher Einschränkung", "Reisende mit großem Koffer"], correct: 3, why: "Großes Gepäck ist kein genanntes Kriterium für den Prioritätssitz; die anderen Gruppen werden ausdrücklich aufgeführt." },
+            { q: "Welche zwei Hinweise gehören im vollen Zug zusammen?", a: ["Rucksack auf dem Rücken lassen und möglichst nah an der Tür stehen.", "Rucksack nach vorne nehmen und Gepäck so halten, dass Tür und Gang nicht blockiert werden.", "Gepäck auf den Boden stellen und sich selbst in die Mitte des Ganges stellen.", "Rucksack absetzen und auf einen freien Sitz legen, damit der Rücken frei bleibt."], correct: 1, why: "Im vollen Zug soll der Rucksack vorne getragen und Gepäck nah am Körper gehalten werden, ohne Tür oder Gang zu versperren." }
           ]
         },
         {
@@ -33156,12 +33165,14 @@ ${tooltipText(segment, status)}`)}"`
           sourceUrl: "https://blog.nihongo-sayuri.com/posts/japan-onsen-sento-manners-rules/",
           blurb: "Etwas dichterer Wortschatz, aber sehr klarer Kontext. Ideal als Stretch-Lektion zwischen N4 und echtem N3-Hören.",
           vocabulary: [
-            ["温泉","おんせん","heiße Quelle; Onsen"], ["銭湯","せんとう","öffentliches Badehaus"], ["湯船","ゆぶね","Badewanne; Badebecken"],
-            ["脱衣所","だついじょ","Umkleideraum"], ["洗い場","あらいば","Waschbereich"], ["かけ湯","かけゆ","Abspülen vor dem Baden"],
-            ["温度","おんど","Temperatur"], ["慣らす","ならす","gewöhnen; akklimatisieren"], ["負担","ふたん","Belastung"],
-            ["結ぶ","むすぶ","binden"], ["マナー違反","まなーいはん","Verstoß gegen die Etikette"], ["工夫","くふう","Kniff; Idee; Maßnahme"],
-            ["拭く","ふく","abwischen; abtrocknen"], ["隠す","かくす","verstecken; bedecken"], ["貸切風呂","かしきりぶろ","privates Bad"],
-            ["撮影禁止","さつえいきんし","Fotografieren verboten"], ["露天風呂","ろてんぶろ","Außenbad"], ["内湯","うちゆ","Innenbad"]
+            ["温泉","おんせん","heiße Quelle; Onsen"], ["銭湯","せんとう","öffentliches Badehaus"], ["公衆浴場","こうしゅうよくじょう","öffentliches Badehaus"],
+            ["自然","しぜん","Natur; natürlich"], ["裸","はだか","nackt; Nacktheit"], ["驚く","おどろく","überrascht sein"], ["湯船","ゆぶね","Badewanne; Badebecken"],
+            ["脱衣所","だついじょ","Umkleideraum"], ["洗い場","あらいば","Waschbereich"], ["洗う","あらう","waschen"], ["かけ湯","かけゆ","Abspülen vor dem Baden"],
+            ["何度","なんど","mehrmals; wie oft"], ["温度","おんど","Temperatur"], ["慣らす","ならす","gewöhnen; akklimatisieren"], ["負担","ふたん","Belastung"], ["効果","こうか","Wirkung; Effekt"],
+            ["髪の毛","かみのけ","Haar"], ["結ぶ","むすぶ","binden"], ["マナー違反","まなーいはん","Verstoß gegen die Etikette"], ["工夫","くふう","Kniff; Idee; Maßnahme"],
+            ["濡れる","ぬれる","nass werden"], ["床","ゆか","Fußboden"], ["拭く","ふく","abwischen; abtrocknen"], ["隠す","かくす","verstecken; bedecken"], ["貼る","はる","kleben; anbringen"],
+            ["貸切風呂","かしきりぶろ","privates Bad"], ["予約","よやく","Reservierung; reservieren"], ["撮影禁止","さつえいきんし","Fotografieren verboten"], ["写真","しゃしん","Foto"],
+            ["男湯","おとこゆ","Männerbad"], ["女湯","おんなゆ","Frauenbad"], ["露天風呂","ろてんぶろ","Außenbad"], ["内湯","うちゆ","Innenbad"], ["建物","たてもの","Gebäude"], ["勇気","ゆうき","Mut"]
           ],
           grammar: [
             { id: "sou-da-hearsay", label: "〜そうだ (Hörensagen)" },
@@ -33171,11 +33182,11 @@ ${tooltipText(segment, status)}`)}"`
             { id: "tara", label: "〜たら" }
           ],
           questions: [
-            { q: "Was soll man tun, bevor man in das heiße Becken steigt?", a: ["Nur die Hände waschen", "Den Körper waschen und かけ湯 machen", "Erst fotografieren", "Sofort ins Becken steigen"], correct: 1, why: "Der Körper wird vorher gereinigt; かけ湯 hilft außerdem, sich an die Temperatur zu gewöhnen." },
-            { q: "Warum ist かけ湯 außer zur Reinigung nützlich?", a: ["Es kühlt das Wasser", "Es gewöhnt den Körper an die Wassertemperatur und reduziert Belastung", "Es ersetzt das Duschen vollständig", "Es ist nur Tradition ohne Zweck"], correct: 1, why: "Im Podcast wird ausdrücklich die Gewöhnung an die Temperatur und die geringere Belastung erwähnt." },
-            { q: "Was soll man mit langen Haaren machen?", a: ["Im Wasser auswaschen", "Offen lassen", "Zusammenbinden und aus dem Wasser halten", "Mit einem Handtuch untertauchen"], correct: 2, why: "Lange Haare sollen zusammengebunden werden und nicht ins Badewasser gelangen." },
-            { q: "Was gilt für das kleine Handtuch?", a: ["Es darf nicht ins Badebecken", "Es muss immer im Wasser bleiben", "Es wird am Eingang abgegeben", "Es wird als Badematte benutzt"], correct: 0, why: "Das Handtuch soll nicht in das Wasser des Beckens gelangen." },
-            { q: "Welche Regel gilt für Smartphone und Kamera?", a: ["Fotos sind nur draußen verboten", "Fotografieren ist im Bad erlaubt, wenn niemand zu sehen ist", "Smartphone und Kamera sollen im Badebereich nicht benutzt werden", "Nur Videos sind verboten"], correct: 2, why: "Onsen und Sentō sind Bereiche mit Fotografierverbot." }
+            { q: "Welche Beschreibung von かけ湯 ist vollständig richtig?", a: ["Es wird erst nach dem Baden gemacht, damit der Boden im Umkleideraum trocken bleibt.", "Es gehört vor dem Badebecken dazu: Es reinigt zusätzlich und gewöhnt den Körper an die Temperatur.", "Es ersetzt das Waschen am 洗い場 und dient nur dazu, Wasser zu sparen.", "Es ist nur bei sehr heißen Onsen nötig und hat nichts mit der körperlichen Belastung zu tun."], correct: 1, why: "かけ湯 kommt vor dem Becken; neben Reinigung wird ausdrücklich die Gewöhnung an die Temperatur und geringere Belastung genannt." },
+            { q: "Welche Kombination aus Haar- und Handtuchregel stimmt?", a: ["Lange Haare zusammenbinden; das kleine Handtuch nicht ins Beckenwasser legen.", "Lange Haare offen lassen; dafür muss das Handtuch auf dem Kopf liegen.", "Haare dürfen ins Wasser, solange das Handtuch außerhalb des Beckens bleibt.", "Haare zusammenbinden; das Handtuch soll zum Abkühlen ins Becken getaucht werden."], correct: 0, why: "Haare sollen nicht ins Wasser gelangen; auch das kleine Handtuch bleibt aus dem Becken." },
+            { q: "Warum soll man sich vor der Rückkehr in den 脱衣所 abtrocknen?", a: ["Damit das Handtuch später nicht mehr gebraucht wird.", "Damit man sich schneller an die Außentemperatur gewöhnt.", "Damit der Boden im Umkleideraum nicht durch den nassen Körper nass wird.", "Weil man im Umkleideraum keine Handtücher benutzen darf."], correct: 2, why: "Der Podcast begründet die Regel damit, dass ein nasser Körper den Boden des Umkleideraums nass machen würde." },
+            { q: "Welche Aussage zu Tattoos entspricht dem Podcast?", a: ["Mit Tattoo ist der Zutritt in Japan ausnahmslos überall verboten.", "Tattoos spielen nur in Sentō eine Rolle, nicht in Onsen.", "Es gibt weiterhin Einschränkungen, aber manche Orte akzeptieren Abdecksticker oder Tattoos; als Alternative kann man ein privates Bad reservieren.", "Man darf mit Tattoo nur hinein, wenn es vor Ort fotografiert und registriert wurde."], correct: 2, why: "Es werden Orte mit Tattoo-Erlaubnis bzw. Abdeckstickern sowie 貸切風呂 als mögliche Alternative genannt." },
+            { q: "Welche Aussage fasst die Smartphone-/Kameraregel korrekt zusammen?", a: ["Fotografieren ist erlaubt, wenn keine andere Person im Bild ist.", "Nur Videos sind verboten; Fotos ohne Blitz sind okay.", "Im Badebereich gilt 撮影禁止, also sollen Smartphone und Kamera dort nicht zum Fotografieren benutzt werden.", "Das Verbot gilt nur im Innenbad, nicht im 露天風呂."], correct: 2, why: "撮影禁止 wird als generelle Regel für Onsen/Sentō erklärt, nicht nur für eine bestimmte Aufnahmeart oder einen Teilbereich." }
           ]
         }
       ].map(lesson => ({
@@ -33242,11 +33253,14 @@ ${tooltipText(segment, status)}`)}"`
         const manual = (Array.isArray(source.knownVocabulary) ? source.knownVocabulary : []).find(item => vocabMatches(item, target)) || null;
         const learned = (Array.isArray(source.vocabulary) ? source.vocabulary : []).find(item => vocabMatches(item, target)) || null;
         const stage = Math.max(0, Math.min(9, Number(learned?.stage || 0)));
+        const learnedId = String(learned?.packEntryId || learned?.id || "");
+        const priority = Boolean(learnedId && Array.isArray(source.corePriorityIds) && source.corePriorityIds.map(String).includes(learnedId));
         if (manual || learned?.guruPassed || stage >= 5) {
           return { kind: "known", label: manual ? "Als bekannt markiert" : stage >= 9 ? "Abgeschlossen" : stage >= 7 ? "Master+" : stage === 6 ? "Guru 2" : "Guru 1", stage, item: learned, manual };
         }
         if (learned && stage >= 1) return { kind: "learning", label: `Apprentice ${Math.min(4, stage)}`, stage, item: learned };
         if (learned?.sourceType === "mining") return { kind: "queued", label: "Mining · noch neu", stage, item: learned };
+        if (learned?.sourceType === "core" && priority) return { kind: "priority", label: `Core vorgezogen${learned.level ? ` · L${learned.level}` : ""}`, stage, item: learned };
         if (learned?.sourceType === "core") return { kind: "queued", label: `Core · noch neu${learned.level ? ` (L${learned.level})` : ""}`, stage, item: learned };
         return { kind: "unknown", label: "Noch unbekannt", stage: 0, item: null };
       }
@@ -33281,8 +33295,8 @@ ${tooltipText(segment, status)}`)}"`
         const vocab = lesson.vocabulary.map(entry => ({ ...entry, status: vocabularyStatus(entry) }));
         const known = vocab.filter(entry => entry.status.kind === "known").length;
         const learning = vocab.filter(entry => entry.status.kind === "learning").length;
-        const queued = vocab.filter(entry => entry.status.kind === "queued").length;
-        const unknown = vocab.length - known - learning;
+        const queued = vocab.filter(entry => ["queued","priority"].includes(entry.status.kind)).length;
+        const unknown = vocab.length - known - learning - queued;
         const vocabPercent = Math.round(known / Math.max(1, vocab.length) * 100);
         const learningPercent = Math.round((known + learning) / Math.max(1, vocab.length) * 100);
         const grammar = lesson.grammar.map(entry => ({ ...entry, status: grammarStatus(entry) }));
@@ -33316,7 +33330,7 @@ ${tooltipText(segment, status)}`)}"`
         const style = document.createElement("style");
         style.id = "kqListeningLabStyles";
         style.textContent = `
-          #kqListeningLabRoot{max-width:1180px;margin:0 auto;display:grid;gap:16px;padding-bottom:28px}.kq-listen-hero{position:relative;overflow:hidden;padding:24px;border-radius:24px;background:linear-gradient(135deg,#433d74,#73558f 52%,#c3789c);color:white;box-shadow:0 16px 42px rgba(64,48,91,.18)}.kq-listen-hero:after{content:'聴解';position:absolute;right:18px;bottom:-35px;font-weight:950;font-size:7rem;opacity:.1}.kq-listen-hero h2,.kq-listen-hero p{margin:0}.kq-listen-hero p{margin-top:7px;max-width:760px;line-height:1.55;opacity:.92}.kq-listen-hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.kq-listen-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:.78rem;font-weight:850}.kq-listen-toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.kq-listen-toolbar input{min-width:min(330px,100%);flex:1}.kq-listen-filters{display:flex;gap:6px;flex-wrap:wrap}.kq-listen-filters button{padding:8px 11px;border-radius:999px;background:#f4f0fa;color:var(--primary-dark);font-weight:850}.kq-listen-filters button.active{background:var(--primary);color:white}.kq-listen-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.kq-listen-card{display:grid;gap:13px;padding:18px;border:1px solid var(--border);border-radius:20px;background:var(--panel);box-shadow:var(--shadow)}.kq-listen-card.rewatch{border-color:#89c5a5;background:linear-gradient(145deg,#f7fff9,#fff)}.kq-listen-card-head{display:flex;justify-content:space-between;gap:12px}.kq-listen-card h3,.kq-listen-card p{margin:0}.kq-listen-card p{color:var(--muted);line-height:1.45}.kq-listen-level{height:max-content;padding:6px 9px;border-radius:999px;background:#eee8fa;color:var(--primary-dark);font-size:.72rem;font-weight:950;white-space:nowrap}.kq-listen-bars{display:grid;gap:9px}.kq-listen-bar-label{display:flex;justify-content:space-between;gap:10px;font-size:.77rem;font-weight:850}.kq-listen-bar-track{height:9px;border-radius:999px;overflow:hidden;background:#ece8f0}.kq-listen-bar-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8d71bd,#d581a6)}.kq-listen-bar-track.grammar span{background:linear-gradient(90deg,#5e91b3,#7eb8a4)}.kq-listen-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.kq-listen-kpi{padding:9px;border-radius:12px;background:#faf8ff;border:1px solid var(--border)}.kq-listen-kpi span,.kq-listen-kpi strong{display:block}.kq-listen-kpi span{font-size:.68rem;color:var(--muted);font-weight:800}.kq-listen-kpi strong{margin-top:2px;color:var(--primary-dark)}.kq-listen-delta{padding:10px 11px;border-radius:12px;background:#f5fbf7;border:1px solid #cbe5d6;color:#397057;font-size:.78rem;font-weight:850}.kq-listen-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}.kq-listen-session{display:grid;gap:14px}.kq-listen-breadcrumb{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.kq-listen-media{overflow:hidden;border:1px solid var(--border);border-radius:18px;background:#14131a}.kq-listen-media iframe{display:block;width:100%;min-height:390px;border:0}.kq-listen-media.spotify iframe{min-height:152px}.kq-listen-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kq-listen-guide>div{padding:12px;border:1px solid var(--border);border-radius:14px;background:#faf8ff}.kq-listen-guide strong,.kq-listen-guide span{display:block}.kq-listen-guide span{margin-top:4px;color:var(--muted);font-size:.76rem;line-height:1.4}.kq-listen-question{padding:20px;border-radius:20px;border:1px solid var(--border);background:var(--panel);box-shadow:var(--shadow)}.kq-listen-question h3{margin:8px 0 16px;line-height:1.45}.kq-listen-options{display:grid;gap:9px}.kq-listen-options button{display:flex;gap:10px;align-items:flex-start;padding:13px;border-radius:14px;border:1px solid var(--border);background:white;color:var(--text);text-align:left}.kq-listen-options button.selected{border-color:var(--primary);background:#f7f2ff}.kq-listen-options button.correct{border-color:#6eb58d;background:#edf9f2}.kq-listen-options button.wrong{border-color:#d77a90;background:#fff0f3}.kq-listen-option-key{display:grid;place-items:center;flex:0 0 auto;width:29px;height:29px;border-radius:9px;background:#eee8fa;color:var(--primary-dark);font-weight:950}.kq-listen-feedback{margin-top:12px;padding:12px;border-radius:13px;background:#f6f3fb;line-height:1.45}.kq-listen-result-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:13px;align-items:start}.kq-listen-score{padding:22px;border-radius:20px;background:linear-gradient(135deg,#f2edff,#fff7fb);border:1px solid #ddd2ef}.kq-listen-score strong{display:block;font-size:3rem;color:var(--primary)}.kq-listen-vocab-list,.kq-listen-grammar-list{display:grid;gap:7px}.kq-listen-vocab-row,.kq-listen-grammar-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(120px,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:white}.kq-listen-vocab-word strong,.kq-listen-vocab-word span{display:block}.kq-listen-vocab-word span{font-size:.72rem;color:var(--muted)}.kq-listen-status{padding:5px 8px;border-radius:999px;font-size:.68rem;font-weight:900;white-space:nowrap}.kq-listen-status.known{background:#dff3e7;color:#397158}.kq-listen-status.learning{background:#fff0cf;color:#8a641b}.kq-listen-status.queued{background:#ece8fb;color:#66538f}.kq-listen-status.unknown{background:#ffe7ec;color:#964e61}.kq-listen-status.unmapped{background:#efedf1;color:#77717d}.kq-listen-row-actions{display:flex;gap:6px;justify-content:flex-end}.kq-listen-row-actions button{padding:7px 9px;border-radius:9px;font-size:.7rem}.kq-listen-note{padding:11px 13px;border-radius:13px;background:#faf8ff;border:1px solid var(--border);color:var(--muted);line-height:1.45;font-size:.8rem}.kq-listen-empty{padding:28px;text-align:center;border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
+          #kqListeningLabRoot{max-width:1180px;margin:0 auto;display:grid;gap:16px;padding-bottom:28px}.kq-listen-hero{position:relative;overflow:hidden;padding:24px;border-radius:24px;background:linear-gradient(135deg,#433d74,#73558f 52%,#c3789c);color:white;box-shadow:0 16px 42px rgba(64,48,91,.18)}.kq-listen-hero:after{content:'聴解';position:absolute;right:18px;bottom:-35px;font-weight:950;font-size:7rem;opacity:.1}.kq-listen-hero h2,.kq-listen-hero p{margin:0}.kq-listen-hero p{margin-top:7px;max-width:760px;line-height:1.55;opacity:.92}.kq-listen-hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.kq-listen-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:.78rem;font-weight:850}.kq-listen-toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.kq-listen-toolbar input{min-width:min(330px,100%);flex:1}.kq-listen-filters{display:flex;gap:6px;flex-wrap:wrap}.kq-listen-filters button{padding:8px 11px;border-radius:999px;background:#f4f0fa;color:var(--primary-dark);font-weight:850}.kq-listen-filters button.active{background:var(--primary);color:white}.kq-listen-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.kq-listen-card{display:grid;gap:13px;padding:18px;border:1px solid var(--border);border-radius:20px;background:var(--panel);box-shadow:var(--shadow)}.kq-listen-card.rewatch{border-color:#89c5a5;background:linear-gradient(145deg,#f7fff9,#fff)}.kq-listen-card-head{display:flex;justify-content:space-between;gap:12px}.kq-listen-card h3,.kq-listen-card p{margin:0}.kq-listen-card p{color:var(--muted);line-height:1.45}.kq-listen-level{height:max-content;padding:6px 9px;border-radius:999px;background:#eee8fa;color:var(--primary-dark);font-size:.72rem;font-weight:950;white-space:nowrap}.kq-listen-bars{display:grid;gap:9px}.kq-listen-bar-label{display:flex;justify-content:space-between;gap:10px;font-size:.77rem;font-weight:850}.kq-listen-bar-track{height:9px;border-radius:999px;overflow:hidden;background:#ece8f0}.kq-listen-bar-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8d71bd,#d581a6)}.kq-listen-bar-track.grammar span{background:linear-gradient(90deg,#5e91b3,#7eb8a4)}.kq-listen-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.kq-listen-kpi{padding:9px;border-radius:12px;background:#faf8ff;border:1px solid var(--border)}.kq-listen-kpi span,.kq-listen-kpi strong{display:block}.kq-listen-kpi span{font-size:.68rem;color:var(--muted);font-weight:800}.kq-listen-kpi strong{margin-top:2px;color:var(--primary-dark)}.kq-listen-delta{padding:10px 11px;border-radius:12px;background:#f5fbf7;border:1px solid #cbe5d6;color:#397057;font-size:.78rem;font-weight:850}.kq-listen-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}.kq-listen-session{display:grid;gap:14px}.kq-listen-breadcrumb{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.kq-listen-media{overflow:hidden;border:1px solid var(--border);border-radius:18px;background:#14131a}.kq-listen-media iframe{display:block;width:100%;min-height:390px;border:0}.kq-listen-media.spotify iframe{min-height:152px}.kq-listen-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kq-listen-guide>div{padding:12px;border:1px solid var(--border);border-radius:14px;background:#faf8ff}.kq-listen-guide strong,.kq-listen-guide span{display:block}.kq-listen-guide span{margin-top:4px;color:var(--muted);font-size:.76rem;line-height:1.4}.kq-listen-question{padding:20px;border-radius:20px;border:1px solid var(--border);background:var(--panel);box-shadow:var(--shadow)}.kq-listen-question h3{margin:8px 0 16px;line-height:1.45}.kq-listen-options{display:grid;gap:9px}.kq-listen-options button{display:flex;gap:10px;align-items:flex-start;padding:13px;border-radius:14px;border:1px solid var(--border);background:white;color:var(--text);text-align:left}.kq-listen-options button.selected{border-color:var(--primary);background:#f7f2ff}.kq-listen-options button.correct{border-color:#6eb58d;background:#edf9f2}.kq-listen-options button.wrong{border-color:#d77a90;background:#fff0f3}.kq-listen-option-key{display:grid;place-items:center;flex:0 0 auto;width:29px;height:29px;border-radius:9px;background:#eee8fa;color:var(--primary-dark);font-weight:950}.kq-listen-feedback{margin-top:12px;padding:12px;border-radius:13px;background:#f6f3fb;line-height:1.45}.kq-listen-result-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:13px;align-items:start}.kq-listen-score{padding:22px;border-radius:20px;background:linear-gradient(135deg,#f2edff,#fff7fb);border:1px solid #ddd2ef}.kq-listen-score strong{display:block;font-size:3rem;color:var(--primary)}.kq-listen-vocab-list,.kq-listen-grammar-list{display:grid;gap:7px}.kq-listen-vocab-row,.kq-listen-grammar-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(120px,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:white}.kq-listen-vocab-word strong,.kq-listen-vocab-word span{display:block}.kq-listen-vocab-word span{font-size:.72rem;color:var(--muted)}.kq-listen-status{padding:5px 8px;border-radius:999px;font-size:.68rem;font-weight:900;white-space:nowrap}.kq-listen-status.known{background:#dff3e7;color:#397158}.kq-listen-status.learning{background:#fff0cf;color:#8a641b}.kq-listen-status.queued{background:#ece8fb;color:#66538f}.kq-listen-status.priority{background:#e2f0ff;color:#3f668f}.kq-listen-status.unknown{background:#ffe7ec;color:#964e61}.kq-listen-status.unmapped{background:#efedf1;color:#77717d}.kq-listen-row-actions{display:flex;gap:6px;justify-content:flex-end}.kq-listen-row-actions button{padding:7px 9px;border-radius:9px;font-size:.7rem}.kq-listen-note{padding:11px 13px;border-radius:13px;background:#faf8ff;border:1px solid var(--border);color:var(--muted);line-height:1.45;font-size:.8rem}.kq-listen-empty{padding:28px;text-align:center;border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
           @media(max-width:900px){.kq-listen-grid,.kq-listen-result-grid{grid-template-columns:1fr}.kq-listen-media iframe{min-height:320px}}@media(max-width:650px){.kq-listen-grid,.kq-listen-guide{grid-template-columns:1fr}.kq-listen-kpis{grid-template-columns:1fr 1fr}.kq-listen-vocab-row,.kq-listen-grammar-row{grid-template-columns:1fr}.kq-listen-row-actions{justify-content:flex-start}.kq-listen-media iframe{min-height:235px}}
         `;
         document.head.appendChild(style);
@@ -33504,6 +33518,32 @@ ${tooltipText(segment, status)}`)}"`
         return true;
       }
 
+      function prioritizeCore(entry, lesson) {
+        const status = vocabularyStatus(entry);
+        const item = status.item;
+        if (!item || item.sourceType !== "core") return false;
+        const id = String(item.packEntryId || item.id || "");
+        if (!id) return false;
+        try {
+          if (window.KotobaQuestCorePriority?.queue?.(id)) {
+            try { if (typeof toast === "function") toast(`${entry.word} wurde als vorgezogene Core-Lektion vorgemerkt.`); } catch {}
+            return true;
+          }
+        } catch {}
+        const source = sourceData();
+        if (!Array.isArray(source.corePriorityIds)) source.corePriorityIds = [];
+        if (!source.corePriorityIds.map(String).includes(id)) source.corePriorityIds.push(id);
+        persist();
+        try { if (typeof toast === "function") toast(`${entry.word} wurde als vorgezogene Core-Lektion vorgemerkt.`); } catch {}
+        return true;
+      }
+
+      function prioritizedCoreCount() {
+        try { return Number(window.KotobaQuestCorePriority?.getItems?.().length || 0); } catch {}
+        const source = sourceData();
+        return Array.isArray(source.corePriorityIds) ? source.corePriorityIds.length : 0;
+      }
+
       function renderResult() {
         const root = document.getElementById("kqListeningLabRoot");
         const lesson = LESSONS.find(item => item.id === currentLessonId);
@@ -33514,12 +33554,17 @@ ${tooltipText(segment, status)}`)}"`
         root.innerHTML = `<div class="kq-listen-session"><div class="kq-listen-breadcrumb"><button class="ghost" data-kq-listen-library>← Bibliothek</button><span class="kq-listen-level">${esc(lesson.level)}</span><strong>${esc(lesson.title)}</strong></div>
           <div class="kq-listen-result-grid"><section class="kq-listen-score"><span class="small muted">Listening-Comprehension</span><strong>${Math.round(Number(p.lastScore || 0))}%</strong><h3>${esc(scoreLabel(Number(p.lastScore || 0)))}</h3><p class="muted">Wortschatz beim ersten Versuch: ${Math.round(first)}% · heute: ${analysis.vocabPercent}%${analysis.vocabPercent > first ? ` · +${analysis.vocabPercent - first} Prozentpunkte` : ""}</p><div class="kq-listen-actions"><button class="primary" data-kq-listen-relisten>🎧 Noch einmal hören</button><button class="secondary" data-kq-listen-requiz>Fragen erneut testen</button><a class="ghost" href="${esc(lesson.sourceUrl)}" target="_blank" rel="noopener noreferrer">Transcript beim Original ↗</a></div></section>
           <section class="card"><div class="section-title"><div><h3>Warum war das schwierig?</h3><p>Die App trennt dein lexikalisches/grammatisches Vorwissen vom tatsächlichen Hörverstehen.</p></div></div><div class="kq-listen-kpis"><div class="kq-listen-kpi"><span>Sicherer Wortschatz</span><strong>${analysis.vocabPercent}%</strong></div><div class="kq-listen-kpi"><span>Apprentice</span><strong>${analysis.learning}</strong></div><div class="kq-listen-kpi"><span>Grammatik sicher</span><strong>${analysis.grammarPercent == null ? "–" : `${analysis.grammarPercent}%`}</strong></div></div><p class="kq-listen-note">Wenn der Wortschatz hoch ist, dein Verständnis aber niedrig bleibt, ist genau das wertvolles Listening-Training: Dann liegt die Hürde eher bei Lauterkennung, Sprechtempo, Wortgrenzen oder Verarbeitung im echten Satz – nicht bloß bei fehlenden Karteikarten.</p></section></div>
-          <section class="card"><div class="section-title"><div><h3>Wortschatz dieser Lektion</h3><p>Guru+ oder manuell bekannt zählt als sicher. Apprentice bleibt bewusst separat sichtbar.</p></div><button class="secondary" id="kqListeningMineAll">Alle wirklich unbekannten ins Mining</button></div><div class="kq-listen-vocab-list">${analysis.vocab.map((entry, index) => `<div class="kq-listen-vocab-row"><div class="kq-listen-vocab-word"><strong>${esc(entry.word)}</strong><span>${esc(entry.reading)}</span></div><div>${esc(entry.meaning)}</div><div class="kq-listen-row-actions"><span class="kq-listen-status ${entry.status.kind}">${esc(entry.status.label)}</span>${entry.status.kind === "unknown" ? `<button class="secondary" data-kq-listen-mine="${index}">Mining</button><button class="ghost" data-kq-listen-known="${index}">Kenne ich</button>` : entry.status.kind === "queued" ? `<button class="ghost" data-kq-listen-known="${index}">Kenne ich</button>` : ""}</div></div>`).join("")}</div></section>
+          <section class="card"><div class="section-title"><div><h3>Wortschatz dieser Lektion</h3><p>${analysis.vocab.length} kuratierte Inhaltswörter aus dem Material. Guru+ oder manuell bekannt zählt als sicher; Apprentice bleibt separat.</p></div><div class="kq-listen-actions"><button class="secondary" id="kqListeningMineAll">Alle wirklich unbekannten ins Mining</button>${prioritizedCoreCount() ? `<button class="primary" id="kqListeningStartPriority">Vorgezogene Core-Wörter lernen (${prioritizedCoreCount()})</button>` : ""}</div></div><div class="kq-listen-vocab-list">${analysis.vocab.map((entry, index) => {
+            const futureCore = entry.status.kind === "queued" && entry.status.item?.sourceType === "core" && Number(entry.status.item?.level || 0) > Number(sourceData().currentLevel || 1);
+            return `<div class="kq-listen-vocab-row"><div class="kq-listen-vocab-word"><strong>${esc(entry.word)}</strong><span>${esc(entry.reading)}</span></div><div>${esc(entry.meaning)}</div><div class="kq-listen-row-actions"><span class="kq-listen-status ${entry.status.kind}">${esc(entry.status.label)}</span>${entry.status.kind === "unknown" ? `<button class="secondary" data-kq-listen-mine="${index}">Mining</button><button class="ghost" data-kq-listen-known="${index}">Kenne ich</button>` : futureCore ? `<button class="secondary" data-kq-listen-priority="${index}">Vorziehen</button><button class="ghost" data-kq-listen-known="${index}">Kenne ich</button>` : entry.status.kind === "queued" ? `<button class="ghost" data-kq-listen-known="${index}">Kenne ich</button>` : ""}</div></div>`;
+          }).join("")}</div></section>
           <section class="card"><div class="section-title"><div><h3>Grammatik-Abdeckung</h3><p>Hier werden nur kuratierte Strukturen verglichen; die App behauptet nicht, beliebige Grammatik automatisch aus Audio zu erkennen.</p></div></div><div class="kq-listen-grammar-list">${analysis.grammar.map(entry => `<div class="kq-listen-grammar-row"><strong>${esc(entry.label)}</strong><span>${entry.status.kind === "known" ? "Diese Struktur ist in deinem Kotoba-Fortschritt sicher." : entry.status.kind === "learning" ? "Du hast sie schon berührt, aber sie ist noch nicht sicher." : entry.status.kind === "unmapped" ? "Noch nicht zuverlässig einem Kotoba-Grammatikpunkt zugeordnet." : "Noch nicht als sicher nachgewiesen."}</span><span class="kq-listen-status ${entry.status.kind}">${esc(entry.status.label)}</span></div>`).join("")}</div></section>
           <div class="kq-listen-note">💾 Die Medien selbst werden nicht in deinem Kotoba-Speicher abgelegt. Gespeichert werden nur kleine Fortschrittswerte wie Versuche, Scores und deine damalige Wortschatz-Abdeckung. Die Vokabel-/Grammatik-Prozentwerte werden bei jedem Öffnen aus deinem aktuellen SRS-Stand neu berechnet.</div></div>`;
         bindCommon(root);
         root.querySelectorAll("[data-kq-listen-mine]").forEach(button => button.addEventListener("click", () => { const entry = lesson.vocabulary[Number(button.dataset.kqListenMine)]; if (entry) addMining(entry, lesson); mode = "result"; openView(); renderResult(); }));
         root.querySelectorAll("[data-kq-listen-known]").forEach(button => button.addEventListener("click", () => { const entry = lesson.vocabulary[Number(button.dataset.kqListenKnown)]; if (entry) markKnown(entry, lesson); mode = "result"; openView(); renderResult(); }));
+        root.querySelectorAll("[data-kq-listen-priority]").forEach(button => button.addEventListener("click", () => { const entry = lesson.vocabulary[Number(button.dataset.kqListenPriority)]; if (entry) prioritizeCore(entry, lesson); mode = "result"; openView(); renderResult(); }));
+        root.querySelector("#kqListeningStartPriority")?.addEventListener("click", () => { try { if (typeof startLessons === "function") startLessons("core"); } catch {} });
         root.querySelector("#kqListeningMineAll")?.addEventListener("click", () => { analysis.vocab.filter(entry => entry.status.kind === "unknown").forEach(entry => addMining(entry, lesson)); mode = "result"; openView(); renderResult(); });
         root.querySelectorAll("[data-kq-listen-relisten]").forEach(button => button.addEventListener("click", () => { mode = "listen"; quizIndex = 0; quizAnswers = []; quizFeedback = null; renderSession(); }));
         root.querySelectorAll("[data-kq-listen-requiz]").forEach(button => button.addEventListener("click", () => { mode = "quiz"; quizIndex = 0; quizAnswers = []; quizFeedback = null; renderQuiz(); }));
@@ -33565,6 +33610,347 @@ ${tooltipText(segment, status)}`)}"`
       ensureView();
       installStyles();
       window.KotobaQuestListeningLab = { version: VERSION, open, refresh: () => { if (mode === "library") renderLibrary(); else renderSession(); }, getStats, getLessonAnalysis: id => { const lesson = LESSONS.find(item => item.id === id); return lesson ? analyzeLesson(lesson) : null; }, getCatalog: () => LESSONS.map(lesson => ({ id: lesson.id, title: lesson.title, source: lesson.source, level: lesson.level, minutes: lesson.minutes })) };
+    }
+
+
+    function productionLabBootstrap() {
+      if (window.__KOTOBA_PRODUCTION_LAB_V1__) return;
+      window.__KOTOBA_PRODUCTION_LAB_V1__ = true;
+
+      const VERSION = "0.1";
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const SHADOWING = [
+        {
+          id:"sayuri-daily-shadow",
+          title:"Tagesroutine · Guided Shadowing",
+          source:"Nihongo Sayuri",
+          level:"N4",
+          minutes:8,
+          mediaId:"w6UHVUldvAk",
+          sourceUrl:"https://blog.nihongo-sayuri.com/posts/japanese-listening-practice-daily-routine-n4/",
+          blurb:"Dasselbe native Material wie im Listening Lab, jetzt als vierstufige Sprechübung. Der Originalartikel empfiehlt ausdrücklich: erst lesen, dann Satz für Satz nachsprechen.",
+          mode:"manual-pause"
+        },
+        {
+          id:"listening-room-n5n4-shadow",
+          title:"Repeat After Me · A Day in My Life",
+          source:"Japanese Listening Room",
+          level:"N5–N4",
+          minutes:17,
+          mediaId:"hYjTIsWa4wI",
+          sourceUrl:"https://www.youtube.com/watch?v=hYjTIsWa4wI",
+          blurb:"Shadowing-Video mit langsamer, klarer Sprache und eingebauten Repeat-After-Me-Phasen von zwei japanischen Muttersprachlerinnen. Du kannst auch nur ein Kapitel trainieren.",
+          mode:"built-in-repeat"
+        },
+        {
+          id:"japanese-suki-n4n3-shadow",
+          title:"Alltagsdialoge · N4–N3 Shadowing",
+          source:"Japanese Suki",
+          level:"N4–N3",
+          minutes:15,
+          mediaId:"okxrRenOaNQ",
+          sourceUrl:"https://www.youtube.com/watch?v=okxrRenOaNQ",
+          blurb:"Zusammenhängende Alltagsdialoge rund um Uni, Buchladen, Café und Zukunftspläne. Gut als nächster Schritt nach langsamem Repeat-After-Me.",
+          mode:"built-in-shadow"
+        }
+      ];
+
+      const WRITING = [
+        {
+          id:"routine-tekara",
+          level:"N4",
+          title:"Meine Morgenroutine",
+          prompt:"Schreibe 2–4 Sätze über deinen Morgen. Sag, wann du ungefähr aufstehst und was du danach machst.",
+          goals:["Verwende 〜てから mindestens einmal.","Nenne eine Zeit oder Tageszeit.","Schreibe mindestens zwei Handlungen."],
+          checks:[
+            {label:"〜てから verwendet", any:["てから"]},
+            {label:"Zeit/Tageszeit genannt", any:["時","朝","午前","毎朝","ごろ"]},
+            {label:"Mindestens ca. 25 Zeichen produziert", minChars:25}
+          ],
+          models:["毎朝七時ごろ起きます。顔を洗ってから、コーヒーを飲みます。それから仕事を始めます。","朝は六時半に起きます。シャワーを浴びてから、朝ごはんを食べます。"]
+        },
+        {
+          id:"train-advice",
+          level:"N4",
+          title:"Eine Zugregel erklären",
+          prompt:"Erkläre einem Freund auf Japanisch zwei Dinge, die man in einem japanischen Zug beachten sollte.",
+          goals:["Formuliere mindestens eine Bitte oder Regel.","Nenne zwei konkrete Verhaltensweisen.","Versuche 〜ようにする oder 〜ないでください."],
+          checks:[
+            {label:"Regel-/Bitteform verwendet", any:["ないでください","ようにして","ようにします","てください"]},
+            {label:"Zug-Kontext erkennbar", any:["電車","車内","席","スマホ","通話","荷物"]},
+            {label:"Mindestens ca. 30 Zeichen produziert", minChars:30}
+          ],
+          models:["電車の中では大きな声で話さないでください。スマホはマナーモードにするようにしましょう。","車内では通話をしないでください。混んでいる時は、荷物を体の近くに持つようにします。"]
+        },
+        {
+          id:"weekend-tari",
+          level:"N4",
+          title:"Mein Wochenende",
+          prompt:"Schreibe 2–4 Sätze darüber, was du am Wochenende gemacht hast. Nenne mehrere Aktivitäten.",
+          goals:["Verwende 〜たり〜たりする.","Schreibe in der Vergangenheit.","Füge ein persönliches Gefühl oder eine Bewertung hinzu."],
+          checks:[
+            {label:"〜たり〜たり verwendet", any:["たり"]},
+            {label:"Vergangenheit erkennbar", any:["ました","だった","でした","かったです"]},
+            {label:"Gefühl/Bewertung enthalten", any:["楽しかった","面白かった","疲れ","嬉し","よかった","大変"]},
+            {label:"Mindestens ca. 35 Zeichen produziert", minChars:35}
+          ],
+          models:["週末は友達と買い物をしたり、家で映画を見たりしました。とても楽しかったです。","土曜日は本を読んだり、日本語を勉強したりしました。少し疲れましたが、よかったです。"]
+        },
+        {
+          id:"opinion-reason",
+          level:"N4–N3",
+          title:"Eine Meinung begründen",
+          prompt:"Schreibe 3–5 Sätze: Findest du, dass tägliches Listening beim Japanischlernen wichtig ist? Begründe deine Meinung.",
+          goals:["Verwende 〜と思う.","Gib mindestens einen Grund mit 〜から oder 〜ので.","Schreibe nicht nur Ja/Nein, sondern eine kleine Begründung."],
+          checks:[
+            {label:"〜と思う verwendet", any:["と思"]},
+            {label:"Begründung vorhanden", any:["から","ので"]},
+            {label:"Listening-Kontext erkennbar", any:["聞く","聴く","リスニング","日本語","言葉"]},
+            {label:"Mindestens ca. 45 Zeichen produziert", minChars:45}
+          ],
+          models:["毎日少しでも日本語を聞くことは大切だと思います。知っている言葉でも、実際の会話では聞き取れないことがあるからです。","リスニングは毎日練習したほうがいいと思います。自然なスピードに慣れることができるので、会話も少しずつ分かるようになります。"]
+        },
+        {
+          id:"onsen-explain",
+          level:"N3-Stretch",
+          title:"Onsen-Regeln zusammenfassen",
+          prompt:"Ein Freund fährt zum ersten Mal in einen Onsen. Erkläre ihm in 3–5 Sätzen zwei wichtige Regeln und warum eine davon sinnvoll ist.",
+          goals:["Nenne zwei Regeln.","Verwende mindestens eine Vorher-/Nachher-Struktur.","Begründe mindestens eine Regel."],
+          checks:[
+            {label:"Onsen-Wortschatz verwendet", any:["温泉","湯船","脱衣所","タオル","髪","かけ湯"]},
+            {label:"Vorher/Nachher ausgedrückt", any:["前に","てから","たら"]},
+            {label:"Begründung vorhanden", any:["から","ので","ため"]},
+            {label:"Mindestens ca. 50 Zeichen produziert", minChars:50}
+          ],
+          models:["湯船に入る前に、体をきれいに洗ってください。長い髪は結んで、お湯に入らないようにします。みんなが同じお湯を使うので、マナーを守ることが大切です。"]
+        },
+        {
+          id:"future-plan",
+          level:"N3-Stretch",
+          title:"Ein Plan für dein Japanisch",
+          prompt:"Schreibe 3–5 Sätze darüber, was du in den nächsten Monaten beim Japanischlernen verbessern möchtest und wie du das machen willst.",
+          goals:["Formuliere einen Plan oder eine Absicht.","Nenne mindestens zwei konkrete Lernhandlungen.","Begründe, warum dir das wichtig ist."],
+          checks:[
+            {label:"Plan/Absicht ausgedrückt", any:["つもり","予定","ようと思","たいです","たいと思"]},
+            {label:"Lernhandlung genannt", any:["勉強","練習","聞く","話す","書く","読む","覚える"]},
+            {label:"Begründung vorhanden", any:["から","ので","ため"]},
+            {label:"Mindestens ca. 50 Zeichen produziert", minChars:50}
+          ],
+          models:["これから毎日少しずつ日本語を聞くつもりです。それから、週に二回は短い文章を書こうと思っています。もっと自然に話せるようになりたいからです。"]
+        }
+      ];
+
+      let tab = "shadowing";
+      let currentShadow = "";
+      let shadowPhase = 0;
+      let currentWriting = "";
+      let writingResult = null;
+      let mediaRecorder = null;
+      let micStream = null;
+      let micChunks = [];
+      let micUrl = "";
+
+      function esc(value) {
+        try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
+        return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+      }
+      function sourceData() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+      }
+      function state() {
+        const source = sourceData();
+        if (!source.productionLab || typeof source.productionLab !== "object") source.productionLab = {};
+        const p = source.productionLab;
+        p.version = Math.max(1, Number(p.version || 1));
+        if (!p.shadowing || typeof p.shadowing !== "object") p.shadowing = {};
+        if (!p.writing || typeof p.writing !== "object") p.writing = {};
+        if (!p.stats || typeof p.stats !== "object") p.stats = { shadowSessions:0, writingSessions:0, lastAt:null };
+        return p;
+      }
+      function persist() {
+        const source = sourceData();
+        try {
+          if (typeof data !== "undefined" && data && data !== source) data.productionLab = source.productionLab;
+          if (typeof saveData === "function") { saveData(); return; }
+        } catch {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); } catch {}
+      }
+      function notify(message) {
+        try { if (typeof toast === "function") return toast(message); } catch {}
+        console.info(message);
+      }
+      function ensureView() {
+        if (document.getElementById("productionLab")) return document.getElementById("productionLab");
+        const main = document.querySelector("main");
+        if (!main) return null;
+        const section = document.createElement("section");
+        section.id = "productionLab";
+        section.className = "view";
+        section.innerHTML = `<div id="kqProductionLabRoot"></div>`;
+        const before = document.getElementById("placement") || null;
+        main.insertBefore(section, before);
+        return section;
+      }
+      function installStyles() {
+        if (document.getElementById("kqProductionLabStyles")) return;
+        const style = document.createElement("style");
+        style.id = "kqProductionLabStyles";
+        style.textContent = `
+          #kqProductionLabRoot{max-width:1180px;margin:0 auto;display:grid;gap:15px;padding-bottom:30px}.kq-prod-hero{position:relative;overflow:hidden;padding:24px;border-radius:24px;background:linear-gradient(135deg,#4d446e,#765486 55%,#bf7891);color:#fff;box-shadow:0 16px 40px rgba(62,47,82,.17)}.kq-prod-hero:after{content:'話す';position:absolute;right:18px;bottom:-38px;font-size:7rem;font-weight:950;opacity:.1}.kq-prod-hero h2,.kq-prod-hero p{margin:0}.kq-prod-hero p{margin-top:7px;max-width:800px;line-height:1.5}.kq-prod-tabs{display:flex;gap:7px;flex-wrap:wrap}.kq-prod-tabs button{padding:10px 14px;border-radius:999px;background:#f1edf7;color:var(--primary-dark);font-weight:900}.kq-prod-tabs button.active{background:var(--primary);color:#fff}.kq-prod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kq-prod-card{display:grid;gap:11px;padding:18px;border:1px solid var(--border);border-radius:18px;background:var(--panel);box-shadow:var(--shadow)}.kq-prod-card h3,.kq-prod-card p{margin:0}.kq-prod-card p{color:var(--muted);line-height:1.45}.kq-prod-badge{display:inline-flex;width:max-content;padding:5px 8px;border-radius:999px;background:#eee8fa;color:var(--primary-dark);font-size:.72rem;font-weight:900}.kq-prod-media{overflow:hidden;border-radius:18px;background:#15131a;border:1px solid var(--border)}.kq-prod-media iframe{display:block;width:100%;min-height:390px;border:0}.kq-prod-phase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.kq-prod-phase{padding:10px;border-radius:12px;border:1px solid var(--border);background:#faf8fd;color:var(--muted)}.kq-prod-phase.active{border-color:var(--primary);background:#f4effc;color:var(--text)}.kq-prod-phase.done{border-color:#9dccb2;background:#f1fbf5}.kq-prod-phase strong,.kq-prod-phase span{display:block}.kq-prod-phase span{margin-top:3px;font-size:.7rem;line-height:1.35}.kq-prod-mic{padding:13px;border:1px dashed var(--border);border-radius:14px;background:#fcfbfd}.kq-prod-mic audio{width:100%;margin-top:9px}.kq-prod-ratings{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kq-prod-ratings label{display:grid;gap:5px;font-size:.75rem;font-weight:850}.kq-prod-ratings select{width:100%}.kq-prod-writing textarea{min-height:180px;width:100%;resize:vertical;font-size:1rem;line-height:1.65}.kq-prod-goals,.kq-prod-checks{display:grid;gap:7px}.kq-prod-goal,.kq-prod-check{padding:9px 11px;border-radius:11px;background:#faf8fd;border:1px solid var(--border)}.kq-prod-check.ok{border-color:#91c9aa;background:#f1fbf5}.kq-prod-check.miss{border-color:#e3b2bc;background:#fff5f7}.kq-prod-model{padding:12px;border-radius:12px;background:#f7f3fb;border:1px solid var(--border);line-height:1.55}.kq-prod-note{padding:11px 13px;border-radius:13px;background:#faf8ff;border:1px solid var(--border);color:var(--muted);line-height:1.45;font-size:.8rem}.kq-prod-actions{display:flex;gap:8px;flex-wrap:wrap}.kq-prod-score{font-size:2.6rem;font-weight:950;color:var(--primary)}
+          @media(max-width:800px){.kq-prod-grid{grid-template-columns:1fr}.kq-prod-phase-grid{grid-template-columns:repeat(2,1fr)}.kq-prod-ratings{grid-template-columns:1fr}.kq-prod-media iframe{min-height:240px}}
+        `;
+        document.head.appendChild(style);
+      }
+      function openView() {
+        ensureView(); installStyles();
+        try { if (typeof switchView === "function") switchView("productionLab"); else document.querySelectorAll("main .view").forEach(v => v.classList.toggle("active",v.id==="productionLab")); } catch {}
+      }
+      function postActivity(payload) {
+        try { window.parent?.postMessage({type:"kotoba-skill-activity",payload}, "*"); } catch {}
+      }
+      function shadowProgress(id) {
+        const p = state();
+        if (!p.shadowing[id]) p.shadowing[id] = { sessions:0, bestScore:0, lastScore:0, lastAt:null };
+        return p.shadowing[id];
+      }
+      function writingProgress(id) {
+        const p = state();
+        if (!p.writing[id]) p.writing[id] = { attempts:0, completed:0, bestTargetScore:0, lastTargetScore:0, lastAt:null };
+        return p.writing[id];
+      }
+      function renderHome() {
+        const root = document.getElementById("kqProductionLabRoot");
+        if (!root) return;
+        const stats = getStats();
+        root.innerHTML = `
+          <section class="kq-prod-hero"><h2>Sprechen & Produktion · 話す / 書く</h2><p>Geführtes Output-Training ohne Browser-Stimme: Shadowing mit echten externen Aufnahmen und Schreibaufgaben, die deine Zielstrukturen lokal prüfen. Deine Aufnahme und deine Texte werden nicht dauerhaft gespeichert.</p><div class="kq-listen-hero-meta"><span class="kq-listen-pill">🗣 ${stats.shadowSessions} Shadowing-Sessions</span><span class="kq-listen-pill">✍️ ${stats.writingSessions} Writing-Sessions</span><span class="kq-listen-pill">💾 Mikrofonaufnahmen nur im Arbeitsspeicher</span></div></section>
+          <div class="kq-prod-tabs"><button data-kq-prod-tab="shadowing" class="${tab==="shadowing"?"active":""}">🗣 Shadowing</button><button data-kq-prod-tab="writing" class="${tab==="writing"?"active":""}">✍️ Produktion / Schreiben</button></div>
+          ${tab==="shadowing" ? `<div class="kq-prod-note"><strong>Vier Durchgänge:</strong> 1) nur hören, 2) Satz hören → pausieren → nachsprechen, 3) mit Text/Untertiteln mitsprechen, 4) ohne Text mitsprechen. Bei Videos mit eingebauten Repeat-Phasen musst du nicht ständig selbst pausieren.</div><div class="kq-prod-grid">${SHADOWING.map(item => { const p=state().shadowing[item.id]||{}; return `<article class="kq-prod-card"><span class="kq-prod-badge">${esc(item.level)}</span><h3>${esc(item.title)}</h3><p>${esc(item.source)} · ${item.minutes ? `ca. ${item.minutes} Min. pro sinnvoller Einheit` : "freie Einheit"}</p><p>${esc(item.blurb)}</p><div class="kq-prod-actions"><button class="primary" data-kq-shadow-open="${esc(item.id)}">Shadowing starten</button>${p.sessions ? `<span class="small muted">${p.sessions}× gemacht · bester Selbstcheck ${Math.round(Number(p.bestScore||0))}%</span>` : ""}</div></article>`; }).join("")}</div>`
+          : `<div class="kq-prod-note"><strong>Warum kein „KI sagt richtig/falsch“?</strong> Eine statische HTML-App kann freie japanische Texte nicht zuverlässig semantisch korrigieren, ohne einen externen KI-Dienst samt sicherem Backend. Deshalb prüft Kotoba hier automatisch nur messbare Zielstrukturen und zeigt danach mehrere Modellformulierungen. Für echte freie Korrektur kannst du dir zusätzlich einen fertigen Korrekturprompt kopieren.</div><div class="kq-prod-grid">${WRITING.map(item => { const p=state().writing[item.id]||{}; return `<article class="kq-prod-card"><span class="kq-prod-badge">${esc(item.level)}</span><h3>${esc(item.title)}</h3><p>${esc(item.prompt)}</p><div class="kq-prod-actions"><button class="primary" data-kq-writing-open="${esc(item.id)}">Schreiben</button>${p.completed ? `<span class="small muted">${p.completed}× abgeschlossen · bester Zielcheck ${Math.round(Number(p.bestTargetScore||0))}%</span>` : ""}</div></article>`; }).join("")}</div>`}`;
+        root.querySelectorAll("[data-kq-prod-tab]").forEach(b => b.addEventListener("click",()=>{tab=b.dataset.kqProdTab||"shadowing";renderHome();}));
+        root.querySelectorAll("[data-kq-shadow-open]").forEach(b=>b.addEventListener("click",()=>startShadow(b.dataset.kqShadowOpen)));
+        root.querySelectorAll("[data-kq-writing-open]").forEach(b=>b.addEventListener("click",()=>startWriting(b.dataset.kqWritingOpen)));
+      }
+      function startShadow(id) {
+        const item=SHADOWING.find(x=>x.id===id); if(!item) return;
+        stopMic(true);
+        currentShadow=id; shadowPhase=0; openView(); renderShadow();
+      }
+      const PHASES = [
+        ["1 · Hören","Einmal nur zuhören. Nicht nachsprechen und möglichst nicht lesen."],
+        ["2 · Echo","Satz hören → kurz pausieren → laut nachsprechen. Rhythmus und Länge imitieren."],
+        ["3 · Mitsprechen","Mit Transcript/Untertiteln fast gleichzeitig mit der Stimme sprechen."],
+        ["4 · Ohne Text","Text/Untertitel ausblenden und noch einmal möglichst synchron mitsprechen."]
+      ];
+      function renderShadow() {
+        const root=document.getElementById("kqProductionLabRoot"), item=SHADOWING.find(x=>x.id===currentShadow);
+        if(!root||!item){renderHome();return;}
+        const p=shadowProgress(item.id);
+        root.innerHTML=`<div class="kq-prod-card"><div class="kq-prod-actions"><button class="ghost" id="kqProdBack">← Sprechen & Produktion</button><span class="kq-prod-badge">${esc(item.level)}</span></div><h2>${esc(item.title)}</h2><p>${esc(item.source)}</p>
+          <div class="kq-prod-phase-grid">${PHASES.map((phase,i)=>`<div class="kq-prod-phase ${i===shadowPhase?"active":i<shadowPhase?"done":""}"><strong>${phase[0]}</strong><span>${phase[1]}</span></div>`).join("")}</div>
+          <div class="kq-prod-media"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.mediaId)}?rel=0" title="${esc(item.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+          <div class="kq-prod-note">${shadowPhase===1 && item.mode==="manual-pause" ? "Bei diesem normalen Listening-Video pausierst du nach einem Satz selbst und sprichst ihn direkt nach. Das ist genau die Shadowing-Empfehlung des Originalmaterials." : shadowPhase===1 ? "Dieses Material ist bereits fürs Nachsprechen gebaut. Nutze die eingebauten Pausen/Repeat-Abschnitte." : shadowPhase===2 ? `Nutze jetzt den sichtbaren Text im Video bzw. <a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">das Original/Transcript ↗</a>. Versuche nicht zu übersetzen – imitiere Timing und Melodie.` : shadowPhase===3 ? "Untertitel bzw. Transcript jetzt möglichst weg. Ziel ist nicht Perfektion, sondern dass Mund und Ohr dem Satztempo folgen." : "Nur hören und auf Wortgrenzen, Satzmelodie und Pausen achten."}</div>
+          <div class="kq-prod-mic"><strong>Optional: dich selbst aufnehmen</strong><p class="small muted">Die Aufnahme bleibt nur in diesem Tab im Arbeitsspeicher und wird nie in Kotoba/Cloud gespeichert.</p><div class="kq-prod-actions"><button class="secondary" id="kqMicStart" ${mediaRecorder&&mediaRecorder.state==="recording"?"disabled":""}>● Aufnahme starten</button><button class="ghost" id="kqMicStop" ${mediaRecorder&&mediaRecorder.state==="recording"?"":"disabled"}>■ Stop</button></div><div id="kqMicPlayback">${micUrl?`<audio controls src="${esc(micUrl)}"></audio>`:""}</div></div>
+          ${shadowPhase<3 ? `<div class="kq-prod-actions"><button class="primary" id="kqShadowNext">${PHASES[shadowPhase][0]} erledigt → nächster Durchgang</button></div>` : `<div class="kq-prod-ratings"><label>Rhythmus<select id="kqRateRhythm"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label><label>Aussprache<select id="kqRatePron"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label><label>Tempo / Mitkommen<select id="kqRateTempo"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label></div><div class="kq-prod-actions"><button class="primary" id="kqShadowFinish">Shadowing-Session abschließen</button><a class="ghost" href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">Original öffnen ↗</a></div>`}
+          ${p.sessions?`<p class="small muted">Bisher ${p.sessions} Sessions · bester Selbstcheck ${Math.round(Number(p.bestScore||0))}%</p>`:""}</div>`;
+        root.querySelector("#kqProdBack")?.addEventListener("click",()=>{stopMic(true);currentShadow="";renderHome();});
+        root.querySelector("#kqShadowNext")?.addEventListener("click",()=>{shadowPhase=Math.min(3,shadowPhase+1);renderShadow();});
+        root.querySelector("#kqMicStart")?.addEventListener("click",startMic);
+        root.querySelector("#kqMicStop")?.addEventListener("click",()=>stopMic(false));
+        root.querySelector("#kqShadowFinish")?.addEventListener("click",()=>{
+          const vals=["kqRateRhythm","kqRatePron","kqRateTempo"].map(id=>Number(document.getElementById(id)?.value||0));
+          if(vals.some(v=>!v)){notify("Bitte bewerte kurz Rhythmus, Aussprache und Tempo.");return;}
+          const score=Math.round(vals.reduce((a,b)=>a+b,0)/9*100);
+          const prog=shadowProgress(item.id); prog.sessions+=1; prog.lastScore=score; prog.bestScore=Math.max(Number(prog.bestScore||0),score); prog.lastAt=Date.now();
+          const s=state().stats; s.shadowSessions=Math.max(0,Number(s.shadowSessions||0))+1; s.lastAt=Date.now(); persist();
+          postActivity({type:"speaking-practice",skill:"speaking",itemId:item.id,label:item.title,area:"production",result:score>=80?"good":score>=55?"partial":"hard",timestamp:Date.now(),metadata:{level:item.level,minutes:item.minutes,score,mode:"shadowing"}});
+          stopMic(true); notify(`Shadowing gespeichert · Selbstcheck ${score}%`); currentShadow=""; renderHome();
+        });
+      }
+      async function startMic() {
+        try {
+          stopMic(true);
+          if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") { notify("Mikrofonaufnahme wird in diesem Browser nicht unterstützt."); return; }
+          micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+          micChunks=[];
+          mediaRecorder=new MediaRecorder(micStream);
+          mediaRecorder.ondataavailable=e=>{if(e.data?.size) micChunks.push(e.data);};
+          mediaRecorder.onstop=()=>{
+            try {
+              if(micUrl) URL.revokeObjectURL(micUrl);
+              const blob=new Blob(micChunks,{type:mediaRecorder?.mimeType||"audio/webm"});
+              micUrl=URL.createObjectURL(blob);
+              const box=document.getElementById("kqMicPlayback"); if(box) box.innerHTML=`<audio controls src="${esc(micUrl)}"></audio>`;
+            } catch {}
+            micStream?.getTracks?.().forEach(t=>t.stop()); micStream=null;
+            const start=document.getElementById("kqMicStart"), stop=document.getElementById("kqMicStop"); if(start) start.disabled=false; if(stop) stop.disabled=true;
+          };
+          mediaRecorder.start();
+          const start=document.getElementById("kqMicStart"), stop=document.getElementById("kqMicStop"); if(start) start.disabled=true; if(stop) stop.disabled=false;
+        } catch { notify("Mikrofonzugriff wurde nicht erlaubt oder ist nicht verfügbar."); }
+      }
+      function stopMic(discard=false) {
+        try { if(mediaRecorder?.state==="recording") mediaRecorder.stop(); } catch {}
+        try { micStream?.getTracks?.().forEach(t=>t.stop()); } catch {}
+        micStream=null;
+        if(discard){ try{if(micUrl) URL.revokeObjectURL(micUrl);}catch{} micUrl=""; micChunks=[]; }
+      }
+      function startWriting(id) {
+        const item=WRITING.find(x=>x.id===id); if(!item)return;
+        currentWriting=id; writingResult=null; openView(); renderWriting();
+      }
+      function norm(value){return String(value||"").normalize("NFKC").replace(/[\s　、。！？!?,.「」『』（）()]/g,"");}
+      function evaluateWriting(item,value) {
+        const normalized=norm(value);
+        const checks=item.checks.map(check=>{
+          let ok=true;
+          if(check.minChars) ok=normalized.length>=Number(check.minChars);
+          if(check.any) ok=check.any.some(token=>normalized.includes(norm(token)));
+          return {...check,ok};
+        });
+        const hits=checks.filter(c=>c.ok).length;
+        return {checks,score:Math.round(hits/Math.max(1,checks.length)*100),chars:normalized.length};
+      }
+      function correctionPrompt(item,value){
+        return `Korrigiere meinen japanischen Text als Sprachlehrer. Bitte ändere nur, was nötig ist, und erhalte meine beabsichtigte Aussage. Gib mir: 1) eine korrigierte natürliche Version, 2) kurze Erklärungen auf Deutsch zu echten Fehlern, 3) eine alternative natürliche Formulierung, 4) markiere, ob ich die Zielstrukturen erfüllt habe. Aufgabe: ${item.prompt} Ziele: ${item.goals.join(" | ")} Mein Text: ${value}`;
+      }
+      function renderWriting() {
+        const root=document.getElementById("kqProductionLabRoot"), item=WRITING.find(x=>x.id===currentWriting);
+        if(!root||!item){renderHome();return;}
+        const oldValue=String(document.getElementById("kqWritingInput")?.value||"");
+        const result=writingResult;
+        root.innerHTML=`<div class="kq-prod-card kq-prod-writing"><div class="kq-prod-actions"><button class="ghost" id="kqProdBack">← Sprechen & Produktion</button><span class="kq-prod-badge">${esc(item.level)}</span></div><h2>${esc(item.title)}</h2><p>${esc(item.prompt)}</p>
+          <div class="kq-prod-goals">${item.goals.map(goal=>`<div class="kq-prod-goal">🎯 ${esc(goal)}</div>`).join("")}</div>
+          <textarea id="kqWritingInput" lang="ja" placeholder="ここに日本語で書いてください…">${esc(oldValue)}</textarea>
+          <div class="kq-prod-note">Dein Text wird absichtlich <strong>nicht dauerhaft gespeichert</strong>. Der lokale Check prüft nur die Zielstrukturen und Mindestlänge – er behauptet nicht, jede freie Formulierung semantisch beurteilen zu können.</div>
+          <div class="kq-prod-actions"><button class="primary" id="kqWritingCheck">Lokalen Zielcheck machen</button><button class="secondary" id="kqWritingCopy">Korrekturprompt für ChatGPT kopieren</button></div>
+          ${result?`<section><div class="kq-prod-score">${result.score}%</div><p class="muted">Zielcheck · ${result.chars} japanische Zeichen nach Normalisierung</p><div class="kq-prod-checks">${result.checks.map(c=>`<div class="kq-prod-check ${c.ok?"ok":"miss"}">${c.ok?"✓":"○"} ${esc(c.label)}</div>`).join("")}</div><h3 style="margin-top:16px">Mögliche natürliche Lösungen</h3>${item.models.map(m=>`<div class="kq-prod-model" lang="ja">${esc(m)}</div>`).join("")}<div class="kq-prod-actions" style="margin-top:14px"><button class="primary" id="kqWritingFinish">Als Production-Training abschließen</button></div></section>`:""}</div>`;
+        const input=root.querySelector("#kqWritingInput"); if(oldValue) input.value=oldValue;
+        root.querySelector("#kqProdBack")?.addEventListener("click",()=>{currentWriting="";writingResult=null;renderHome();});
+        root.querySelector("#kqWritingCheck")?.addEventListener("click",()=>{const value=String(input?.value||"").trim(); if(!value){notify("Schreib zuerst ein paar japanische Sätze.");return;} writingResult=evaluateWriting(item,value); renderWriting(); requestAnimationFrame(()=>{const next=document.getElementById("kqWritingInput");if(next)next.value=value;});});
+        root.querySelector("#kqWritingCopy")?.addEventListener("click",async()=>{const value=String(input?.value||"").trim();if(!value){notify("Schreib zuerst deinen Text.");return;}try{await navigator.clipboard.writeText(correctionPrompt(item,value));notify("Korrekturprompt wurde kopiert.");}catch{notify("Kopieren war im Browser nicht möglich.");}});
+        root.querySelector("#kqWritingFinish")?.addEventListener("click",()=>{
+          const value=String(input?.value||"").trim(); const resultNow=writingResult||evaluateWriting(item,value);
+          const prog=writingProgress(item.id); prog.attempts+=1; prog.completed+=1; prog.lastTargetScore=resultNow.score; prog.bestTargetScore=Math.max(Number(prog.bestTargetScore||0),resultNow.score); prog.lastAt=Date.now();
+          const s=state().stats; s.writingSessions=Math.max(0,Number(s.writingSessions||0))+1; s.lastAt=Date.now(); persist();
+          postActivity({type:"production-practice",skill:"production",itemId:item.id,label:item.title,area:"production",result:resultNow.score>=80?"good":resultNow.score>=50?"partial":"hard",timestamp:Date.now(),metadata:{level:item.level,minutes:10,score:resultNow.score,mode:"writing",chars:resultNow.chars}});
+          notify(`Production-Training gespeichert · Zielcheck ${resultNow.score}%`); currentWriting=""; writingResult=null; renderHome();
+        });
+      }
+      function getStats() {
+        const s=state().stats;
+        const shadowBest=Math.max(0,...Object.values(state().shadowing).map(x=>Number(x?.bestScore||0)));
+        const writingBest=Math.max(0,...Object.values(state().writing).map(x=>Number(x?.bestTargetScore||0)));
+        return {shadowSessions:Number(s.shadowSessions||0),writingSessions:Number(s.writingSessions||0),shadowBest,writingBest,shadowLessons:SHADOWING.length,writingPrompts:WRITING.length};
+      }
+      function open(mode="") {
+        if(mode==="writing"||mode==="shadowing") tab=mode;
+        currentShadow=""; currentWriting=""; writingResult=null; stopMic(true); openView(); renderHome();
+      }
+
+      ensureView(); installStyles();
+      window.KotobaQuestProductionLab={version:VERSION,open,getStats,getShadowingCatalog:()=>SHADOWING.map(({id,title,source,level})=>({id,title,source,level})),getWritingCatalog:()=>WRITING.map(({id,title,level,prompt})=>({id,title,level,prompt}))};
     }
 
 
@@ -33730,6 +34116,7 @@ ${tooltipText(segment, status)}`)}"`
         if (viewName === "dashboard") return "overview";
         if (["learningCenter", "core", "grammar", "grammarLesson", "grammarReview", "n4Recap", "lessons", "reviews", "placement", "listeningLab"].includes(viewName)) return "learning";
         if (["practiceCenter", "vocabPractice", "problemWords"].includes(viewName)) return "practice";
+        if (viewName === "productionLab") return ["learning", "practice"].includes(activeGroup) ? activeGroup : "learning";
         if (viewName === "particlePractice") return ["learning", "practice"].includes(activeGroup) ? activeGroup : "learning";
         if (viewName === "storyReader") return "story";
         if (["mining", "vocabulary"].includes(viewName)) return "mining";
@@ -33904,7 +34291,7 @@ ${tooltipText(segment, status)}`)}"`
       }
     
       function openLearning(tab = "vocabulary") {
-        learningTab = ["vocabulary", "grammar", "particles", "listening"].includes(tab) ? tab : "vocabulary";
+        learningTab = ["vocabulary", "grammar", "particles", "listening", "production"].includes(tab) ? tab : "vocabulary";
         setGroup("learning");
         safeSwitch("learningCenter");
         renderLearningCenter();
@@ -34042,6 +34429,7 @@ ${tooltipText(segment, status)}`)}"`
         const particles = all.particles;
         const n4 = n4LearningSummary();
         const n4Percent = Math.round((n4.known / Math.max(1, n4.total)) * 100);
+        const production = window.KotobaQuestProductionLab?.getStats?.() || { shadowSessions:0, writingSessions:0, shadowLessons:0, writingPrompts:0 };
 
         root.innerHTML = `<div class="kq-ia-shell">
           <div class="kq-ia-heading"><div><h2>Lernen</h2><p>Wähle direkt den Bereich, in dem du weiterlernen möchtest. Keine zusätzliche Übersichtsseite ist mehr nötig.</p></div></div>
@@ -34073,6 +34461,13 @@ ${tooltipText(segment, status)}`)}"`
               <p class="kq-ia-learning-extra">Ø ${window.KotobaQuestListeningLab?.getStats?.().avgCoverage || 0}% der getrackten Inhaltsvokabeln sind aktuell Guru+ oder als bekannt markiert. Fortschritt verändert sich automatisch mit deinem SRS.</p>
               <div class="kq-ia-actions"><button class="primary" id="kqIaDirectListening">Listening Lab öffnen</button>${(window.KotobaQuestListeningLab?.getStats?.().rewatchReady || 0) ? `<button class="secondary" id="kqIaDirectListeningRewatch">${window.KotobaQuestListeningLab.getStats().rewatchReady} Re-Listen bereit</button>` : ""}</div>
             </article>
+
+            <article class="kq-ia-learning-card">
+              <div class="kq-ia-learning-card-head"><div class="kq-ia-learning-card-title"><span class="kq-ia-learning-icon">🗣️</span><div><h3>Sprechen & Produktion</h3><p>Geführtes Shadowing mit echtem Japanisch plus freie Schreibaufgaben mit Zielcheck.</p></div></div></div>
+              <div class="kq-ia-learning-metrics"><div class="kq-ia-learning-metric"><span>Shadowing-Sessions</span><strong>${production.shadowSessions || 0}</strong></div><div class="kq-ia-learning-metric"><span>Schreib-Sessions</span><strong>${production.writingSessions || 0}</strong></div></div>
+              <p class="kq-ia-learning-extra">${production.shadowLessons || 0} geführte Shadowing-Quellen · ${production.writingPrompts || 0} freie Production-Aufgaben. Eigene Aufnahmen und Texte werden nicht dauerhaft gespeichert.</p>
+              <div class="kq-ia-actions"><button class="primary" id="kqIaDirectProduction">Sprechen & Produktion öffnen</button><button class="secondary" id="kqIaDirectShadowing">Shadowing starten</button><button class="ghost" id="kqIaDirectWriting">Schreiben</button></div>
+            </article>
           </div>
         </div>`;
 
@@ -34086,6 +34481,9 @@ ${tooltipText(segment, status)}`)}"`
         root.querySelector("#kqIaDirectParticleReviews")?.addEventListener("click", () => { learningTab = "particles"; launchParticleReviews(); });
         root.querySelector("#kqIaDirectListening")?.addEventListener("click", () => { learningTab = "listening"; setGroup("learning"); window.KotobaQuestListeningLab?.open?.(); scheduleRefresh(); });
         root.querySelector("#kqIaDirectListeningRewatch")?.addEventListener("click", () => { learningTab = "listening"; setGroup("learning"); window.KotobaQuestListeningLab?.open?.(); scheduleRefresh(); });
+        root.querySelector("#kqIaDirectProduction")?.addEventListener("click", () => { learningTab = "production"; setGroup("learning"); window.KotobaQuestProductionLab?.open?.(); scheduleRefresh(); });
+        root.querySelector("#kqIaDirectShadowing")?.addEventListener("click", () => { learningTab = "production"; setGroup("learning"); window.KotobaQuestProductionLab?.open?.("shadowing"); scheduleRefresh(); });
+        root.querySelector("#kqIaDirectWriting")?.addEventListener("click", () => { learningTab = "production"; setGroup("learning"); window.KotobaQuestProductionLab?.open?.("writing"); scheduleRefresh(); });
       }
 
       function renderPracticeCenter() {
@@ -34105,6 +34503,10 @@ ${tooltipText(segment, status)}`)}"`
             <article class="card kq-ia-practice-card">
               <span class="mode-icon">🎧</span><h3>Native Listening</h3><p>Echte japanische Audios/Videos: blind hören, Inhaltsfragen beantworten, Wortschatzlücken minen und später mit höherer Abdeckung erneut testen.</p>
               <div class="button-row"><button class="primary" id="kqIaPracticeListening">Listening Lab öffnen</button></div>
+            </article>
+            <article class="card kq-ia-practice-card">
+              <span class="mode-icon">🗣️</span><h3>Sprechen & Produktion</h3><p>Vierstufiges Shadowing mit echtem Audio/Video oder frei auf Japanisch schreiben. Aufnahmen bleiben nur temporär im Browser.</p>
+              <div class="button-row"><button class="primary" id="kqIaPracticeProduction">Shadowing & Schreiben öffnen</button></div>
             </article>
             <article class="card kq-ia-practice-card">
               <span class="mode-icon">🧠</span><h3>Problemfälle</h3><p>Gezieltes Training für hartnäckige und leicht verwechselbare Vokabeln mit deinen Mnemonics.</p>
@@ -34130,6 +34532,12 @@ ${tooltipText(segment, status)}`)}"`
           learningTab = "listening";
           setGroup("learning");
           window.KotobaQuestListeningLab?.open?.();
+          scheduleRefresh();
+        });
+        root.querySelector("#kqIaPracticeProduction")?.addEventListener("click", () => {
+          learningTab = "production";
+          setGroup("practice");
+          window.KotobaQuestProductionLab?.open?.();
           scheduleRefresh();
         });
         root.querySelector("#kqIaPracticeProblems")?.addEventListener("click", () => {
@@ -34433,11 +34841,11 @@ function renderProgressCenter() {
         }
         bar.hidden = false;
         if (activeGroup === "learning") {
-          const active = activeView === "core" ? "vocabulary" : activeView === "n4Recap" ? "n4" : activeView.startsWith("grammar") ? "grammar" : activeView === "particlePractice" ? "particles" : activeView === "listeningLab" ? "listening" : "";
-          bar.innerHTML = `<button data-kq-context="learning-home">Lernübersicht</button><button data-kq-context="vocabulary" class="${active === "vocabulary" ? "active" : ""}">Vokabeln</button><button data-kq-context="grammar" class="${active === "grammar" ? "active" : ""}">Grammatik</button><button data-kq-context="n4" class="${active === "n4" ? "active" : ""}">N4-Test</button><button data-kq-context="particles" class="${active === "particles" ? "active" : ""}">Partikel</button><button data-kq-context="listening" class="${active === "listening" ? "active" : ""}">Listening</button>`;
+          const active = activeView === "core" ? "vocabulary" : activeView === "n4Recap" ? "n4" : activeView.startsWith("grammar") ? "grammar" : activeView === "particlePractice" ? "particles" : activeView === "listeningLab" ? "listening" : activeView === "productionLab" ? "production" : "";
+          bar.innerHTML = `<button data-kq-context="learning-home">Lernübersicht</button><button data-kq-context="vocabulary" class="${active === "vocabulary" ? "active" : ""}">Vokabeln</button><button data-kq-context="grammar" class="${active === "grammar" ? "active" : ""}">Grammatik</button><button data-kq-context="n4" class="${active === "n4" ? "active" : ""}">N4-Test</button><button data-kq-context="particles" class="${active === "particles" ? "active" : ""}">Partikel</button><button data-kq-context="listening" class="${active === "listening" ? "active" : ""}">Listening</button><button data-kq-context="production" class="${active === "production" ? "active" : ""}">Sprechen</button>`;
         } else if (activeGroup === "practice") {
-          const active = activeView === "vocabPractice" ? "vocab-practice" : activeView === "problemWords" ? "problems" : activeView === "particlePractice" ? "particle-practice" : "";
-          bar.innerHTML = `<button data-kq-context="practice-home">Übungsübersicht</button><button data-kq-context="vocab-practice" class="${active === "vocab-practice" ? "active" : ""}">Vokabeln</button><button data-kq-context="particle-practice" class="${active === "particle-practice" ? "active" : ""}">Partikel</button><button data-kq-context="problems" class="${active === "problems" ? "active" : ""}">Problemfälle</button>`;
+          const active = activeView === "vocabPractice" ? "vocab-practice" : activeView === "problemWords" ? "problems" : activeView === "particlePractice" ? "particle-practice" : activeView === "productionLab" ? "production" : "";
+          bar.innerHTML = `<button data-kq-context="practice-home">Übungsübersicht</button><button data-kq-context="vocab-practice" class="${active === "vocab-practice" ? "active" : ""}">Vokabeln</button><button data-kq-context="particle-practice" class="${active === "particle-practice" ? "active" : ""}">Partikel</button><button data-kq-context="production" class="${active === "production" ? "active" : ""}">Sprechen & Produktion</button><button data-kq-context="problems" class="${active === "problems" ? "active" : ""}">Problemfälle</button>`;
         } else {
           const active = activeView === "statistics" ? "statistics" : activeView === "archive" ? "archive" : "";
           bar.innerHTML = `<button data-kq-context="progress-home">Fortschrittsübersicht</button><button data-kq-context="statistics" class="${active === "statistics" ? "active" : ""}">Statistiken</button><button data-kq-context="archive" class="${active === "archive" ? "active" : ""}">Archiv</button>`;
@@ -34450,6 +34858,7 @@ function renderProgressCenter() {
           else if (action === "n4") { learningTab = "grammar"; setGroup("learning"); window.KotobaQuestN4Recap?.open?.(); scheduleRefresh(); }
           else if (action === "particles") { learningTab = "particles"; launchParticlePath(); }
           else if (action === "listening") { learningTab = "listening"; setGroup("learning"); window.KotobaQuestListeningLab?.open?.(); scheduleRefresh(); }
+          else if (action === "production") { learningTab = "production"; setGroup(activeGroup === "practice" ? "practice" : "learning"); window.KotobaQuestProductionLab?.open?.(); scheduleRefresh(); }
           else if (action === "practice-home") openPracticeCenter();
           else if (action === "vocab-practice") { setGroup("practice"); window.KotobaQuestContextPractice?.open?.(); }
           else if (action === "particle-practice") { setGroup("practice"); window.KotobaQuestParticlePractice?.open?.(); }
@@ -38464,7 +38873,7 @@ function smartReviewBootstrap() {
 
       function inferGroupFromView(view) {
         if (view === "dashboard") return "overview";
-        if (["learningCenter","core","grammar","grammarLesson","grammarReview","n4Recap","lessons","reviews","placement"].includes(view)) return "learning";
+        if (["learningCenter","core","grammar","grammarLesson","grammarReview","n4Recap","lessons","reviews","placement","listeningLab","productionLab"].includes(view)) return "learning";
         if (["practiceCenter","vocabPractice","problemWords","resonanceTraining"].includes(view)) return "practice";
         if (view === "particlePractice") return "practice";
         if (view === "storyReader") return "story";
@@ -38931,6 +39340,7 @@ function smartReviewBootstrap() {
   const storyReaderScript = "<script>(" + storyReaderBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
       const listeningLabScript = "<script>(" + listeningLabBootstrap.toString() + ")();<" + "/script>";
+      const productionLabScript = "<script>(" + productionLabBootstrap.toString() + ")();<" + "/script>";
       const interfaceScript = "<script>(" + interfaceReorganizationBootstrap.toString() + ")();<" + "/script>";
       const interactionScript = "<script>(" + systemInteractionConsistencyBootstrap.toString() + ")();<" + "/script>";
       const questDashboardScript = "<script>(" + questDashboardBootstrap.toString() + ")();<" + "/script>";
@@ -38939,7 +39349,7 @@ function smartReviewBootstrap() {
       const smartReviewScript = "<script>(" + smartReviewBootstrap.toString() + ")();<" + "/script>";
       const externalQuickReviewScript = "<script>(" + externalQuickReviewBootstrap.toString() + ")();<" + "/script>";
       const mobileExperienceScript = "<script>(" + mobileExperienceBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${listeningLabScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}\n${externalQuickReviewScript}\n${mobileExperienceScript}`;
+      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${listeningLabScript}\n${productionLabScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}\n${externalQuickReviewScript}\n${mobileExperienceScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }

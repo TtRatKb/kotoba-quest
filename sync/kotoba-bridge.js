@@ -616,27 +616,36 @@ async function handleLiveRequest(action, payload = {}) {
 }
 
 const LISTENING_ACTIVITY_MESSAGE_TYPE = "kotoba-listening-activity";
+const SKILL_ACTIVITY_MESSAGE_TYPE = "kotoba-skill-activity";
 
-function acceptListeningActivityMessage(event) {
+function acceptSkillActivityMessage(event) {
   if (!appFrame?.contentWindow || event.source !== appFrame.contentWindow) return;
   const message = event.data;
-  if (!message || message.type !== LISTENING_ACTIVITY_MESSAGE_TYPE) return;
+  if (!message || ![LISTENING_ACTIVITY_MESSAGE_TYPE, SKILL_ACTIVITY_MESSAGE_TYPE].includes(message.type)) return;
   const payload = objectValue(message.payload);
   const type = String(payload.type || "");
   const skill = String(payload.skill || "");
-  if (!["listening-practice", "comprehension-practice"].includes(type)) return;
-  if (!["listening", "comprehension"].includes(skill)) return;
+  const allowed = {
+    "listening-practice": "listening",
+    "comprehension-practice": "comprehension",
+    "speaking-practice": "speaking",
+    "production-practice": "production"
+  };
+  if (!Object.prototype.hasOwnProperty.call(allowed, type) || allowed[type] !== skill) return;
   const itemId = String(payload.itemId || "").slice(0, 160);
   if (!itemId) return;
   const rawMetadata = objectValue(payload.metadata);
+  const finiteNumber = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   const metadata = {
     level: String(rawMetadata.level || "").slice(0, 40),
-    minutes: Math.max(0, Math.min(240, Number(rawMetadata.minutes || 0))),
-    score: Math.max(0, Math.min(100, Number(rawMetadata.score || 0))),
-    correct: Math.max(0, Number(rawMetadata.correct || 0)),
-    total: Math.max(0, Number(rawMetadata.total || 0)),
-    vocabCoverage: Math.max(0, Math.min(100, Number(rawMetadata.vocabCoverage || 0))),
-    grammarCoverage: rawMetadata.grammarCoverage == null ? null : Math.max(0, Math.min(100, Number(rawMetadata.grammarCoverage || 0)))
+    minutes: Math.max(0, Math.min(240, finiteNumber(rawMetadata.minutes))),
+    score: Math.max(0, Math.min(100, finiteNumber(rawMetadata.score))),
+    correct: Math.max(0, finiteNumber(rawMetadata.correct)),
+    total: Math.max(0, finiteNumber(rawMetadata.total)),
+    vocabCoverage: rawMetadata.vocabCoverage == null ? null : Math.max(0, Math.min(100, finiteNumber(rawMetadata.vocabCoverage))),
+    grammarCoverage: rawMetadata.grammarCoverage == null ? null : Math.max(0, Math.min(100, finiteNumber(rawMetadata.grammarCoverage))),
+    mode: String(rawMetadata.mode || "").slice(0, 60),
+    chars: Math.max(0, Math.min(20000, finiteNumber(rawMetadata.chars)))
   };
   queueEvent({
     type,
@@ -644,13 +653,13 @@ function acceptListeningActivityMessage(event) {
     skill,
     result: String(payload.result || "completed").slice(0, 40),
     label: String(payload.label || itemId).slice(0, 200),
-    area: "listening",
+    area: ["speaking", "production"].includes(skill) ? "production" : "listening",
     timestamp: Number(payload.timestamp) || Date.now(),
     metadata
   });
 }
 
-window.addEventListener("message", acceptListeningActivityMessage);
+window.addEventListener("message", acceptSkillActivityMessage);
 
 window.addEventListener("message", event => {
   const bridgeMode = new URLSearchParams(location.search).get("lifeRpgBridge") === "1";

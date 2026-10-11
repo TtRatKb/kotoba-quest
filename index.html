@@ -1171,6 +1171,7 @@
         currentLevel:1,
         placementCompletedLevels:[],
         placementProgress:{},
+        corePriorityIds:[],
         xp:0,
         demoMode:false,
         audioAutoplay:true,
@@ -1249,6 +1250,9 @@
               typeof parsed.placementProgress==="object"
                 ? parsed.placementProgress
                 : {},
+          corePriorityIds:Array.isArray(parsed.corePriorityIds)
+            ? [...new Set(parsed.corePriorityIds.map(String).filter(Boolean))]
+            : [],
           vocabularyMeaningOverrides:parsed.vocabularyMeaningOverrides &&
             typeof parsed.vocabularyMeaningOverrides==="object" &&
             !Array.isArray(parsed.vocabularyMeaningOverrides)
@@ -2489,6 +2493,40 @@
       return gained;
     }
 
+    function normalizedCorePriorityIds() {
+      if(!Array.isArray(data.corePriorityIds)) data.corePriorityIds=[];
+      const started=new Set(
+        (Array.isArray(data.vocabulary) ? data.vocabulary : [])
+          .filter(item => item?.sourceType==="core" && (Number(item?.stage || 0)>0 || item?.guruPassed))
+          .map(item => String(item?.packEntryId || item?.id || ""))
+          .filter(Boolean)
+      );
+      const cleaned=[...new Set(data.corePriorityIds.map(String).filter(id => id && !started.has(id)))];
+      data.corePriorityIds=cleaned;
+      return new Set(cleaned);
+    }
+
+    function queueCorePriority(itemId) {
+      const item=findVocabularyItem(itemId);
+      if(!item || item.sourceType!=="core" || Number(item.stage || 0)>0 || item.guruPassed) return false;
+      const id=String(item.packEntryId || item.id || "");
+      if(!id) return false;
+      const ids=normalizedCorePriorityIds();
+      ids.add(id);
+      data.corePriorityIds=[...ids];
+      saveData();
+      return true;
+    }
+
+    function unqueueCorePriority(itemId) {
+      const id=String(itemId || "");
+      if(!id) return false;
+      const before=Array.isArray(data.corePriorityIds) ? data.corePriorityIds.length : 0;
+      data.corePriorityIds=(Array.isArray(data.corePriorityIds) ? data.corePriorityIds : []).map(String).filter(value => value!==id);
+      if(data.corePriorityIds.length!==before) saveData();
+      return data.corePriorityIds.length!==before;
+    }
+
     function getLessonItems(kind) {
       if(kind==="mining") {
         return data.vocabulary.filter(v => v.sourceType==="mining" && v.stage===0);
@@ -2496,16 +2534,33 @@
       // Core rows are stored compactly in IndexedDB/Cloud. Keep lesson callers on
       // fully hydrated catalogue rows even if a storage/save hook has just run.
       ensureCoreVocabularyContent();
+      const priorityIds=normalizedCorePriorityIds();
       return data.vocabulary
-        .filter(v =>
-          v.sourceType==="core" &&
-          v.stage===0 &&
-          v.level<=data.currentLevel &&
-          placementDone(v.level)
-        )
+        .filter(v => {
+          if(v.sourceType!=="core" || Number(v.stage || 0)!==0) return false;
+          const id=String(v.packEntryId || v.id || "");
+          const explicitlyPrioritized=Boolean(id && priorityIds.has(id));
+          const normallyUnlocked=Number(v.level || 0)<=Number(data.currentLevel || 1) && placementDone(v.level);
+          return explicitlyPrioritized || normallyUnlocked;
+        })
         .map(item => findVocabularyItem(item.id || item.packEntryId) || hydrateCoreVocabularyItem(item,Number(item.coreIndex)))
         .filter(validStudyItem);
     }
+
+    window.KotobaQuestCorePriority = {
+      version:"1.0",
+      queue:queueCorePriority,
+      unqueue:unqueueCorePriority,
+      isQueued:itemId => normalizedCorePriorityIds().has(String(itemId || "")),
+      getIds:() => [...normalizedCorePriorityIds()],
+      getItems:() => {
+        const ids=normalizedCorePriorityIds();
+        return (Array.isArray(data.vocabulary) ? data.vocabulary : [])
+          .filter(item => item?.sourceType==="core" && ids.has(String(item?.packEntryId || item?.id || "")) && Number(item?.stage || 0)===0)
+          .map(item => findVocabularyItem(item.id || item.packEntryId) || item)
+          .filter(validStudyItem);
+      }
+    };
 
     function getDueItems(kind) {
       return data.vocabulary.filter(v => v.sourceType===kind && isDue(v));
@@ -3116,8 +3171,10 @@
     }
 
     function startLessons(kind) {
+      const priorityIds=kind==="core" ? normalizedCorePriorityIds() : new Set();
+      const priorityRank=item => priorityIds.has(String(item?.packEntryId || item?.id || "")) ? 0 : 1;
       const items=getLessonItems(kind).sort((a,b) =>
-        (kind==="core" ? a.level-b.level : 0) || a.createdAt-b.createdAt
+        (kind==="core" ? priorityRank(a)-priorityRank(b) || a.level-b.level : 0) || a.createdAt-b.createdAt
       ).slice(0,5);
       lessonSession={kind,items,index:0,revealed:false};
       switchView("lessons");
@@ -3258,6 +3315,10 @@
         }
         target.stage=1;
         schedule(target);
+        if(target.sourceType==="core" && Array.isArray(data.corePriorityIds)) {
+          const targetId=String(target.packEntryId || target.id || "");
+          data.corePriorityIds=data.corePriorityIds.map(String).filter(id => id!==targetId);
+        }
         data.xp+=5;
         lessonSession.index++;
         lessonSession.revealed=false;
