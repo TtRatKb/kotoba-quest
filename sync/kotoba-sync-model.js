@@ -129,6 +129,26 @@ export function buildQuickTrainingSnapshot({ rawProgress, grammarProgress = [], 
   };
 }
 
+export function compactVocabularyPlacement(progress = {}) {
+  // Count only completed, durable five-word checkpoints, never live answers.
+  // Do not copy vocabulary text or private study answers into the bridge.
+  const completedLevels = [...new Set((Array.isArray(progress?.placementCompletedLevels)
+    ? progress.placementCompletedLevels : []).map(Number).filter(n => Number.isInteger(n) && n > 0 && n < 1000))];
+  const active = {};
+  for (const [rawLevel, item] of Object.entries(objectValue(progress?.placementProgress))) {
+    const level = Number(rawLevel);
+    if (!Number.isInteger(level) || level < 1 || level > 999 || completedLevels.includes(level)) continue;
+    const order = Array.isArray(item?.order) ? item.order : [];
+    const processed = Array.isArray(item?.processedIds) ? item.processedIds : [];
+    const total = order.length;
+    if (total < 1 || total > 1000) continue;
+    active[String(level)] = {
+      processed: Math.min(total, new Set(processed.map(String)).size), total
+    };
+  }
+  return { active, completedLevels };
+}
+
 export function compactRuntimeCheckpoint({ rawProgress, grammarProgress = [], particleProgress = [] } = {}) {
   const progress = readProgress(rawProgress);
   const grammar = {};
@@ -179,7 +199,7 @@ export function compactRuntimeCheckpoint({ rawProgress, grammarProgress = [], pa
       }))
     : [];
 
-  return { grammar, particles, analyticsEvents };
+  return { grammar, particles, analyticsEvents, vocabPlacement: compactVocabularyPlacement(progress) };
 }
 
 export function analyticsFingerprint(event) {

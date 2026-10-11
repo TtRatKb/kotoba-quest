@@ -59,7 +59,8 @@ export function writeBridgeState(state, storage = localStorage) {
   const checkpoint = state?.checkpoint && typeof state.checkpoint === "object"
     ? {
         grammar: clone(objectValue(state.checkpoint.grammar)),
-        particles: clone(objectValue(state.checkpoint.particles))
+        particles: clone(objectValue(state.checkpoint.particles)),
+        vocabPlacement: clone(objectValue(state.checkpoint.vocabPlacement))
       }
     : null;
   const safe = {

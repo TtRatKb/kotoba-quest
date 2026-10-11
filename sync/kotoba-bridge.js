@@ -32,7 +32,7 @@ import {
   writeBridgeState
 } from "./kotoba-events.js";
 
-const BRIDGE_VERSION = "2.2.0";
+const BRIDGE_VERSION = "2.3.0";
 const appFrame = document.getElementById("appFrame");
 let bridgeState = readBridgeState();
 let currentUser = null;
@@ -166,6 +166,49 @@ function compareSkillGroup(previousGroup = {}, nextGroup = {}, type, area) {
   }
 }
 
+function emitVocabularyPlacementEvents(previous = {}, next = {}) {
+  // Existing placements are baselined on bridge startup and never backpaid.
+  // Real Kotoba checkpoints are five items. A sudden larger jump is treated as
+  // a restore/migration, not as verified live work.
+  const oldState = objectValue(previous);
+  const newState = objectValue(next);
+  const oldActive = objectValue(oldState.active);
+  const newActive = objectValue(newState.active);
+  const oldCompleted = new Set(Array.isArray(oldState.completedLevels) ? oldState.completedLevels.map(Number) : []);
+  const newCompleted = new Set(Array.isArray(newState.completedLevels) ? newState.completedLevels.map(Number) : []);
+
+  const sendBatch = (level, processed, count) => {
+    if (!Number.isInteger(level) || level < 1 || level > 999 || count < 1 || count > 5) return;
+    if (!Number.isInteger(processed) || processed < 1 || processed % 5 !== 0) return;
+    const batch = processed / 5;
+    queueEvent({
+      type: "vocab-placement-batch", skill: "vocabulary", area: "vocabulary",
+      itemId: `vocab-placement-level-${level}-batch-${batch}`,
+      label: `Vokabel-Einstufung · Level ${level} · ${processed} Wörter`, result: "completed",
+      metadata: { level, count, total: count, mode: "placement-checkpoint" }
+    });
+  };
+
+  for (const [key, state] of Object.entries(newActive)) {
+    const level = Number(key);
+    if (newCompleted.has(level) || oldCompleted.has(level)) continue;
+    const processed = Number(state?.processed || 0);
+    const earlier = Number(oldActive[key]?.processed || 0);
+    const difference = processed - earlier;
+    if (difference > 0 && difference <= 5 && processed % 5 === 0) sendBatch(level, processed, difference);
+  }
+  for (const level of newCompleted) {
+    if (oldCompleted.has(level)) continue;
+    const previousState = oldActive[String(level)];
+    // The entire level suddenly appearing as completed can be a cloud restore.
+    if (!previousState) continue;
+    const prior = Number(previousState.processed || 0);
+    const total = Number(previousState.total || 0);
+    const difference = total - prior;
+    if (difference > 0 && difference <= 5) sendBatch(level, total, difference);
+  }
+}
+
 function establishBaseline(checkpoint, snapshot) {
   bridgeState.checkpoint = checkpoint;
   bridgeState.lastSnapshot = snapshot;
@@ -187,6 +230,7 @@ async function scanProgress({ reason = "change", forceSnapshot = false } = {}) {
 
   const previous = objectValue(bridgeState.checkpoint);
   emitNewAnalyticsEvents(checkpoint);
+  if (previous.vocabPlacement) emitVocabularyPlacementEvents(previous.vocabPlacement, checkpoint.vocabPlacement);
   compareSkillGroup(objectValue(previous.grammar), objectValue(checkpoint.grammar), "grammar-review", "grammar");
   compareSkillGroup(objectValue(previous.particles), objectValue(checkpoint.particles), "particle-review", "particles");
 
