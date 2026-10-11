@@ -33207,6 +33207,13 @@ ${tooltipText(segment, status)}`)}"`
         return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
       }
 
+      function splitMiningMeanings(value) {
+        return String(value || "")
+          .split(/\s*[;；]\s*/g)
+          .map(part => part.trim())
+          .filter(Boolean);
+      }
+
       function sourceData() {
         try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
@@ -33493,8 +33500,9 @@ ${tooltipText(segment, status)}`)}"`
         if (status.item) return false;
         const source = sourceData();
         source.vocabulary = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        const miningMeanings = splitMiningMeanings(target.meaning);
         let item = {
-          word: target.word, reading: target.reading, meanings: [target.meaning], productionCue: target.meaning,
+          word: target.word, reading: target.reading, meanings: miningMeanings.length ? miningMeanings : [target.meaning], productionCue: miningMeanings[0] || target.meaning,
           sourceType: "mining", collection: `Listening · ${lesson.title}`, example: "", exampleTranslation: "",
           stage: 0, availableAt: null, correct: 0, incorrect: 0, guruPassed: false, createdAt: Date.now()
         };
@@ -34132,11 +34140,13 @@ ${tooltipText(segment, status)}`)}"`
         if(!source.corePriorityIds.map(String).includes(id)) source.corePriorityIds.push(id);
         persist(); notify(`${suggestion.word} wurde als vorgezogene Core-Lektion vorgemerkt.`); return true;
       }
+      function splitSuggestionMeanings(value) { return String(value||"").split(/\s*[;；]\s*/g).map(part=>part.trim()).filter(Boolean); }
       function addMiningSuggestion(suggestion,item) {
         const status=suggestionStatus(suggestion);
         if(status.kind!=="unknown") return false;
         const source=sourceData(); source.vocabulary=Array.isArray(source.vocabulary)?source.vocabulary:[];
-        let card={word:suggestion.word,reading:suggestion.reading,meanings:[suggestion.meaning],productionCue:suggestion.meaning,sourceType:"mining",collection:`Writing · ${item.title}`,example:suggestion.example||"",exampleTranslation:"",stage:0,availableAt:null,correct:0,incorrect:0,guruPassed:false,createdAt:Date.now(),pos:suggestion.type==="chunk"?"expression":""};
+        const meanings=splitSuggestionMeanings(suggestion.meaning);
+        let card={word:suggestion.word,reading:suggestion.reading,meanings:meanings.length?meanings:[suggestion.meaning],productionCue:meanings[0]||suggestion.meaning,sourceType:"mining",collection:`Writing · ${item.title}`,example:suggestion.example||"",exampleTranslation:"",stage:0,availableAt:null,correct:0,incorrect:0,guruPassed:false,createdAt:Date.now(),pos:suggestion.type==="chunk"?"expression":""};
         try { if(typeof makeVocabulary==="function") card=makeVocabulary(card); } catch {}
         source.vocabulary.push(card); try { if(typeof data!=="undefined") data.vocabulary=source.vocabulary; } catch {}
         persist(); notify(`${suggestion.word} wurde ins Mining übernommen.`); return true;

@@ -3462,7 +3462,7 @@
              <button class="icon-audio" id="questionAudio" type="button" title="Noch einmal abspielen" aria-label="Wort noch einmal abspielen">🔊</button>
            </div>
            ${contextMarkup}`
-        : `<div class="production-word">${escapeHtml(item.productionCue || itemMeanings.join(" / "))}</div>
+        : `<div class="production-word">${escapeHtml(primaryProductionCue(item) || itemMeanings[0] || "")}</div>
            ${contextMarkup}`;
 
       card.className=`card study-card ${isListening ? "review-reading" : "review-meaning"}`;
@@ -3557,13 +3557,20 @@
       });
     }
 
+    function splitMeaningVariants(value) {
+      return String(value || "")
+        .split(/\s*[;；]\s*/g)
+        .map(part => part.trim())
+        .filter(Boolean);
+    }
+
     function acceptedMeaningTargets(item) {
       const values=[
         ...(Array.isArray(item?.meanings) ? item.meanings : []),
         ...(Array.isArray(item?.acceptedMeanings) ? item.acceptedMeanings : []),
         ...(Array.isArray(item?.synonyms) ? item.synonyms : []),
         ...(Array.isArray(item?.meaningAlternatives) ? item.meaningAlternatives : [])
-      ].map(value => String(value || "").trim()).filter(Boolean);
+      ].flatMap(splitMeaningVariants);
       const seen=new Set();
       return values.filter(value => {
         const key=normalizeLatin(value);
@@ -3571,6 +3578,15 @@
         seen.add(key);
         return true;
       });
+    }
+
+    function primaryProductionCue(item) {
+      const explicit=splitMeaningVariants(item?.productionCue);
+      if(explicit.length) return explicit[0];
+      const meanings=Array.isArray(item?.meanings)
+        ? item.meanings.flatMap(splitMeaningVariants)
+        : splitMeaningVariants(item?.meanings);
+      return meanings[0] || "";
     }
 
     function evaluateAnswer(question,item,answer) {
