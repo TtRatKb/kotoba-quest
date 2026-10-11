@@ -32,7 +32,7 @@ import {
   writeBridgeState
 } from "./kotoba-events.js";
 
-const BRIDGE_VERSION = "2.1.0";
+const BRIDGE_VERSION = "2.2.0";
 const appFrame = document.getElementById("appFrame");
 let bridgeState = readBridgeState();
 let currentUser = null;
@@ -614,6 +614,43 @@ async function handleLiveRequest(action, payload = {}) {
   if (action === "refresh-snapshot") return clone((await scanProgress({ reason: "life-rpg", forceSnapshot: true })).snapshot);
   throw new Error(`Unsupported Kotoba live-bridge action: ${String(action || "")}`);
 }
+
+const LISTENING_ACTIVITY_MESSAGE_TYPE = "kotoba-listening-activity";
+
+function acceptListeningActivityMessage(event) {
+  if (!appFrame?.contentWindow || event.source !== appFrame.contentWindow) return;
+  const message = event.data;
+  if (!message || message.type !== LISTENING_ACTIVITY_MESSAGE_TYPE) return;
+  const payload = objectValue(message.payload);
+  const type = String(payload.type || "");
+  const skill = String(payload.skill || "");
+  if (!["listening-practice", "comprehension-practice"].includes(type)) return;
+  if (!["listening", "comprehension"].includes(skill)) return;
+  const itemId = String(payload.itemId || "").slice(0, 160);
+  if (!itemId) return;
+  const rawMetadata = objectValue(payload.metadata);
+  const metadata = {
+    level: String(rawMetadata.level || "").slice(0, 40),
+    minutes: Math.max(0, Math.min(240, Number(rawMetadata.minutes || 0))),
+    score: Math.max(0, Math.min(100, Number(rawMetadata.score || 0))),
+    correct: Math.max(0, Number(rawMetadata.correct || 0)),
+    total: Math.max(0, Number(rawMetadata.total || 0)),
+    vocabCoverage: Math.max(0, Math.min(100, Number(rawMetadata.vocabCoverage || 0))),
+    grammarCoverage: rawMetadata.grammarCoverage == null ? null : Math.max(0, Math.min(100, Number(rawMetadata.grammarCoverage || 0)))
+  };
+  queueEvent({
+    type,
+    itemId,
+    skill,
+    result: String(payload.result || "completed").slice(0, 40),
+    label: String(payload.label || itemId).slice(0, 200),
+    area: "listening",
+    timestamp: Number(payload.timestamp) || Date.now(),
+    metadata
+  });
+}
+
+window.addEventListener("message", acceptListeningActivityMessage);
 
 window.addEventListener("message", event => {
   const bridgeMode = new URLSearchParams(location.search).get("lifeRpgBridge") === "1";

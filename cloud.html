@@ -33074,11 +33074,505 @@ ${tooltipText(segment, status)}`)}"`
       };
     }
 
+    function listeningLabBootstrap() {
+      if (window.__KOTOBA_LISTENING_LAB_V1__) return;
+      window.__KOTOBA_LISTENING_LAB_V1__ = true;
+
+      const VERSION = "0.1";
+      const STORAGE_KEY = "kotobaQuestDataV3";
+      const LESSONS = [
+        {
+          id: "sayuri-daily-routine-n4",
+          title: "Meine tägliche Routine",
+          source: "Nihongo Sayuri",
+          level: "N4",
+          minutes: 8,
+          media: { type: "youtube", id: "w6UHVUldvAk" },
+          sourceUrl: "https://blog.nihongo-sayuri.com/posts/japanese-listening-practice-daily-routine-n4/",
+          blurb: "Alltag, Tagesablauf und natürliche N4-Sprache. Erst blind hören, danach Verständnis prüfen und gezielt Wortschatz schließen.",
+          vocabulary: [
+            ["目を覚ます","めをさます","aufwachen"], ["二度寝","にどね","wieder einschlafen"], ["朝ごはん","あさごはん","Frühstück","朝ご飯"],
+            ["気分","きぶん","Stimmung; Gefühl"], ["生徒","せいと","Schüler; Lernender"], ["一生懸命","いっしょうけんめい","mit großer Anstrengung"],
+            ["休憩","きゅうけい","Pause"], ["夕方","ゆうがた","später Nachmittag; Abend"], ["過ごす","すごす","Zeit verbringen"],
+            ["終わる","おわる","enden; fertig werden"], ["掃除","そうじ","Putzen; Reinigung"], ["洗濯","せんたく","Wäsche; waschen"],
+            ["台本","だいほん","Skript"], ["録音","ろくおん","Aufnahme; aufnehmen"], ["編集","へんしゅう","Bearbeitung; editieren"],
+            ["確認","かくにん","überprüfen; Bestätigung"], ["予定","よてい","Plan; Termin"], ["ストレッチ","すとれっち","Stretching"]
+          ],
+          grammar: [
+            { id: "te-connect", label: "〜て / Handlungen verbinden" },
+            { id: "to-omou", label: "〜と思う" },
+            { id: "koto-ga-aru", label: "〜ことがある" },
+            { id: "you-ni-na", label: "〜ような" },
+            { id: "nagara", label: "〜ながら" }
+          ],
+          questions: [
+            { q: "Wann beginnt Sayuris Tag normalerweise ungefähr?", a: ["Gegen 6 Uhr", "Gegen 8 Uhr", "Gegen 10 Uhr", "Erst mittags"], correct: 0, why: "Sie beschreibt einen frühen Start gegen 6 Uhr." },
+            { q: "Was trinkt sie statt eines normalen Frühstücks?", a: ["Grünen Tee", "Schwarzen Kaffee", "Orangensaft", "Milch"], correct: 1, why: "Sie erwähnt schwarzen Kaffee anstelle eines Frühstücks." },
+            { q: "Welche Inhalte kommen in ihren Online-Lektionen vor?", a: ["Nur Kanji", "Nur Aussprache", "Grammatik, Konversation und Kanji", "Nur Prüfungstaktik"], correct: 2, why: "Die Lektionen umfassen mehrere Bereiche, darunter Grammatik, Konversation und Kanji." },
+            { q: "Was macht sie im Tagesverlauf, wenn Zeit zwischen Aufgaben ist?", a: ["Sie fährt jedes Mal in die Stadt", "Sie macht eine kurze Pause und arbeitet später weiter", "Sie schläft mehrere Stunden", "Sie beendet grundsätzlich den Arbeitstag"], correct: 1, why: "Sie beschreibt kurze Pausen zwischen Unterricht und weiterer Arbeit." },
+            { q: "Was gehört zu ihrer Routine vor dem Schlafen?", a: ["Den nächsten Plan prüfen und sich dehnen", "Noch einmal einkaufen", "Eine Stunde joggen", "Das Frühstück vorbereiten"], correct: 0, why: "Vor dem Schlafen prüft sie den nächsten Tagesplan und macht Stretching." }
+          ]
+        },
+        {
+          id: "sayuri-train-manners",
+          title: "6 Regeln in japanischen Zügen",
+          source: "Nihongo Sayuri",
+          level: "N4",
+          minutes: 9,
+          media: { type: "youtube", id: "Z7JCnOa8Rxc" },
+          sourceUrl: "https://blog.nihongo-sayuri.com/posts/japan-train-manners/",
+          blurb: "Sehr praktische Reisesprache: Bahnhofsansagen, Regeln und typische Ausdrücke, die du in Japan wirklich hören kannst.",
+          vocabulary: [
+            ["並ぶ","ならぶ","Schlange stehen"], ["左右","さゆう","links und rechts"], ["順番","じゅんばん","Reihenfolge"],
+            ["到着","とうちゃく","Ankunft; ankommen"], ["車内","しゃない","im Zug; Fahrzeuginnenraum"], ["着信音","ちゃくしんおん","Klingelton"],
+            ["通話","つうわ","Telefonat"], ["優先席","ゆうせんせき","Prioritätssitz"], ["高齢","こうれい","hohes Alter"],
+            ["妊娠","にんしん","Schwangerschaft"], ["譲る","ゆずる","überlassen; Platz anbieten"], ["荷物","にもつ","Gepäck"],
+            ["通路","つうろ","Gang; Durchgang"], ["駆け込み乗車","かけこみじょうしゃ","in einen schließenden Zug springen","かけこみ乗車"],
+            ["危険","きけん","gefährlich; Gefahr"], ["足元","あしもと","Bereich bei den Füßen"], ["遠慮","えんりょ","Zurückhaltung; Rücksicht"],
+            ["付近","ふきん","Umgebung; Nähe"]
+          ],
+          grammar: [
+            { id: "te-connect", label: "〜て / Handlungen verbinden" },
+            { id: "you-ni-suru", label: "〜ようにする" },
+            { id: "tara", label: "〜たら" },
+            { id: "te-itadakemasen-ka", label: "〜ていただけませんか" },
+            { id: "temo", label: "〜ても" }
+          ],
+          questions: [
+            { q: "Wo wartet man laut Podcast auf den Zug?", a: ["Direkt mitten vor der Tür", "Links und rechts der Tür hinter der gelben Linie", "Auf der Treppe", "Am anderen Ende des Bahnsteigs"], correct: 1, why: "Man wartet seitlich der Tür und hinter der gelben Linie, damit Aussteigende zuerst herauskönnen." },
+            { q: "Wie soll man sich beim Sprechen im Zug verhalten?", a: ["Möglichst leise und zurückhaltend", "Nur flüstern ist erlaubt", "Telefonieren ist besser als reden", "Es gibt keine Empfehlung"], correct: 0, why: "Im Wagen soll die Stimme klein/leise gehalten werden." },
+            { q: "Was wird für Smartphones empfohlen?", a: ["Lautsprecher einschalten", "Telefonate nur an der Tür", "Stumm-/Maniermodus und keine Telefonate", "Das Handy vollständig ausschalten"], correct: 2, why: "Der Klingelton soll aus sein; Telefonate im Wagen sollen vermieden werden." },
+            { q: "Für wen sind die Prioritätssitze besonders gedacht?", a: ["Nur für Touristen", "Für ältere, schwangere, körperlich eingeschränkte Personen und Menschen mit kleinen Kindern", "Nur für Bahnmitarbeiter", "Für alle mit großem Gepäck"], correct: 1, why: "Diese Gruppen werden ausdrücklich als Beispiele genannt." },
+            { q: "Was soll man in einem vollen Zug mit einem Rucksack machen?", a: ["Auf den Boden in den Gang stellen", "Auf dem Rücken lassen", "Vorne tragen und Gepäck nah am Körper halten", "Auf einen Sitz legen"], correct: 2, why: "So blockiert man weder andere Fahrgäste noch den Durchgang." }
+          ]
+        },
+        {
+          id: "sayuri-onsen-rules",
+          title: "Onsen: 6 Regeln, die du hören können solltest",
+          source: "Nihongo Sayuri",
+          level: "N3-Stretch",
+          minutes: 8,
+          media: { type: "spotify", id: "0u4bATIyXkG1J31raU1CYq" },
+          sourceUrl: "https://blog.nihongo-sayuri.com/posts/japan-onsen-sento-manners-rules/",
+          blurb: "Etwas dichterer Wortschatz, aber sehr klarer Kontext. Ideal als Stretch-Lektion zwischen N4 und echtem N3-Hören.",
+          vocabulary: [
+            ["温泉","おんせん","heiße Quelle; Onsen"], ["銭湯","せんとう","öffentliches Badehaus"], ["湯船","ゆぶね","Badewanne; Badebecken"],
+            ["脱衣所","だついじょ","Umkleideraum"], ["洗い場","あらいば","Waschbereich"], ["かけ湯","かけゆ","Abspülen vor dem Baden"],
+            ["温度","おんど","Temperatur"], ["慣らす","ならす","gewöhnen; akklimatisieren"], ["負担","ふたん","Belastung"],
+            ["結ぶ","むすぶ","binden"], ["マナー違反","まなーいはん","Verstoß gegen die Etikette"], ["工夫","くふう","Kniff; Idee; Maßnahme"],
+            ["拭く","ふく","abwischen; abtrocknen"], ["隠す","かくす","verstecken; bedecken"], ["貸切風呂","かしきりぶろ","privates Bad"],
+            ["撮影禁止","さつえいきんし","Fotografieren verboten"], ["露天風呂","ろてんぶろ","Außenbad"], ["内湯","うちゆ","Innenbad"]
+          ],
+          grammar: [
+            { id: "sou-da-hearsay", label: "〜そうだ (Hörensagen)" },
+            { id: "mama", label: "〜まま" },
+            { id: "to-iu", label: "〜という" },
+            { id: "koto-ga-aru", label: "〜ことがある" },
+            { id: "tara", label: "〜たら" }
+          ],
+          questions: [
+            { q: "Was soll man tun, bevor man in das heiße Becken steigt?", a: ["Nur die Hände waschen", "Den Körper waschen und かけ湯 machen", "Erst fotografieren", "Sofort ins Becken steigen"], correct: 1, why: "Der Körper wird vorher gereinigt; かけ湯 hilft außerdem, sich an die Temperatur zu gewöhnen." },
+            { q: "Warum ist かけ湯 außer zur Reinigung nützlich?", a: ["Es kühlt das Wasser", "Es gewöhnt den Körper an die Wassertemperatur und reduziert Belastung", "Es ersetzt das Duschen vollständig", "Es ist nur Tradition ohne Zweck"], correct: 1, why: "Im Podcast wird ausdrücklich die Gewöhnung an die Temperatur und die geringere Belastung erwähnt." },
+            { q: "Was soll man mit langen Haaren machen?", a: ["Im Wasser auswaschen", "Offen lassen", "Zusammenbinden und aus dem Wasser halten", "Mit einem Handtuch untertauchen"], correct: 2, why: "Lange Haare sollen zusammengebunden werden und nicht ins Badewasser gelangen." },
+            { q: "Was gilt für das kleine Handtuch?", a: ["Es darf nicht ins Badebecken", "Es muss immer im Wasser bleiben", "Es wird am Eingang abgegeben", "Es wird als Badematte benutzt"], correct: 0, why: "Das Handtuch soll nicht in das Wasser des Beckens gelangen." },
+            { q: "Welche Regel gilt für Smartphone und Kamera?", a: ["Fotos sind nur draußen verboten", "Fotografieren ist im Bad erlaubt, wenn niemand zu sehen ist", "Smartphone und Kamera sollen im Badebereich nicht benutzt werden", "Nur Videos sind verboten"], correct: 2, why: "Onsen und Sentō sind Bereiche mit Fotografierverbot." }
+          ]
+        }
+      ].map(lesson => ({
+        ...lesson,
+        vocabulary: lesson.vocabulary.map(([word, reading, meaning, ...aliases]) => ({ word, reading, meaning, aliases }))
+      }));
+
+      let currentLessonId = "";
+      let mode = "library";
+      let quizIndex = 0;
+      let quizAnswers = [];
+      let quizFeedback = null;
+      let searchTerm = "";
+      let filter = "all";
+
+      function esc(value) {
+        try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
+        return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+      }
+
+      function sourceData() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+      }
+
+      function persist() {
+        const source = sourceData();
+        try {
+          if (typeof data !== "undefined" && data && data !== source) data.listeningLab = source.listeningLab;
+          if (typeof saveData === "function") { saveData(); return; }
+        } catch {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(source)); } catch (error) { console.warn("Listening Lab progress could not be saved", error); }
+      }
+
+      function state() {
+        const source = sourceData();
+        if (!source.listeningLab || typeof source.listeningLab !== "object") source.listeningLab = {};
+        const lab = source.listeningLab;
+        lab.version = Math.max(1, Number(lab.version || 1));
+        if (!lab.progress || typeof lab.progress !== "object" || Array.isArray(lab.progress)) lab.progress = {};
+        if (!lab.stats || typeof lab.stats !== "object" || Array.isArray(lab.stats)) lab.stats = { sessions: 0, correct: 0, total: 0, lastAt: null };
+        return lab;
+      }
+
+      function normalize(value) {
+        return String(value || "").normalize("NFKC").toLowerCase().replace(/[\s・･·.,!?！？。、，：:；;「」『』（）()\[\]【】〜~ー\-]/g, "").trim();
+      }
+
+      function hira(value) {
+        return normalize(value).replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+      }
+
+      function vocabMatches(item, target) {
+        const candidates = [target.word, ...(target.aliases || [])].map(normalize).filter(Boolean);
+        const word = normalize(item?.word || item?.base || item?.surface);
+        if (!word || !candidates.includes(word)) return false;
+        const targetReading = hira(target.reading);
+        const itemReading = hira(item?.reading || item?.baseReading);
+        return !targetReading || !itemReading || targetReading === itemReading;
+      }
+
+      function vocabularyStatus(target) {
+        const source = sourceData();
+        const manual = (Array.isArray(source.knownVocabulary) ? source.knownVocabulary : []).find(item => vocabMatches(item, target)) || null;
+        const learned = (Array.isArray(source.vocabulary) ? source.vocabulary : []).find(item => vocabMatches(item, target)) || null;
+        const stage = Math.max(0, Math.min(9, Number(learned?.stage || 0)));
+        if (manual || learned?.guruPassed || stage >= 5) {
+          return { kind: "known", label: manual ? "Als bekannt markiert" : stage >= 9 ? "Abgeschlossen" : stage >= 7 ? "Master+" : stage === 6 ? "Guru 2" : "Guru 1", stage, item: learned, manual };
+        }
+        if (learned && stage >= 1) return { kind: "learning", label: `Apprentice ${Math.min(4, stage)}`, stage, item: learned };
+        if (learned?.sourceType === "mining") return { kind: "queued", label: "Mining · noch neu", stage, item: learned };
+        if (learned?.sourceType === "core") return { kind: "queued", label: `Core · noch neu${learned.level ? ` (L${learned.level})` : ""}`, stage, item: learned };
+        return { kind: "unknown", label: "Noch unbekannt", stage: 0, item: null };
+      }
+
+      function grammarStatus(tag) {
+        try {
+          const n4 = window.KotobaQuestN4Recap;
+          const catalog = n4?.getCatalog?.();
+          const direct = Array.isArray(catalog) ? catalog.find(item => String(item?.id || "") === tag.id) : null;
+          if (direct) {
+            if (n4.isKnown?.(direct.id)) return { kind: "known", label: "N4 sicher", id: direct.id };
+            const point = n4.getPointStatus?.(direct.id);
+            if (point?.provisional || point?.repairComplete || point?.round1Correct) return { kind: "learning", label: "N4 in Arbeit", id: direct.id };
+            return { kind: "unknown", label: "N4 noch offen", id: direct.id };
+          }
+        } catch {}
+        try {
+          const progress = window.KotobaQuestGrammarSupportApi?.getGrammarProgress?.();
+          const point = Array.isArray(progress) ? progress.find(item => String(item?.id || "") === tag.id) : null;
+          if (point) {
+            const stages = (point.skills || []).map(skill => Number(skill?.stage || 0)).filter(Number.isFinite);
+            const stage = stages.length ? Math.min(...stages) : 0;
+            if (point.lessonComplete && stage >= 5) return { kind: "known", label: "Guru+", id: point.id };
+            if (point.lessonComplete) return { kind: "learning", label: "wird gelernt", id: point.id };
+            return { kind: "unknown", label: "noch offen", id: point.id };
+          }
+        } catch {}
+        return { kind: "unmapped", label: "nicht zugeordnet", id: tag.id };
+      }
+
+      function analyzeLesson(lesson) {
+        const vocab = lesson.vocabulary.map(entry => ({ ...entry, status: vocabularyStatus(entry) }));
+        const known = vocab.filter(entry => entry.status.kind === "known").length;
+        const learning = vocab.filter(entry => entry.status.kind === "learning").length;
+        const queued = vocab.filter(entry => entry.status.kind === "queued").length;
+        const unknown = vocab.length - known - learning;
+        const vocabPercent = Math.round(known / Math.max(1, vocab.length) * 100);
+        const learningPercent = Math.round((known + learning) / Math.max(1, vocab.length) * 100);
+        const grammar = lesson.grammar.map(entry => ({ ...entry, status: grammarStatus(entry) }));
+        const mappedGrammar = grammar.filter(entry => entry.status.kind !== "unmapped");
+        const knownGrammar = mappedGrammar.filter(entry => entry.status.kind === "known").length;
+        const grammarPercent = mappedGrammar.length ? Math.round(knownGrammar / mappedGrammar.length * 100) : null;
+        return { vocab, known, learning, queued, unknown, vocabPercent, learningPercent, grammar, grammarPercent, grammarMapped: mappedGrammar.length, grammarKnown: knownGrammar };
+      }
+
+      function progressFor(id) {
+        const lab = state();
+        if (!lab.progress[id] || typeof lab.progress[id] !== "object") lab.progress[id] = { attempts: 0, bestScore: 0, lastScore: 0, firstVocabCoverage: null, firstGrammarCoverage: null, lastVocabCoverage: null, lastGrammarCoverage: null, lastAttemptAt: null };
+        return lab.progress[id];
+      }
+
+      function ensureView() {
+        if (document.getElementById("listeningLab")) return document.getElementById("listeningLab");
+        const main = document.querySelector("main");
+        if (!main) return null;
+        const section = document.createElement("section");
+        section.id = "listeningLab";
+        section.className = "view";
+        section.innerHTML = `<div id="kqListeningLabRoot"></div>`;
+        const before = document.getElementById("placement") || null;
+        main.insertBefore(section, before);
+        return section;
+      }
+
+      function installStyles() {
+        if (document.getElementById("kqListeningLabStyles")) return;
+        const style = document.createElement("style");
+        style.id = "kqListeningLabStyles";
+        style.textContent = `
+          #kqListeningLabRoot{max-width:1180px;margin:0 auto;display:grid;gap:16px;padding-bottom:28px}.kq-listen-hero{position:relative;overflow:hidden;padding:24px;border-radius:24px;background:linear-gradient(135deg,#433d74,#73558f 52%,#c3789c);color:white;box-shadow:0 16px 42px rgba(64,48,91,.18)}.kq-listen-hero:after{content:'聴解';position:absolute;right:18px;bottom:-35px;font-weight:950;font-size:7rem;opacity:.1}.kq-listen-hero h2,.kq-listen-hero p{margin:0}.kq-listen-hero p{margin-top:7px;max-width:760px;line-height:1.55;opacity:.92}.kq-listen-hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.kq-listen-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:.78rem;font-weight:850}.kq-listen-toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.kq-listen-toolbar input{min-width:min(330px,100%);flex:1}.kq-listen-filters{display:flex;gap:6px;flex-wrap:wrap}.kq-listen-filters button{padding:8px 11px;border-radius:999px;background:#f4f0fa;color:var(--primary-dark);font-weight:850}.kq-listen-filters button.active{background:var(--primary);color:white}.kq-listen-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.kq-listen-card{display:grid;gap:13px;padding:18px;border:1px solid var(--border);border-radius:20px;background:var(--panel);box-shadow:var(--shadow)}.kq-listen-card.rewatch{border-color:#89c5a5;background:linear-gradient(145deg,#f7fff9,#fff)}.kq-listen-card-head{display:flex;justify-content:space-between;gap:12px}.kq-listen-card h3,.kq-listen-card p{margin:0}.kq-listen-card p{color:var(--muted);line-height:1.45}.kq-listen-level{height:max-content;padding:6px 9px;border-radius:999px;background:#eee8fa;color:var(--primary-dark);font-size:.72rem;font-weight:950;white-space:nowrap}.kq-listen-bars{display:grid;gap:9px}.kq-listen-bar-label{display:flex;justify-content:space-between;gap:10px;font-size:.77rem;font-weight:850}.kq-listen-bar-track{height:9px;border-radius:999px;overflow:hidden;background:#ece8f0}.kq-listen-bar-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8d71bd,#d581a6)}.kq-listen-bar-track.grammar span{background:linear-gradient(90deg,#5e91b3,#7eb8a4)}.kq-listen-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.kq-listen-kpi{padding:9px;border-radius:12px;background:#faf8ff;border:1px solid var(--border)}.kq-listen-kpi span,.kq-listen-kpi strong{display:block}.kq-listen-kpi span{font-size:.68rem;color:var(--muted);font-weight:800}.kq-listen-kpi strong{margin-top:2px;color:var(--primary-dark)}.kq-listen-delta{padding:10px 11px;border-radius:12px;background:#f5fbf7;border:1px solid #cbe5d6;color:#397057;font-size:.78rem;font-weight:850}.kq-listen-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}.kq-listen-session{display:grid;gap:14px}.kq-listen-breadcrumb{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.kq-listen-media{overflow:hidden;border:1px solid var(--border);border-radius:18px;background:#14131a}.kq-listen-media iframe{display:block;width:100%;min-height:390px;border:0}.kq-listen-media.spotify iframe{min-height:152px}.kq-listen-guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kq-listen-guide>div{padding:12px;border:1px solid var(--border);border-radius:14px;background:#faf8ff}.kq-listen-guide strong,.kq-listen-guide span{display:block}.kq-listen-guide span{margin-top:4px;color:var(--muted);font-size:.76rem;line-height:1.4}.kq-listen-question{padding:20px;border-radius:20px;border:1px solid var(--border);background:var(--panel);box-shadow:var(--shadow)}.kq-listen-question h3{margin:8px 0 16px;line-height:1.45}.kq-listen-options{display:grid;gap:9px}.kq-listen-options button{display:flex;gap:10px;align-items:flex-start;padding:13px;border-radius:14px;border:1px solid var(--border);background:white;color:var(--text);text-align:left}.kq-listen-options button.selected{border-color:var(--primary);background:#f7f2ff}.kq-listen-options button.correct{border-color:#6eb58d;background:#edf9f2}.kq-listen-options button.wrong{border-color:#d77a90;background:#fff0f3}.kq-listen-option-key{display:grid;place-items:center;flex:0 0 auto;width:29px;height:29px;border-radius:9px;background:#eee8fa;color:var(--primary-dark);font-weight:950}.kq-listen-feedback{margin-top:12px;padding:12px;border-radius:13px;background:#f6f3fb;line-height:1.45}.kq-listen-result-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:13px;align-items:start}.kq-listen-score{padding:22px;border-radius:20px;background:linear-gradient(135deg,#f2edff,#fff7fb);border:1px solid #ddd2ef}.kq-listen-score strong{display:block;font-size:3rem;color:var(--primary)}.kq-listen-vocab-list,.kq-listen-grammar-list{display:grid;gap:7px}.kq-listen-vocab-row,.kq-listen-grammar-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(120px,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:white}.kq-listen-vocab-word strong,.kq-listen-vocab-word span{display:block}.kq-listen-vocab-word span{font-size:.72rem;color:var(--muted)}.kq-listen-status{padding:5px 8px;border-radius:999px;font-size:.68rem;font-weight:900;white-space:nowrap}.kq-listen-status.known{background:#dff3e7;color:#397158}.kq-listen-status.learning{background:#fff0cf;color:#8a641b}.kq-listen-status.queued{background:#ece8fb;color:#66538f}.kq-listen-status.unknown{background:#ffe7ec;color:#964e61}.kq-listen-status.unmapped{background:#efedf1;color:#77717d}.kq-listen-row-actions{display:flex;gap:6px;justify-content:flex-end}.kq-listen-row-actions button{padding:7px 9px;border-radius:9px;font-size:.7rem}.kq-listen-note{padding:11px 13px;border-radius:13px;background:#faf8ff;border:1px solid var(--border);color:var(--muted);line-height:1.45;font-size:.8rem}.kq-listen-empty{padding:28px;text-align:center;border:1px dashed var(--border);border-radius:18px;color:var(--muted)}
+          @media(max-width:900px){.kq-listen-grid,.kq-listen-result-grid{grid-template-columns:1fr}.kq-listen-media iframe{min-height:320px}}@media(max-width:650px){.kq-listen-grid,.kq-listen-guide{grid-template-columns:1fr}.kq-listen-kpis{grid-template-columns:1fr 1fr}.kq-listen-vocab-row,.kq-listen-grammar-row{grid-template-columns:1fr}.kq-listen-row-actions{justify-content:flex-start}.kq-listen-media iframe{min-height:235px}}
+        `;
+        document.head.appendChild(style);
+      }
+
+      function mediaHtml(lesson) {
+        if (lesson.media.type === "youtube") {
+          return `<div class="kq-listen-media"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(lesson.media.id)}?rel=0" title="${esc(lesson.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+        }
+        if (lesson.media.type === "spotify") {
+          return `<div class="kq-listen-media spotify"><iframe src="https://open.spotify.com/embed/episode/${encodeURIComponent(lesson.media.id)}?utm_source=generator" title="${esc(lesson.title)}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe></div>`;
+        }
+        return `<div class="kq-listen-note">Diese Quelle wird beim Original geöffnet.</div>`;
+      }
+
+      function scoreLabel(score) {
+        if (score >= 90) return "Sehr sicher verstanden";
+        if (score >= 70) return "Gut verstanden";
+        if (score >= 50) return "Kerninhalt teilweise verstanden";
+        return "Noch schwierig – perfekt zum gezielten Nacharbeiten";
+      }
+
+      function cardHtml(lesson) {
+        const analysis = analyzeLesson(lesson);
+        const p = state().progress[lesson.id] || {};
+        const first = Number.isFinite(Number(p.firstVocabCoverage)) ? Number(p.firstVocabCoverage) : null;
+        const rewatch = first != null && analysis.vocabPercent > first && (analysis.vocabPercent >= 80 || analysis.vocabPercent - first >= 15);
+        const grammarText = analysis.grammarPercent == null ? "–" : `${analysis.grammarPercent}%`;
+        return `<article class="kq-listen-card${rewatch ? " rewatch" : ""}">
+          <div class="kq-listen-card-head"><div><h3>${esc(lesson.title)}</h3><p>${esc(lesson.source)} · ca. ${lesson.minutes} Min.</p></div><span class="kq-listen-level">${esc(lesson.level)}</span></div>
+          <p>${esc(lesson.blurb)}</p>
+          <div class="kq-listen-bars">
+            <div><div class="kq-listen-bar-label"><span>Wortschatz sicher (Guru / bekannt)</span><strong>${analysis.vocabPercent}%</strong></div><div class="kq-listen-bar-track"><span style="width:${analysis.vocabPercent}%"></span></div></div>
+            <div><div class="kq-listen-bar-label"><span>Grammatik sicher (zugeordnet)</span><strong>${grammarText}</strong></div><div class="kq-listen-bar-track grammar"><span style="width:${analysis.grammarPercent || 0}%"></span></div></div>
+          </div>
+          <div class="kq-listen-kpis"><div class="kq-listen-kpi"><span>In Lernphase</span><strong>${analysis.learning}</strong></div><div class="kq-listen-kpi"><span>Noch offen</span><strong>${analysis.unknown}</strong></div><div class="kq-listen-kpi"><span>Bestes Verstehen</span><strong>${p.attempts ? `${Math.round(Number(p.bestScore || 0))}%` : "–"}</strong></div></div>
+          ${first != null ? `<div class="kq-listen-delta">📈 Erster Versuch: ${Math.round(first)}% Wortschatz → heute ${analysis.vocabPercent}%${rewatch ? " · Zeit fürs Re-Listen!" : ""}</div>` : ""}
+          <div class="kq-listen-actions"><button class="primary" data-kq-listen-open="${esc(lesson.id)}">🎧 Blind hören</button>${p.attempts ? `<button class="secondary" data-kq-listen-open="${esc(lesson.id)}">Nochmal testen</button>` : ""}</div>
+        </article>`;
+      }
+
+      function filteredLessons() {
+        return LESSONS.filter(lesson => {
+          const hay = normalize(`${lesson.title} ${lesson.source} ${lesson.level}`);
+          if (searchTerm && !hay.includes(normalize(searchTerm))) return false;
+          const analysis = analyzeLesson(lesson);
+          const p = state().progress[lesson.id] || {};
+          if (filter === "n4" && lesson.level !== "N4") return false;
+          if (filter === "stretch" && !lesson.level.includes("N3")) return false;
+          if (filter === "mining" && !analysis.vocab.some(entry => ["unknown", "queued"].includes(entry.status.kind))) return false;
+          if (filter === "rewatch") {
+            const first = Number.isFinite(Number(p.firstVocabCoverage)) ? Number(p.firstVocabCoverage) : null;
+            if (first == null || analysis.vocabPercent <= first) return false;
+          }
+          return true;
+        });
+      }
+
+      function renderLibrary() {
+        const root = document.getElementById("kqListeningLabRoot");
+        if (!root) return;
+        const stats = getStats();
+        const lessons = filteredLessons();
+        root.innerHTML = `
+          <section class="kq-listen-hero"><h2>Listening Lab · 聴解</h2><p>Native Audios und Videos, aber geführt: erst ohne Transcript hören, dann Verständnis prüfen, Lücken sichtbar machen und unbekannte Wörter direkt ins Mining schicken.</p><div class="kq-listen-hero-meta"><span class="kq-listen-pill">🎧 ${stats.lessons} Lektionen</span><span class="kq-listen-pill">✅ ${stats.attempted} getestet</span><span class="kq-listen-pill">📈 Ø ${stats.avgCoverage}% Wortschatz sicher</span><span class="kq-listen-pill">💾 Audio bleibt extern – nur Fortschritt wird gespeichert</span></div></section>
+          <div class="kq-listen-toolbar"><input id="kqListeningSearch" type="search" value="${esc(searchTerm)}" placeholder="Listening suchen …"><div class="kq-listen-filters"><button data-kq-listen-filter="all" class="${filter === "all" ? "active" : ""}">Alle</button><button data-kq-listen-filter="n4" class="${filter === "n4" ? "active" : ""}">N4</button><button data-kq-listen-filter="stretch" class="${filter === "stretch" ? "active" : ""}">N3-Stretch</button><button data-kq-listen-filter="mining" class="${filter === "mining" ? "active" : ""}">Mining-Lücken</button><button data-kq-listen-filter="rewatch" class="${filter === "rewatch" ? "active" : ""}">Fortschritt / Re-Listen</button></div></div>
+          <div class="kq-listen-note"><strong>Was bedeutet die Prozentzahl?</strong> Sie bezieht sich auf die für diese Lektion hinterlegten relevanten Inhaltsvokabeln – nicht auf jedes Partikel und jede Flexionsform im Audio. Ein Wort zählt erst als sicher, wenn es Guru+ ist oder von dir ausdrücklich als bekannt markiert wurde. Apprentice-Wörter werden separat als „in Lernphase“ gezeigt.</div>
+          <div class="kq-listen-grid">${lessons.map(cardHtml).join("")}</div>${lessons.length ? "" : `<div class="kq-listen-empty">Für diesen Filter gibt es gerade keine Listening-Lektion.</div>`}`;
+        bindCommon(root);
+        root.querySelector("#kqListeningSearch")?.addEventListener("input", event => { searchTerm = String(event.target.value || ""); renderLibrary(); requestAnimationFrame(() => document.getElementById("kqListeningSearch")?.focus()); });
+      }
+
+      function startLesson(id) {
+        const lesson = LESSONS.find(item => item.id === id);
+        if (!lesson) return;
+        currentLessonId = id;
+        mode = "listen";
+        quizIndex = 0;
+        quizAnswers = [];
+        quizFeedback = null;
+        const analysis = analyzeLesson(lesson);
+        const p = progressFor(id);
+        if (p.firstVocabCoverage == null) p.firstVocabCoverage = analysis.vocabPercent;
+        if (p.firstGrammarCoverage == null && analysis.grammarPercent != null) p.firstGrammarCoverage = analysis.grammarPercent;
+        p.lastVocabCoverage = analysis.vocabPercent;
+        if (analysis.grammarPercent != null) p.lastGrammarCoverage = analysis.grammarPercent;
+        persist();
+        openView();
+        renderSession();
+      }
+
+      function renderSession() {
+        const root = document.getElementById("kqListeningLabRoot");
+        const lesson = LESSONS.find(item => item.id === currentLessonId);
+        if (!root || !lesson) { mode = "library"; renderLibrary(); return; }
+        if (mode === "quiz") { renderQuiz(); return; }
+        if (mode === "result") { renderResult(); return; }
+        const analysis = analyzeLesson(lesson);
+        root.innerHTML = `<div class="kq-listen-session"><div class="kq-listen-breadcrumb"><button class="ghost" data-kq-listen-library>← Listening-Bibliothek</button><span class="kq-listen-level">${esc(lesson.level)}</span><strong>${esc(lesson.title)}</strong></div>
+          <section class="card"><div class="section-title"><div><h2>${esc(lesson.title)}</h2><p>${esc(lesson.source)} · ca. ${lesson.minutes} Minuten</p></div><span class="badge">${analysis.vocabPercent}% Wortschatz sicher</span></div><p class="muted">Erster Durchlauf: möglichst nicht pausieren, nichts nachschlagen und kein Transcript öffnen. Du sollst zuerst messen, was dein Ohr aus deinem aktuellen Wissen tatsächlich macht.</p>${mediaHtml(lesson)}</section>
+          <div class="kq-listen-guide"><div><strong>1 · Blind hören</strong><span>Audio/Video einmal komplett ohne Text hören.</span></div><div><strong>2 · Verstehen prüfen</strong><span>Fünf Inhaltsfragen beantworten – nicht Grammatikformen benennen.</span></div><div><strong>3 · Lücken schließen</strong><span>Danach Wortschatz/Grammatik sehen, Mining wählen und später erneut hören.</span></div></div>
+          <div class="kq-listen-actions"><button class="primary" id="kqListeningHeard">Ich habe einmal komplett gehört → Fragen</button><button class="ghost" data-kq-listen-library>Abbrechen</button></div></div>`;
+        bindCommon(root);
+        root.querySelector("#kqListeningHeard")?.addEventListener("click", () => { mode = "quiz"; quizIndex = 0; quizFeedback = null; renderQuiz(); });
+      }
+
+      function renderQuiz() {
+        const root = document.getElementById("kqListeningLabRoot");
+        const lesson = LESSONS.find(item => item.id === currentLessonId);
+        if (!root || !lesson) return;
+        const question = lesson.questions[quizIndex];
+        const picked = quizAnswers[quizIndex];
+        const answered = quizFeedback != null;
+        root.innerHTML = `<div class="kq-listen-session"><div class="kq-listen-breadcrumb"><button class="ghost" data-kq-listen-backlisten>← Audio</button><span class="kq-listen-level">${esc(lesson.level)}</span><strong>${esc(lesson.title)}</strong></div>
+          <article class="kq-listen-question"><div class="small muted">Frage ${quizIndex + 1} / ${lesson.questions.length}</div><h3>${esc(question.q)}</h3><div class="kq-listen-options">${question.a.map((choice, index) => {
+            const cls = answered ? index === question.correct ? "correct" : index === picked ? "wrong" : "" : index === picked ? "selected" : "";
+            return `<button type="button" class="${cls}" data-kq-listen-answer="${index}" ${answered ? "disabled" : ""}><span class="kq-listen-option-key">${index + 1}</span><span>${esc(choice)}</span></button>`;
+          }).join("")}</div>${answered ? `<div class="kq-listen-feedback"><strong>${picked === question.correct ? "✓ Richtig" : "✗ Nicht ganz"}</strong><br>${esc(question.why)}</div>` : ""}<div class="kq-listen-actions" style="margin-top:14px">${!answered ? `<button class="primary" id="kqListeningConfirm" ${picked == null ? "disabled" : ""}>Antwort bestätigen</button>` : `<button class="primary" id="kqListeningNext">${quizIndex + 1 >= lesson.questions.length ? "Auswertung" : "Nächste Frage"} →</button>`}<button class="ghost" data-kq-listen-backlisten>Audio nochmal hören</button></div></article></div>`;
+        bindCommon(root);
+        root.querySelectorAll("[data-kq-listen-answer]").forEach(button => button.addEventListener("click", () => { quizAnswers[quizIndex] = Number(button.dataset.kqListenAnswer); renderQuiz(); }));
+        root.querySelector("#kqListeningConfirm")?.addEventListener("click", () => { if (quizAnswers[quizIndex] == null) return; quizFeedback = quizAnswers[quizIndex] === question.correct; renderQuiz(); });
+        root.querySelector("#kqListeningNext")?.addEventListener("click", () => {
+          if (quizIndex + 1 < lesson.questions.length) { quizIndex += 1; quizFeedback = null; renderQuiz(); }
+          else finishAttempt();
+        });
+      }
+
+      function finishAttempt() {
+        const lesson = LESSONS.find(item => item.id === currentLessonId);
+        if (!lesson) return;
+        const correct = lesson.questions.reduce((sum, q, index) => sum + (quizAnswers[index] === q.correct ? 1 : 0), 0);
+        const score = Math.round(correct / Math.max(1, lesson.questions.length) * 100);
+        const analysis = analyzeLesson(lesson);
+        const p = progressFor(lesson.id);
+        p.attempts = Math.max(0, Number(p.attempts || 0)) + 1;
+        p.lastScore = score;
+        p.bestScore = Math.max(Number(p.bestScore || 0), score);
+        p.lastAttemptAt = Date.now();
+        p.lastVocabCoverage = analysis.vocabPercent;
+        if (analysis.grammarPercent != null) p.lastGrammarCoverage = analysis.grammarPercent;
+        const lab = state();
+        lab.stats.sessions = Math.max(0, Number(lab.stats.sessions || 0)) + 1;
+        lab.stats.correct = Math.max(0, Number(lab.stats.correct || 0)) + correct;
+        lab.stats.total = Math.max(0, Number(lab.stats.total || 0)) + lesson.questions.length;
+        lab.stats.lastAt = Date.now();
+        persist();
+        emitActivity(lesson, score, correct, lesson.questions.length, analysis);
+        mode = "result";
+        renderResult();
+      }
+
+      function emitActivity(lesson, score, correct, total, analysis) {
+        const base = { itemId: lesson.id, label: lesson.title, area: "listening", timestamp: Date.now(), metadata: { level: lesson.level, minutes: lesson.minutes, score, correct, total, vocabCoverage: analysis.vocabPercent, grammarCoverage: analysis.grammarPercent } };
+        try { window.parent?.postMessage({ type: "kotoba-listening-activity", payload: { ...base, type: "listening-practice", skill: "listening", result: "completed" } }, "*"); } catch {}
+        try { window.parent?.postMessage({ type: "kotoba-listening-activity", payload: { ...base, type: "comprehension-practice", skill: "comprehension", result: score >= 80 ? "good" : score >= 50 ? "partial" : "hard" } }, "*"); } catch {}
+      }
+
+      function addMining(target, lesson) {
+        const status = vocabularyStatus(target);
+        if (status.item) return false;
+        const source = sourceData();
+        source.vocabulary = Array.isArray(source.vocabulary) ? source.vocabulary : [];
+        let item = {
+          word: target.word, reading: target.reading, meanings: [target.meaning], productionCue: target.meaning,
+          sourceType: "mining", collection: `Listening · ${lesson.title}`, example: "", exampleTranslation: "",
+          stage: 0, availableAt: null, correct: 0, incorrect: 0, guruPassed: false, createdAt: Date.now()
+        };
+        try { if (typeof makeVocabulary === "function") item = makeVocabulary(item); } catch {}
+        source.vocabulary.push(item);
+        try { if (typeof data !== "undefined") data.vocabulary = source.vocabulary; } catch {}
+        persist();
+        return true;
+      }
+
+      function markKnown(target, lesson) {
+        const status = vocabularyStatus(target);
+        if (status.kind === "known") return false;
+        const source = sourceData();
+        source.knownVocabulary = Array.isArray(source.knownVocabulary) ? source.knownVocabulary : [];
+        if (!source.knownVocabulary.some(item => vocabMatches(item, target))) {
+          source.knownVocabulary.push({ id: `known-listen-${Date.now()}-${Math.random().toString(16).slice(2)}`, word: target.word, reading: target.reading, meaning: target.meaning, source: `Listening · ${lesson.title}`, example: "", exampleTranslation: "", createdAt: Date.now() });
+        }
+        try { if (typeof data !== "undefined") data.knownVocabulary = source.knownVocabulary; } catch {}
+        persist();
+        return true;
+      }
+
+      function renderResult() {
+        const root = document.getElementById("kqListeningLabRoot");
+        const lesson = LESSONS.find(item => item.id === currentLessonId);
+        if (!root || !lesson) return;
+        const analysis = analyzeLesson(lesson);
+        const p = progressFor(lesson.id);
+        const first = Number(p.firstVocabCoverage ?? analysis.vocabPercent);
+        root.innerHTML = `<div class="kq-listen-session"><div class="kq-listen-breadcrumb"><button class="ghost" data-kq-listen-library>← Bibliothek</button><span class="kq-listen-level">${esc(lesson.level)}</span><strong>${esc(lesson.title)}</strong></div>
+          <div class="kq-listen-result-grid"><section class="kq-listen-score"><span class="small muted">Listening-Comprehension</span><strong>${Math.round(Number(p.lastScore || 0))}%</strong><h3>${esc(scoreLabel(Number(p.lastScore || 0)))}</h3><p class="muted">Wortschatz beim ersten Versuch: ${Math.round(first)}% · heute: ${analysis.vocabPercent}%${analysis.vocabPercent > first ? ` · +${analysis.vocabPercent - first} Prozentpunkte` : ""}</p><div class="kq-listen-actions"><button class="primary" data-kq-listen-relisten>🎧 Noch einmal hören</button><button class="secondary" data-kq-listen-requiz>Fragen erneut testen</button><a class="ghost" href="${esc(lesson.sourceUrl)}" target="_blank" rel="noopener noreferrer">Transcript beim Original ↗</a></div></section>
+          <section class="card"><div class="section-title"><div><h3>Warum war das schwierig?</h3><p>Die App trennt dein lexikalisches/grammatisches Vorwissen vom tatsächlichen Hörverstehen.</p></div></div><div class="kq-listen-kpis"><div class="kq-listen-kpi"><span>Sicherer Wortschatz</span><strong>${analysis.vocabPercent}%</strong></div><div class="kq-listen-kpi"><span>Apprentice</span><strong>${analysis.learning}</strong></div><div class="kq-listen-kpi"><span>Grammatik sicher</span><strong>${analysis.grammarPercent == null ? "–" : `${analysis.grammarPercent}%`}</strong></div></div><p class="kq-listen-note">Wenn der Wortschatz hoch ist, dein Verständnis aber niedrig bleibt, ist genau das wertvolles Listening-Training: Dann liegt die Hürde eher bei Lauterkennung, Sprechtempo, Wortgrenzen oder Verarbeitung im echten Satz – nicht bloß bei fehlenden Karteikarten.</p></section></div>
+          <section class="card"><div class="section-title"><div><h3>Wortschatz dieser Lektion</h3><p>Guru+ oder manuell bekannt zählt als sicher. Apprentice bleibt bewusst separat sichtbar.</p></div><button class="secondary" id="kqListeningMineAll">Alle wirklich unbekannten ins Mining</button></div><div class="kq-listen-vocab-list">${analysis.vocab.map((entry, index) => `<div class="kq-listen-vocab-row"><div class="kq-listen-vocab-word"><strong>${esc(entry.word)}</strong><span>${esc(entry.reading)}</span></div><div>${esc(entry.meaning)}</div><div class="kq-listen-row-actions"><span class="kq-listen-status ${entry.status.kind}">${esc(entry.status.label)}</span>${entry.status.kind === "unknown" ? `<button class="secondary" data-kq-listen-mine="${index}">Mining</button><button class="ghost" data-kq-listen-known="${index}">Kenne ich</button>` : entry.status.kind === "queued" ? `<button class="ghost" data-kq-listen-known="${index}">Kenne ich</button>` : ""}</div></div>`).join("")}</div></section>
+          <section class="card"><div class="section-title"><div><h3>Grammatik-Abdeckung</h3><p>Hier werden nur kuratierte Strukturen verglichen; die App behauptet nicht, beliebige Grammatik automatisch aus Audio zu erkennen.</p></div></div><div class="kq-listen-grammar-list">${analysis.grammar.map(entry => `<div class="kq-listen-grammar-row"><strong>${esc(entry.label)}</strong><span>${entry.status.kind === "known" ? "Diese Struktur ist in deinem Kotoba-Fortschritt sicher." : entry.status.kind === "learning" ? "Du hast sie schon berührt, aber sie ist noch nicht sicher." : entry.status.kind === "unmapped" ? "Noch nicht zuverlässig einem Kotoba-Grammatikpunkt zugeordnet." : "Noch nicht als sicher nachgewiesen."}</span><span class="kq-listen-status ${entry.status.kind}">${esc(entry.status.label)}</span></div>`).join("")}</div></section>
+          <div class="kq-listen-note">💾 Die Medien selbst werden nicht in deinem Kotoba-Speicher abgelegt. Gespeichert werden nur kleine Fortschrittswerte wie Versuche, Scores und deine damalige Wortschatz-Abdeckung. Die Vokabel-/Grammatik-Prozentwerte werden bei jedem Öffnen aus deinem aktuellen SRS-Stand neu berechnet.</div></div>`;
+        bindCommon(root);
+        root.querySelectorAll("[data-kq-listen-mine]").forEach(button => button.addEventListener("click", () => { const entry = lesson.vocabulary[Number(button.dataset.kqListenMine)]; if (entry) addMining(entry, lesson); mode = "result"; openView(); renderResult(); }));
+        root.querySelectorAll("[data-kq-listen-known]").forEach(button => button.addEventListener("click", () => { const entry = lesson.vocabulary[Number(button.dataset.kqListenKnown)]; if (entry) markKnown(entry, lesson); mode = "result"; openView(); renderResult(); }));
+        root.querySelector("#kqListeningMineAll")?.addEventListener("click", () => { analysis.vocab.filter(entry => entry.status.kind === "unknown").forEach(entry => addMining(entry, lesson)); mode = "result"; openView(); renderResult(); });
+        root.querySelectorAll("[data-kq-listen-relisten]").forEach(button => button.addEventListener("click", () => { mode = "listen"; quizIndex = 0; quizAnswers = []; quizFeedback = null; renderSession(); }));
+        root.querySelectorAll("[data-kq-listen-requiz]").forEach(button => button.addEventListener("click", () => { mode = "quiz"; quizIndex = 0; quizAnswers = []; quizFeedback = null; renderQuiz(); }));
+      }
+
+      function bindCommon(root) {
+        root.querySelectorAll("[data-kq-listen-library]").forEach(button => button.addEventListener("click", () => { mode = "library"; currentLessonId = ""; renderLibrary(); }));
+        root.querySelectorAll("[data-kq-listen-backlisten]").forEach(button => button.addEventListener("click", () => { mode = "listen"; quizFeedback = null; renderSession(); }));
+        root.querySelectorAll("[data-kq-listen-open]").forEach(button => button.addEventListener("click", () => startLesson(button.dataset.kqListenOpen)));
+        root.querySelectorAll("[data-kq-listen-filter]").forEach(button => button.addEventListener("click", () => { filter = button.dataset.kqListenFilter || "all"; renderLibrary(); }));
+      }
+
+      function openView() {
+        ensureView();
+        installStyles();
+        try { window.KotobaQuestInterface?.activateLearning?.("listening"); } catch {}
+        try {
+          if (typeof switchView === "function") switchView("listeningLab");
+          else document.querySelectorAll("main .view").forEach(view => view.classList.toggle("active", view.id === "listeningLab"));
+        } catch {}
+      }
+
+      function open(id = "") {
+        openView();
+        if (id) startLesson(id);
+        else { mode = "library"; currentLessonId = ""; renderLibrary(); }
+      }
+
+      function getStats() {
+        const analyses = LESSONS.map(analyzeLesson);
+        const progress = state().progress;
+        const attempted = LESSONS.filter(lesson => Number(progress[lesson.id]?.attempts || 0) > 0).length;
+        const mastered = LESSONS.filter(lesson => Number(progress[lesson.id]?.bestScore || 0) >= 80 && analyzeLesson(lesson).vocabPercent >= 80).length;
+        const rewatchReady = LESSONS.filter(lesson => {
+          const p = progress[lesson.id];
+          if (!p || p.firstVocabCoverage == null) return false;
+          return analyzeLesson(lesson).vocabPercent > Number(p.firstVocabCoverage || 0);
+        }).length;
+        const avgCoverage = analyses.length ? Math.round(analyses.reduce((sum, item) => sum + item.vocabPercent, 0) / analyses.length) : 0;
+        return { lessons: LESSONS.length, attempted, mastered, rewatchReady, avgCoverage };
+      }
+
+      ensureView();
+      installStyles();
+      window.KotobaQuestListeningLab = { version: VERSION, open, refresh: () => { if (mode === "library") renderLibrary(); else renderSession(); }, getStats, getLessonAnalysis: id => { const lesson = LESSONS.find(item => item.id === id); return lesson ? analyzeLesson(lesson) : null; }, getCatalog: () => LESSONS.map(lesson => ({ id: lesson.id, title: lesson.title, source: lesson.source, level: lesson.level, minutes: lesson.minutes })) };
+    }
+
+
     function interfaceReorganizationBootstrap() {
       if (window.__KQ_INFORMATION_ARCHITECTURE_V4__) return;
       window.__KQ_INFORMATION_ARCHITECTURE_V4__ = true;
     
-      const VERSION = "4.1";
+      const VERSION = "4.2";
       const STORAGE_KEY = "kotobaQuestDataV3";
       const MAIN_GROUPS = [
         { id: "overview", label: "Übersicht" },
@@ -33234,7 +33728,7 @@ ${tooltipText(segment, status)}`)}"`
     
       function inferGroup(viewName) {
         if (viewName === "dashboard") return "overview";
-        if (["learningCenter", "core", "grammar", "grammarLesson", "grammarReview", "n4Recap", "lessons", "reviews", "placement"].includes(viewName)) return "learning";
+        if (["learningCenter", "core", "grammar", "grammarLesson", "grammarReview", "n4Recap", "lessons", "reviews", "placement", "listeningLab"].includes(viewName)) return "learning";
         if (["practiceCenter", "vocabPractice", "problemWords"].includes(viewName)) return "practice";
         if (viewName === "particlePractice") return ["learning", "practice"].includes(activeGroup) ? activeGroup : "learning";
         if (viewName === "storyReader") return "story";
@@ -33331,7 +33825,7 @@ ${tooltipText(segment, status)}`)}"`
           .kq-ia-mining-nav { position:sticky; top:94px; z-index:7; display:flex; flex-wrap:wrap; gap:8px; margin-bottom:13px; padding:8px; border-radius:15px; background:rgba(255,255,255,.92); border:1px solid var(--border); backdrop-filter:blur(14px); }
           .kq-ia-mining-nav button { padding:9px 13px; border-radius:10px; background:#f5f1fb; color:var(--primary-dark); font-weight:850; }
           .kq-ia-compact-note { margin:0; padding:11px 13px; border-radius:13px; background:#faf8ff; border:1px solid var(--border); color:var(--muted); }
-          .kq-ia-learning-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; align-items:stretch; }
+          .kq-ia-learning-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:stretch; }
           .kq-ia-learning-card { display:flex; flex-direction:column; min-width:0; padding:19px; border-radius:20px; background:var(--panel); border:1px solid var(--border); box-shadow:var(--shadow); }
           .kq-ia-learning-card:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--primary) 38%,var(--border)); }
           .kq-ia-learning-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
@@ -33410,7 +33904,7 @@ ${tooltipText(segment, status)}`)}"`
       }
     
       function openLearning(tab = "vocabulary") {
-        learningTab = ["vocabulary", "grammar", "particles"].includes(tab) ? tab : "vocabulary";
+        learningTab = ["vocabulary", "grammar", "particles", "listening"].includes(tab) ? tab : "vocabulary";
         setGroup("learning");
         safeSwitch("learningCenter");
         renderLearningCenter();
@@ -33572,6 +34066,13 @@ ${tooltipText(segment, status)}`)}"`
               <p class="kq-ia-learning-extra">${esc(particles.extra)}</p>
               <div class="kq-ia-actions"><button class="primary" id="kqIaDirectParticles">Partikel öffnen</button>${particles.due ? `<button class="secondary" id="kqIaDirectParticleReviews">Reviews starten</button>` : ""}</div>
             </article>
+
+            <article class="kq-ia-learning-card">
+              <div class="kq-ia-learning-card-head"><div class="kq-ia-learning-card-title"><span class="kq-ia-learning-icon">🎧</span><div><h3>Listening</h3><p>Native Audios/Videos mit dynamischer Wortschatz- und Grammatik-Abdeckung.</p></div></div></div>
+              <div class="kq-ia-learning-metrics"><div class="kq-ia-learning-metric"><span>Lektionen</span><strong>${window.KotobaQuestListeningLab?.getStats?.().lessons || 0}</strong></div><div class="kq-ia-learning-metric"><span>Schon getestet</span><strong>${window.KotobaQuestListeningLab?.getStats?.().attempted || 0}</strong></div></div>
+              <p class="kq-ia-learning-extra">Ø ${window.KotobaQuestListeningLab?.getStats?.().avgCoverage || 0}% der getrackten Inhaltsvokabeln sind aktuell Guru+ oder als bekannt markiert. Fortschritt verändert sich automatisch mit deinem SRS.</p>
+              <div class="kq-ia-actions"><button class="primary" id="kqIaDirectListening">Listening Lab öffnen</button>${(window.KotobaQuestListeningLab?.getStats?.().rewatchReady || 0) ? `<button class="secondary" id="kqIaDirectListeningRewatch">${window.KotobaQuestListeningLab.getStats().rewatchReady} Re-Listen bereit</button>` : ""}</div>
+            </article>
           </div>
         </div>`;
 
@@ -33583,6 +34084,8 @@ ${tooltipText(segment, status)}`)}"`
         root.querySelector("#kqIaDirectN4")?.addEventListener("click", () => { learningTab = "grammar"; setGroup("learning"); window.KotobaQuestN4Recap?.open?.(); scheduleRefresh(); });
         root.querySelector("#kqIaDirectParticles")?.addEventListener("click", () => { learningTab = "particles"; launchParticlePath(); });
         root.querySelector("#kqIaDirectParticleReviews")?.addEventListener("click", () => { learningTab = "particles"; launchParticleReviews(); });
+        root.querySelector("#kqIaDirectListening")?.addEventListener("click", () => { learningTab = "listening"; setGroup("learning"); window.KotobaQuestListeningLab?.open?.(); scheduleRefresh(); });
+        root.querySelector("#kqIaDirectListeningRewatch")?.addEventListener("click", () => { learningTab = "listening"; setGroup("learning"); window.KotobaQuestListeningLab?.open?.(); scheduleRefresh(); });
       }
 
       function renderPracticeCenter() {
@@ -33592,12 +34095,16 @@ ${tooltipText(segment, status)}`)}"`
           <div class="kq-ia-heading"><div><h2>Üben</h2><p>Freiwilliges Training verändert keine SRS-Stufen. Alle wichtigen Disziplinen sind direkt erreichbar.</p></div></div>
           <div class="kq-ia-practice-grid">
             <article class="card kq-ia-practice-card">
-              <span class="mode-icon">🎧</span><h3>Vokabeln und Sätze</h3><p>Listening, Übersetzen, Formen und vollständige Sätze mit automatisch überprüfbaren Antworten.</p>
+              <span class="mode-icon">📝</span><h3>Vokabeln und Sätze</h3><p>Übersetzen, Formen und vollständige Sätze mit automatisch überprüfbaren Antworten.</p>
               <div class="button-row"><button class="primary" id="kqIaPracticeVocab">Vokabeltraining starten</button></div>
             </article>
             <article class="card kq-ia-practice-card">
               <span class="mode-icon">🧩</span><h3>Partikel</h3><p>Nur bereits gelernte Partikel, neue Beispielsätze, deutsche Zielübersetzung und konkrete Fehlererklärungen.</p>
               <div class="button-row"><button class="primary" id="kqIaPracticeParticles">Partikel üben</button></div>
+            </article>
+            <article class="card kq-ia-practice-card">
+              <span class="mode-icon">🎧</span><h3>Native Listening</h3><p>Echte japanische Audios/Videos: blind hören, Inhaltsfragen beantworten, Wortschatzlücken minen und später mit höherer Abdeckung erneut testen.</p>
+              <div class="button-row"><button class="primary" id="kqIaPracticeListening">Listening Lab öffnen</button></div>
             </article>
             <article class="card kq-ia-practice-card">
               <span class="mode-icon">🧠</span><h3>Problemfälle</h3><p>Gezieltes Training für hartnäckige und leicht verwechselbare Vokabeln mit deinen Mnemonics.</p>
@@ -33617,6 +34124,12 @@ ${tooltipText(segment, status)}`)}"`
         root.querySelector("#kqIaPracticeParticles")?.addEventListener("click", () => {
           setGroup("practice");
           window.KotobaQuestParticlePractice?.open?.();
+          scheduleRefresh();
+        });
+        root.querySelector("#kqIaPracticeListening")?.addEventListener("click", () => {
+          learningTab = "listening";
+          setGroup("learning");
+          window.KotobaQuestListeningLab?.open?.();
           scheduleRefresh();
         });
         root.querySelector("#kqIaPracticeProblems")?.addEventListener("click", () => {
@@ -33920,8 +34433,8 @@ function renderProgressCenter() {
         }
         bar.hidden = false;
         if (activeGroup === "learning") {
-          const active = activeView === "core" ? "vocabulary" : activeView === "n4Recap" ? "n4" : activeView.startsWith("grammar") ? "grammar" : activeView === "particlePractice" ? "particles" : "";
-          bar.innerHTML = `<button data-kq-context="learning-home">Lernübersicht</button><button data-kq-context="vocabulary" class="${active === "vocabulary" ? "active" : ""}">Vokabeln</button><button data-kq-context="grammar" class="${active === "grammar" ? "active" : ""}">Grammatik</button><button data-kq-context="n4" class="${active === "n4" ? "active" : ""}">N4-Test</button><button data-kq-context="particles" class="${active === "particles" ? "active" : ""}">Partikel</button>`;
+          const active = activeView === "core" ? "vocabulary" : activeView === "n4Recap" ? "n4" : activeView.startsWith("grammar") ? "grammar" : activeView === "particlePractice" ? "particles" : activeView === "listeningLab" ? "listening" : "";
+          bar.innerHTML = `<button data-kq-context="learning-home">Lernübersicht</button><button data-kq-context="vocabulary" class="${active === "vocabulary" ? "active" : ""}">Vokabeln</button><button data-kq-context="grammar" class="${active === "grammar" ? "active" : ""}">Grammatik</button><button data-kq-context="n4" class="${active === "n4" ? "active" : ""}">N4-Test</button><button data-kq-context="particles" class="${active === "particles" ? "active" : ""}">Partikel</button><button data-kq-context="listening" class="${active === "listening" ? "active" : ""}">Listening</button>`;
         } else if (activeGroup === "practice") {
           const active = activeView === "vocabPractice" ? "vocab-practice" : activeView === "problemWords" ? "problems" : activeView === "particlePractice" ? "particle-practice" : "";
           bar.innerHTML = `<button data-kq-context="practice-home">Übungsübersicht</button><button data-kq-context="vocab-practice" class="${active === "vocab-practice" ? "active" : ""}">Vokabeln</button><button data-kq-context="particle-practice" class="${active === "particle-practice" ? "active" : ""}">Partikel</button><button data-kq-context="problems" class="${active === "problems" ? "active" : ""}">Problemfälle</button>`;
@@ -33936,6 +34449,7 @@ function renderProgressCenter() {
           else if (action === "grammar") { learningTab = "grammar"; launchGrammar(); }
           else if (action === "n4") { learningTab = "grammar"; setGroup("learning"); window.KotobaQuestN4Recap?.open?.(); scheduleRefresh(); }
           else if (action === "particles") { learningTab = "particles"; launchParticlePath(); }
+          else if (action === "listening") { learningTab = "listening"; setGroup("learning"); window.KotobaQuestListeningLab?.open?.(); scheduleRefresh(); }
           else if (action === "practice-home") openPracticeCenter();
           else if (action === "vocab-practice") { setGroup("practice"); window.KotobaQuestContextPractice?.open?.(); }
           else if (action === "particle-practice") { setGroup("practice"); window.KotobaQuestParticlePractice?.open?.(); }
@@ -34028,7 +34542,7 @@ function renderProgressCenter() {
         openProgress,
         activateGroup: group => setGroup(group),
         activateLearning: tab => {
-          learningTab = ["vocabulary", "grammar", "particles"].includes(tab) ? tab : learningTab;
+          learningTab = ["vocabulary", "grammar", "particles", "listening"].includes(tab) ? tab : learningTab;
           setGroup("learning");
           scheduleRefresh();
         },
@@ -38416,6 +38930,7 @@ function smartReviewBootstrap() {
       // Story reward integrity pass 9.0
   const storyReaderScript = "<script>(" + storyReaderBootstrap.toString() + ")();<" + "/script>";
       const pastelFuriganaScript = "<script>(" + pastelFuriganaBootstrap.toString() + ")();<" + "/script>";
+      const listeningLabScript = "<script>(" + listeningLabBootstrap.toString() + ")();<" + "/script>";
       const interfaceScript = "<script>(" + interfaceReorganizationBootstrap.toString() + ")();<" + "/script>";
       const interactionScript = "<script>(" + systemInteractionConsistencyBootstrap.toString() + ")();<" + "/script>";
       const questDashboardScript = "<script>(" + questDashboardBootstrap.toString() + ")();<" + "/script>";
@@ -38424,7 +38939,7 @@ function smartReviewBootstrap() {
       const smartReviewScript = "<script>(" + smartReviewBootstrap.toString() + ")();<" + "/script>";
       const externalQuickReviewScript = "<script>(" + externalQuickReviewBootstrap.toString() + ")();<" + "/script>";
       const mobileExperienceScript = "<script>(" + mobileExperienceBootstrap.toString() + ")();<" + "/script>";
-      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}\n${externalQuickReviewScript}\n${mobileExperienceScript}`;
+      const enhancementScripts = `${grammarScript}\n${n4RecapScript}\n${vocabularyLessonCheckpointScript}\n${vocabularyScript}\n${learningHubScript}\n${languageReactorScript}\n${languageReactorMediaScript}\n${learningInsightsScript}\n${contextPracticeScript}\n${particleWorkshopScript}\n${particlePathScript}\n${problemWorkshopScript}\n${resonanceTrainingScript}\n${storyEnergyScript}\n${storyReaderScript}\n${pastelFuriganaScript}\n${listeningLabScript}\n${interfaceScript}\n${interactionScript}\n${questDashboardScript}\n${vocabularyReviewMixScript}\n${vocabularyReviewPartialScript}\n${smartReviewScript}\n${externalQuickReviewScript}\n${mobileExperienceScript}`;
       if (/<\/body>/i.test(html)) {
         return html.replace(/<\/body>/i, `${enhancementScripts}\n</body>`);
       }
