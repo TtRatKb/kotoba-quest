@@ -33195,7 +33195,6 @@ ${tooltipText(segment, status)}`)}"`
       }));
 
       let currentLessonId = "";
-      let confirmedListeningAt = 0;
       let mode = "library";
       let quizIndex = 0;
       let quizAnswers = [];
@@ -33408,7 +33407,6 @@ ${tooltipText(segment, status)}`)}"`
         const lesson = LESSONS.find(item => item.id === id);
         if (!lesson) return;
         currentLessonId = id;
-        confirmedListeningAt = 0;
         mode = "listen";
         quizIndex = 0;
         quizAnswers = [];
@@ -33436,14 +33434,7 @@ ${tooltipText(segment, status)}`)}"`
           <div class="kq-listen-guide"><div><strong>1 · Blind hören</strong><span>Audio/Video einmal komplett ohne Text hören.</span></div><div><strong>2 · Verstehen prüfen</strong><span>Fünf Inhaltsfragen beantworten – nicht Grammatikformen benennen.</span></div><div><strong>3 · Lücken schließen</strong><span>Danach Wortschatz/Grammatik sehen, Mining wählen und später erneut hören.</span></div></div>
           <div class="kq-listen-actions"><button class="primary" id="kqListeningHeard">Ich habe einmal komplett gehört → Fragen</button><button class="ghost" data-kq-listen-library>Abbrechen</button></div></div>`;
         bindCommon(root);
-        root.querySelector("#kqListeningHeard")?.addEventListener("click", () => {
-          confirmedListeningAt = Date.now();
-          const progress = progressFor(lesson.id);
-          progress.lastHeardAt = confirmedListeningAt;
-          progress.lastConfirmedMinutes = Math.max(1, Number(lesson.minutes) || 1);
-          persist();
-          mode = "quiz"; quizIndex = 0; quizFeedback = null; renderQuiz();
-        });
+        root.querySelector("#kqListeningHeard")?.addEventListener("click", () => { mode = "quiz"; quizIndex = 0; quizFeedback = null; renderQuiz(); });
       }
 
       function renderQuiz() {
@@ -33492,19 +33483,9 @@ ${tooltipText(segment, status)}`)}"`
       }
 
       function emitActivity(lesson, score, correct, total, analysis) {
-        const now = Date.now();
-        const day = new Date(now).toLocaleDateString("sv-SE");
-        const token = String(lesson.id).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
-        const heard = confirmedListeningAt > 0 && confirmedListeningAt <= now && now - confirmedListeningAt < 3 * 60 * 60 * 1000;
-        const base = { itemId: lesson.id, label: lesson.title, area: "listening", timestamp: now,
-          metadata: { level: lesson.level, minutes: lesson.minutes, confirmed: heard, score, correct, total,
-            vocabCoverage: analysis.vocabPercent, grammarCoverage: analysis.grammarPercent } };
-        const origin = window.location.origin;
-        if (heard) try { window.parent?.postMessage({type:"kotoba-listening-activity",payload:{...base,
-          eventId:`kq-lab-${token}-${day}-heard`,type:"listening-practice",skill:"listening",result:"completed"}},origin); } catch {}
-        try { window.parent?.postMessage({type:"kotoba-listening-activity",payload:{...base,
-          eventId:`kq-lab-${token}-${day}-quiz`,type:"comprehension-practice",skill:"comprehension",
-          result:score >= 80 ? "good" : score >= 50 ? "partial" : "hard"}},origin); } catch {}
+        const base = { itemId: lesson.id, label: lesson.title, area: "listening", timestamp: Date.now(), metadata: { level: lesson.level, minutes: lesson.minutes, score, correct, total, vocabCoverage: analysis.vocabPercent, grammarCoverage: analysis.grammarPercent } };
+        try { window.parent?.postMessage({ type: "kotoba-listening-activity", payload: { ...base, type: "listening-practice", skill: "listening", result: "completed" } }, "*"); } catch {}
+        try { window.parent?.postMessage({ type: "kotoba-listening-activity", payload: { ...base, type: "comprehension-practice", skill: "comprehension", result: score >= 80 ? "good" : score >= 50 ? "partial" : "hard" } }, "*"); } catch {}
       }
 
       function addMining(target, lesson) {
@@ -33521,15 +33502,6 @@ ${tooltipText(segment, status)}`)}"`
         source.vocabulary.push(item);
         try { if (typeof data !== "undefined") data.vocabulary = source.vocabulary; } catch {}
         persist();
-        // Only genuinely new Mining entries, never an existing Core 2000 word.
-        const day = new Date().toLocaleDateString("sv-SE");
-        const lexeme = `${target.word}|${target.reading}`;
-        let wordHash = 2166136261;
-        for (let i = 0; i < lexeme.length; i++) wordHash = Math.imul(wordHash ^ lexeme.charCodeAt(i), 16777619) >>> 0;
-        const miningReceipt = `kq-lab-mine-${wordHash.toString(36)}-${day}`;
-        try { window.parent?.postMessage({type:"kotoba-listening-activity", payload:{eventId:miningReceipt,
-          type:"listening-mining",itemId:lesson.id,skill:"vocabulary",area:"listening",label:"Listening Lab · Mining",
-          result:"added",timestamp:Date.now(),metadata:{confirmed:true}}}, window.location.origin); } catch {}
         return true;
       }
 
@@ -33645,41 +33617,88 @@ ${tooltipText(segment, status)}`)}"`
       if (window.__KOTOBA_PRODUCTION_LAB_V1__) return;
       window.__KOTOBA_PRODUCTION_LAB_V1__ = true;
 
-      const VERSION = "0.1";
+      const VERSION = "0.2";
       const STORAGE_KEY = "kotobaQuestDataV3";
+      const MAX_HISTORY = 4;
+      const MAX_FEEDBACK_TEXT = 8000;
+      const MAX_WRITING_TEXT = 2200;
+      const MAX_FEEDBACK_VOCAB = 8;
+      const MAX_FEEDBACK_GRAMMAR = 8;
+
+      // Micro-shadowing deliberately uses short excerpts instead of whole videos.
+      // Media stays external; only tiny progress records are stored in Kotoba Quest.
       const SHADOWING = [
         {
-          id:"sayuri-daily-shadow",
-          title:"Tagesroutine · Guided Shadowing",
-          source:"Nihongo Sayuri",
+          id:"sayuri-daily-intro-micro",
+          title:"Begrüßung & Thema",
+          source:"Nihongo Sayuri · Tagesroutine",
           level:"N4",
-          minutes:8,
+          minutes:7,
+          clipSeconds:34,
           mediaId:"w6UHVUldvAk",
           sourceUrl:"https://blog.nihongo-sayuri.com/posts/japanese-listening-practice-daily-routine-n4/",
-          blurb:"Dasselbe native Material wie im Listening Lab, jetzt als vierstufige Sprechübung. Der Originalartikel empfiehlt ausdrücklich: erst lesen, dann Satz für Satz nachsprechen.",
-          mode:"manual-pause"
+          start:0,
+          end:34,
+          blurb:"Ein kurzer Einstieg statt eines ganzen Podcasts. Ziel: Begrüßung, Thema ankündigen und den Satzfluss sauber mitsprechen.",
+          lines:[
+            {jp:"こんにちは、さゆりです。みなさん、元気ですか？",start:0,end:7,pause:5},
+            {jp:"今日は「私の一日のルーティン」について話したいと思います。",start:7,end:18,pause:7},
+            {jp:"私は毎日オンラインで日本語のレッスンをしています。",start:18,end:29,pause:7}
+          ]
         },
         {
-          id:"listening-room-n5n4-shadow",
-          title:"Repeat After Me · A Day in My Life",
-          source:"Japanese Listening Room",
-          level:"N5–N4",
-          minutes:17,
-          mediaId:"hYjTIsWa4wI",
-          sourceUrl:"https://www.youtube.com/watch?v=hYjTIsWa4wI",
-          blurb:"Shadowing-Video mit langsamer, klarer Sprache und eingebauten Repeat-After-Me-Phasen von zwei japanischen Muttersprachlerinnen. Du kannst auch nur ein Kapitel trainieren.",
-          mode:"built-in-repeat"
+          id:"sayuri-daily-morning-micro",
+          title:"Morgen & 二度寝",
+          source:"Nihongo Sayuri · Tagesroutine",
+          level:"N4",
+          minutes:8,
+          clipSeconds:43,
+          mediaId:"w6UHVUldvAk",
+          sourceUrl:"https://blog.nihongo-sayuri.com/posts/japanese-listening-practice-daily-routine-n4/",
+          start:48,
+          end:91,
+          blurb:"Drei Sätze über Aufstehen, Alarm und 二度寝. Die Einheit dauert mit allen vier Phasen ungefähr acht Minuten.",
+          lines:[
+            {jp:"私の一日は、だいたい朝六時に始まります。",start:48,end:59,pause:6},
+            {jp:"スマホのアラームをセットしているので、毎朝スマホの音を聞いて目を覚まします。",start:59,end:77,pause:9},
+            {jp:"でも、レッスンがない時は、二度寝することもあります。",start:77,end:91,pause:7}
+          ]
         },
         {
-          id:"japanese-suki-n4n3-shadow",
-          title:"Alltagsdialoge · N4–N3 Shadowing",
-          source:"Japanese Suki",
+          id:"sayuri-daily-coffee-micro",
+          title:"Frühstück & Kaffee",
+          source:"Nihongo Sayuri · Tagesroutine",
+          level:"N4",
+          minutes:8,
+          clipSeconds:39,
+          mediaId:"w6UHVUldvAk",
+          sourceUrl:"https://blog.nihongo-sayuri.com/posts/japanese-listening-practice-daily-routine-n4/",
+          start:98,
+          end:137,
+          blurb:"Kurzer Alltagsabschnitt mit 代わりに und einer natürlichen Gefühlsbeschreibung.",
+          lines:[
+            {jp:"私はたいてい朝ごはんを食べません。",start:98,end:106,pause:5},
+            {jp:"その代わりに、コーヒーを飲みます。",start:106,end:114,pause:5},
+            {jp:"コーヒーのにおいをかぐと、「今日も頑張ろう！」という気分になります。",start:114,end:132,pause:9}
+          ]
+        },
+        {
+          id:"sayuri-daily-bedtime-micro",
+          title:"Vor dem Schlafen",
+          source:"Nihongo Sayuri · Tagesroutine",
           level:"N4–N3",
-          minutes:15,
-          mediaId:"okxrRenOaNQ",
-          sourceUrl:"https://www.youtube.com/watch?v=okxrRenOaNQ",
-          blurb:"Zusammenhängende Alltagsdialoge rund um Uni, Buchladen, Café und Zukunftspläne. Gut als nächster Schritt nach langsamem Repeat-After-Me.",
-          mode:"built-in-shadow"
+          minutes:8,
+          clipSeconds:42,
+          mediaId:"w6UHVUldvAk",
+          sourceUrl:"https://blog.nihongo-sayuri.com/posts/japanese-listening-practice-daily-routine-n4/",
+          start:392,
+          end:434,
+          blurb:"Ein kurzer Abend-Abschnitt mit 寝る前に, Bestätigen und ながら. Gut für Satzrhythmus und längere Chunks.",
+          lines:[
+            {jp:"寝る前に、次の日のアラームをセットします。",start:392,end:402,pause:6},
+            {jp:"そして、寝る前にスマホで次の日のスケジュールも確認します。",start:402,end:416,pause:8},
+            {jp:"それからベッドの上で、少しストレッチをします。",start:416,end:426,pause:6}
+          ]
         }
       ];
 
@@ -33690,6 +33709,9 @@ ${tooltipText(segment, status)}`)}"`
           title:"Meine Morgenroutine",
           prompt:"Schreibe 2–4 Sätze über deinen Morgen. Sag, wann du ungefähr aufstehst und was du danach machst.",
           goals:["Verwende 〜てから mindestens einmal.","Nenne eine Zeit oder Tageszeit.","Schreibe mindestens zwei Handlungen."],
+          grammar:[
+            {pattern:"〜てから",meaning:"nachdem … / erst A, dann B",formation:"Verb in て-Form + から",example:"歯を磨いてから、家を出ます。",note:"Die Handlung vor てから passiert zuerst."}
+          ],
           checks:[
             {label:"〜てから verwendet", any:["てから"]},
             {label:"Zeit/Tageszeit genannt", any:["時","朝","午前","毎朝","ごろ"]},
@@ -33703,6 +33725,10 @@ ${tooltipText(segment, status)}`)}"`
           title:"Eine Zugregel erklären",
           prompt:"Erkläre einem Freund auf Japanisch zwei Dinge, die man in einem japanischen Zug beachten sollte.",
           goals:["Formuliere mindestens eine Bitte oder Regel.","Nenne zwei konkrete Verhaltensweisen.","Versuche 〜ようにする oder 〜ないでください."],
+          grammar:[
+            {pattern:"〜ようにする",meaning:"darauf achten / sich angewöhnen, dass …",formation:"Verb Wörterbuchform oder ない-Form + ようにする",example:"電車では静かに話すようにします。",note:"Passt gut zu Regeln, Gewohnheiten und bewusstem Verhalten."},
+            {pattern:"〜ないでください",meaning:"bitte nicht …",formation:"Verb ない-Form + でください",example:"車内では電話をしないでください。",note:"Direkte, aber höfliche Bitte, etwas nicht zu tun."}
+          ],
           checks:[
             {label:"Regel-/Bitteform verwendet", any:["ないでください","ようにして","ようにします","てください"]},
             {label:"Zug-Kontext erkennbar", any:["電車","車内","席","スマホ","通話","荷物"]},
@@ -33716,6 +33742,9 @@ ${tooltipText(segment, status)}`)}"`
           title:"Mein Wochenende",
           prompt:"Schreibe 2–4 Sätze darüber, was du am Wochenende gemacht hast. Nenne mehrere Aktivitäten.",
           goals:["Verwende 〜たり〜たりする.","Schreibe in der Vergangenheit.","Füge ein persönliches Gefühl oder eine Bewertung hinzu."],
+          grammar:[
+            {pattern:"〜たり〜たりする",meaning:"Dinge wie A und B tun",formation:"Verb た-Form + り、Verb た-Form + りする",example:"映画を見たり、本を読んだりしました。",note:"Die Liste ist beispielhaft; du musst nicht alle Handlungen aufzählen."}
+          ],
           checks:[
             {label:"〜たり〜たり verwendet", any:["たり"]},
             {label:"Vergangenheit erkennbar", any:["ました","だった","でした","かったです"]},
@@ -33730,6 +33759,10 @@ ${tooltipText(segment, status)}`)}"`
           title:"Eine Meinung begründen",
           prompt:"Schreibe 3–5 Sätze: Findest du, dass tägliches Listening beim Japanischlernen wichtig ist? Begründe deine Meinung.",
           goals:["Verwende 〜と思う.","Gib mindestens einen Grund mit 〜から oder 〜ので.","Schreibe nicht nur Ja/Nein, sondern eine kleine Begründung."],
+          grammar:[
+            {pattern:"〜と思う",meaning:"ich denke / finde, dass …",formation:"normaler Satz (Plain Form) + と思う",example:"毎日聞くことは大切だと思います。",note:"Vor と思う steht normalerweise die neutrale/Plain Form."},
+            {pattern:"〜から / 〜ので",meaning:"weil / da",formation:"Grund + から; bei ので: Verb/i-Adjektiv + ので, Nomen/na-Adjektiv + なので",example:"聞き取りが難しいので、毎日練習します。",note:"ので klingt meist etwas weicher; から oft direkter."}
+          ],
           checks:[
             {label:"〜と思う verwendet", any:["と思"]},
             {label:"Begründung vorhanden", any:["から","ので"]},
@@ -33744,6 +33777,11 @@ ${tooltipText(segment, status)}`)}"`
           title:"Onsen-Regeln zusammenfassen",
           prompt:"Ein Freund fährt zum ersten Mal in einen Onsen. Erkläre ihm in 3–5 Sätzen zwei wichtige Regeln und warum eine davon sinnvoll ist.",
           goals:["Nenne zwei Regeln.","Verwende mindestens eine Vorher-/Nachher-Struktur.","Begründe mindestens eine Regel."],
+          grammar:[
+            {pattern:"〜前に",meaning:"bevor …",formation:"Verb Wörterbuchform + 前に / Nomen + の前に",example:"湯船に入る前に、体を洗います。",note:"Die Handlung vor 前に passiert danach: erst waschen, dann ins Bad."},
+            {pattern:"〜てから",meaning:"nachdem …",formation:"Verb て-Form + から",example:"体を洗ってから、湯船に入ります。",note:"Sehr nützlich, um Regeln in Reihenfolge zu erklären."},
+            {pattern:"〜から / 〜ので",meaning:"weil / da",formation:"Grund + から / ので",example:"みんなが使うので、きれいにしましょう。",note:"Nutze den Grund, um die Regel verständlich zu machen."}
+          ],
           checks:[
             {label:"Onsen-Wortschatz verwendet", any:["温泉","湯船","脱衣所","タオル","髪","かけ湯"]},
             {label:"Vorher/Nachher ausgedrückt", any:["前に","てから","たら"]},
@@ -33758,6 +33796,11 @@ ${tooltipText(segment, status)}`)}"`
           title:"Ein Plan für dein Japanisch",
           prompt:"Schreibe 3–5 Sätze darüber, was du in den nächsten Monaten beim Japanischlernen verbessern möchtest und wie du das machen willst.",
           goals:["Formuliere einen Plan oder eine Absicht.","Nenne mindestens zwei konkrete Lernhandlungen.","Begründe, warum dir das wichtig ist."],
+          grammar:[
+            {pattern:"〜つもり",meaning:"vorhaben / beabsichtigen",formation:"Verb Wörterbuchform oder ない-Form + つもりだ",example:"毎日少し聞くつもりです。",note:"Relativ fester persönlicher Plan."},
+            {pattern:"〜ようと思う",meaning:"ich habe vor / ich denke, ich werde …",formation:"Verb Volitionalform + と思う",example:"週に二回文章を書こうと思います。",note:"Etwas weicher als つもり; gut für gerade gefasste Absichten."},
+            {pattern:"〜から / 〜ので",meaning:"weil / da",formation:"Grund + から / ので",example:"もっと話せるようになりたいので、練習します。",note:"Verbindet Ziel und Motivation."}
+          ],
           checks:[
             {label:"Plan/Absicht ausgedrückt", any:["つもり","予定","ようと思","たいです","たいと思"]},
             {label:"Lernhandlung genannt", any:["勉強","練習","聞く","話す","書く","読む","覚える"]},
@@ -33773,6 +33816,11 @@ ${tooltipText(segment, status)}`)}"`
       let shadowPhase = 0;
       let currentWriting = "";
       let writingResult = null;
+      let writingDraft = "";
+      let importedFeedback = null;
+      let importedFeedbackText = "";
+      let shadowTimer = null;
+      let shadowAutoTimer = null;
       let mediaRecorder = null;
       let micStream = null;
       let micChunks = [];
@@ -33790,10 +33838,16 @@ ${tooltipText(segment, status)}`)}"`
         const source = sourceData();
         if (!source.productionLab || typeof source.productionLab !== "object") source.productionLab = {};
         const p = source.productionLab;
-        p.version = Math.max(1, Number(p.version || 1));
+        p.version = Math.max(2, Number(p.version || 2));
         if (!p.shadowing || typeof p.shadowing !== "object") p.shadowing = {};
         if (!p.writing || typeof p.writing !== "object") p.writing = {};
+        if (!p.grammarSignals || typeof p.grammarSignals !== "object") p.grammarSignals = {};
         if (!p.stats || typeof p.stats !== "object") p.stats = { shadowSessions:0, writingSessions:0, lastAt:null };
+        for (const record of Object.values(p.writing)) {
+          if (!record || typeof record !== "object") continue;
+          if (!Array.isArray(record.history)) record.history = [];
+          if (record.history.length > MAX_HISTORY) record.history = record.history.slice(-MAX_HISTORY);
+        }
         return p;
       }
       function persist() {
@@ -33825,8 +33879,9 @@ ${tooltipText(segment, status)}`)}"`
         const style = document.createElement("style");
         style.id = "kqProductionLabStyles";
         style.textContent = `
-          #kqProductionLabRoot{max-width:1180px;margin:0 auto;display:grid;gap:15px;padding-bottom:30px}.kq-prod-hero{position:relative;overflow:hidden;padding:24px;border-radius:24px;background:linear-gradient(135deg,#4d446e,#765486 55%,#bf7891);color:#fff;box-shadow:0 16px 40px rgba(62,47,82,.17)}.kq-prod-hero:after{content:'話す';position:absolute;right:18px;bottom:-38px;font-size:7rem;font-weight:950;opacity:.1}.kq-prod-hero h2,.kq-prod-hero p{margin:0}.kq-prod-hero p{margin-top:7px;max-width:800px;line-height:1.5}.kq-prod-tabs{display:flex;gap:7px;flex-wrap:wrap}.kq-prod-tabs button{padding:10px 14px;border-radius:999px;background:#f1edf7;color:var(--primary-dark);font-weight:900}.kq-prod-tabs button.active{background:var(--primary);color:#fff}.kq-prod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kq-prod-card{display:grid;gap:11px;padding:18px;border:1px solid var(--border);border-radius:18px;background:var(--panel);box-shadow:var(--shadow)}.kq-prod-card h3,.kq-prod-card p{margin:0}.kq-prod-card p{color:var(--muted);line-height:1.45}.kq-prod-badge{display:inline-flex;width:max-content;padding:5px 8px;border-radius:999px;background:#eee8fa;color:var(--primary-dark);font-size:.72rem;font-weight:900}.kq-prod-media{overflow:hidden;border-radius:18px;background:#15131a;border:1px solid var(--border)}.kq-prod-media iframe{display:block;width:100%;min-height:390px;border:0}.kq-prod-phase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.kq-prod-phase{padding:10px;border-radius:12px;border:1px solid var(--border);background:#faf8fd;color:var(--muted)}.kq-prod-phase.active{border-color:var(--primary);background:#f4effc;color:var(--text)}.kq-prod-phase.done{border-color:#9dccb2;background:#f1fbf5}.kq-prod-phase strong,.kq-prod-phase span{display:block}.kq-prod-phase span{margin-top:3px;font-size:.7rem;line-height:1.35}.kq-prod-mic{padding:13px;border:1px dashed var(--border);border-radius:14px;background:#fcfbfd}.kq-prod-mic audio{width:100%;margin-top:9px}.kq-prod-ratings{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kq-prod-ratings label{display:grid;gap:5px;font-size:.75rem;font-weight:850}.kq-prod-ratings select{width:100%}.kq-prod-writing textarea{min-height:180px;width:100%;resize:vertical;font-size:1rem;line-height:1.65}.kq-prod-goals,.kq-prod-checks{display:grid;gap:7px}.kq-prod-goal,.kq-prod-check{padding:9px 11px;border-radius:11px;background:#faf8fd;border:1px solid var(--border)}.kq-prod-check.ok{border-color:#91c9aa;background:#f1fbf5}.kq-prod-check.miss{border-color:#e3b2bc;background:#fff5f7}.kq-prod-model{padding:12px;border-radius:12px;background:#f7f3fb;border:1px solid var(--border);line-height:1.55}.kq-prod-note{padding:11px 13px;border-radius:13px;background:#faf8ff;border:1px solid var(--border);color:var(--muted);line-height:1.45;font-size:.8rem}.kq-prod-actions{display:flex;gap:8px;flex-wrap:wrap}.kq-prod-score{font-size:2.6rem;font-weight:950;color:var(--primary)}
-          @media(max-width:800px){.kq-prod-grid{grid-template-columns:1fr}.kq-prod-phase-grid{grid-template-columns:repeat(2,1fr)}.kq-prod-ratings{grid-template-columns:1fr}.kq-prod-media iframe{min-height:240px}}
+          #kqProductionLabRoot{max-width:1180px;margin:0 auto;display:grid;gap:15px;padding-bottom:30px}.kq-prod-hero{position:relative;overflow:hidden;padding:24px;border-radius:24px;background:linear-gradient(135deg,#4d446e,#765486 55%,#bf7891);color:#fff;box-shadow:0 16px 40px rgba(62,47,82,.17)}.kq-prod-hero:after{content:'話す';position:absolute;right:18px;bottom:-38px;font-size:7rem;font-weight:950;opacity:.1}.kq-prod-hero h2,.kq-prod-hero p{margin:0}.kq-prod-hero p{margin-top:7px;max-width:860px;line-height:1.5}.kq-prod-tabs{display:flex;gap:7px;flex-wrap:wrap}.kq-prod-tabs button{padding:10px 14px;border-radius:999px;background:#f1edf7;color:var(--primary-dark);font-weight:900}.kq-prod-tabs button.active{background:var(--primary);color:#fff}.kq-prod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kq-prod-card{display:grid;gap:11px;padding:18px;border:1px solid var(--border);border-radius:18px;background:var(--panel);box-shadow:var(--shadow)}.kq-prod-card h3,.kq-prod-card p{margin:0}.kq-prod-card p{color:var(--muted);line-height:1.45}.kq-prod-badge{display:inline-flex;width:max-content;padding:5px 8px;border-radius:999px;background:#eee8fa;color:var(--primary-dark);font-size:.72rem;font-weight:900}.kq-prod-media{overflow:hidden;border-radius:18px;background:#15131a;border:1px solid var(--border)}.kq-prod-media iframe{display:block;width:100%;min-height:330px;border:0}.kq-prod-phase-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.kq-prod-phase{padding:10px;border-radius:12px;border:1px solid var(--border);background:#faf8fd;color:var(--muted)}.kq-prod-phase.active{border-color:var(--primary);background:#f4effc;color:var(--text)}.kq-prod-phase.done{border-color:#9dccb2;background:#f1fbf5}.kq-prod-phase strong,.kq-prod-phase span{display:block}.kq-prod-phase span{margin-top:3px;font-size:.7rem;line-height:1.35}.kq-prod-mic{padding:13px;border:1px dashed var(--border);border-radius:14px;background:#fcfbfd}.kq-prod-mic audio{width:100%;margin-top:9px}.kq-prod-ratings{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kq-prod-ratings label{display:grid;gap:5px;font-size:.75rem;font-weight:850}.kq-prod-ratings select{width:100%}.kq-prod-writing textarea{min-height:180px;width:100%;resize:vertical;font-size:1rem;line-height:1.65}.kq-prod-goals,.kq-prod-checks,.kq-prod-grammar-help,.kq-prod-feedback-list,.kq-prod-history{display:grid;gap:7px}.kq-prod-goal,.kq-prod-check{padding:9px 11px;border-radius:11px;background:#faf8fd;border:1px solid var(--border)}.kq-prod-check.ok{border-color:#91c9aa;background:#f1fbf5}.kq-prod-check.miss{border-color:#e3b2bc;background:#fff5f7}.kq-prod-model{padding:12px;border-radius:12px;background:#f7f3fb;border:1px solid var(--border);line-height:1.55}.kq-prod-note{padding:11px 13px;border-radius:13px;background:#faf8ff;border:1px solid var(--border);color:var(--muted);line-height:1.45;font-size:.8rem}.kq-prod-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.kq-prod-score{font-size:2.6rem;font-weight:950;color:var(--primary)}
+          .kq-prod-clip-meta{display:flex;gap:7px;flex-wrap:wrap}.kq-prod-clip-meta span{padding:6px 9px;border-radius:999px;background:#f4effc;color:var(--primary-dark);font-size:.72rem;font-weight:850}.kq-shadow-transcript{display:grid;gap:8px;padding:14px;border:1px solid var(--border);border-radius:15px;background:#fff}.kq-shadow-line{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:10px;border-radius:12px;background:#faf8fd}.kq-shadow-line button{width:38px;height:38px;border-radius:12px;padding:0}.kq-shadow-line p{color:var(--text);font-size:1rem;line-height:1.55}.kq-shadow-status{min-height:24px;font-weight:850;color:var(--primary-dark)}.kq-shadow-hidden{padding:22px;border:1px dashed var(--border);border-radius:15px;text-align:center;color:var(--muted);background:#fcfbfd}.kq-prod-grammar{border:1px solid var(--border);border-radius:14px;background:#fff;overflow:hidden}.kq-prod-grammar summary{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:11px 13px;cursor:pointer;font-weight:900;list-style:none}.kq-prod-grammar summary::-webkit-details-marker{display:none}.kq-prod-grammar-body{padding:0 13px 13px;display:grid;gap:7px}.kq-prod-grammar-body p{color:var(--text)}.kq-prod-grammar-example{padding:9px 11px;border-radius:11px;background:#f7f3fb;font-size:1rem}.kq-prod-signal{padding:4px 7px;border-radius:999px;font-size:.65rem;font-weight:900;background:#ffe7ec;color:#954c60}.kq-prod-feedback-import{display:grid;gap:8px;padding:14px;border:1px solid var(--border);border-radius:15px;background:#fcfbfd}.kq-prod-feedback-import textarea{min-height:120px;width:100%;font-size:.82rem}.kq-prod-feedback-card{padding:13px;border:1px solid var(--border);border-radius:14px;background:#fff}.kq-prod-feedback-card strong,.kq-prod-feedback-card span{display:block}.kq-prod-feedback-card span{margin-top:3px;color:var(--muted);line-height:1.4}.kq-prod-feedback-status{display:inline-flex!important;width:max-content!important;margin-top:6px!important;padding:4px 7px;border-radius:999px;font-size:.66rem;font-weight:900}.kq-prod-feedback-status.good{background:#e2f5e9;color:#397158}.kq-prod-feedback-status.warn{background:#fff0cf;color:#8a641b}.kq-prod-feedback-status.bad{background:#ffe7ec;color:#964e61}.kq-prod-vocab-row{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(160px,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:#fff}.kq-prod-vocab-row strong,.kq-prod-vocab-row span{display:block}.kq-prod-vocab-row span{font-size:.72rem;color:var(--muted)}.kq-prod-history details{border:1px solid var(--border);border-radius:14px;background:#fff}.kq-prod-history summary{padding:11px 13px;cursor:pointer;font-weight:900}.kq-prod-history-body{padding:0 13px 13px;display:grid;gap:9px}.kq-prod-history-text{padding:10px;border-radius:11px;background:#faf8fd;white-space:pre-wrap;line-height:1.55}.kq-prod-storage-note{font-size:.72rem;color:var(--muted)}
+          @media(max-width:800px){.kq-prod-grid{grid-template-columns:1fr}.kq-prod-phase-grid{grid-template-columns:repeat(2,1fr)}.kq-prod-ratings{grid-template-columns:1fr}.kq-prod-media iframe{min-height:220px}.kq-prod-vocab-row{grid-template-columns:1fr}.kq-shadow-line{grid-template-columns:auto 1fr}}
         `;
         document.head.appendChild(style);
       }
@@ -33844,46 +33899,95 @@ ${tooltipText(segment, status)}`)}"`
       }
       function writingProgress(id) {
         const p = state();
-        if (!p.writing[id]) p.writing[id] = { attempts:0, completed:0, bestTargetScore:0, lastTargetScore:0, lastAt:null };
+        if (!p.writing[id]) p.writing[id] = { attempts:0, completed:0, bestTargetScore:0, lastTargetScore:0, lastAt:null, history:[] };
+        if (!Array.isArray(p.writing[id].history)) p.writing[id].history = [];
+        if (p.writing[id].history.length > MAX_HISTORY) p.writing[id].history = p.writing[id].history.slice(-MAX_HISTORY);
         return p.writing[id];
+      }
+      function grammarSignal(pattern) {
+        const signals=state().grammarSignals;
+        return signals[String(pattern||"")] || null;
+      }
+      function signalLabel(pattern) {
+        const signal=grammarSignal(pattern);
+        if(!signal) return "";
+        const weak=Number(signal.incorrect||0)+Number(signal.missing||0)+Number(signal.awkward||0);
+        if(weak<=0) return "";
+        return `Output-Lücke ${weak}×`;
       }
       function renderHome() {
         const root = document.getElementById("kqProductionLabRoot");
         if (!root) return;
         const stats = getStats();
         root.innerHTML = `
-          <section class="kq-prod-hero"><h2>Sprechen & Produktion · 話す / 書く</h2><p>Geführtes Output-Training ohne Browser-Stimme: Shadowing mit echten externen Aufnahmen und Schreibaufgaben, die deine Zielstrukturen lokal prüfen. Deine Aufnahme und deine Texte werden nicht dauerhaft gespeichert.</p><div class="kq-listen-hero-meta"><span class="kq-listen-pill">🗣 ${stats.shadowSessions} Shadowing-Sessions</span><span class="kq-listen-pill">✍️ ${stats.writingSessions} Writing-Sessions</span><span class="kq-listen-pill">💾 Mikrofonaufnahmen nur im Arbeitsspeicher</span></div></section>
-          <div class="kq-prod-tabs"><button data-kq-prod-tab="shadowing" class="${tab==="shadowing"?"active":""}">🗣 Shadowing</button><button data-kq-prod-tab="writing" class="${tab==="writing"?"active":""}">✍️ Produktion / Schreiben</button></div>
-          ${tab==="shadowing" ? `<div class="kq-prod-note"><strong>Vier Durchgänge:</strong> 1) nur hören, 2) Satz hören → pausieren → nachsprechen, 3) mit Text/Untertiteln mitsprechen, 4) ohne Text mitsprechen. Bei Videos mit eingebauten Repeat-Phasen musst du nicht ständig selbst pausieren.</div><div class="kq-prod-grid">${SHADOWING.map(item => { const p=state().shadowing[item.id]||{}; return `<article class="kq-prod-card"><span class="kq-prod-badge">${esc(item.level)}</span><h3>${esc(item.title)}</h3><p>${esc(item.source)} · ${item.minutes ? `ca. ${item.minutes} Min. pro sinnvoller Einheit` : "freie Einheit"}</p><p>${esc(item.blurb)}</p><div class="kq-prod-actions"><button class="primary" data-kq-shadow-open="${esc(item.id)}">Shadowing starten</button>${p.sessions ? `<span class="small muted">${p.sessions}× gemacht · bester Selbstcheck ${Math.round(Number(p.bestScore||0))}%</span>` : ""}</div></article>`; }).join("")}</div>`
-          : `<div class="kq-prod-note"><strong>Warum kein „KI sagt richtig/falsch“?</strong> Eine statische HTML-App kann freie japanische Texte nicht zuverlässig semantisch korrigieren, ohne einen externen KI-Dienst samt sicherem Backend. Deshalb prüft Kotoba hier automatisch nur messbare Zielstrukturen und zeigt danach mehrere Modellformulierungen. Für echte freie Korrektur kannst du dir zusätzlich einen fertigen Korrekturprompt kopieren.</div><div class="kq-prod-grid">${WRITING.map(item => { const p=state().writing[item.id]||{}; return `<article class="kq-prod-card"><span class="kq-prod-badge">${esc(item.level)}</span><h3>${esc(item.title)}</h3><p>${esc(item.prompt)}</p><div class="kq-prod-actions"><button class="primary" data-kq-writing-open="${esc(item.id)}">Schreiben</button>${p.completed ? `<span class="small muted">${p.completed}× abgeschlossen · bester Zielcheck ${Math.round(Number(p.bestTargetScore||0))}%</span>` : ""}</div></article>`; }).join("")}</div>`}`;
+          <section class="kq-prod-hero"><h2>Sprechen & Produktion · 話す / 書く</h2><p>Kurze, geführte Output-Einheiten: Micro-Shadowing mit echten nativen Aufnahmen und freie Schreibaufgaben mit ChatGPT-Feedback-Rückimport. Kein Browser-TTS.</p><div class="kq-listen-hero-meta"><span class="kq-listen-pill">🗣 ${stats.shadowSessions} Shadowing-Sessions</span><span class="kq-listen-pill">✍️ ${stats.writingSessions} Writing-Sessions</span><span class="kq-listen-pill">⏱ Shadowing ca. 7–10 Min.</span><span class="kq-listen-pill">💾 Verlauf gedeckelt</span></div></section>
+          <div class="kq-prod-tabs"><button data-kq-prod-tab="shadowing" class="${tab==="shadowing"?"active":""}">🗣 Micro-Shadowing</button><button data-kq-prod-tab="writing" class="${tab==="writing"?"active":""}">✍️ Produktion / Schreiben</button></div>
+          ${tab==="shadowing" ? `<div class="kq-prod-note"><strong>Keine 15-Minuten-Videos mehr.</strong> Jede Einheit nutzt nur einen ca. 30–45 Sekunden langen Ausschnitt und führt dich durch vier feste Phasen: hören → Satz für Satz nachsprechen → mit Text mitsprechen → ohne Text mitsprechen.</div><div class="kq-prod-grid">${SHADOWING.map(item => { const p=state().shadowing[item.id]||{}; return `<article class="kq-prod-card"><span class="kq-prod-badge">${esc(item.level)}</span><h3>${esc(item.title)}</h3><div class="kq-prod-clip-meta"><span>🎧 ${item.clipSeconds}s Audio</span><span>⏱ ca. ${item.minutes} Min. komplett</span><span>💬 ${item.lines.length} Sätze</span></div><p>${esc(item.blurb)}</p><div class="kq-prod-actions"><button class="primary" data-kq-shadow-open="${esc(item.id)}">Micro-Shadowing starten</button>${p.sessions ? `<span class="small muted">${p.sessions}× gemacht · bester Selbstcheck ${Math.round(Number(p.bestScore||0))}%</span>` : ""}</div></article>`; }).join("")}</div>`
+          : `<div class="kq-prod-note"><strong>Der lokale Check ist nur noch ein Schnellcheck.</strong> Für echte sprachliche Bewertung erzeugt Kotoba einen strukturierten ChatGPT-Prompt. ChatGPT gibt ausführliches Feedback und am Ende einen Importblock zurück, aus dem Kotoba Grammatik-Lücken, Lernvokabeln und Fortschritt übernimmt.</div><div class="kq-prod-grid">${WRITING.map(item => { const p=writingProgress(item.id); const latest=p.history?.[p.history.length-1]; return `<article class="kq-prod-card"><span class="kq-prod-badge">${esc(item.level)}</span><h3>${esc(item.title)}</h3><p>${esc(item.prompt)}</p><div class="kq-prod-actions"><button class="primary" data-kq-writing-open="${esc(item.id)}">Schreiben</button>${p.completed ? `<span class="small muted">${p.completed}× abgeschlossen${latest?.feedback?.overallScore!=null ? ` · zuletzt ${Math.round(Number(latest.feedback.overallScore))}% KI-Feedback` : ""}</span>` : ""}</div></article>`; }).join("")}</div>`}`;
         root.querySelectorAll("[data-kq-prod-tab]").forEach(b => b.addEventListener("click",()=>{tab=b.dataset.kqProdTab||"shadowing";renderHome();}));
         root.querySelectorAll("[data-kq-shadow-open]").forEach(b=>b.addEventListener("click",()=>startShadow(b.dataset.kqShadowOpen)));
         root.querySelectorAll("[data-kq-writing-open]").forEach(b=>b.addEventListener("click",()=>startWriting(b.dataset.kqWritingOpen)));
       }
+
+      function clearShadowTimers() {
+        if(shadowTimer) clearTimeout(shadowTimer);
+        if(shadowAutoTimer) clearTimeout(shadowAutoTimer);
+        shadowTimer=null; shadowAutoTimer=null;
+      }
+      function youtubeSrc(item,start=item.start,end=item.end,autoplay=false) {
+        const params = new URLSearchParams({rel:"0",playsinline:"1",modestbranding:"1",start:String(Math.max(0,Math.floor(start||0))),end:String(Math.max(1,Math.floor(end||item.end||0)))});
+        if(autoplay) params.set("autoplay","1");
+        return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.mediaId)}?${params.toString()}`;
+      }
+      function setShadowPlayer(item,start,end,autoplay=true) {
+        const frame=document.getElementById("kqShadowFrame");
+        if(frame) frame.src=youtubeSrc(item,start,end,autoplay);
+      }
       function startShadow(id) {
         const item=SHADOWING.find(x=>x.id===id); if(!item) return;
-        stopMic(true);
+        stopMic(true); clearShadowTimers();
         currentShadow=id; shadowPhase=0; openView(); renderShadow();
       }
       const PHASES = [
-        ["1 · Hören","Einmal nur zuhören. Nicht nachsprechen und möglichst nicht lesen."],
-        ["2 · Echo","Satz hören → kurz pausieren → laut nachsprechen. Rhythmus und Länge imitieren."],
-        ["3 · Mitsprechen","Mit Transcript/Untertiteln fast gleichzeitig mit der Stimme sprechen."],
-        ["4 · Ohne Text","Text/Untertitel ausblenden und noch einmal möglichst synchron mitsprechen."]
+        ["1 · Nur hören","Den kurzen Clip einmal komplett hören. Text bleibt verborgen."],
+        ["2 · Echo","Jeden Satz hören, dann bekommst du automatisch Zeit zum Nachsprechen."],
+        ["3 · Mitsprechen","Den ganzen Clip mit sichtbarem Transcript möglichst synchron mitsprechen."],
+        ["4 · Ohne Text","Transcript ausblenden und den kurzen Clip noch einmal mitsprechen."]
       ];
+      function playShadowLine(index,auto=false) {
+        const item=SHADOWING.find(x=>x.id===currentShadow); if(!item) return;
+        const line=item.lines[index]; if(!line) return;
+        clearShadowTimers();
+        setShadowPlayer(item,line.start,line.end,true);
+        const status=document.getElementById("kqShadowStatus");
+        if(status) status.textContent=`Satz ${index+1}/${item.lines.length} hören …`;
+        const listenMs=Math.max(1800,(Number(line.end)-Number(line.start))*1000+700);
+        shadowTimer=setTimeout(()=>{
+          if(status) status.textContent=`Jetzt ${Number(line.pause||6)} Sekunden nachsprechen …`;
+          shadowAutoTimer=setTimeout(()=>{
+            if(auto && index+1<item.lines.length) playShadowLine(index+1,true);
+            else if(status) status.textContent=auto ? "Echo-Runde geschafft ✓" : "Bereit für den nächsten Satz.";
+          },Math.max(3,Number(line.pause||6))*1000);
+        },listenMs);
+      }
       function renderShadow() {
         const root=document.getElementById("kqProductionLabRoot"), item=SHADOWING.find(x=>x.id===currentShadow);
         if(!root||!item){renderHome();return;}
+        clearShadowTimers();
         const p=shadowProgress(item.id);
-        root.innerHTML=`<div class="kq-prod-card"><div class="kq-prod-actions"><button class="ghost" id="kqProdBack">← Sprechen & Produktion</button><span class="kq-prod-badge">${esc(item.level)}</span></div><h2>${esc(item.title)}</h2><p>${esc(item.source)}</p>
+        const transcriptVisible=shadowPhase===1||shadowPhase===2;
+        root.innerHTML=`<div class="kq-prod-card"><div class="kq-prod-actions"><button class="ghost" id="kqProdBack">← Sprechen & Produktion</button><span class="kq-prod-badge">${esc(item.level)}</span><span class="small muted">${item.clipSeconds}s Original · komplette Einheit ca. ${item.minutes} Min.</span></div><h2>${esc(item.title)}</h2><p>${esc(item.source)}</p>
           <div class="kq-prod-phase-grid">${PHASES.map((phase,i)=>`<div class="kq-prod-phase ${i===shadowPhase?"active":i<shadowPhase?"done":""}"><strong>${phase[0]}</strong><span>${phase[1]}</span></div>`).join("")}</div>
-          <div class="kq-prod-media"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.mediaId)}?rel=0" title="${esc(item.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
-          <div class="kq-prod-note">${shadowPhase===1 && item.mode==="manual-pause" ? "Bei diesem normalen Listening-Video pausierst du nach einem Satz selbst und sprichst ihn direkt nach. Das ist genau die Shadowing-Empfehlung des Originalmaterials." : shadowPhase===1 ? "Dieses Material ist bereits fürs Nachsprechen gebaut. Nutze die eingebauten Pausen/Repeat-Abschnitte." : shadowPhase===2 ? `Nutze jetzt den sichtbaren Text im Video bzw. <a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">das Original/Transcript ↗</a>. Versuche nicht zu übersetzen – imitiere Timing und Melodie.` : shadowPhase===3 ? "Untertitel bzw. Transcript jetzt möglichst weg. Ziel ist nicht Perfektion, sondern dass Mund und Ohr dem Satztempo folgen." : "Nur hören und auf Wortgrenzen, Satzmelodie und Pausen achten."}</div>
-          <div class="kq-prod-mic"><strong>Optional: dich selbst aufnehmen</strong><p class="small muted">Die Aufnahme bleibt nur in diesem Tab im Arbeitsspeicher und wird nie in Kotoba/Cloud gespeichert.</p><div class="kq-prod-actions"><button class="secondary" id="kqMicStart" ${mediaRecorder&&mediaRecorder.state==="recording"?"disabled":""}>● Aufnahme starten</button><button class="ghost" id="kqMicStop" ${mediaRecorder&&mediaRecorder.state==="recording"?"":"disabled"}>■ Stop</button></div><div id="kqMicPlayback">${micUrl?`<audio controls src="${esc(micUrl)}"></audio>`:""}</div></div>
-          ${shadowPhase<3 ? `<div class="kq-prod-actions"><button class="primary" id="kqShadowNext">${PHASES[shadowPhase][0]} erledigt → nächster Durchgang</button></div>` : `<div class="kq-prod-ratings"><label>Rhythmus<select id="kqRateRhythm"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label><label>Aussprache<select id="kqRatePron"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label><label>Tempo / Mitkommen<select id="kqRateTempo"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label></div><div class="kq-prod-actions"><button class="primary" id="kqShadowFinish">Shadowing-Session abschließen</button><a class="ghost" href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">Original öffnen ↗</a></div>`}
+          <div class="kq-prod-media"><iframe id="kqShadowFrame" src="${youtubeSrc(item)}" title="${esc(item.title)}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+          ${transcriptVisible ? `<div class="kq-shadow-transcript">${item.lines.map((line,i)=>`<div class="kq-shadow-line"><button class="secondary" data-kq-shadow-line="${i}" title="Nur diesen Satz abspielen">▶</button><p lang="ja">${esc(line.jp)}</p></div>`).join("")}<div id="kqShadowStatus" class="kq-shadow-status">${shadowPhase===1?"Wähle einen Satz oder starte die automatische Echo-Runde.":"Transcript sichtbar – sprich jetzt mit dem ganzen Clip mit."}</div>${shadowPhase===1?`<div class="kq-prod-actions"><button class="primary" id="kqShadowAutoEcho">▶ Automatische Echo-Runde</button><button class="ghost" id="kqShadowReplay">Ganzen Clip hören</button></div>`:`<div class="kq-prod-actions"><button class="secondary" id="kqShadowReplay">Clip erneut abspielen</button></div>`}</div>` : `<div class="kq-shadow-hidden"><strong>${shadowPhase===0?"Transcript bleibt in Runde 1 verborgen.":"Transcript ist jetzt bewusst ausgeblendet."}</strong><br><span>${shadowPhase===0?"Erst die Klangform hören – noch nicht lesen.":"Versuche Rhythmus und Chunks aus dem Gedächtnis mitzunehmen."}</span><div class="kq-prod-actions" style="justify-content:center;margin-top:10px"><button class="secondary" id="kqShadowReplay">Clip erneut abspielen</button></div></div>`}
+          <div class="kq-prod-mic"><strong>Optional: dich selbst aufnehmen</strong><p class="small muted">Nur zum direkten Vergleich. Die Aufnahme wird nicht gespeichert.</p><div class="kq-prod-actions"><button class="secondary" id="kqMicStart" ${mediaRecorder&&mediaRecorder.state==="recording"?"disabled":""}>● Aufnahme starten</button><button class="ghost" id="kqMicStop" ${mediaRecorder&&mediaRecorder.state==="recording"?"":"disabled"}>■ Stop</button></div><div id="kqMicPlayback">${micUrl?`<audio controls src="${esc(micUrl)}"></audio>`:""}</div></div>
+          ${shadowPhase<3 ? `<div class="kq-prod-actions"><button class="primary" id="kqShadowNext">${PHASES[shadowPhase][0]} erledigt → nächste Phase</button></div>` : `<div class="kq-prod-ratings"><label>Rhythmus<select id="kqRateRhythm"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label><label>Aussprache<select id="kqRatePron"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label><label>Tempo / Mitkommen<select id="kqRateTempo"><option value="0">Bitte wählen</option><option value="1">1 · schwierig</option><option value="2">2 · teilweise</option><option value="3">3 · gut</option></select></label></div><div class="kq-prod-actions"><button class="primary" id="kqShadowFinish">Shadowing-Session abschließen</button><a class="ghost" href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">Original / Transcript ↗</a></div>`}
           ${p.sessions?`<p class="small muted">Bisher ${p.sessions} Sessions · bester Selbstcheck ${Math.round(Number(p.bestScore||0))}%</p>`:""}</div>`;
-        root.querySelector("#kqProdBack")?.addEventListener("click",()=>{stopMic(true);currentShadow="";renderHome();});
-        root.querySelector("#kqShadowNext")?.addEventListener("click",()=>{shadowPhase=Math.min(3,shadowPhase+1);renderShadow();});
+        root.querySelector("#kqProdBack")?.addEventListener("click",()=>{clearShadowTimers();stopMic(true);currentShadow="";renderHome();});
+        root.querySelector("#kqShadowNext")?.addEventListener("click",()=>{clearShadowTimers();shadowPhase=Math.min(3,shadowPhase+1);renderShadow();});
+        root.querySelector("#kqShadowReplay")?.addEventListener("click",()=>setShadowPlayer(item,item.start,item.end,true));
+        root.querySelectorAll("[data-kq-shadow-line]").forEach(btn=>btn.addEventListener("click",()=>playShadowLine(Number(btn.dataset.kqShadowLine||0),false)));
+        root.querySelector("#kqShadowAutoEcho")?.addEventListener("click",()=>playShadowLine(0,true));
         root.querySelector("#kqMicStart")?.addEventListener("click",startMic);
         root.querySelector("#kqMicStop")?.addEventListener("click",()=>stopMic(false));
         root.querySelector("#kqShadowFinish")?.addEventListener("click",()=>{
@@ -33891,9 +33995,9 @@ ${tooltipText(segment, status)}`)}"`
           if(vals.some(v=>!v)){notify("Bitte bewerte kurz Rhythmus, Aussprache und Tempo.");return;}
           const score=Math.round(vals.reduce((a,b)=>a+b,0)/9*100);
           const prog=shadowProgress(item.id); prog.sessions+=1; prog.lastScore=score; prog.bestScore=Math.max(Number(prog.bestScore||0),score); prog.lastAt=Date.now();
-          const s=state().stats; s.shadowSessions=Math.max(0,Number(s.shadowSessions||0))+1; s.lastAt=Date.now(); persist();
-          postActivity({type:"speaking-practice",skill:"speaking",itemId:item.id,label:item.title,area:"production",result:score>=80?"good":score>=55?"partial":"hard",timestamp:Date.now(),metadata:{level:item.level,minutes:item.minutes,score,mode:"shadowing"}});
-          stopMic(true); notify(`Shadowing gespeichert · Selbstcheck ${score}%`); currentShadow=""; renderHome();
+          const st=state().stats; st.shadowSessions=Math.max(0,Number(st.shadowSessions||0))+1; st.lastAt=Date.now(); persist();
+          postActivity({type:"speaking-practice",skill:"speaking",itemId:item.id,label:item.title,area:"production",result:score>=80?"good":score>=55?"partial":"hard",timestamp:Date.now(),metadata:{level:item.level,minutes:item.minutes,score,mode:"micro-shadowing",clipSeconds:item.clipSeconds}});
+          clearShadowTimers(); stopMic(true); notify(`Micro-Shadowing gespeichert · Selbstcheck ${score}%`); currentShadow=""; renderHome();
         });
       }
       async function startMic() {
@@ -33924,11 +34028,14 @@ ${tooltipText(segment, status)}`)}"`
         micStream=null;
         if(discard){ try{if(micUrl) URL.revokeObjectURL(micUrl);}catch{} micUrl=""; micChunks=[]; }
       }
+
       function startWriting(id) {
         const item=WRITING.find(x=>x.id===id); if(!item)return;
-        currentWriting=id; writingResult=null; openView(); renderWriting();
+        currentWriting=id; writingResult=null; writingDraft=""; importedFeedback=null; importedFeedbackText=""; openView(); renderWriting();
       }
       function norm(value){return String(value||"").normalize("NFKC").replace(/[\s　、。！？!?,.「」『』（）()]/g,"");}
+      function normalizeWord(value){return String(value||"").normalize("NFKC").trim().replace(/\s+/g,"");}
+      function hira(value){return String(value||"").normalize("NFKC").replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60)).replace(/[ー・\s]/g,"");}
       function evaluateWriting(item,value) {
         const normalized=norm(value);
         const checks=item.checks.map(check=>{
@@ -33940,47 +34047,197 @@ ${tooltipText(segment, status)}`)}"`
         const hits=checks.filter(c=>c.ok).length;
         return {checks,score:Math.round(hits/Math.max(1,checks.length)*100),chars:normalized.length};
       }
+      function previousAttempt(item) {
+        const history=writingProgress(item.id).history||[];
+        return history.length ? history[history.length-1] : null;
+      }
+      function compactPreviousForPrompt(record) {
+        if(!record) return "Noch kein früherer Versuch gespeichert.";
+        const fb=record.feedback||{};
+        const focus=Array.isArray(fb.focus)?fb.focus.slice(0,4).join("; "):"";
+        const corrected=String(fb.correctedText||"").slice(0,700);
+        return `Vorheriger eigener Text: ${String(record.userText||"").slice(0,900)}\nVorheriger Score: ${fb.overallScore ?? record.localScore ?? "–"}\nVorheriger Fokus: ${focus||"–"}\nVorherige Korrektur: ${corrected||"–"}`;
+      }
       function correctionPrompt(item,value){
-        return `Korrigiere meinen japanischen Text als Sprachlehrer. Bitte ändere nur, was nötig ist, und erhalte meine beabsichtigte Aussage. Gib mir: 1) eine korrigierte natürliche Version, 2) kurze Erklärungen auf Deutsch zu echten Fehlern, 3) eine alternative natürliche Formulierung, 4) markiere, ob ich die Zielstrukturen erfüllt habe. Aufgabe: ${item.prompt} Ziele: ${item.goals.join(" | ")} Mein Text: ${value}`;
+        const previous=previousAttempt(item);
+        const goalJson=item.goals.map((goal,index)=>({goalIndex:index,goal}));
+        const grammarJson=(item.grammar||[]).map(g=>g.pattern);
+        return `Du bist mein Japanischlehrer. Korrigiere meinen freien Text sorgfältig, aber erhalte meine beabsichtigte Aussage. Antworte auf Deutsch, außer bei japanischen Beispielen.\n\nAUFGABE\nID: ${item.id}\nTitel: ${item.title}\nAufgabe: ${item.prompt}\nZiele: ${item.goals.join(" | ")}\nZielgrammatik: ${grammarJson.join(" | ")}\n\nMEIN NEUER TEXT\n${String(value||"").slice(0,MAX_WRITING_TEXT)}\n\nFRÜHERER VERSUCH ZUM VERGLEICH\n${compactPreviousForPrompt(previous)}\n\nBitte gib mir zuerst normales, ausführliches Feedback: 1) Was schon gut/natürlich ist, 2) echte Fehler mit kurzer Erklärung, 3) korrigierte Version mit möglichst kleinen Änderungen, 4) eine natürlichere Alternative, 5) vergleiche ausdrücklich mit dem früheren Versuch, falls einer vorhanden ist, 6) nenne sinnvolle Grammatik-Lücken, besonders wenn ich gelernte Grammatik noch nicht produktiv anwenden kann, 7) nenne höchstens ${MAX_FEEDBACK_VOCAB} wirklich nützliche Wörter oder feste Chunks, die ich für genau diese Aussage gebraucht hätte. Bei festen Verbindungen bitte den ganzen Chunk empfehlen, z. B. 歯を磨く statt nur 磨く.\n\nWICHTIG FÜR KOTOBA QUEST\nBewerte jedes Ziel semantisch; verlasse dich nicht nur auf String-Suche. Erfinde keine Fehler. Bei Vokabelvorschlägen nur Dinge aufnehmen, die für meine beabsichtigte Aussage tatsächlich nützlich waren.\n\nGanz am Ende deiner Antwort MUSST du zusätzlich folgenden maschinenlesbaren Block ausgeben. Kein Markdown-Codeblock um den JSON-Teil. Nutze valides JSON mit doppelten Anführungszeichen und exakt diesen Statuswerten. goalResults muss alle Ziele aus ${JSON.stringify(goalJson)} enthalten. grammar darf höchstens ${MAX_FEEDBACK_GRAMMAR} Einträge enthalten. vocabulary höchstens ${MAX_FEEDBACK_VOCAB}.\n\nKOTOBA_QUEST_FEEDBACK_V1\n{\n  "schema":"kq-writing-feedback-v1",\n  "taskId":"${item.id}",\n  "overallScore":0,\n  "summary":"kurze deutsche Zusammenfassung",\n  "comparison":"Was gegenüber dem früheren Versuch besser/schlechter ist; leer wenn kein früherer Versuch",\n  "strengths":["..."],\n  "focus":["..."],\n  "goalResults":[{"goalIndex":0,"status":"met","note":"..."}],\n  "grammar":[{"pattern":"〜てから","status":"correct","note":"...","example":"..."}],\n  "vocabulary":[{"word":"歯を磨く","reading":"はをみがく","meaning":"Zähne putzen","type":"chunk","reason":"...","example":"毎朝、歯を磨きます。"}],\n  "correctedText":"...",\n  "naturalText":"..."\n}\nEND_KOTOBA_QUEST_FEEDBACK\n\nErlaubte goalResults.status: met, partial, missed. Erlaubte grammar.status: correct, strong, awkward, incorrect, missing. overallScore ist 0–100 und soll die tatsächliche kommunikative Leistung abbilden, nicht nur Rechtschreibung.`;
+      }
+      function clampString(value,max=900){return String(value??"").slice(0,max);}
+      function safeArray(value,max=8,map=x=>x){return Array.isArray(value)?value.slice(0,max).map(map).filter(Boolean):[];}
+      function normalizeFeedback(raw,item) {
+        if(!raw||typeof raw!=="object") throw new Error("Feedback-JSON fehlt.");
+        if(String(raw.schema||"")!=="kq-writing-feedback-v1") throw new Error("Unbekanntes Feedback-Schema.");
+        if(String(raw.taskId||"")!==String(item.id)) throw new Error(`Feedback gehört zu ${raw.taskId||"einer anderen Aufgabe"}.`);
+        const goalResults=safeArray(raw.goalResults,item.goals.length,g=>({goalIndex:Math.max(0,Math.min(item.goals.length-1,Number(g?.goalIndex||0))),status:["met","partial","missed"].includes(g?.status)?g.status:"partial",note:clampString(g?.note,500)}));
+        const seenGoals=new Set(goalResults.map(g=>g.goalIndex));
+        item.goals.forEach((_,index)=>{if(!seenGoals.has(index)) goalResults.push({goalIndex:index,status:"partial",note:"Kein eindeutiges Ergebnis im Import."});});
+        const grammar=safeArray(raw.grammar,MAX_FEEDBACK_GRAMMAR,g=>({pattern:clampString(g?.pattern,120),status:["correct","strong","awkward","incorrect","missing"].includes(g?.status)?g.status:"awkward",note:clampString(g?.note,700),example:clampString(g?.example,500)})).filter(g=>g.pattern);
+        const vocabulary=safeArray(raw.vocabulary,MAX_FEEDBACK_VOCAB,v=>({word:clampString(v?.word,120),reading:clampString(v?.reading,120),meaning:clampString(v?.meaning,240),type:v?.type==="chunk"?"chunk":"word",reason:clampString(v?.reason,600),example:clampString(v?.example,500)})).filter(v=>v.word&&v.meaning);
+        return {schema:"kq-writing-feedback-v1",taskId:item.id,overallScore:Math.max(0,Math.min(100,Number(raw.overallScore||0))),summary:clampString(raw.summary,1200),comparison:clampString(raw.comparison,1200),strengths:safeArray(raw.strengths,6,x=>clampString(x,500)),focus:safeArray(raw.focus,6,x=>clampString(x,500)),goalResults,grammar,vocabulary,correctedText:clampString(raw.correctedText,MAX_WRITING_TEXT),naturalText:clampString(raw.naturalText,MAX_WRITING_TEXT)};
+      }
+      function parseFeedbackPackage(text,item) {
+        const rawText=String(text||"").trim();
+        const start=rawText.indexOf("KOTOBA_QUEST_FEEDBACK_V1");
+        const end=rawText.indexOf("END_KOTOBA_QUEST_FEEDBACK",start+1);
+        if(start<0||end<0) throw new Error("Der KOTOBA_QUEST_FEEDBACK_V1-Block wurde nicht gefunden.");
+        let json=rawText.slice(start+"KOTOBA_QUEST_FEEDBACK_V1".length,end).trim();
+        json=json.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"").trim();
+        const feedback=normalizeFeedback(JSON.parse(json),item);
+        const prose=rawText.slice(0,start).trim().slice(0,MAX_FEEDBACK_TEXT);
+        return {feedback,prose};
+      }
+
+      function allCoreEntries() {
+        try { return Array.isArray(window.KOTOBA_CORE_PACK?.entries)?window.KOTOBA_CORE_PACK.entries:[]; } catch { return []; }
+      }
+      function currentVocab() { const source=sourceData(); return Array.isArray(source.vocabulary)?source.vocabulary:[]; }
+      function matchesSuggestion(item,suggestion) {
+        const a=normalizeWord(item?.word||item?.base||item?.surface), b=normalizeWord(suggestion?.word);
+        if(!a||a!==b) return false;
+        const ar=hira(item?.reading||item?.baseReading), br=hira(suggestion?.reading);
+        return !ar||!br||ar===br;
+      }
+      function suggestionStatus(suggestion) {
+        const source=sourceData();
+        const known=(Array.isArray(source.knownVocabulary)?source.knownVocabulary:[]).find(item=>matchesSuggestion(item,suggestion));
+        if(known) return {kind:"known",label:"Als bekannt markiert",item:known};
+        let item=currentVocab().find(v=>matchesSuggestion(v,suggestion))||null;
+        if(!item) {
+          const core=allCoreEntries().find(v=>matchesSuggestion(v,suggestion));
+          if(core) item=core;
+        }
+        if(item) {
+          const stage=Math.max(0,Math.min(9,Number(item.stage||0)));
+          if(item.guruPassed||stage>=5) return {kind:"known",label:stage>=9?"Abgeschlossen":stage>=7?"Master+":stage===6?"Guru 2":"Guru 1",item};
+          if(stage>=1) return {kind:"learning",label:`Apprentice ${Math.min(4,stage)}`,item};
+          if(item.sourceType==="mining") return {kind:"mining",label:"Bereits im Mining",item};
+          const coreLike=item.sourceType==="core"||String(item.packEntryId||"").startsWith("kc2k-");
+          if(coreLike) {
+            const id=String(item.packEntryId||item.id||"");
+            const priority=id&&Array.isArray(source.corePriorityIds)&&source.corePriorityIds.map(String).includes(id);
+            return {kind:priority?"priority":"core",label:priority?`Core vorgezogen${item.level?` · L${item.level}`:""}`:`Core ${item.level?`· Level ${item.level}`:""}`,item};
+          }
+        }
+        return {kind:"unknown",label:suggestion.type==="chunk"?"Neuer Mining-Chunk":"Nicht im Core · Mining",item:null};
+      }
+      function queueCoreSuggestion(suggestion) {
+        const status=suggestionStatus(suggestion), item=status.item;
+        if(!item) return false;
+        const id=String(item.packEntryId||item.id||"");
+        if(!id) return false;
+        try { if(window.KotobaQuestCorePriority?.queue?.(id)){notify(`${suggestion.word} wurde als vorgezogene Core-Lektion vorgemerkt.`);return true;} } catch {}
+        const source=sourceData(); if(!Array.isArray(source.corePriorityIds)) source.corePriorityIds=[];
+        if(!source.corePriorityIds.map(String).includes(id)) source.corePriorityIds.push(id);
+        persist(); notify(`${suggestion.word} wurde als vorgezogene Core-Lektion vorgemerkt.`); return true;
+      }
+      function addMiningSuggestion(suggestion,item) {
+        const status=suggestionStatus(suggestion);
+        if(status.kind!=="unknown") return false;
+        const source=sourceData(); source.vocabulary=Array.isArray(source.vocabulary)?source.vocabulary:[];
+        let card={word:suggestion.word,reading:suggestion.reading,meanings:[suggestion.meaning],productionCue:suggestion.meaning,sourceType:"mining",collection:`Writing · ${item.title}`,example:suggestion.example||"",exampleTranslation:"",stage:0,availableAt:null,correct:0,incorrect:0,guruPassed:false,createdAt:Date.now(),pos:suggestion.type==="chunk"?"expression":""};
+        try { if(typeof makeVocabulary==="function") card=makeVocabulary(card); } catch {}
+        source.vocabulary.push(card); try { if(typeof data!=="undefined") data.vocabulary=source.vocabulary; } catch {}
+        persist(); notify(`${suggestion.word} wurde ins Mining übernommen.`); return true;
+      }
+      function updateGrammarSignals(feedback,item) {
+        if(!feedback) return;
+        const signals=state().grammarSignals;
+        for(const g of feedback.grammar||[]) {
+          const key=String(g.pattern||"").trim(); if(!key) continue;
+          if(!signals[key]) signals[key]={correct:0,strong:0,awkward:0,incorrect:0,missing:0,lastAt:null,lastNote:"",tasks:[]};
+          const rec=signals[key], status=["correct","strong","awkward","incorrect","missing"].includes(g.status)?g.status:"awkward";
+          rec[status]=Math.max(0,Number(rec[status]||0))+1; rec.lastAt=Date.now(); rec.lastNote=String(g.note||"").slice(0,700);
+          rec.tasks=Array.isArray(rec.tasks)?rec.tasks:[]; if(!rec.tasks.includes(item.id)) rec.tasks.push(item.id); if(rec.tasks.length>6) rec.tasks=rec.tasks.slice(-6);
+        }
+      }
+      function grammarAction(pattern) {
+        try {
+          const n4=window.KotobaQuestN4Recap;
+          const resolved=n4?.resolveGrammarId?.(String(pattern||""));
+          if(resolved?.id) return {label:"N4-Punkt öffnen",run:()=>n4.openPointTest?.(resolved.id)};
+        } catch {}
+        try {
+          const api=window.KotobaQuestGrammarSupportApi;
+          const catalog=api?.getGrammarCatalog?.()||[];
+          const needle=norm(pattern).replace(/[〜～]/g,"");
+          const hit=catalog.find(point=>norm(`${point.pattern||""}${point.title||""}`).replace(/[〜～]/g,"").includes(needle));
+          if(hit?.openId||hit?.id) return {label:"Grammatiklektion öffnen",run:()=>api.openGrammarPoint?.(hit.openId||hit.id)};
+        } catch {}
+        return null;
+      }
+      function statusClass(status){return ["met","correct","strong"].includes(status)?"good":["missed","incorrect","missing"].includes(status)?"bad":"warn";}
+      function statusLabel(status){return ({met:"erfüllt",partial:"teilweise",missed:"nicht erfüllt",correct:"korrekt",strong:"sicher/natürlich",awkward:"unbeholfen",incorrect:"falsch",missing:"fehlte"})[status]||status;}
+      function historyHtml(item) {
+        const history=writingProgress(item.id).history||[];
+        if(!history.length) return "";
+        return `<section class="kq-prod-card"><h3>Dein Verlauf für diese Aufgabe</h3><p class="muted">Maximal ${MAX_HISTORY} abgeschlossene Versuche werden gespeichert. Der neueste Versuch erscheint zuerst.</p><div class="kq-prod-history">${[...history].reverse().map((record,index)=>{const fb=record.feedback||{};const date=record.completedAt?new Date(record.completedAt).toLocaleDateString("de-DE"):"früher";return `<details ${index===0?"open":""}><summary>${esc(date)} · ${fb.overallScore!=null?`${Math.round(Number(fb.overallScore))}% KI-Feedback`:`${Math.round(Number(record.localScore||0))}% Schnellcheck`}</summary><div class="kq-prod-history-body"><strong>Dein Text</strong><div class="kq-prod-history-text" lang="ja">${esc(record.userText||"")}</div>${fb.correctedText?`<strong>Korrigierte Version</strong><div class="kq-prod-history-text" lang="ja">${esc(fb.correctedText)}</div>`:""}${fb.naturalText?`<strong>Natürlichere Variante</strong><div class="kq-prod-history-text" lang="ja">${esc(fb.naturalText)}</div>`:""}${fb.comparison?`<div class="kq-prod-note"><strong>Fortschrittsvergleich:</strong> ${esc(fb.comparison)}</div>`:""}${Array.isArray(fb.focus)&&fb.focus.length?`<div><strong>Nächster Fokus</strong><ul>${fb.focus.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}${record.feedbackText?`<details><summary>Ausführliches ChatGPT-Feedback anzeigen</summary><div class="kq-prod-history-text">${esc(record.feedbackText)}</div></details>`:""}</div></details>`;}).join("")}</div></section>`;
+      }
+      function feedbackHtml(item) {
+        const fb=importedFeedback; if(!fb) return "";
+        return `<section class="kq-prod-card"><div class="kq-prod-actions"><div><span class="small muted">Importiertes ChatGPT-Feedback</span><div class="kq-prod-score">${Math.round(Number(fb.overallScore||0))}%</div></div><span class="kq-prod-badge">für ${esc(item.title)}</span></div><p>${esc(fb.summary||"")}</p>${fb.comparison?`<div class="kq-prod-note"><strong>Vergleich zum früheren Versuch:</strong> ${esc(fb.comparison)}</div>`:""}
+          <h3>Ziele</h3><div class="kq-prod-feedback-list">${fb.goalResults.map(g=>`<div class="kq-prod-feedback-card"><strong>${esc(item.goals[g.goalIndex]||`Ziel ${g.goalIndex+1}`)}</strong><span>${esc(g.note||"")}</span><span class="kq-prod-feedback-status ${statusClass(g.status)}">${esc(statusLabel(g.status))}</span></div>`).join("")}</div>
+          ${fb.grammar.length?`<h3>Grammatik · produktive Anwendung</h3><div class="kq-prod-feedback-list">${fb.grammar.map(g=>{const action=grammarAction(g.pattern);return `<div class="kq-prod-feedback-card"><strong>${esc(g.pattern)}</strong><span>${esc(g.note)}</span>${g.example?`<div class="kq-prod-grammar-example" lang="ja">${esc(g.example)}</div>`:""}<div class="kq-prod-actions"><span class="kq-prod-feedback-status ${statusClass(g.status)}">${esc(statusLabel(g.status))}</span>${action?`<button class="ghost" data-kq-open-feedback-grammar="${esc(g.pattern)}">${esc(action.label)}</button>`:""}</div></div>`;}).join("")}</div>`:""}
+          ${fb.vocabulary.length?`<h3>Vokabeln / Chunks, die aus deinem Text entstanden sind</h3><div class="kq-prod-feedback-list">${fb.vocabulary.map((v,index)=>{const st=suggestionStatus(v);const action=st.kind==="core"?`<button class="secondary" data-kq-feedback-core="${index}">Core vorziehen</button>`:st.kind==="unknown"?`<button class="secondary" data-kq-feedback-mine="${index}">Ins Mining</button>`:"";return `<div class="kq-prod-vocab-row"><div><strong lang="ja">${esc(v.word)}</strong><span>${esc(v.reading)} · ${esc(v.type==="chunk"?"Chunk":"Wort")}</span></div><div><strong>${esc(v.meaning)}</strong><span>${esc(v.reason)}</span>${v.example?`<span lang="ja">${esc(v.example)}</span>`:""}</div><div class="kq-prod-actions"><span class="kq-prod-feedback-status ${st.kind==="known"?"good":st.kind==="learning"||st.kind==="priority"||st.kind==="mining"?"warn":"bad"}">${esc(st.label)}</span>${action}</div></div>`;}).join("")}</div>`:""}
+          ${fb.correctedText?`<h3>Korrigierte Version</h3><div class="kq-prod-model" lang="ja">${esc(fb.correctedText)}</div>`:""}${fb.naturalText?`<h3>Natürlichere Variante</h3><div class="kq-prod-model" lang="ja">${esc(fb.naturalText)}</div>`:""}
+        </section>`;
       }
       function renderWriting() {
         const root=document.getElementById("kqProductionLabRoot"), item=WRITING.find(x=>x.id===currentWriting);
         if(!root||!item){renderHome();return;}
-        const oldValue=String(document.getElementById("kqWritingInput")?.value||"");
         const result=writingResult;
-        root.innerHTML=`<div class="kq-prod-card kq-prod-writing"><div class="kq-prod-actions"><button class="ghost" id="kqProdBack">← Sprechen & Produktion</button><span class="kq-prod-badge">${esc(item.level)}</span></div><h2>${esc(item.title)}</h2><p>${esc(item.prompt)}</p>
+        const previous=previousAttempt(item);
+        root.innerHTML=`<div class="kq-prod-card kq-prod-writing"><div class="kq-prod-actions"><button class="ghost" id="kqProdBack">← Sprechen & Produktion</button><span class="kq-prod-badge">${esc(item.level)}</span>${previous?`<span class="small muted">Du hast diese Aufgabe schon ${writingProgress(item.id).history.length}× im Verlauf</span>`:""}</div><h2>${esc(item.title)}</h2><p>${esc(item.prompt)}</p>
           <div class="kq-prod-goals">${item.goals.map(goal=>`<div class="kq-prod-goal">🎯 ${esc(goal)}</div>`).join("")}</div>
-          <textarea id="kqWritingInput" lang="ja" placeholder="ここに日本語で書いてください…">${esc(oldValue)}</textarea>
-          <div class="kq-prod-note">Dein Text wird absichtlich <strong>nicht dauerhaft gespeichert</strong>. Der lokale Check prüft nur die Zielstrukturen und Mindestlänge – er behauptet nicht, jede freie Formulierung semantisch beurteilen zu können.</div>
-          <div class="kq-prod-actions"><button class="primary" id="kqWritingCheck">Lokalen Zielcheck machen</button><button class="secondary" id="kqWritingCopy">Korrekturprompt für ChatGPT kopieren</button></div>
-          ${result?`<section><div class="kq-prod-score">${result.score}%</div><p class="muted">Zielcheck · ${result.chars} japanische Zeichen nach Normalisierung</p><div class="kq-prod-checks">${result.checks.map(c=>`<div class="kq-prod-check ${c.ok?"ok":"miss"}">${c.ok?"✓":"○"} ${esc(c.label)}</div>`).join("")}</div><h3 style="margin-top:16px">Mögliche natürliche Lösungen</h3>${item.models.map(m=>`<div class="kq-prod-model" lang="ja">${esc(m)}</div>`).join("")}<div class="kq-prod-actions" style="margin-top:14px"><button class="primary" id="kqWritingFinish">Als Production-Training abschließen</button></div></section>`:""}</div>`;
-        const input=root.querySelector("#kqWritingInput"); if(oldValue) input.value=oldValue;
-        root.querySelector("#kqProdBack")?.addEventListener("click",()=>{currentWriting="";writingResult=null;renderHome();});
-        root.querySelector("#kqWritingCheck")?.addEventListener("click",()=>{const value=String(input?.value||"").trim(); if(!value){notify("Schreib zuerst ein paar japanische Sätze.");return;} writingResult=evaluateWriting(item,value); renderWriting(); requestAnimationFrame(()=>{const next=document.getElementById("kqWritingInput");if(next)next.value=value;});});
-        root.querySelector("#kqWritingCopy")?.addEventListener("click",async()=>{const value=String(input?.value||"").trim();if(!value){notify("Schreib zuerst deinen Text.");return;}try{await navigator.clipboard.writeText(correctionPrompt(item,value));notify("Korrekturprompt wurde kopiert.");}catch{notify("Kopieren war im Browser nicht möglich.");}});
+          <section><h3>Grammatik-Hilfe</h3><p class="small muted">Erst aus dem Kopf versuchen. Wenn du hängen bleibst, kannst du die Zielgrammatik direkt hier kurz aufklappen – kein Googeln nötig.</p><div class="kq-prod-grammar-help">${(item.grammar||[]).map(g=>{const signal=signalLabel(g.pattern);return `<details class="kq-prod-grammar"><summary><span>${esc(g.pattern)} · ${esc(g.meaning)}</span>${signal?`<span class="kq-prod-signal">${esc(signal)}</span>`:""}</summary><div class="kq-prod-grammar-body"><p><strong>Bildung:</strong> ${esc(g.formation)}</p><div class="kq-prod-grammar-example" lang="ja">${esc(g.example)}</div><p>${esc(g.note)}</p>${grammarAction(g.pattern)?`<div class="kq-prod-actions"><button class="ghost" data-kq-open-grammar="${esc(g.pattern)}">Im Grammatikbereich öffnen</button></div>`:""}</div></details>`;}).join("")}</div></section>
+          ${previous?`<div class="kq-prod-note"><strong>Fortschrittsmodus:</strong> Wenn du den ChatGPT-Prompt kopierst, bekommt ChatGPT automatisch deinen letzten gespeicherten Versuch und den damaligen Fokus als Vergleich – nicht deinen kompletten Verlauf.</div>`:""}
+          <textarea id="kqWritingInput" lang="ja" placeholder="ここに日本語で書いてください…">${esc(writingDraft)}</textarea>
+          <div class="kq-prod-note">Der <strong>lokale Schnellcheck</strong> ist nur technisch (Muster/Mindestlänge) und entscheidet nicht mehr, ob deine Sprache wirklich richtig ist. Für die eigentliche Bewertung nutze den ChatGPT-Feedback-Import.</div>
+          <div class="kq-prod-actions"><button class="ghost" id="kqWritingCheck">Schnellcheck (optional)</button><button class="primary" id="kqWritingCopy">ChatGPT-Korrekturprompt kopieren</button></div>
+          ${result?`<section><p class="muted">Technischer Schnellcheck · ${result.chars} Zeichen</p><div class="kq-prod-checks">${result.checks.map(c=>`<div class="kq-prod-check ${c.ok?"ok":"miss"}">${c.ok?"✓":"○"} ${esc(c.label)}</div>`).join("")}</div></section>`:""}
+          <div class="kq-prod-feedback-import"><strong>ChatGPT-Feedback zurück in Kotoba Quest</strong><span class="small muted">Füge die komplette ChatGPT-Antwort oder nur den KOTOBA_QUEST_FEEDBACK_V1-Block ein. Kotoba liest daraus Ziele, Grammatik-Lücken und Vokabelvorschläge.</span><textarea id="kqFeedbackImport" placeholder="ChatGPT-Antwort hier einfügen …"></textarea><div class="kq-prod-actions"><button class="secondary" id="kqFeedbackParse">Feedback importieren</button></div></div>
+          ${feedbackHtml(item)}
+          <div class="kq-prod-actions"><label class="small"><input type="checkbox" id="kqWritingKeepHistory" checked> Antwort + kompaktes Feedback für Fortschrittsvergleich speichern</label><button class="primary" id="kqWritingFinish">Production-Session abschließen</button></div>
+          <div class="kq-prod-storage-note">💾 Speicherbremse: pro Aufgabe maximal ${MAX_HISTORY} Versuche; eigener Text max. ${MAX_WRITING_TEXT} Zeichen; ausführliches Feedback max. ${MAX_FEEDBACK_TEXT} Zeichen. Audio/Mikrofon wird nie gespeichert.</div>
+        </div>${historyHtml(item)}`;
+        const input=root.querySelector("#kqWritingInput"); if(input){input.value=writingDraft;input.addEventListener("input",()=>{writingDraft=input.value;});}
+        root.querySelector("#kqProdBack")?.addEventListener("click",()=>{currentWriting="";writingResult=null;writingDraft="";importedFeedback=null;importedFeedbackText="";renderHome();});
+        root.querySelector("#kqWritingCheck")?.addEventListener("click",()=>{writingDraft=String(input?.value||"").trim(); if(!writingDraft){notify("Schreib zuerst ein paar japanische Sätze.");return;} writingResult=evaluateWriting(item,writingDraft); renderWriting();});
+        root.querySelector("#kqWritingCopy")?.addEventListener("click",async()=>{writingDraft=String(input?.value||"").trim();if(!writingDraft){notify("Schreib zuerst deinen Text.");return;}try{await navigator.clipboard.writeText(correctionPrompt(item,writingDraft));notify("Korrekturprompt kopiert. ChatGPT soll am Ende einen Kotoba-Importblock zurückgeben.");}catch{notify("Kopieren war im Browser nicht möglich.");}});
+        root.querySelector("#kqFeedbackParse")?.addEventListener("click",()=>{writingDraft=String(input?.value||"").trim();if(!writingDraft){notify("Dein eigener Text fehlt noch.");return;}const raw=String(root.querySelector("#kqFeedbackImport")?.value||"").trim();if(!raw){notify("Füge zuerst die ChatGPT-Antwort ein.");return;}try{const parsed=parseFeedbackPackage(raw,item);importedFeedback=parsed.feedback;importedFeedbackText=parsed.prose;renderWriting();notify("ChatGPT-Feedback wurde eingelesen.");}catch(error){notify(`Feedback konnte nicht importiert werden: ${String(error?.message||error)}`);}});
+        root.querySelectorAll("[data-kq-open-grammar]").forEach(btn=>btn.addEventListener("click",()=>{const action=grammarAction(btn.dataset.kqOpenGrammar);action?.run?.();}));
+        root.querySelectorAll("[data-kq-open-feedback-grammar]").forEach(btn=>btn.addEventListener("click",()=>{const action=grammarAction(btn.dataset.kqOpenFeedbackGrammar);action?.run?.();}));
+        root.querySelectorAll("[data-kq-feedback-core]").forEach(btn=>btn.addEventListener("click",()=>{const v=importedFeedback?.vocabulary?.[Number(btn.dataset.kqFeedbackCore||0)];if(v&&queueCoreSuggestion(v))renderWriting();}));
+        root.querySelectorAll("[data-kq-feedback-mine]").forEach(btn=>btn.addEventListener("click",()=>{const v=importedFeedback?.vocabulary?.[Number(btn.dataset.kqFeedbackMine||0)];if(v&&addMiningSuggestion(v,item))renderWriting();}));
         root.querySelector("#kqWritingFinish")?.addEventListener("click",()=>{
-          const value=String(input?.value||"").trim(); const resultNow=writingResult||evaluateWriting(item,value);
-          const prog=writingProgress(item.id); prog.attempts+=1; prog.completed+=1; prog.lastTargetScore=resultNow.score; prog.bestTargetScore=Math.max(Number(prog.bestTargetScore||0),resultNow.score); prog.lastAt=Date.now();
-          const s=state().stats; s.writingSessions=Math.max(0,Number(s.writingSessions||0))+1; s.lastAt=Date.now(); persist();
-          postActivity({type:"production-practice",skill:"production",itemId:item.id,label:item.title,area:"production",result:resultNow.score>=80?"good":resultNow.score>=50?"partial":"hard",timestamp:Date.now(),metadata:{level:item.level,minutes:10,score:resultNow.score,mode:"writing",chars:resultNow.chars}});
-          notify(`Production-Training gespeichert · Zielcheck ${resultNow.score}%`); currentWriting=""; writingResult=null; renderHome();
+          writingDraft=String(input?.value||writingDraft||"").trim(); if(!writingDraft){notify("Schreib zuerst deinen Text.");return;}
+          const local=writingResult||evaluateWriting(item,writingDraft); const score=importedFeedback?Number(importedFeedback.overallScore||0):local.score;
+          const prog=writingProgress(item.id); prog.attempts+=1; prog.completed+=1; prog.lastTargetScore=score; prog.bestTargetScore=Math.max(Number(prog.bestTargetScore||0),score); prog.lastAt=Date.now();
+          if(importedFeedback) updateGrammarSignals(importedFeedback,item);
+          const keep=Boolean(document.getElementById("kqWritingKeepHistory")?.checked);
+          if(keep){prog.history.push({completedAt:Date.now(),userText:String(writingDraft).slice(0,MAX_WRITING_TEXT),localScore:local.score,feedback:importedFeedback?JSON.parse(JSON.stringify(importedFeedback)):null,feedbackText:String(importedFeedbackText||"").slice(0,MAX_FEEDBACK_TEXT)});if(prog.history.length>MAX_HISTORY)prog.history=prog.history.slice(-MAX_HISTORY);}
+          const st=state().stats; st.writingSessions=Math.max(0,Number(st.writingSessions||0))+1; st.lastAt=Date.now(); persist();
+          const weak=importedFeedback?(importedFeedback.grammar||[]).filter(g=>["awkward","incorrect","missing"].includes(g.status)).length:0;
+          postActivity({type:"production-practice",skill:"production",itemId:item.id,label:item.title,area:"production",result:score>=80?"good":score>=50?"partial":"hard",timestamp:Date.now(),metadata:{level:item.level,minutes:10,score,mode:"writing",chars:local.chars,aiReviewed:Boolean(importedFeedback),grammarWeaknesses:weak,vocabSuggestions:Number(importedFeedback?.vocabulary?.length||0)}});
+          notify(importedFeedback?`Production gespeichert · ChatGPT-Feedback ${Math.round(score)}%`:`Production gespeichert · ohne KI-Feedback ${Math.round(score)}% Schnellcheck`); currentWriting=""; writingResult=null; writingDraft=""; importedFeedback=null; importedFeedbackText=""; renderHome();
         });
       }
       function getStats() {
-        const s=state().stats;
+        const st=state().stats;
         const shadowBest=Math.max(0,...Object.values(state().shadowing).map(x=>Number(x?.bestScore||0)));
         const writingBest=Math.max(0,...Object.values(state().writing).map(x=>Number(x?.bestTargetScore||0)));
-        return {shadowSessions:Number(s.shadowSessions||0),writingSessions:Number(s.writingSessions||0),shadowBest,writingBest,shadowLessons:SHADOWING.length,writingPrompts:WRITING.length};
+        const grammarWeaknesses=Object.values(state().grammarSignals).filter(x=>Number(x?.incorrect||0)+Number(x?.missing||0)+Number(x?.awkward||0)>Number(x?.correct||0)+Number(x?.strong||0)).length;
+        return {shadowSessions:Number(st.shadowSessions||0),writingSessions:Number(st.writingSessions||0),shadowBest,writingBest,shadowLessons:SHADOWING.length,writingPrompts:WRITING.length,grammarWeaknesses};
       }
       function open(mode="") {
         if(mode==="writing"||mode==="shadowing") tab=mode;
-        currentShadow=""; currentWriting=""; writingResult=null; stopMic(true); openView(); renderHome();
+        currentShadow=""; currentWriting=""; writingResult=null; writingDraft=""; importedFeedback=null; importedFeedbackText=""; clearShadowTimers(); stopMic(true); openView(); renderHome();
       }
 
       ensureView(); installStyles();
-      window.KotobaQuestProductionLab={version:VERSION,open,getStats,getShadowingCatalog:()=>SHADOWING.map(({id,title,source,level})=>({id,title,source,level})),getWritingCatalog:()=>WRITING.map(({id,title,level,prompt})=>({id,title,level,prompt}))};
+      window.KotobaQuestProductionLab={version:VERSION,open,getStats,getShadowingCatalog:()=>SHADOWING.map(({id,title,source,level,minutes,clipSeconds})=>({id,title,source,level,minutes,clipSeconds})),getWritingCatalog:()=>WRITING.map(({id,title,level,prompt})=>({id,title,level,prompt})),getGrammarSignals:()=>JSON.parse(JSON.stringify(state().grammarSignals||{}))};
     }
-
 
     function interfaceReorganizationBootstrap() {
       if (window.__KQ_INFORMATION_ARCHITECTURE_V4__) return;
@@ -36568,15 +36825,6 @@ function renderProgressCenter() {
         session = null;
         clearActiveSession();
         persist();
-        const totalAnswered = Math.max(0, Number(finished.correct || 0)) + Math.max(0, Number(finished.incorrect || 0));
-        if (totalAnswered > 0) {
-          const token = String(finished.id || "").replace(/[^a-z0-9-]/gi,"-").toLowerCase();
-          try { window.parent?.postMessage({type:"kotoba-n4-activity",payload:{
-            eventId:`kq-n4-${token}`,type:"n4-placement-block",itemId:String(finished.id || ""),
-            label:"N4 Standorttest",area:"grammar",skill:"grammar",result:"completed",timestamp:Date.now(),
-            metadata:{correct:Number(finished.correct)||0,total:totalAnswered,confirmed:true}
-          }},window.location.origin); } catch {}
-        }
         const screened = CORE_POINTS.filter(point => pointStatus(point.id).screenTried).length;
         const safe = allKnownCount();
         const confirmOpen = confirmationOpen(CORE_POINTS).length;
@@ -40033,6 +40281,6 @@ function smartReviewBootstrap() {
   </script>
 
 
-  <script type="module" src="./sync/kotoba-bridge.js?v=2.4.0-dz42"></script>
+  <script type="module" src="./sync/kotoba-bridge.js"></script>
 </body>
 </html>
