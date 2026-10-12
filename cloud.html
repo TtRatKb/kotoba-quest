@@ -24607,6 +24607,11 @@
       let placementFeedback = null;
       let placementAdvanceTimer = null;
       let mutationTimer = 0;
+      let enhancementTimer = 0;
+      let pendingFuriganaRoot = null;
+      let exactRecoveryChecked = false;
+      let quickBackupRecoveryChecked = false;
+      let cachedStandaloneSource = null;
 
       function esc(value) {
         try { if (typeof escapeHtml === "function") return escapeHtml(value); } catch {}
@@ -24641,7 +24646,7 @@
       function hasPlacementProgress(value) {
         const state = value && typeof value === "object" && !Array.isArray(value) ? value : {};
         const results = state.placementResults && typeof state.placementResults === "object" ? state.placementResults : {};
-        return Boolean(state.placementComplete || Number(state.placementIndex || 0) > 0 || Object.keys(results).length);
+        return Boolean(state.placementComplete || Number(state.placementIndex || 0) > 0 || Object.keys(results).length || Number(state.placementRecovery?.sourceCompletedAt || 0) > 0);
       }
       function betterKanjiState(left, right) {
         if (!left || typeof left !== "object" || Array.isArray(left)) return right && typeof right === "object" ? right : null;
@@ -24669,8 +24674,20 @@
       function writeKanjiBackup(state, reason="kanji") {
         if (!state || typeof state !== "object") return;
         try {
+          const existing = readKanjiBackup();
+          if (existing) {
+            const a = kanjiProgressScore(existing);
+            const b = kanjiProgressScore(state);
+            let existingStrictlyBetter = false;
+            for (let i=0; i<a.length; i++) {
+              if (a[i] === b[i]) continue;
+              existingStrictlyBetter = a[i] > b[i];
+              break;
+            }
+            if (existingStrictlyBetter) return;
+          }
           localStorage.setItem(KANJI_BACKUP_KEY, JSON.stringify({
-            version: 1,
+            version: 2,
             updatedAtMs: Date.now(),
             reason: String(reason || "kanji").slice(0,80),
             kanjiPilot: cloneKanjiValue(state)
@@ -24693,27 +24710,37 @@
         } catch {}
         return candidates.filter(candidate => candidate && typeof candidate === "object");
       }
+      function liveDataReference() {
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        return null;
+      }
+      function standaloneDataReference() {
+        if (cachedStandaloneSource && typeof cachedStandaloneSource === "object") return cachedStandaloneSource;
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+          if (parsed && typeof parsed === "object") return (cachedStandaloneSource = parsed);
+        } catch {}
+        return (cachedStandaloneSource = {});
+      }
       function sourceData() {
-        let live = null;
-        try { if (typeof data !== "undefined" && data && typeof data === "object") live = data; } catch {}
-        let stored = null;
-        try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch {}
+        // Hot path: never scan IndexedDB/checkpoints/cloud here. This function is
+        // called dozens of times while rendering Kanji/Furigana and must stay O(1).
+        return liveDataReference() || standaloneDataReference();
+      }
+      function recoverExactKanjiStateOnce(force=false) {
+        if (exactRecoveryChecked && !force) return false;
+        exactRecoveryChecked = true;
+        const live = liveDataReference();
+        const stored = standaloneDataReference();
         let recovered = null;
         for (const candidate of collectFullKanjiCandidates(live, stored)) recovered = betterKanjiState(recovered, candidate);
-        if (live) {
-          const before = live.kanjiPilot;
-          if (recovered && recovered !== before && (!hasMeaningfulKanjiProgress(before) || betterKanjiState(before, recovered) === recovered)) {
-            live.kanjiPilot = cloneKanjiValue(recovered);
-            window.__KOTOBA_KANJI_RECOVERED__ = true;
-            window.__KOTOBA_KANJI_RECOVERY_NOTE__ = "Ein vollständigerer Kanji-Stand wurde aus einem Sicherungsspeicher wiederhergestellt.";
-          }
-          return live;
-        }
-        if (stored && typeof stored === "object") {
-          if (recovered) stored.kanjiPilot = cloneKanjiValue(recovered);
-          return stored;
-        }
-        return recovered ? { kanjiPilot: cloneKanjiValue(recovered) } : {};
+        const current = live?.kanjiPilot || stored?.kanjiPilot || null;
+        if (!recovered || (current && betterKanjiState(current, recovered) !== recovered)) return false;
+        if (live) live.kanjiPilot = cloneKanjiValue(recovered);
+        else stored.kanjiPilot = cloneKanjiValue(recovered);
+        window.__KOTOBA_KANJI_RECOVERED__ = true;
+        window.__KOTOBA_KANJI_RECOVERY_NOTE__ = "Ein vollständigerer Kanji-Stand wurde aus einem Sicherungsspeicher wiederhergestellt.";
+        return true;
       }
       function defaultState() {
         return {
@@ -24731,6 +24758,18 @@
       }
       function ensureState() {
         const source = sourceData();
+        if (!quickBackupRecoveryChecked) {
+          quickBackupRecoveryChecked = true;
+          const backup = readKanjiBackup();
+          const current = source.kanjiPilot && typeof source.kanjiPilot === "object" ? source.kanjiPilot : null;
+          if (backup && (!current || betterKanjiState(current, backup) === backup)) {
+            source.kanjiPilot = cloneKanjiValue(backup);
+            if (current !== source.kanjiPilot) {
+              window.__KOTOBA_KANJI_RECOVERED__ = true;
+              window.__KOTOBA_KANJI_RECOVERY_NOTE__ = "Kanji-Stand aus dem kompakten Kanji-Sicherungsstand geladen.";
+            }
+          }
+        }
         const base = source.kanjiPilot && typeof source.kanjiPilot === "object" ? source.kanjiPilot : defaultState();
         const previousVersion = Number(base.version || 1);
         if (previousVersion < 2) {
@@ -25034,8 +25073,10 @@
           const block=Number(match[1]);
           if(block<1||block>10) continue;
           const correct=Math.max(0,Math.min(10,Number(event.metadata?.correct||0)));
+          const rawMask=String(event.metadata?.passMask||"").replace(/[^01]/g,"");
+          const passMask=rawMask.length===10?rawMask:"";
           const existing=blocks[block];
-          if(!existing || at>=existing.at) blocks[block]={correct,at};
+          if(!existing || at>=existing.at) blocks[block]={correct,at,passMask};
         }
         return {
           completeAt,
@@ -25084,10 +25125,11 @@
         for(let block=1;block<=10;block++){
           const row=evidence.blocks?.[block];
           const items=KANJI.slice((block-1)*10,block*10);
-          if(row && (row.correct===10 || row.correct===0)){
+          if(row && ((row.passMask&&row.passMask.length===10) || row.correct===10 || row.correct===0)){
             definiteBlocks.push(block);
-            const passed=row.correct===10;
-            for(const item of items){
+            for(let i=0;i<items.length;i++){
+              const item=items[i];
+              const passed=row.passMask&&row.passMask.length===10 ? row.passMask[i]==="1" : row.correct===10;
               const at=Number(row.at||evidence.completeAt)||now();
               const record=kanjiState(item,true);
               record.updatedAt=at;
@@ -25115,13 +25157,16 @@
         state.stats.placementAnswered=Object.keys(state.placementResults).length;
         state.stats.placementPassed=placementPassCount();
         state.placementRecovery={
-          version:1,
-          active:true,
+          version:2,
+          active:definiteBlocks.length>0 && ambiguous.length>0,
           source:sourceLabel,
           sourceCompletedAt:evidence.completeAt,
           originalTotalCorrect:evidence.totalCorrect,
+          blockCounts:Object.fromEntries(Object.entries(evidence.blocks||{}).map(([block,row])=>[block,Number(row?.correct||0)])),
           definiteBlocks,
           ambiguousBlocks:ambiguous,
+          exactIndividualResultsAvailable:definiteBlocks.length>0,
+          needsRecalibration:ambiguous.length>0,
           suppressRewards:true,
           recoveredAt:now()
         };
@@ -25133,7 +25178,9 @@
         }
         window.__KOTOBA_KANJI_RECOVERED__=true;
         window.__KOTOBA_KANJI_RECOVERY_NOTE__=ambiguous.length
-          ? `Der alte Placement-Abschluss wurde im ${sourceLabel} gefunden. ${definiteBlocks.length} eindeutige 10er-Blöcke wurden direkt rekonstruiert; nur ${ambiguous.length} gemischte Blöcke müssen kurz neu geprüft werden.`
+          ? (definiteBlocks.length
+              ? `Der alte Placement-Abschluss wurde im ${sourceLabel} gefunden. ${definiteBlocks.length} eindeutige 10er-Blöcke konnten exakt rekonstruiert werden. ${ambiguous.length} gemischte Blöcke enthalten leider nur die Anzahl richtiger Kanji, nicht deren Identitäten.`
+              : `Der alte Placement-Abschluss wurde im ${sourceLabel} gefunden. Leider waren alle 10 Blöcke gemischt. Die erhaltenen Events speichern nur die Anzahl richtiger Kanji pro 10er-Block – nicht, welche einzelnen Kanji richtig waren. Deshalb wird kein Kanji künstlich auf Guru gesetzt.`)
           : `Der komplette alte Placement-Stand wurde aus dem ${sourceLabel} rekonstruiert.`;
         persist("kanji-emergency-recovery");
         return true;
@@ -25147,9 +25194,11 @@
         recoveryAttemptInFlight=true;
         recoveryAttempted=true;
         try{
-          // 1) The normal sourceData() path has already checked all exact full-state backups.
+          // 1) Exact full-state recovery is intentionally explicit. Never run this
+          // expensive scan from sourceData()/ensureState(), because those are hot render paths.
+          const exactRecovered=recoverExactKanjiStateOnce(force);
           const afterExact=ensureState();
-          if(hasPlacementProgress(afterExact)) return true;
+          if(exactRecovered && hasMeaningfulKanjiProgress(afterExact)) { persist("kanji-exact-recovery"); return true; }
 
           // 2) Try the latest full cloud save before falling back to aggregate bridge events.
           try{
@@ -25220,18 +25269,20 @@
         mode="home"; const el=root(); if(!el) return; const state=ensureState(); const dueCount=dueItems().length; const lessons=availableLessons(); const unlocked=highestUnlockedLevel(); const counts=statsByStage(); const next=nextDue();
         const recoveryMessage = String(window.__KOTOBA_KANJI_RECOVERY_NOTE__ || "");
         const recoveryNote = recoveryMessage ? `<div class="kq-kanji-note" style="border-color:${window.__KOTOBA_KANJI_RECOVERED__?"#a8d6bb":"#e0c58d"};background:${window.__KOTOBA_KANJI_RECOVERED__?"#effaf4":"#fff9ea"}"><strong>${window.__KOTOBA_KANJI_RECOVERED__?"✓ Kanji-Wiederherstellung":"Kanji-Wiederherstellung"}</strong><br>${esc(recoveryMessage)}</div>` : "";
-        const emergencyButton = !hasPlacementProgress(state) ? `<button class="secondary" id="kqKanjiEmergencyRecover">Alten Placement-Stand suchen</button>` : "";
+        const historicalRecovery = state.placementRecovery && Number(state.placementRecovery.sourceCompletedAt||0)>0;
+        const emergencyButton = !hasPlacementProgress(state) && !historicalRecovery ? `<button class="secondary" id="kqKanjiEmergencyRecover">Alten Placement-Stand suchen</button>` : "";
+        const placementDisplay = historicalRecovery && !state.placementComplete ? `historisch abgeschlossen · Einzelstatus unvollständig` : `${state.placementIndex}/${KANJI.length}`;
         el.innerHTML=`
           ${recoveryNote}
-          <section class="kq-kanji-hero"><h2>Kanji-Pfad · 漢字</h2><p>WaniKani-inspirierter Pilot mit 100 sehr häufigen N5-/frühen N4-Kanji: Bausteine → drei Einzelkarten pro Kanji (Vokabel-Lesung, Kanji-Lesung, Bedeutung) → SRS. Die Bausteine sind Lernkomponenten, nicht immer traditionelle Wörterbuch-Radikale.</p><div class="kq-kanji-pills"><span class="kq-kanji-pill">🧭 Placement ${state.placementIndex}/${KANJI.length}</span><span class="kq-kanji-pill">🟣 ${guruCount()} Guru+</span><span class="kq-kanji-pill">🔁 ${dueCount} fällig</span><span class="kq-kanji-pill">🔓 Pfad-Level ${unlocked}/10</span></div></section>
+          <section class="kq-kanji-hero"><h2>Kanji-Pfad · 漢字</h2><p>WaniKani-inspirierter Pilot mit 100 sehr häufigen N5-/frühen N4-Kanji: Bausteine → drei Einzelkarten pro Kanji (Vokabel-Lesung, Kanji-Lesung, Bedeutung) → SRS. Die Bausteine sind Lernkomponenten, nicht immer traditionelle Wörterbuch-Radikale.</p><div class="kq-kanji-pills"><span class="kq-kanji-pill">🧭 Placement ${esc(placementDisplay)}</span><span class="kq-kanji-pill">🟣 ${guruCount()} Guru+</span><span class="kq-kanji-pill">🔁 ${dueCount} fällig</span><span class="kq-kanji-pill">🔓 Pfad-Level ${unlocked}/10</span></div></section>
           <div class="kq-kanji-summary"><div class="kq-kanji-stat"><span>Kanji gelernt</span><strong>${learnedCount()}/${KANJI.length}</strong></div><div class="kq-kanji-stat"><span>Guru oder höher</span><strong>${guruCount()}</strong></div><div class="kq-kanji-stat"><span>Burned</span><strong>${burnedCount()}</strong></div><div class="kq-kanji-stat"><span>Nächster Review</span><strong style="font-size:1rem">${esc(formatDue(next))}</strong></div></div>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>Was jetzt?</h3><p>Placement zuerst, danach lernst du nur die Lücken. Neue Kanji werden freigeschaltet, wenn ihre Bausteine Guru sind.</p></div></div><div class="kq-kanji-actions">
-            ${state.placementComplete?`<button class="secondary" id="kqKanjiPlacement">Placement ansehen</button>`:`<button class="primary" id="kqKanjiPlacement">${state.placementIndex?"Placement fortsetzen":"Kanji-Placement starten"}</button>`}
+            ${state.placementComplete?`<button class="secondary" id="kqKanjiPlacement">Placement ansehen</button>`:historicalRecovery?`<button class="secondary" id="kqKanjiPlacement">Einzelstatus neu kalibrieren</button>`:`<button class="primary" id="kqKanjiPlacement">${state.placementIndex?"Placement fortsetzen":"Kanji-Placement starten"}</button>`}
             <button class="primary" id="kqKanjiLessons" ${lessons.length?"":"disabled"}>Lektionen (${lessons.length})</button>
             <button class="secondary" id="kqKanjiReviews" ${dueCount?"":"disabled"}>Reviews (${dueCount})</button>
             ${emergencyButton}
             <button class="ghost" id="kqKanjiCatalog">100-Kanji-Katalog</button>
-          </div>${!state.placementComplete?`<div class="kq-kanji-note"><strong>Placement belohnt dich ebenfalls im Live RPG.</strong> Alle 10 geprüften Kanji wird ein Kanji-Placement-Event erzeugt; der Abschluss bekommt einen zusätzlichen Bonus. Erst wenn Vokabel-Lesung, Kanji-Lesung und Bedeutung alle drei abgenommen wurden und richtig sind, startet das Kanji auf Guru 1.</div>`:""}</section>
+          </div>${historicalRecovery&&!state.placementComplete?`<div class="kq-kanji-note"><strong>Dein alter Abschluss ist nachweisbar – die Einzelantworten leider nicht.</strong> Die damaligen Live-RPG-Checkpoints enthalten pro 10er-Block nur eine Trefferzahl. Bei gemischten Blöcken lässt sich daraus nicht seriös bestimmen, welche konkreten Kanji Guru waren. Du kannst die Rekalibrierung später starten; Kotoba erfindet keine Ergebnisse.</div>`:!state.placementComplete?`<div class="kq-kanji-note"><strong>Placement belohnt dich ebenfalls im Live RPG.</strong> Alle 10 geprüften Kanji wird ein Kanji-Placement-Event erzeugt; der Abschluss bekommt einen zusätzlichen Bonus. Erst wenn Vokabel-Lesung, Kanji-Lesung und Bedeutung alle drei abgenommen wurden und richtig sind, startet das Kanji auf Guru 1.</div>`:""}</section>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>Lernpfad</h3><p>Je 10 Kanji. Das nächste Level öffnet sich bei 90% Guru+ im vorherigen Level.</p></div></div><div class="kq-kanji-path">${LEVELS.map(level=>{const ratio=levelGuruRatio(level);const locked=level>unlocked;return `<div class="kq-kanji-level ${locked?"locked":level===unlocked?"active":""}"><div class="kq-kanji-level-head"><span>Level ${level}</span><span>${Math.round(ratio*100)}%</span></div><div class="kq-kanji-mini"><span style="width:${Math.round(ratio*100)}%"></span></div><div class="small muted" style="margin-top:6px">${levelKanji(level).map(k=>k.char).join(" ")}</div></div>`;}).join("")}</div></section>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>Furigana passt sich deinem Kanji-Stand an</h3><p>Bekannte Kanji können in Grammatik, Story und anderen Kotoba-Bereichen ohne Furigana erscheinen. Unbekannte Kanji behalten ihre Hilfe.</p></div></div><div class="kq-kanji-settings"><label><strong>Furigana ausblenden ab</strong> <select id="kqKanjiFuriganaMode"><option value="guru">Guru 1+</option><option value="learned">ab Apprentice 1</option><option value="always">nie ausblenden</option></select></label><span class="small muted">Standard: Guru 1+, damit „gesehen“ nicht automatisch „sicher“ bedeutet.</span></div></section>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>SRS-Verteilung</h3><p>Ein Kanji-Review besteht aus drei getrennten Karten: Vokabel-Lesung, Kanji-Lesung und Bedeutung. Erst danach wird die SRS-Stufe verändert; Bausteine fragen nur ihre Bedeutung ab.</p></div></div><div class="kq-kanji-stage-grid">${[1,2,3,4,5,6,7,8,9].map(stage=>`<div class="kq-kanji-stage"><strong>${counts[stage]}</strong><span>${esc(stageLabel(stage))}</span></div>`).join("")}</div></section>`;
@@ -25241,7 +25292,7 @@
         el.querySelector("#kqKanjiReviews")?.addEventListener("click",startReviews);
         el.querySelector("#kqKanjiEmergencyRecover")?.addEventListener("click",()=>attemptEmergencyKanjiRecovery(true));
         el.querySelector("#kqKanjiCatalog")?.addEventListener("click",()=>{mode="catalog";open();renderCatalog();});
-        if(!hasPlacementProgress(state) && !recoveryAttempted) setTimeout(()=>attemptEmergencyKanjiRecovery(false),120);
+        if(!hasPlacementProgress(state) && !historicalRecovery && !recoveryAttempted) setTimeout(()=>attemptEmergencyKanjiRecovery(false),250);
       }
       function renderPlacement(){
         mode="placement"; clearPlacementAdvanceTimer(); const el=root(); if(!el) return; const state=ensureState();
@@ -25268,7 +25319,7 @@
           if(passed){record.stage=Math.max(5,Number(record.stage||0));record.lessonComplete=true;scheduleRecord(record);inferComponentsFromPassedKanji(item);} else if(Number(record.stage||0)===0){record.stage=0;record.dueAt=null;}
           state.placementResults[item.id]={...record.placement,passed,at};state.stats.placementAnswered=Object.keys(state.placementResults||{}).length;state.stats.placementPassed=placementPassCount();
           const recovering=Boolean(state.placementRecovery?.active && state.placementRecovery?.suppressRewards);
-          const checkpoint=(state.placementIndex+1)%10===0;if(checkpoint&&!recovering)emitActivity("kanji-placement",`kanji-placement-${Math.floor(state.placementIndex/10)+1}`,`Kanji-Placement ${state.placementIndex+1}/${KANJI.length}`,{mode:"placement-checkpoint",count:10,correct:Object.values(state.placementResults).slice(-10).filter(r=>r?.passed).length,total:10,rewardWeight:1.5});
+          const checkpoint=(state.placementIndex+1)%10===0;if(checkpoint&&!recovering){const recentPlacement=Object.values(state.placementResults).slice(-10);emitActivity("kanji-placement",`kanji-placement-${Math.floor(state.placementIndex/10)+1}`,`Kanji-Placement ${state.placementIndex+1}/${KANJI.length}`,{mode:"placement-checkpoint",count:10,correct:recentPlacement.filter(r=>r?.passed).length,total:10,passMask:recentPlacement.map(r=>r?.passed?"1":"0").join(""),rewardWeight:1.5});}
           placementCycle=null; placementFeedback=null;state.placementIndex=Math.min(KANJI.length,state.placementIndex+1);
           if(state.placementRecovery?.active) advancePastRecoveredPlacement(state);
           if(state.placementIndex>=KANJI.length){state.placementComplete=true;state.placementCompletedAt=state.placementCompletedAt||now();if(state.placementRecovery){state.placementRecovery.active=false;state.placementRecovery.finishedAt=now();window.__KOTOBA_KANJI_RECOVERED__=true;window.__KOTOBA_KANJI_RECOVERY_NOTE__="Der alte Placement-Stand ist wiederhergestellt; nur die nicht eindeutig rekonstruierbaren Kanji wurden erneut geprüft.";}if(!recovering)emitActivity("kanji-placement-complete","kanji-placement-complete","Kanji-Placement abgeschlossen",{mode:"placement-complete",count:KANJI.length,correct:placementPassCount(),total:KANJI.length,rewardWeight:2.5});}
@@ -25330,14 +25381,27 @@
       function installCoverageBadge(view){
         const coverage=coverageForElement(view);let badge=view.querySelector(":scope > .kq-kanji-coverage");if(!coverage){badge?.remove();return;}if(!badge){badge=document.createElement("div");badge.className="kq-kanji-coverage";const anchor=view.querySelector(":scope > .section-title, :scope > .hero, :scope > .kq-sr-hero, :scope > .kq-listen-hero, :scope > .kq-prod-hero");anchor?.insertAdjacentElement("afterend",badge);if(!badge.isConnected)view.prepend(badge);}const badgeHtml=`漢字 ${coverage.percent}% bekannt <span class="muted">(${coverage.known}/${coverage.total} eindeutige Kanji)</span>`;if(badge.innerHTML!==badgeHtml)badge.innerHTML=badgeHtml;
       }
-      function scheduleFurigana(){if(mutationTimer)return;mutationTimer=requestAnimationFrame(()=>{mutationTimer=0;applyFurigana(document);});}
+      function scheduleFurigana(rootNode=null){
+        pendingFuriganaRoot=rootNode || document.querySelector("main .view.active") || document;
+        if(mutationTimer) clearTimeout(mutationTimer);
+        mutationTimer=setTimeout(()=>{
+          mutationTimer=0;
+          const target=pendingFuriganaRoot && pendingFuriganaRoot.isConnected!==false ? pendingFuriganaRoot : (document.querySelector("main .view.active")||document);
+          pendingFuriganaRoot=null;
+          applyFurigana(target);
+        },120);
+      }
       function installLearningEntry(){
         const grid=document.querySelector("#kqLearningCenterRoot .kq-ia-learning-grid");if(grid&&!grid.querySelector("#kqKanjiLearningCard")){const s=ensureState();const card=document.createElement("article");card.id="kqKanjiLearningCard";card.className="kq-ia-learning-card";card.innerHTML=`<div class="kq-ia-learning-card-head"><div class="kq-ia-learning-card-title"><span class="kq-ia-learning-icon">漢</span><div><h3>Kanji</h3><p>Bausteine → Vokabel-Lesung + Kanji-Lesung + Bedeutung, mit Placement und eigenem SRS.</p></div></div></div><div class="kq-ia-learning-metrics"><div class="kq-ia-learning-metric"><span>Guru+</span><strong>${guruCount()}/100</strong></div><div class="kq-ia-learning-metric"><span>Reviews fällig</span><strong>${dueItems().length}</strong></div></div><p class="kq-ia-learning-extra">Placement ${s.placementIndex}/100 · Pilot-Level ${highestUnlockedLevel()}/10 · Furigana kann bekannte Kanji automatisch ausblenden.</p><div class="kq-ia-actions"><button class="primary" id="kqIaDirectKanji">Kanji-Pfad öffnen</button>${!s.placementComplete?'<button class="secondary" id="kqIaDirectKanjiPlacement">Placement</button>':dueItems().length?'<button class="secondary" id="kqIaDirectKanjiReviews">Reviews</button>':''}</div>`;grid.appendChild(card);card.querySelector("#kqIaDirectKanji")?.addEventListener("click",open);card.querySelector("#kqIaDirectKanjiPlacement")?.addEventListener("click",()=>{mode="placement";open();renderPlacement();});card.querySelector("#kqIaDirectKanjiReviews")?.addEventListener("click",startReviews);}
         const context=document.querySelector(".kq-ia-context-nav");if(context&&!context.querySelector('[data-kq-context="kanji"]')){const b=document.createElement("button");b.type="button";b.dataset.kqContext="kanji";b.className="kq-kanji-context-btn";b.textContent="Kanji";b.addEventListener("click",open);context.appendChild(b);}
       }
-      function scheduleUiRefresh(){setTimeout(()=>{installLearningEntry();if(document.getElementById("kanjiLab")?.classList.contains("active"))render();scheduleFurigana();try{window.KotobaQuestInterface?.refresh?.();}catch{}},40);}
-      const observer=new MutationObserver(()=>{installLearningEntry();scheduleFurigana();});observer.observe(document.body,{subtree:true,childList:true});
-      try { const originalSwitch=switchView;if(typeof originalSwitch==="function"&&!originalSwitch.__kqKanjiWrapped){const wrapped=function(viewName){const result=originalSwitch.apply(this,arguments);if(viewName==="kanjiLab")setTimeout(render,0);setTimeout(()=>{installLearningEntry();scheduleFurigana();},0);return result;};wrapped.__kqKanjiWrapped=true;switchView=wrapped;} } catch {}
+      function scheduleEnhancements(){
+        if(enhancementTimer) clearTimeout(enhancementTimer);
+        enhancementTimer=setTimeout(()=>{enhancementTimer=0;installLearningEntry();scheduleFurigana();},120);
+      }
+      function scheduleUiRefresh(){setTimeout(()=>{installLearningEntry();if(document.getElementById("kanjiLab")?.classList.contains("active"))render();scheduleFurigana();try{window.KotobaQuestInterface?.refresh?.();}catch{}},60);}
+      const observer=new MutationObserver(()=>scheduleEnhancements());observer.observe(document.body,{subtree:true,childList:true});
+      try { const originalSwitch=switchView;if(typeof originalSwitch==="function"&&!originalSwitch.__kqKanjiWrapped){const wrapped=function(viewName){const result=originalSwitch.apply(this,arguments);if(viewName==="kanjiLab")setTimeout(render,0);scheduleEnhancements();return result;};wrapped.__kqKanjiWrapped=true;switchView=wrapped;} } catch {}
       installView();installStyles();ensureState();installLearningEntry();scheduleFurigana();
       window.KotobaQuestKanjiPilot={version:VERSION,open,refresh:()=>{render();scheduleFurigana();},getStats:()=>({total:KANJI.length,learned:learnedCount(),guru:guruCount(),burned:burnedCount(),due:dueItems().length,lessons:availableLessons().length,placementIndex:ensureState().placementIndex,placementComplete:ensureState().placementComplete,unlockedLevel:highestUnlockedLevel()}),getKnownKanji:()=>[...knownKanjiSet()],getCoverage:text=>{const chars=[...new Set((String(text||"").match(KANJI_RE)||[]))];const known=knownKanjiSet();return {total:chars.length,known:chars.filter(ch=>known.has(ch)).length,percent:chars.length?Math.round(chars.filter(ch=>known.has(ch)).length/chars.length*100):100};},getCatalog:()=>KANJI.map(k=>({char:k.char,jlpt:k.jlpt,level:k.level,stage:Number(kanjiState(k,false)?.stage||0),meanings:[...k.meanings],readings:[...k.readings],onReadings:[...k.onReadings],kunReadings:[...k.kunReadings],vocabWord:k.vocabWord,vocabReading:k.vocabReading,kanjiReading:k.kanjiReading}))};
     }
