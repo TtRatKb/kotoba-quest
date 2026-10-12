@@ -982,10 +982,81 @@
         });
         return { ...b, ...a, version: Math.max(1, number(a.version), number(b.version)), items };
       };
+      const kanjiPilotProgressScore = value => {
+        const state = objectValue(value);
+        const results = objectValue(state.placementResults);
+        const kanji = objectValue(state.kanji);
+        const components = objectValue(state.components);
+        const progressedKanji = Object.values(kanji).filter(record => number(objectValue(record).stage) > 0 || objectValue(record).placement).length;
+        const progressedComponents = Object.values(components).filter(record => number(objectValue(record).stage) > 0).length;
+        return {
+          meaningful: Boolean(state.placementComplete || number(state.placementIndex) > 0 || Object.keys(results).length || progressedKanji || progressedComponents),
+          complete: Boolean(state.placementComplete),
+          placement: Math.max(number(state.placementIndex), Object.keys(results).length),
+          progressedKanji,
+          progressedComponents,
+          activity: number(objectValue(state.stats).reviews) + number(objectValue(state.stats).kanjiLessons) + number(objectValue(state.stats).componentLessons),
+          updatedAt: latest(state.placementCompletedAt, objectValue(state.stats).lastStudiedAt, ...Object.values(kanji).map(record => objectValue(record).updatedAt), ...Object.values(components).map(record => objectValue(record).updatedAt)) || 0
+        };
+      };
+      const chooseNewerKanjiRecord = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        if (!Object.keys(a).length) return clone(b);
+        if (!Object.keys(b).length) return clone(a);
+        const at = number(a.updatedAt);
+        const bt = number(b.updatedAt);
+        if (at !== bt) return clone(at > bt ? a : b);
+        const aEvidence = number(a.correct) + number(a.incorrect) + (a.placement ? 1 : 0);
+        const bEvidence = number(b.correct) + number(b.incorrect) + (b.placement ? 1 : 0);
+        if (aEvidence !== bEvidence) return clone(aEvidence > bEvidence ? a : b);
+        return clone(number(a.stage) >= number(b.stage) ? a : b);
+      };
+      const mergeKanjiPilot = (current, preserved) => {
+        const a = objectValue(current);
+        const b = objectValue(preserved);
+        const as = kanjiPilotProgressScore(a);
+        const bs = kanjiPilotProgressScore(b);
+        if (!as.meaningful && bs.meaningful) return clone(b);
+        if (!bs.meaningful && as.meaningful) return clone(a);
+        if (!as.meaningful && !bs.meaningful) return { ...b, ...a };
+
+        const preferred = as.complete !== bs.complete
+          ? (as.complete ? a : b)
+          : as.placement !== bs.placement
+            ? (as.placement > bs.placement ? a : b)
+            : as.updatedAt !== bs.updatedAt
+              ? (as.updatedAt > bs.updatedAt ? a : b)
+              : (as.activity >= bs.activity ? a : b);
+        const secondary = preferred === a ? b : a;
+        const merged = { ...secondary, ...preferred };
+        merged.version = Math.max(number(a.version), number(b.version));
+        merged.placementIndex = Math.max(number(a.placementIndex), number(b.placementIndex), Object.keys(objectValue(a.placementResults)).length, Object.keys(objectValue(b.placementResults)).length);
+        merged.placementComplete = Boolean(a.placementComplete || b.placementComplete);
+        merged.placementStartedAt = earliest(a.placementStartedAt, b.placementStartedAt);
+        merged.placementCompletedAt = latest(a.placementCompletedAt, b.placementCompletedAt);
+        merged.placementResults = { ...objectValue(b.placementResults), ...objectValue(a.placementResults) };
+        merged.settings = { ...objectValue(b.settings), ...objectValue(a.settings) };
+        merged.stats = { ...objectValue(b.stats), ...objectValue(a.stats) };
+        ["placementAnswered","placementPassed","componentLessons","kanjiLessons","reviews","correct","incorrect"].forEach(key => {
+          merged.stats[key] = Math.max(number(objectValue(a.stats)[key]), number(objectValue(b.stats)[key]));
+        });
+        merged.stats.lastStudiedAt = latest(objectValue(a.stats).lastStudiedAt, objectValue(b.stats).lastStudiedAt);
+        merged.kanji = {};
+        new Set([...Object.keys(objectValue(a.kanji)), ...Object.keys(objectValue(b.kanji))]).forEach(id => {
+          merged.kanji[id] = chooseNewerKanjiRecord(objectValue(a.kanji)[id], objectValue(b.kanji)[id]);
+        });
+        merged.components = {};
+        new Set([...Object.keys(objectValue(a.components)), ...Object.keys(objectValue(b.components))]).forEach(id => {
+          merged.components[id] = chooseNewerKanjiRecord(objectValue(a.components)[id], objectValue(b.components)[id]);
+        });
+        return merged;
+      };
       const mergeData = (current, preserved) => {
         const a = objectValue(current);
         const b = objectValue(preserved);
         const result = { ...b, ...a };
+        if (hasOwn(a, "kanjiPilot") || hasOwn(b, "kanjiPilot")) result.kanjiPilot = mergeKanjiPilot(a.kanjiPilot, b.kanjiPilot);
         result.vocabulary = mergeVocabulary(a.vocabulary, b.vocabulary, hasOwn(a, "vocabulary"));
         const currentCoreOrderRevision = Math.max(0, number(a.coreOrderRevision));
         const preservedCoreOrderRevision = Math.max(0, number(b.coreOrderRevision));
@@ -23401,9 +23472,55 @@
           .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
       }
 
+      function kanjiProgressScore(value) {
+        const state = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        const results = state.placementResults && typeof state.placementResults === "object" ? state.placementResults : {};
+        const kanji = state.kanji && typeof state.kanji === "object" ? state.kanji : {};
+        const components = state.components && typeof state.components === "object" ? state.components : {};
+        const progressedKanji = Object.values(kanji).filter(record => Number(record?.stage || 0) > 0 || record?.placement).length;
+        const progressedComponents = Object.values(components).filter(record => Number(record?.stage || 0) > 0).length;
+        return [
+          state.placementComplete ? 1 : 0,
+          Math.max(Number(state.placementIndex || 0), Object.keys(results).length),
+          progressedKanji,
+          progressedComponents,
+          Number(state.stats?.reviews || 0) + Number(state.stats?.kanjiLessons || 0) + Number(state.stats?.componentLessons || 0),
+          Number(state.placementCompletedAt || state.stats?.lastStudiedAt || 0)
+        ];
+      }
+      function betterKanjiState(left, right) {
+        if (!left || typeof left !== "object") return right || null;
+        if (!right || typeof right !== "object") return left || null;
+        const a = kanjiProgressScore(left);
+        const b = kanjiProgressScore(right);
+        for (let i=0;i<a.length;i++) { if (a[i] !== b[i]) return a[i] > b[i] ? left : right; }
+        return left;
+      }
       function sourceData() {
-        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+        let live = null;
+        try { if (typeof data !== "undefined" && data && typeof data === "object") live = data; } catch {}
+        let stored = null;
+        try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch {}
+        let vaulted = null;
+        try { vaulted = window.KotobaQuestProgressVault?.readVault?.()?.kanjiPilot || null; } catch {}
+
+        const recovered = betterKanjiState(
+          betterKanjiState(live?.kanjiPilot || null, stored?.kanjiPilot || null),
+          vaulted
+        );
+        if (live) {
+          const before = live.kanjiPilot;
+          if (recovered && recovered !== before) {
+            try { live.kanjiPilot = JSON.parse(JSON.stringify(recovered)); } catch { live.kanjiPilot = recovered; }
+            try { window.__KOTOBA_KANJI_RECOVERED__ = true; } catch {}
+          }
+          return live;
+        }
+        if (stored && typeof stored === "object") {
+          if (recovered) stored.kanjiPilot = recovered;
+          return stored;
+        }
+        return recovered ? { kanjiPilot: recovered } : {};
       }
 
       function workshopState() {
@@ -24870,7 +24987,10 @@
       function statsByStage(){ const counts={}; for(let i=0;i<=9;i++) counts[i]=0; KANJI.forEach(k=>counts[Number(kanjiState(k,false)?.stage||0)]++); return counts; }
       function renderHome(){
         mode="home"; const el=root(); if(!el) return; const state=ensureState(); const dueCount=dueItems().length; const lessons=availableLessons(); const unlocked=highestUnlockedLevel(); const counts=statsByStage(); const next=nextDue();
+        const recoveryNote = window.__KOTOBA_KANJI_RECOVERED__ ? `<div class="kq-kanji-note" style="border-color:#a8d6bb;background:#effaf4"><strong>✓ Kanji-Fortschritt wiederhergestellt.</strong> Kotoba hat den vollständigeren Kanji-Stand aus dem dauerhaften Speicher übernommen. Er bleibt ab jetzt auch nach einem Neuladen im Haupt-Spielstand erhalten.</div>` : "";
+        window.__KOTOBA_KANJI_RECOVERED__ = false;
         el.innerHTML=`
+          ${recoveryNote}
           <section class="kq-kanji-hero"><h2>Kanji-Pfad · 漢字</h2><p>WaniKani-inspirierter Pilot mit 100 sehr häufigen N5-/frühen N4-Kanji: Bausteine → drei Einzelkarten pro Kanji (Vokabel-Lesung, Kanji-Lesung, Bedeutung) → SRS. Die Bausteine sind Lernkomponenten, nicht immer traditionelle Wörterbuch-Radikale.</p><div class="kq-kanji-pills"><span class="kq-kanji-pill">🧭 Placement ${state.placementIndex}/${KANJI.length}</span><span class="kq-kanji-pill">🟣 ${guruCount()} Guru+</span><span class="kq-kanji-pill">🔁 ${dueCount} fällig</span><span class="kq-kanji-pill">🔓 Pfad-Level ${unlocked}/10</span></div></section>
           <div class="kq-kanji-summary"><div class="kq-kanji-stat"><span>Kanji gelernt</span><strong>${learnedCount()}/${KANJI.length}</strong></div><div class="kq-kanji-stat"><span>Guru oder höher</span><strong>${guruCount()}</strong></div><div class="kq-kanji-stat"><span>Burned</span><strong>${burnedCount()}</strong></div><div class="kq-kanji-stat"><span>Nächster Review</span><strong style="font-size:1rem">${esc(formatDue(next))}</strong></div></div>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>Was jetzt?</h3><p>Placement zuerst, danach lernst du nur die Lücken. Neue Kanji werden freigeschaltet, wenn ihre Bausteine Guru sind.</p></div></div><div class="kq-kanji-actions">

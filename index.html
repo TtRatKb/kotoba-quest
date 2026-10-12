@@ -1241,6 +1241,9 @@
             ? storedCompleted.filter(level => level <= 20)
             : storedCompleted;
         return {
+          // Preserve feature-owned top-level state (Kanji, Listening, Production, etc.)
+          // across app reloads. Core fields below are still normalized/overridden.
+          ...parsed,
           vocabulary,
           currentLevel,
           placementCompletedLevels:[...new Set(completed)],
@@ -3928,6 +3931,9 @@
         })));
         const currentLevel=Math.max(1,Number(imported.currentLevel || 1));
         data={
+          // Keep feature-owned state contained in a Kotoba backup instead of
+          // silently dropping it during import. Normalized core fields below win.
+          ...imported,
           vocabulary,
           currentLevel,
           placementCompletedLevels:Array.isArray(imported.placementCompletedLevels)
