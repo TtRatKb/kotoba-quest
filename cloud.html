@@ -23472,55 +23472,9 @@
           .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
       }
 
-      function kanjiProgressScore(value) {
-        const state = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-        const results = state.placementResults && typeof state.placementResults === "object" ? state.placementResults : {};
-        const kanji = state.kanji && typeof state.kanji === "object" ? state.kanji : {};
-        const components = state.components && typeof state.components === "object" ? state.components : {};
-        const progressedKanji = Object.values(kanji).filter(record => Number(record?.stage || 0) > 0 || record?.placement).length;
-        const progressedComponents = Object.values(components).filter(record => Number(record?.stage || 0) > 0).length;
-        return [
-          state.placementComplete ? 1 : 0,
-          Math.max(Number(state.placementIndex || 0), Object.keys(results).length),
-          progressedKanji,
-          progressedComponents,
-          Number(state.stats?.reviews || 0) + Number(state.stats?.kanjiLessons || 0) + Number(state.stats?.componentLessons || 0),
-          Number(state.placementCompletedAt || state.stats?.lastStudiedAt || 0)
-        ];
-      }
-      function betterKanjiState(left, right) {
-        if (!left || typeof left !== "object") return right || null;
-        if (!right || typeof right !== "object") return left || null;
-        const a = kanjiProgressScore(left);
-        const b = kanjiProgressScore(right);
-        for (let i=0;i<a.length;i++) { if (a[i] !== b[i]) return a[i] > b[i] ? left : right; }
-        return left;
-      }
       function sourceData() {
-        let live = null;
-        try { if (typeof data !== "undefined" && data && typeof data === "object") live = data; } catch {}
-        let stored = null;
-        try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch {}
-        let vaulted = null;
-        try { vaulted = window.KotobaQuestProgressVault?.readVault?.()?.kanjiPilot || null; } catch {}
-
-        const recovered = betterKanjiState(
-          betterKanjiState(live?.kanjiPilot || null, stored?.kanjiPilot || null),
-          vaulted
-        );
-        if (live) {
-          const before = live.kanjiPilot;
-          if (recovered && recovered !== before) {
-            try { live.kanjiPilot = JSON.parse(JSON.stringify(recovered)); } catch { live.kanjiPilot = recovered; }
-            try { window.__KOTOBA_KANJI_RECOVERED__ = true; } catch {}
-          }
-          return live;
-        }
-        if (stored && typeof stored === "object") {
-          if (recovered) stored.kanjiPilot = recovered;
-          return stored;
-        }
-        return recovered ? { kanjiPilot: recovered } : {};
+        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
       }
 
       function workshopState() {
@@ -24610,8 +24564,9 @@
       if (window.__KOTOBA_KANJI_PILOT_V1__) return;
       window.__KOTOBA_KANJI_PILOT_V1__ = true;
 
-      const VERSION = 3;
+      const VERSION = 4;
       const STORAGE_KEY = "kotobaQuestDataV3";
+      const KANJI_BACKUP_KEY = "kotobaQuestKanjiPilotBackupV1";
       const KANJI = [{"id":"kqk-001","char":"日","meanings":["Tag","Sonne","Japan"],"readings":["にち","じつ","ひ","び","か"],"primary":"にち","jlpt":"N5","level":1,"components":["sun"],"mnemonic":"Die Sonne markiert jeden Tag – 日 ist Tag und Sonne."},{"id":"kqk-002","char":"一","meanings":["eins","ein"],"readings":["いち","ひと","ひとつ"],"primary":"いち","jlpt":"N5","level":1,"components":["line"],"mnemonic":"Eine einzige Linie: eins."},{"id":"kqk-003","char":"国","meanings":["Land","Staat"],"readings":["こく","くに"],"primary":"こく","jlpt":"N5","level":1,"components":["enclosure","jewel"],"mnemonic":"Ein Juwel sicher innerhalb einer Umfriedung: dein Land."},{"id":"kqk-004","char":"人","meanings":["Mensch","Person"],"readings":["じん","にん","ひと"],"primary":"じん","jlpt":"N5","level":1,"components":["person"],"mnemonic":"Zwei Beine tragen einen Menschen."},{"id":"kqk-005","char":"年","meanings":["Jahr"],"readings":["ねん","とし"],"primary":"ねん","jlpt":"N5","level":1,"components":[],"mnemonic":"Ein Jahresstrich im Kalender: Jahr für Jahr."},{"id":"kqk-006","char":"大","meanings":["groß","groß sein"],"readings":["だい","たい","おお","おおきい"],"primary":"だい","jlpt":"N5","level":1,"components":["person"],"mnemonic":"Ein Mensch breitet die Arme ganz weit aus: groß."},{"id":"kqk-007","char":"十","meanings":["zehn","10"],"readings":["じゅう","とお"],"primary":"じゅう","jlpt":"N5","level":1,"components":["cross"],"mnemonic":"Ein Kreuz aus zwei Linien steht für zehn."},{"id":"kqk-008","char":"二","meanings":["zwei","2"],"readings":["に","ふた","ふたつ"],"primary":"に","jlpt":"N5","level":1,"components":["line"],"mnemonic":"Zwei waagerechte Linien: zwei."},{"id":"kqk-009","char":"本","meanings":["Buch","Ursprung","Basis"],"readings":["ほん","もと"],"primary":"ほん","jlpt":"N5","level":1,"components":["tree","line"],"mnemonic":"Eine Linie markiert die Wurzel des Baums: Ursprung; daraus wird auch das Buch 本."},{"id":"kqk-010","char":"中","meanings":["Mitte","innen","Zentrum"],"readings":["ちゅう","なか"],"primary":"ちゅう","jlpt":"N5","level":1,"components":["enclosure","stick"],"mnemonic":"Ein Strich geht genau durch die Mitte der Box."},{"id":"kqk-011","char":"長","meanings":["lang","Leiter","Chef"],"readings":["ちょう","なが","ながい"],"primary":"ちょう","jlpt":"N5","level":2,"components":[],"mnemonic":"Etwas zieht sich lang nach unten – 長 ist lang und kann auch Leiter/Chef bedeuten."},{"id":"kqk-012","char":"出","meanings":["hinaus","herausgehen","ausgeben"],"readings":["しゅつ","で","でる","だ","だす"],"primary":"しゅつ","jlpt":"N5","level":2,"components":["mountain"],"mnemonic":"Etwas kommt zwischen zwei Bergen hervor: hinausgehen."},{"id":"kqk-013","char":"三","meanings":["drei","3"],"readings":["さん","み","みつ","みっつ"],"primary":"さん","jlpt":"N5","level":2,"components":["line"],"mnemonic":"Drei Linien: drei."},{"id":"kqk-014","char":"時","meanings":["Zeit","Stunde"],"readings":["じ","とき"],"primary":"じ","jlpt":"N5","level":2,"components":["sun","temple"],"mnemonic":"Die Sonne am Tempel sagt dir die Zeit."},{"id":"kqk-015","char":"行","meanings":["gehen","fahren","durchführen"],"readings":["こう","ぎょう","い","いく","ゆ","ゆく","おこな","おこなう"],"primary":"こう","jlpt":"N5","level":2,"components":[],"mnemonic":"Eine Kreuzung mit Wegen: gehen, fahren, etwas ausführen."},{"id":"kqk-016","char":"見","meanings":["sehen","anschauen"],"readings":["けん","み","みる","みせる"],"primary":"けん","jlpt":"N5","level":2,"components":["eye","legs"],"mnemonic":"Ein Auge auf Beinen läuft herum, um alles zu sehen."},{"id":"kqk-017","char":"月","meanings":["Monat","Mond"],"readings":["げつ","がつ","つき"],"primary":"げつ","jlpt":"N5","level":2,"components":["moon"],"mnemonic":"Der Mond zählt die Monate."},{"id":"kqk-018","char":"分","meanings":["Teil","Minute","verstehen","teilen"],"readings":["ぶん","ふん","ぶ","わ","わける","わかる"],"primary":"ぶん","jlpt":"N5","level":2,"components":["split","sword"],"mnemonic":"Ein Messer teilt etwas auseinander: Teil; auch Minute und verstehen."},{"id":"kqk-019","char":"後","meanings":["nach","hinter","später"],"readings":["ご","こう","あと","うしろ","のち"],"primary":"ご","jlpt":"N5","level":2,"components":[],"mnemonic":"Du blickst zurück auf das, was hinter dir und danach kommt."},{"id":"kqk-020","char":"前","meanings":["vor","vorne","früher"],"readings":["ぜん","まえ"],"primary":"ぜん","jlpt":"N5","level":2,"components":[],"mnemonic":"Alles, was direkt vor dir liegt, ist 前."},{"id":"kqk-021","char":"生","meanings":["Leben","Geburt","roh"],"readings":["せい","しょう","い","いきる","う","うまれる","なま"],"primary":"せい","jlpt":"N5","level":3,"components":["life"],"mnemonic":"Ein Spross wächst aus der Erde: Leben."},{"id":"kqk-022","char":"五","meanings":["fünf","5"],"readings":["ご","いつ","いつつ"],"primary":"ご","jlpt":"N5","level":3,"components":[],"mnemonic":"Die Form 五 merkst du als das Schild für fünf."},{"id":"kqk-023","char":"間","meanings":["Zwischenraum","Zeitspanne","zwischen"],"readings":["かん","けん","あいだ","ま"],"primary":"かん","jlpt":"N5","level":3,"components":["gate","sun"],"mnemonic":"Die Sonne scheint durch ein Tor: der Raum dazwischen."},{"id":"kqk-024","char":"上","meanings":["oben","über","hinauf"],"readings":["じょう","うえ","あ","あがる","のぼる"],"primary":"じょう","jlpt":"N5","level":3,"components":["line"],"mnemonic":"Ein kurzer Strich liegt über der Grundlinie: oben."},{"id":"kqk-025","char":"東","meanings":["Osten"],"readings":["とう","ひがし"],"primary":"とう","jlpt":"N5","level":3,"components":["tree","sun"],"mnemonic":"Die Sonne steckt im Baum und steigt im Osten auf."},{"id":"kqk-026","char":"四","meanings":["vier","4"],"readings":["し","よん","よ","よつ","よっつ"],"primary":"し","jlpt":"N5","level":3,"components":["enclosure"],"mnemonic":"Vier Ecken in einer Umfriedung: vier."},{"id":"kqk-027","char":"今","meanings":["jetzt","nun"],"readings":["こん","きん","いま"],"primary":"こん","jlpt":"N5","level":3,"components":["person","cover"],"mnemonic":"Unter dem Deckel dieses Moments ist nur eins: jetzt."},{"id":"kqk-028","char":"金","meanings":["Gold","Geld","Metall"],"readings":["きん","こん","かね"],"primary":"きん","jlpt":"N5","level":3,"components":[],"mnemonic":"Glänzendes Metall wird zu Gold und Geld."},{"id":"kqk-029","char":"九","meanings":["neun","9"],"readings":["きゅう","く","ここの","ここのつ"],"primary":"きゅう","jlpt":"N5","level":3,"components":["bend"],"mnemonic":"Ein gebogener Haken erinnert an die letzte einstellige Zahl: neun."},{"id":"kqk-030","char":"入","meanings":["hineingehen","eintreten"],"readings":["にゅう","い","いる","はい","はいる"],"primary":"にゅう","jlpt":"N5","level":3,"components":["enter"],"mnemonic":"Zwei Striche laufen nach innen zusammen: hineingehen."},{"id":"kqk-031","char":"学","meanings":["lernen","Studium"],"readings":["がく","まな","まなぶ"],"primary":"がく","jlpt":"N5","level":4,"components":["roof","child"],"mnemonic":"Ein Kind lernt unter einem Dach: lernen."},{"id":"kqk-032","char":"高","meanings":["hoch","teuer"],"readings":["こう","たか","たかい"],"primary":"こう","jlpt":"N5","level":4,"components":["lid","mouth"],"mnemonic":"Ein hoher Turm mit Öffnungen ragt nach oben: hoch."},{"id":"kqk-033","char":"円","meanings":["Yen","Kreis"],"readings":["えん","まる","まるい"],"primary":"えん","jlpt":"N5","level":4,"components":["enclosure"],"mnemonic":"Eine runde Umgrenzung: Kreis – und die Währung Yen."},{"id":"kqk-034","char":"子","meanings":["Kind"],"readings":["し","す","こ"],"primary":"し","jlpt":"N5","level":4,"components":["child"],"mnemonic":"Die Form sieht wie ein kleines Kind mit ausgestreckten Armen aus."},{"id":"kqk-035","char":"外","meanings":["außen","außerhalb"],"readings":["がい","げ","そと","ほか","はず","はずす"],"primary":"がい","jlpt":"N5","level":4,"components":["evening","divination"],"mnemonic":"Abends schaut die Wahrsagerin nach draußen: außen."},{"id":"kqk-036","char":"八","meanings":["acht","8"],"readings":["はち","や","やつ","やっつ"],"primary":"はち","jlpt":"N5","level":4,"components":["split"],"mnemonic":"Zwei Striche gehen auseinander: acht."},{"id":"kqk-037","char":"六","meanings":["sechs","6"],"readings":["ろく","む","むつ","むっつ"],"primary":"ろく","jlpt":"N5","level":4,"components":["lid","split"],"mnemonic":"Unter dem Deckel teilen sich die Linien: sechs."},{"id":"kqk-038","char":"下","meanings":["unten","unter","hinab"],"readings":["か","げ","した","さ","さげる","くだ","くだる"],"primary":"か","jlpt":"N5","level":4,"components":["line"],"mnemonic":"Der kurze Strich liegt unter der Grundlinie: unten."},{"id":"kqk-039","char":"来","meanings":["kommen"],"readings":["らい","く","くる","き"],"primary":"らい","jlpt":"N5","level":4,"components":["tree","rice"],"mnemonic":"Etwas kommt durch den Baum wie reife Ähren: kommen."},{"id":"kqk-040","char":"気","meanings":["Geist","Gefühl","Energie","Luft"],"readings":["き","け"],"primary":"き","jlpt":"N5","level":4,"components":["steam"],"mnemonic":"Dampf steigt auf: unsichtbare Luft, Stimmung und Energie."},{"id":"kqk-041","char":"小","meanings":["klein"],"readings":["しょう","ちい","ちいさい","こ","お"],"primary":"しょう","jlpt":"N5","level":5,"components":["small"],"mnemonic":"Ein kleiner Mittelstrich mit zwei Spritzern: klein."},{"id":"kqk-042","char":"七","meanings":["sieben","7"],"readings":["しち","なな","ななつ","なの"],"primary":"しち","jlpt":"N5","level":5,"components":["cut"],"mnemonic":"Ein Schnitt durch die Linie macht sieben."},{"id":"kqk-043","char":"山","meanings":["Berg"],"readings":["さん","やま"],"primary":"さん","jlpt":"N5","level":5,"components":["mountain"],"mnemonic":"Drei Gipfel: ein Berg."},{"id":"kqk-044","char":"話","meanings":["sprechen","Gespräch","Geschichte"],"readings":["わ","はな","はなす","はなし"],"primary":"わ","jlpt":"N5","level":5,"components":["speech","tongue"],"mnemonic":"Worte kommen von der Zunge: sprechen und Gespräch."},{"id":"kqk-045","char":"女","meanings":["Frau","weiblich"],"readings":["じょ","にょ","おんな","め"],"primary":"じょ","jlpt":"N5","level":5,"components":["woman"],"mnemonic":"Die traditionelle Silhouette steht für Frau."},{"id":"kqk-046","char":"北","meanings":["Norden"],"readings":["ほく","きた"],"primary":"ほく","jlpt":"N5","level":5,"components":["back"],"mnemonic":"Zwei Menschen Rücken an Rücken – der kalte Norden trennt sie."},{"id":"kqk-047","char":"午","meanings":["Mittag"],"readings":["ご"],"primary":"ご","jlpt":"N5","level":5,"components":["cross"],"mnemonic":"Der Mittagsstrich schneidet den Tag: 午 in 午前 und 午後."},{"id":"kqk-048","char":"百","meanings":["hundert","100"],"readings":["ひゃく","びゃく","ぴゃく"],"primary":"ひゃく","jlpt":"N5","level":5,"components":["white","line"],"mnemonic":"Eine Linie über Weiß: hundert."},{"id":"kqk-049","char":"書","meanings":["schreiben","Schrift","Buch"],"readings":["しょ","か","かく"],"primary":"しょ","jlpt":"N5","level":5,"components":["brush","sun"],"mnemonic":"Ein Pinsel arbeitet über dem Tag: schreiben."},{"id":"kqk-050","char":"先","meanings":["vorher","zuerst","Spitze"],"readings":["せん","さき"],"primary":"せん","jlpt":"N5","level":5,"components":["earth","legs"],"mnemonic":"Beine gehen als Erste über den Boden: zuerst/vorne."},{"id":"kqk-051","char":"名","meanings":["Name"],"readings":["めい","みょう","な"],"primary":"めい","jlpt":"N5","level":6,"components":["evening","mouth"],"mnemonic":"Am Abend ruft ein Mund deinen Namen."},{"id":"kqk-052","char":"川","meanings":["Fluss"],"readings":["せん","かわ"],"primary":"せん","jlpt":"N5","level":6,"components":["river"],"mnemonic":"Drei Wasserläufe nebeneinander: Fluss."},{"id":"kqk-053","char":"千","meanings":["tausend","1000"],"readings":["せん","ち"],"primary":"せん","jlpt":"N5","level":6,"components":["cross"],"mnemonic":"Ein Strich auf dem Kreuz macht aus zehn tausend? Merke 千 direkt als tausend."},{"id":"kqk-054","char":"水","meanings":["Wasser"],"readings":["すい","みず"],"primary":"すい","jlpt":"N5","level":6,"components":["water"],"mnemonic":"Ein Wasserstrahl spritzt in beide Richtungen: Wasser."},{"id":"kqk-055","char":"半","meanings":["halb","Hälfte"],"readings":["はん"],"primary":"はん","jlpt":"N5","level":6,"components":["split"],"mnemonic":"Etwas wird sauber in zwei Hälften geteilt: halb."},{"id":"kqk-056","char":"男","meanings":["Mann","männlich"],"readings":["だん","なん","おとこ"],"primary":"だん","jlpt":"N5","level":6,"components":["field","power"],"mnemonic":"Kraft auf dem Reisfeld: der klassische Merksatz für Mann."},{"id":"kqk-057","char":"西","meanings":["Westen"],"readings":["せい","さい","にし"],"primary":"せい","jlpt":"N5","level":6,"components":["west"],"mnemonic":"Die Sonne sinkt in ein westliches Gefäß: Westen."},{"id":"kqk-058","char":"電","meanings":["Elektrizität","Strom"],"readings":["でん"],"primary":"でん","jlpt":"N5","level":6,"components":["rain","field"],"mnemonic":"Gewitter über dem Feld: Elektrizität."},{"id":"kqk-059","char":"校","meanings":["Schule","Schulgebäude"],"readings":["こう"],"primary":"こう","jlpt":"N5","level":6,"components":["tree","crosslegs"],"mnemonic":"Holz und gekreuzte Linien ergeben das Schulgebäude 校."},{"id":"kqk-060","char":"語","meanings":["Sprache","Wort","erzählen"],"readings":["ご","かた","かたる"],"primary":"ご","jlpt":"N5","level":6,"components":["speech","five","mouth"],"mnemonic":"Worte kommen aus dem Mund – fünf davon werden schnell zu Sprache."},{"id":"kqk-061","char":"土","meanings":["Erde","Boden"],"readings":["ど","と","つち"],"primary":"ど","jlpt":"N5","level":7,"components":["earth"],"mnemonic":"Ein Pflock steckt im Boden: Erde."},{"id":"kqk-062","char":"木","meanings":["Baum","Holz"],"readings":["もく","ぼく","き","こ"],"primary":"もく","jlpt":"N5","level":7,"components":["tree"],"mnemonic":"Stamm und Äste: Baum."},{"id":"kqk-063","char":"聞","meanings":["hören","fragen"],"readings":["ぶん","もん","き","きく","きこえる"],"primary":"ぶん","jlpt":"N5","level":7,"components":["gate","ear"],"mnemonic":"Ein Ohr lauscht am Tor: hören."},{"id":"kqk-064","char":"食","meanings":["essen","Essen"],"readings":["しょく","じき","た","たべる","く","くう"],"primary":"しょく","jlpt":"N5","level":7,"components":["food"],"mnemonic":"Ein gedeckter Tisch steht für Essen."},{"id":"kqk-065","char":"車","meanings":["Auto","Fahrzeug","Wagen"],"readings":["しゃ","くるま"],"primary":"しゃ","jlpt":"N5","level":7,"components":["car"],"mnemonic":"Die Draufsicht auf einen Wagen: Fahrzeug."},{"id":"kqk-066","char":"何","meanings":["was","welcher"],"readings":["か","なに","なん"],"primary":"か","jlpt":"N5","level":7,"components":["person","can"],"mnemonic":"Eine Person fragt: „Was kann das sein?“ – 何."},{"id":"kqk-067","char":"南","meanings":["Süden"],"readings":["なん","な","みなみ"],"primary":"なん","jlpt":"N5","level":7,"components":["south"],"mnemonic":"Eine warme, eingerahmte Sonne: Süden."},{"id":"kqk-068","char":"万","meanings":["zehntausend","10000"],"readings":["まん","ばん"],"primary":"まん","jlpt":"N5","level":7,"components":["bend"],"mnemonic":"Die große Zahl 万 steht für zehntausend."},{"id":"kqk-069","char":"毎","meanings":["jeder","jedes Mal"],"readings":["まい"],"primary":"まい","jlpt":"N5","level":7,"components":["mother"],"mnemonic":"Jeden Tag dieselbe Mutterfigur: jeder / jedes Mal."},{"id":"kqk-070","char":"白","meanings":["weiß"],"readings":["はく","びゃく","しろ","しろい"],"primary":"はく","jlpt":"N5","level":7,"components":["white"],"mnemonic":"Ein heller Sonnenfleck: weiß."},{"id":"kqk-071","char":"天","meanings":["Himmel"],"readings":["てん","あま","あめ"],"primary":"てん","jlpt":"N5","level":8,"components":["line","big"],"mnemonic":"Etwas Großes über deinem Kopf: der Himmel."},{"id":"kqk-072","char":"母","meanings":["Mutter"],"readings":["ぼ","はは","かあ"],"primary":"ぼ","jlpt":"N5","level":8,"components":["mother"],"mnemonic":"Die zwei Punkte erinnern an die stillende Mutter: Mutter."},{"id":"kqk-073","char":"火","meanings":["Feuer"],"readings":["か","ひ","び","ほ"],"primary":"か","jlpt":"N5","level":8,"components":["fire"],"mnemonic":"Flammen schlagen links und rechts hoch: Feuer."},{"id":"kqk-074","char":"右","meanings":["rechts"],"readings":["う","ゆう","みぎ"],"primary":"う","jlpt":"N5","level":8,"components":["hand","mouth"],"mnemonic":"Die rechte Hand führt etwas zum Mund: rechts."},{"id":"kqk-075","char":"読","meanings":["lesen"],"readings":["どく","とく","とう","よ","よむ"],"primary":"どく","jlpt":"N5","level":8,"components":["speech","sell"],"mnemonic":"Worte werden „verkauft“ und von dir aufgenommen: lesen."},{"id":"kqk-076","char":"友","meanings":["Freund"],"readings":["ゆう","とも"],"primary":"ゆう","jlpt":"N5","level":8,"components":["hand","again"],"mnemonic":"Zwei Hände reichen sich wieder: Freundschaft."},{"id":"kqk-077","char":"左","meanings":["links"],"readings":["さ","しゃ","ひだり"],"primary":"さ","jlpt":"N5","level":8,"components":["hand","craft"],"mnemonic":"Die linke Hand arbeitet am Werk: links."},{"id":"kqk-078","char":"休","meanings":["Pause","ausruhen"],"readings":["きゅう","やす","やすむ"],"primary":"きゅう","jlpt":"N5","level":8,"components":["person","tree"],"mnemonic":"Ein Mensch lehnt am Baum: Pause und ausruhen."},{"id":"kqk-079","char":"父","meanings":["Vater"],"readings":["ふ","ちち","とう"],"primary":"ふ","jlpt":"N5","level":8,"components":["split","again"],"mnemonic":"Die gekreuzten Hände des Vaters: Vater."},{"id":"kqk-080","char":"雨","meanings":["Regen"],"readings":["う","あめ","あま"],"primary":"う","jlpt":"N5","level":8,"components":["rain"],"mnemonic":"Tropfen fallen aus einer Wolke: Regen."},{"id":"kqk-081","char":"会","meanings":["Treffen","treffen","Versammlung"],"readings":["かい","え","あ","あう"],"primary":"かい","jlpt":"N4","level":9,"components":["person","cloud"],"mnemonic":"Menschen kommen unter einer Wolke zusammen: Treffen."},{"id":"kqk-082","char":"同","meanings":["gleich","derselbe"],"readings":["どう","おな","おなじ"],"primary":"どう","jlpt":"N4","level":9,"components":["enclosure","mouth"],"mnemonic":"Alle sprechen im selben Rahmen mit einem Mund: gleich."},{"id":"kqk-083","char":"事","meanings":["Sache","Angelegenheit","Ding"],"readings":["じ","ず","こと"],"primary":"じ","jlpt":"N4","level":9,"components":[],"mnemonic":"Viele kleine Handlungen werden zu einer Sache oder Angelegenheit: 事."},{"id":"kqk-084","char":"自","meanings":["selbst","eigen"],"readings":["じ","し","みずか","みずから"],"primary":"じ","jlpt":"N4","level":9,"components":["eye"],"mnemonic":"Ein Auge schaut auf sich selbst: selbst."},{"id":"kqk-085","char":"社","meanings":["Firma","Gesellschaft","Schrein"],"readings":["しゃ","やしろ"],"primary":"しゃ","jlpt":"N4","level":9,"components":["spirit","earth"],"mnemonic":"Ein heiliger Ort auf der Erde wird zum Schrein; heute steckt 社 auch in Firma/Gesellschaft."},{"id":"kqk-086","char":"発","meanings":["Start","Abfahrt","auslösen"],"readings":["はつ","ほつ"],"primary":"はつ","jlpt":"N4","level":9,"components":[],"mnemonic":"Etwas springt los und wird ausgesendet: Start/Auslösung."},{"id":"kqk-087","char":"者","meanings":["Person","jemand"],"readings":["しゃ","もの"],"primary":"しゃ","jlpt":"N4","level":9,"components":["earth","sun"],"mnemonic":"Eine Person arbeitet unter der Sonne auf der Erde: jemand / Person."},{"id":"kqk-088","char":"地","meanings":["Boden","Erde","Gebiet"],"readings":["ち","じ"],"primary":"ち","jlpt":"N4","level":9,"components":["earth","pond"],"mnemonic":"Erde neben einem geschwungenen Gelände: Boden/Gebiet."},{"id":"kqk-089","char":"業","meanings":["Arbeit","Beruf","Geschäft"],"readings":["ぎょう","ごう","わざ"],"primary":"ぎょう","jlpt":"N4","level":9,"components":[],"mnemonic":"Viele Zweige einer Tätigkeit bilden Arbeit, Beruf oder Geschäft."},{"id":"kqk-090","char":"方","meanings":["Richtung","Person","Art und Weise"],"readings":["ほう","かた"],"primary":"ほう","jlpt":"N4","level":9,"components":["direction"],"mnemonic":"Ein Pfeil zeigt eine Richtung: 方."},{"id":"kqk-091","char":"新","meanings":["neu"],"readings":["しん","あたら","あたらしい","あら","あらた"],"primary":"しん","jlpt":"N4","level":10,"components":["stand","tree","axe"],"mnemonic":"Mit einer Axt wird altes Holz bearbeitet und etwas Neues entsteht."},{"id":"kqk-092","char":"場","meanings":["Ort","Platz"],"readings":["じょう","ば"],"primary":"じょう","jlpt":"N4","level":10,"components":["earth","sun"],"mnemonic":"Ein sonniger Fleck Erde wird zum Ort oder Platz."},{"id":"kqk-093","char":"員","meanings":["Mitglied","Angestellter"],"readings":["いん"],"primary":"いん","jlpt":"N4","level":10,"components":["mouth","shell"],"mnemonic":"Ein Mund mit einer Muschel als Ausweis: ein Mitglied der Gruppe."},{"id":"kqk-094","char":"立","meanings":["stehen","aufstellen"],"readings":["りつ","りゅう","た","たつ","たてる"],"primary":"りつ","jlpt":"N4","level":10,"components":["stand"],"mnemonic":"Eine Figur steht fest auf dem Boden: stehen."},{"id":"kqk-095","char":"開","meanings":["öffnen"],"readings":["かい","あ","あける","ひら","ひらく"],"primary":"かい","jlpt":"N4","level":10,"components":["gate","hands"],"mnemonic":"Zwei Hände öffnen das Tor: öffnen."},{"id":"kqk-096","char":"手","meanings":["Hand"],"readings":["しゅ","ず","て","た"],"primary":"しゅ","jlpt":"N4","level":10,"components":["hand"],"mnemonic":"Finger und Handfläche: Hand."},{"id":"kqk-097","char":"力","meanings":["Kraft","Stärke"],"readings":["りょく","りき","ちから"],"primary":"りょく","jlpt":"N4","level":10,"components":["power"],"mnemonic":"Ein kräftiger Haken spannt sich an: Kraft."},{"id":"kqk-098","char":"問","meanings":["Frage","fragen","Problem"],"readings":["もん","と","とう"],"primary":"もん","jlpt":"N4","level":10,"components":["gate","mouth"],"mnemonic":"Ein Mund fragt am Tor nach Einlass: Frage."},{"id":"kqk-099","char":"代","meanings":["Ersatz","Generation","Vertretung"],"readings":["だい","たい","か","かわる","かえる","よ"],"primary":"だい","jlpt":"N4","level":10,"components":["person","ceremony"],"mnemonic":"Eine Person tritt bei einer Zeremonie für jemand anderen ein: Ersatz/Vertretung."},{"id":"kqk-100","char":"明","meanings":["hell","klar","morgen"],"readings":["めい","みょう","あ","あかるい","あき"],"primary":"めい","jlpt":"N4","level":10,"components":["sun","moon"],"mnemonic":"Sonne und Mond zusammen machen alles hell und klar."}]
 ;
       const KANJI_READING_TYPES = {"日":{"on":["にち","じつ"],"kun":["ひ","び","か"]},"一":{"on":["いち"],"kun":["ひと","ひとつ"]},"国":{"on":["こく"],"kun":["くに"]},"人":{"on":["じん","にん"],"kun":["ひと"]},"年":{"on":["ねん"],"kun":["とし"]},"大":{"on":["だい","たい"],"kun":["おお","おおきい"]},"十":{"on":["じゅう"],"kun":["とお"]},"二":{"on":["に"],"kun":["ふた","ふたつ"]},"本":{"on":["ほん"],"kun":["もと"]},"中":{"on":["ちゅう"],"kun":["なか"]},"長":{"on":["ちょう"],"kun":["なが","ながい"]},"出":{"on":["しゅつ"],"kun":["で","でる","だ","だす"]},"三":{"on":["さん"],"kun":["み","みつ","みっつ"]},"時":{"on":["じ"],"kun":["とき"]},"行":{"on":["こう","ぎょう"],"kun":["い","いく","ゆ","ゆく","おこな","おこなう"]},"見":{"on":["けん"],"kun":["み","みる","みせる"]},"月":{"on":["げつ","がつ"],"kun":["つき"]},"分":{"on":["ぶん","ふん","ぶ"],"kun":["わ","わける","わかる"]},"後":{"on":["ご","こう"],"kun":["あと","うしろ","のち"]},"前":{"on":["ぜん"],"kun":["まえ"]},"生":{"on":["せい","しょう"],"kun":["い","いきる","う","うまれる","なま"]},"五":{"on":["ご"],"kun":["いつ","いつつ"]},"間":{"on":["かん","けん"],"kun":["あいだ","ま"]},"上":{"on":["じょう"],"kun":["うえ","あ","あがる","のぼる"]},"東":{"on":["とう"],"kun":["ひがし"]},"四":{"on":["し"],"kun":["よん","よ","よつ","よっつ"]},"今":{"on":["こん","きん"],"kun":["いま"]},"金":{"on":["きん","こん"],"kun":["かね"]},"九":{"on":["きゅう","く"],"kun":["ここの","ここのつ"]},"入":{"on":["にゅう"],"kun":["い","いる","はい","はいる"]},"学":{"on":["がく"],"kun":["まな","まなぶ"]},"高":{"on":["こう"],"kun":["たか","たかい"]},"円":{"on":["えん"],"kun":["まる","まるい"]},"子":{"on":["し","す"],"kun":["こ"]},"外":{"on":["がい","げ"],"kun":["そと","ほか","はず","はずす"]},"八":{"on":["はち"],"kun":["や","やつ","やっつ"]},"六":{"on":["ろく"],"kun":["む","むつ","むっつ"]},"下":{"on":["か","げ"],"kun":["した","さ","さげる","くだ","くだる"]},"来":{"on":["らい"],"kun":["く","くる","き"]},"気":{"on":["き","け"],"kun":[]},"小":{"on":["しょう"],"kun":["ちい","ちいさい","こ","お"]},"七":{"on":["しち"],"kun":["なな","ななつ","なの"]},"山":{"on":["さん"],"kun":["やま"]},"話":{"on":["わ"],"kun":["はな","はなす","はなし"]},"女":{"on":["じょ","にょ"],"kun":["おんな","め"]},"北":{"on":["ほく"],"kun":["きた"]},"午":{"on":["ご"],"kun":[]},"百":{"on":["ひゃく","びゃく","ぴゃく"],"kun":[]},"書":{"on":["しょ"],"kun":["か","かく"]},"先":{"on":["せん"],"kun":["さき"]},"名":{"on":["めい","みょう"],"kun":["な"]},"川":{"on":["せん"],"kun":["かわ"]},"千":{"on":["せん"],"kun":["ち"]},"水":{"on":["すい"],"kun":["みず"]},"半":{"on":["はん"],"kun":[]},"男":{"on":["だん","なん"],"kun":["おとこ"]},"西":{"on":["せい","さい"],"kun":["にし"]},"電":{"on":["でん"],"kun":[]},"校":{"on":["こう"],"kun":[]},"語":{"on":["ご"],"kun":["かた","かたる"]},"土":{"on":["ど","と"],"kun":["つち"]},"木":{"on":["もく","ぼく"],"kun":["き","こ"]},"聞":{"on":["ぶん","もん"],"kun":["き","きく","きこえる"]},"食":{"on":["しょく","じき"],"kun":["た","たべる","く","くう"]},"車":{"on":["しゃ"],"kun":["くるま"]},"何":{"on":["か"],"kun":["なに","なん"]},"南":{"on":["なん"],"kun":["みなみ"]},"万":{"on":["まん","ばん"],"kun":[]},"毎":{"on":["まい"],"kun":[]},"白":{"on":["はく","びゃく"],"kun":["しろ","しろい"]},"天":{"on":["てん"],"kun":["あま","あめ"]},"母":{"on":["ぼ"],"kun":["はは","かあ"]},"火":{"on":["か"],"kun":["ひ","び","ほ"]},"右":{"on":["う","ゆう"],"kun":["みぎ"]},"読":{"on":["どく","とく","とう"],"kun":["よ","よむ"]},"友":{"on":["ゆう"],"kun":["とも"]},"左":{"on":["さ","しゃ"],"kun":["ひだり"]},"休":{"on":["きゅう"],"kun":["やす","やすむ"]},"父":{"on":["ふ"],"kun":["ちち","とう"]},"雨":{"on":["う"],"kun":["あめ","あま"]},"会":{"on":["かい","え"],"kun":["あ","あう"]},"同":{"on":["どう"],"kun":["おな","おなじ"]},"事":{"on":["じ","ず"],"kun":["こと"]},"自":{"on":["じ","し"],"kun":["みずか","みずから"]},"社":{"on":["しゃ"],"kun":["やしろ"]},"発":{"on":["はつ","ほつ"],"kun":[]},"者":{"on":["しゃ"],"kun":["もの"]},"地":{"on":["ち","じ"],"kun":[]},"業":{"on":["ぎょう","ごう"],"kun":["わざ"]},"方":{"on":["ほう"],"kun":["かた"]},"新":{"on":["しん"],"kun":["あたら","あたらしい","あら","あらた"]},"場":{"on":["じょう"],"kun":["ば"]},"員":{"on":["いん"],"kun":[]},"立":{"on":["りつ","りゅう"],"kun":["た","たつ","たてる"]},"開":{"on":["かい"],"kun":["あ","あける","ひら","ひらく"]},"手":{"on":["しゅ","ず"],"kun":["て","た"]},"力":{"on":["りょく","りき"],"kun":["ちから"]},"問":{"on":["もん"],"kun":["と","とう"]},"代":{"on":["だい","たい"],"kun":["か","かわる","かえる","よ"]},"明":{"on":["めい","みょう"],"kun":["あ","あかるい"]}};
@@ -24658,9 +24613,107 @@
         return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
       }
       function now(){ return Date.now(); }
+      function cloneKanjiValue(value) {
+        try { return structuredClone(value); }
+        catch { try { return JSON.parse(JSON.stringify(value)); } catch { return value; } }
+      }
+      function kanjiProgressScore(value) {
+        const state = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        const results = state.placementResults && typeof state.placementResults === "object" ? state.placementResults : {};
+        const kanji = state.kanji && typeof state.kanji === "object" ? state.kanji : {};
+        const components = state.components && typeof state.components === "object" ? state.components : {};
+        const progressedKanji = Object.values(kanji).filter(record => Number(record?.stage || 0) > 0 || record?.placement).length;
+        const progressedComponents = Object.values(components).filter(record => Number(record?.stage || 0) > 0).length;
+        const evidence = Math.max(Number(state.placementIndex || 0), Object.keys(results).length, progressedKanji);
+        return [
+          state.placementComplete && evidence > 0 ? 1 : 0,
+          evidence,
+          progressedKanji,
+          progressedComponents,
+          Number(state.stats?.reviews || 0) + Number(state.stats?.kanjiLessons || 0) + Number(state.stats?.componentLessons || 0),
+          Number(state.placementCompletedAt || state.stats?.lastStudiedAt || 0)
+        ];
+      }
+      function hasMeaningfulKanjiProgress(value) {
+        const score = kanjiProgressScore(value);
+        return Boolean(score[0] || score[1] || score[2] || score[3] || score[4]);
+      }
+      function hasPlacementProgress(value) {
+        const state = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        const results = state.placementResults && typeof state.placementResults === "object" ? state.placementResults : {};
+        return Boolean(state.placementComplete || Number(state.placementIndex || 0) > 0 || Object.keys(results).length);
+      }
+      function betterKanjiState(left, right) {
+        if (!left || typeof left !== "object" || Array.isArray(left)) return right && typeof right === "object" ? right : null;
+        if (!right || typeof right !== "object" || Array.isArray(right)) return left;
+        const a = kanjiProgressScore(left);
+        const b = kanjiProgressScore(right);
+        for (let i=0; i<a.length; i++) {
+          if (a[i] !== b[i]) return a[i] > b[i] ? left : right;
+        }
+        return left;
+      }
+      function parseKanjiFromRaw(raw) {
+        if (!raw) return null;
+        try {
+          const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+          return parsed?.kanjiPilot && typeof parsed.kanjiPilot === "object" ? parsed.kanjiPilot : null;
+        } catch { return null; }
+      }
+      function readKanjiBackup() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(KANJI_BACKUP_KEY) || "null");
+          return parsed?.kanjiPilot && typeof parsed.kanjiPilot === "object" ? parsed.kanjiPilot : null;
+        } catch { return null; }
+      }
+      function writeKanjiBackup(state, reason="kanji") {
+        if (!state || typeof state !== "object") return;
+        try {
+          localStorage.setItem(KANJI_BACKUP_KEY, JSON.stringify({
+            version: 1,
+            updatedAtMs: Date.now(),
+            reason: String(reason || "kanji").slice(0,80),
+            kanjiPilot: cloneKanjiValue(state)
+          }));
+        } catch (error) {
+          console.warn("Kanji-Sicherungsstand konnte nicht geschrieben werden", error);
+        }
+      }
+      function collectFullKanjiCandidates(live, stored) {
+        const candidates = [live?.kanjiPilot || null, stored?.kanjiPilot || null, readKanjiBackup()];
+        try { candidates.push(window.KotobaQuestProgressVault?.readVault?.()?.kanjiPilot || null); } catch {}
+        try {
+          const parentWin = window.parent && window.parent !== window ? window.parent : window;
+          const durable = parentWin.KotobaQuestDurableStorage || window.KotobaQuestDurableStorage;
+          candidates.push(parseKanjiFromRaw(durable?.readPrimarySync?.()));
+          candidates.push(parseKanjiFromRaw(durable?.readMainCheckpointSync?.()));
+          candidates.push(durable?.readVaultSync?.()?.kanjiPilot || null);
+          const physical = durable?.physicalLocalStorageValue?.(STORAGE_KEY);
+          candidates.push(parseKanjiFromRaw(physical));
+        } catch {}
+        return candidates.filter(candidate => candidate && typeof candidate === "object");
+      }
       function sourceData() {
-        try { if (typeof data !== "undefined" && data && typeof data === "object") return data; } catch {}
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {}; } catch { return {}; }
+        let live = null;
+        try { if (typeof data !== "undefined" && data && typeof data === "object") live = data; } catch {}
+        let stored = null;
+        try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch {}
+        let recovered = null;
+        for (const candidate of collectFullKanjiCandidates(live, stored)) recovered = betterKanjiState(recovered, candidate);
+        if (live) {
+          const before = live.kanjiPilot;
+          if (recovered && recovered !== before && (!hasMeaningfulKanjiProgress(before) || betterKanjiState(before, recovered) === recovered)) {
+            live.kanjiPilot = cloneKanjiValue(recovered);
+            window.__KOTOBA_KANJI_RECOVERED__ = true;
+            window.__KOTOBA_KANJI_RECOVERY_NOTE__ = "Ein vollständigerer Kanji-Stand wurde aus einem Sicherungsspeicher wiederhergestellt.";
+          }
+          return live;
+        }
+        if (stored && typeof stored === "object") {
+          if (recovered) stored.kanjiPilot = cloneKanjiValue(recovered);
+          return stored;
+        }
+        return recovered ? { kanjiPilot: cloneKanjiValue(recovered) } : {};
       }
       function defaultState() {
         return {
@@ -24735,10 +24788,12 @@
       function persist(reason="kanji") {
         const state = ensureState();
         state.stats.lastStudiedAt = now();
+        writeKanjiBackup(state, reason);
         try {
           if (typeof saveData === "function") saveData();
           else localStorage.setItem(STORAGE_KEY, JSON.stringify(sourceData()));
         } catch (error) { console.warn("Kanji-Pilot konnte nicht gespeichert werden", reason, error); }
+        writeKanjiBackup(state, reason);
         scheduleUiRefresh();
       }
       function toastMessage(message) {
@@ -24957,6 +25012,182 @@
           if(Number(record.stage||0)<5){ record.stage=5; scheduleRecord(record); record.lessonComplete=true; record.updatedAt=now(); record.inferredFromPlacement=true; }
         }
       }
+      function parentBridgeApi() {
+        try { return window.parent && window.parent !== window ? window.parent.KotobaQuestBridge : window.KotobaQuestBridge; }
+        catch { return null; }
+      }
+      function placementEvidenceFromEvents(events) {
+        const list=(Array.isArray(events)?events:[]).filter(event=>event && typeof event==="object" && ["kanji-placement","kanji-placement-complete"].includes(String(event.type||"")));
+        if(!list.length) return null;
+        const completions=list.filter(event=>String(event.type)==="kanji-placement-complete").sort((a,b)=>Number(a.timestamp||0)-Number(b.timestamp||0));
+        const complete=completions.at(-1);
+        if(!complete) return null;
+        const completeAt=Number(complete.timestamp||complete.createdAt||0)||Date.now();
+        const priorCompleteAt=completions.length>1 ? Number(completions.at(-2)?.timestamp||0) : 0;
+        const blocks={};
+        for(const event of list){
+          if(String(event.type)!=="kanji-placement") continue;
+          const at=Number(event.timestamp||event.createdAt||0)||0;
+          if(at>completeAt || at<=priorCompleteAt) continue;
+          const match=String(event.itemId||"").match(/kanji-placement-(\d+)/);
+          if(!match) continue;
+          const block=Number(match[1]);
+          if(block<1||block>10) continue;
+          const correct=Math.max(0,Math.min(10,Number(event.metadata?.correct||0)));
+          const existing=blocks[block];
+          if(!existing || at>=existing.at) blocks[block]={correct,at};
+        }
+        return {
+          completeAt,
+          totalCorrect:Math.max(0,Math.min(KANJI.length,Number(complete.metadata?.correct||0))),
+          blocks
+        };
+      }
+      function mergePlacementEvents(...groups) {
+        const byId=new Map();
+        for(const group of groups){
+          for(const event of Array.isArray(group)?group:[]){
+            if(!event||typeof event!=="object") continue;
+            const key=String(event.eventId||`${event.type}|${event.itemId}|${event.timestamp}`);
+            const previous=byId.get(key);
+            if(!previous || Number(event.timestamp||0)>=Number(previous.timestamp||0)) byId.set(key,event);
+          }
+        }
+        return [...byId.values()];
+      }
+      function advancePastRecoveredPlacement(state) {
+        let moved=false;
+        while(Number(state.placementIndex||0)<KANJI.length){
+          const item=KANJI[Number(state.placementIndex||0)];
+          const result=state.placementResults?.[item.id];
+          if(!result?.recoveredDefinite) break;
+          state.placementIndex++;
+          moved=true;
+        }
+        if(state.placementIndex>=KANJI.length && Object.keys(state.placementResults||{}).length>=KANJI.length){
+          state.placementIndex=KANJI.length;
+          state.placementComplete=true;
+          state.placementCompletedAt=state.placementCompletedAt||now();
+          if(state.placementRecovery) state.placementRecovery.active=false;
+        }
+        return moved;
+      }
+      function applyPlacementEvidence(evidence, sourceLabel="Live-RPG-Aktivitätsverlauf") {
+        if(!evidence?.completeAt) return false;
+        const state=ensureState();
+        if(hasPlacementProgress(state)) return false;
+        state.placementResults={};
+        state.kanji=state.kanji&&typeof state.kanji==="object"?state.kanji:{};
+        state.components=state.components&&typeof state.components==="object"?state.components:{};
+        const ambiguous=[];
+        const definiteBlocks=[];
+        for(let block=1;block<=10;block++){
+          const row=evidence.blocks?.[block];
+          const items=KANJI.slice((block-1)*10,block*10);
+          if(row && (row.correct===10 || row.correct===0)){
+            definiteBlocks.push(block);
+            const passed=row.correct===10;
+            for(const item of items){
+              const at=Number(row.at||evidence.completeAt)||now();
+              const record=kanjiState(item,true);
+              record.updatedAt=at;
+              if(passed){
+                record.placement={vocabReading:true,kanjiReading:true,meaning:true,at,recovered:true};
+                record.stage=Math.max(5,Number(record.stage||0));
+                record.lessonComplete=true;
+                scheduleRecord(record);
+                inferComponentsFromPassedKanji(item);
+              }else{
+                record.placement={at,recovered:true,detailsKnown:false};
+                if(Number(record.stage||0)===0){record.stage=0;record.dueAt=null;}
+              }
+              state.placementResults[item.id]={...record.placement,passed,recovered:true,recoveredDefinite:true,at};
+            }
+          }else{
+            ambiguous.push(block);
+          }
+        }
+        state.placementStartedAt=state.placementStartedAt||Math.min(...Object.values(evidence.blocks||{}).map(row=>Number(row.at||0)).filter(Boolean),evidence.completeAt);
+        state.placementCompletedAt=evidence.completeAt;
+        state.placementComplete=false;
+        state.placementIndex=0;
+        state.stats={...defaultState().stats,...(state.stats||{})};
+        state.stats.placementAnswered=Object.keys(state.placementResults).length;
+        state.stats.placementPassed=placementPassCount();
+        state.placementRecovery={
+          version:1,
+          active:true,
+          source:sourceLabel,
+          sourceCompletedAt:evidence.completeAt,
+          originalTotalCorrect:evidence.totalCorrect,
+          definiteBlocks,
+          ambiguousBlocks:ambiguous,
+          suppressRewards:true,
+          recoveredAt:now()
+        };
+        advancePastRecoveredPlacement(state);
+        if(!ambiguous.length && definiteBlocks.length===10){
+          state.placementComplete=true;
+          state.placementIndex=KANJI.length;
+          state.placementRecovery.active=false;
+        }
+        window.__KOTOBA_KANJI_RECOVERED__=true;
+        window.__KOTOBA_KANJI_RECOVERY_NOTE__=ambiguous.length
+          ? `Der alte Placement-Abschluss wurde im ${sourceLabel} gefunden. ${definiteBlocks.length} eindeutige 10er-Blöcke wurden direkt rekonstruiert; nur ${ambiguous.length} gemischte Blöcke müssen kurz neu geprüft werden.`
+          : `Der komplette alte Placement-Stand wurde aus dem ${sourceLabel} rekonstruiert.`;
+        persist("kanji-emergency-recovery");
+        return true;
+      }
+      let recoveryAttemptInFlight=false;
+      let recoveryAttempted=false;
+      async function attemptEmergencyKanjiRecovery(force=false) {
+        if(recoveryAttemptInFlight || (recoveryAttempted && !force)) return false;
+        const state=ensureState();
+        if(!force && hasPlacementProgress(state)) return false;
+        recoveryAttemptInFlight=true;
+        recoveryAttempted=true;
+        try{
+          // 1) The normal sourceData() path has already checked all exact full-state backups.
+          const afterExact=ensureState();
+          if(hasPlacementProgress(afterExact)) return true;
+
+          // 2) Try the latest full cloud save before falling back to aggregate bridge events.
+          try{
+            const parentWin=window.parent&&window.parent!==window?window.parent:window;
+            const cloudReader=parentWin.KotobaQuestKanjiRecoveryCloud;
+            if(typeof cloudReader==="function"){
+              const result=await cloudReader();
+              const candidate=result?.kanjiPilot;
+              if(candidate&&hasPlacementProgress(candidate)){
+                const live=sourceData();
+                live.kanjiPilot=cloneKanjiValue(candidate);
+                window.__KOTOBA_KANJI_RECOVERED__=true;
+                window.__KOTOBA_KANJI_RECOVERY_NOTE__="Der Kanji-Stand wurde aus der letzten Cloud-Sicherung wiederhergestellt.";
+                persist("kanji-cloud-recovery");
+                return true;
+              }
+            }
+          }catch(error){console.warn("Kanji-Cloud-Recovery konnte nicht gelesen werden",error);}
+
+          // 3) Historical bridge events survive the main-save overwrite. They can restore
+          //    perfect/zero 10-card blocks exactly and limit any re-test to mixed blocks.
+          const bridge=parentBridgeApi();
+          let localEvents=[];
+          let cloudEvents=[];
+          try{localEvents=bridge?.getRecentActivityEvents?.()||[];}catch{}
+          let evidence=placementEvidenceFromEvents(localEvents);
+          if(!evidence || Object.keys(evidence.blocks||{}).length<10){
+            try{cloudEvents=await bridge?.getRecentCloudActivityEvents?.(100)||[];}catch{}
+            evidence=placementEvidenceFromEvents(mergePlacementEvents(localEvents,cloudEvents));
+          }
+          if(evidence) return applyPlacementEvidence(evidence,cloudEvents.length?"Live-RPG-/Cloud-Aktivitätsverlauf":"Live-RPG-Aktivitätsverlauf");
+          window.__KOTOBA_KANJI_RECOVERY_NOTE__="Kein älterer Kanji-Vollstand und kein Placement-Abschluss im Aktivitätsverlauf gefunden.";
+          return false;
+        }finally{
+          recoveryAttemptInFlight=false;
+          if(document.getElementById("kanjiLab")?.classList.contains("active")) renderHome();
+        }
+      }
       function open(){
         installView(); installStyles();
         try { window.KotobaQuestInterface?.activateGroup?.("learning"); } catch {}
@@ -24987,8 +25218,9 @@
       function statsByStage(){ const counts={}; for(let i=0;i<=9;i++) counts[i]=0; KANJI.forEach(k=>counts[Number(kanjiState(k,false)?.stage||0)]++); return counts; }
       function renderHome(){
         mode="home"; const el=root(); if(!el) return; const state=ensureState(); const dueCount=dueItems().length; const lessons=availableLessons(); const unlocked=highestUnlockedLevel(); const counts=statsByStage(); const next=nextDue();
-        const recoveryNote = window.__KOTOBA_KANJI_RECOVERED__ ? `<div class="kq-kanji-note" style="border-color:#a8d6bb;background:#effaf4"><strong>✓ Kanji-Fortschritt wiederhergestellt.</strong> Kotoba hat den vollständigeren Kanji-Stand aus dem dauerhaften Speicher übernommen. Er bleibt ab jetzt auch nach einem Neuladen im Haupt-Spielstand erhalten.</div>` : "";
-        window.__KOTOBA_KANJI_RECOVERED__ = false;
+        const recoveryMessage = String(window.__KOTOBA_KANJI_RECOVERY_NOTE__ || "");
+        const recoveryNote = recoveryMessage ? `<div class="kq-kanji-note" style="border-color:${window.__KOTOBA_KANJI_RECOVERED__?"#a8d6bb":"#e0c58d"};background:${window.__KOTOBA_KANJI_RECOVERED__?"#effaf4":"#fff9ea"}"><strong>${window.__KOTOBA_KANJI_RECOVERED__?"✓ Kanji-Wiederherstellung":"Kanji-Wiederherstellung"}</strong><br>${esc(recoveryMessage)}</div>` : "";
+        const emergencyButton = !hasPlacementProgress(state) ? `<button class="secondary" id="kqKanjiEmergencyRecover">Alten Placement-Stand suchen</button>` : "";
         el.innerHTML=`
           ${recoveryNote}
           <section class="kq-kanji-hero"><h2>Kanji-Pfad · 漢字</h2><p>WaniKani-inspirierter Pilot mit 100 sehr häufigen N5-/frühen N4-Kanji: Bausteine → drei Einzelkarten pro Kanji (Vokabel-Lesung, Kanji-Lesung, Bedeutung) → SRS. Die Bausteine sind Lernkomponenten, nicht immer traditionelle Wörterbuch-Radikale.</p><div class="kq-kanji-pills"><span class="kq-kanji-pill">🧭 Placement ${state.placementIndex}/${KANJI.length}</span><span class="kq-kanji-pill">🟣 ${guruCount()} Guru+</span><span class="kq-kanji-pill">🔁 ${dueCount} fällig</span><span class="kq-kanji-pill">🔓 Pfad-Level ${unlocked}/10</span></div></section>
@@ -24997,6 +25229,7 @@
             ${state.placementComplete?`<button class="secondary" id="kqKanjiPlacement">Placement ansehen</button>`:`<button class="primary" id="kqKanjiPlacement">${state.placementIndex?"Placement fortsetzen":"Kanji-Placement starten"}</button>`}
             <button class="primary" id="kqKanjiLessons" ${lessons.length?"":"disabled"}>Lektionen (${lessons.length})</button>
             <button class="secondary" id="kqKanjiReviews" ${dueCount?"":"disabled"}>Reviews (${dueCount})</button>
+            ${emergencyButton}
             <button class="ghost" id="kqKanjiCatalog">100-Kanji-Katalog</button>
           </div>${!state.placementComplete?`<div class="kq-kanji-note"><strong>Placement belohnt dich ebenfalls im Live RPG.</strong> Alle 10 geprüften Kanji wird ein Kanji-Placement-Event erzeugt; der Abschluss bekommt einen zusätzlichen Bonus. Erst wenn Vokabel-Lesung, Kanji-Lesung und Bedeutung alle drei abgenommen wurden und richtig sind, startet das Kanji auf Guru 1.</div>`:""}</section>
           <section class="kq-kanji-card"><div class="section-title"><div><h3>Lernpfad</h3><p>Je 10 Kanji. Das nächste Level öffnet sich bei 90% Guru+ im vorherigen Level.</p></div></div><div class="kq-kanji-path">${LEVELS.map(level=>{const ratio=levelGuruRatio(level);const locked=level>unlocked;return `<div class="kq-kanji-level ${locked?"locked":level===unlocked?"active":""}"><div class="kq-kanji-level-head"><span>Level ${level}</span><span>${Math.round(ratio*100)}%</span></div><div class="kq-kanji-mini"><span style="width:${Math.round(ratio*100)}%"></span></div><div class="small muted" style="margin-top:6px">${levelKanji(level).map(k=>k.char).join(" ")}</div></div>`;}).join("")}</div></section>
@@ -25006,10 +25239,13 @@
         el.querySelector("#kqKanjiPlacement")?.addEventListener("click",()=>{mode="placement";open();renderPlacement();});
         el.querySelector("#kqKanjiLessons")?.addEventListener("click",startLessons);
         el.querySelector("#kqKanjiReviews")?.addEventListener("click",startReviews);
+        el.querySelector("#kqKanjiEmergencyRecover")?.addEventListener("click",()=>attemptEmergencyKanjiRecovery(true));
         el.querySelector("#kqKanjiCatalog")?.addEventListener("click",()=>{mode="catalog";open();renderCatalog();});
+        if(!hasPlacementProgress(state) && !recoveryAttempted) setTimeout(()=>attemptEmergencyKanjiRecovery(false),120);
       }
       function renderPlacement(){
         mode="placement"; clearPlacementAdvanceTimer(); const el=root(); if(!el) return; const state=ensureState();
+        if(state.placementRecovery?.active) advancePastRecoveredPlacement(state);
         if(state.placementComplete || state.placementIndex>=KANJI.length){
           placementCycle=null; placementFeedback=null;
           const passed=placementPassCount(); el.innerHTML=`<section class="kq-kanji-hero"><h2>Placement abgeschlossen</h2><p>${passed} von ${KANJI.length} Pilot-Kanji hast du in allen drei Karten bestätigt: Vokabel-Lesung, Kanji-Lesung und Bedeutung. Alles andere bleibt als echte Lernlücke im Pfad.</p></section><section class="kq-kanji-card"><div class="kq-kanji-summary"><div class="kq-kanji-stat"><span>Sicher eingestuft</span><strong>${passed}</strong></div><div class="kq-kanji-stat"><span>Zu lernen</span><strong>${KANJI.length-passed}</strong></div><div class="kq-kanji-stat"><span>Guru+</span><strong>${guruCount()}</strong></div><div class="kq-kanji-stat"><span>Pfad-Level</span><strong>${highestUnlockedLevel()}</strong></div></div><div class="kq-kanji-actions"><button class="primary" id="kqKanjiAfterPlacement">Mit Kanji-Lernen weiter</button><button class="secondary" id="kqKanjiPlacementHome">Zur Übersicht</button></div></section>`;
@@ -25030,10 +25266,12 @@
           record.placement={vocabReading:Boolean(answers.vocabReading?.ok),kanjiReading:Boolean(answers.kanjiReading?.ok),meaning:Boolean(answers.meaning?.ok),at};
           record.updatedAt=at;
           if(passed){record.stage=Math.max(5,Number(record.stage||0));record.lessonComplete=true;scheduleRecord(record);inferComponentsFromPassedKanji(item);} else if(Number(record.stage||0)===0){record.stage=0;record.dueAt=null;}
-          state.placementResults[item.id]={...record.placement,passed,at};state.stats.placementAnswered=Math.max(Number(state.stats.placementAnswered||0),state.placementIndex+1);state.stats.placementPassed=placementPassCount();
-          const checkpoint=(state.placementIndex+1)%10===0;if(checkpoint)emitActivity("kanji-placement",`kanji-placement-${Math.floor(state.placementIndex/10)+1}`,`Kanji-Placement ${state.placementIndex+1}/${KANJI.length}`,{mode:"placement-checkpoint",count:10,correct:Object.values(state.placementResults).slice(-10).filter(r=>r?.passed).length,total:10,rewardWeight:1.5});
+          state.placementResults[item.id]={...record.placement,passed,at};state.stats.placementAnswered=Object.keys(state.placementResults||{}).length;state.stats.placementPassed=placementPassCount();
+          const recovering=Boolean(state.placementRecovery?.active && state.placementRecovery?.suppressRewards);
+          const checkpoint=(state.placementIndex+1)%10===0;if(checkpoint&&!recovering)emitActivity("kanji-placement",`kanji-placement-${Math.floor(state.placementIndex/10)+1}`,`Kanji-Placement ${state.placementIndex+1}/${KANJI.length}`,{mode:"placement-checkpoint",count:10,correct:Object.values(state.placementResults).slice(-10).filter(r=>r?.passed).length,total:10,rewardWeight:1.5});
           placementCycle=null; placementFeedback=null;state.placementIndex=Math.min(KANJI.length,state.placementIndex+1);
-          if(state.placementIndex>=KANJI.length){state.placementComplete=true;state.placementCompletedAt=now();emitActivity("kanji-placement-complete","kanji-placement-complete","Kanji-Placement abgeschlossen",{mode:"placement-complete",count:KANJI.length,correct:placementPassCount(),total:KANJI.length,rewardWeight:2.5});}
+          if(state.placementRecovery?.active) advancePastRecoveredPlacement(state);
+          if(state.placementIndex>=KANJI.length){state.placementComplete=true;state.placementCompletedAt=state.placementCompletedAt||now();if(state.placementRecovery){state.placementRecovery.active=false;state.placementRecovery.finishedAt=now();window.__KOTOBA_KANJI_RECOVERED__=true;window.__KOTOBA_KANJI_RECOVERY_NOTE__="Der alte Placement-Stand ist wiederhergestellt; nur die nicht eindeutig rekonstruierbaren Kanji wurden erneut geprüft.";}if(!recovering)emitActivity("kanji-placement-complete","kanji-placement-complete","Kanji-Placement abgeschlossen",{mode:"placement-complete",count:KANJI.length,correct:placementPassCount(),total:KANJI.length,rewardWeight:2.5});}
           persist("placement-kanji-complete"); renderPlacement();
         };
         const advanceCard=()=>{clearPlacementAdvanceTimer();placementFeedback=null;if(placementCycle.questionIndex>=questions.length-1)return finishKanji();placementCycle.questionIndex++;renderPlacement();};
@@ -40465,6 +40703,18 @@ function smartReviewBootstrap() {
         updatedAtMs: Number(cloudDocument.updatedAtMs || 0)
       };
     }
+
+    window.KotobaQuestKanjiRecoveryCloud = async () => {
+      const snapshot = await readCloudProgress();
+      if (!snapshot?.raw) return null;
+      try {
+        const parsed = JSON.parse(snapshot.raw);
+        return {
+          updatedAtMs: Number(snapshot.updatedAtMs || 0),
+          kanjiPilot: parsed?.kanjiPilot && typeof parsed.kanjiPilot === "object" ? parsed.kanjiPilot : null
+        };
+      } catch { return null; }
+    };
 
     async function saveLocalProgressToCloud({ force = false, reason = "automatic" } = {}) {
       if (!currentUser || reconciliationInFlight) return;
