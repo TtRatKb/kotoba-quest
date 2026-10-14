@@ -1,3 +1,5 @@
+import { kanjiLossReason } from "./kotoba-save-integrity.js";
+
 const DB_NAME = "kotobaQuestDurableStorageV1";
 const DB_VERSION = 2;
 const STORE = "snapshots";
@@ -90,7 +92,18 @@ export async function createKotobaDurableStorage({
   let lastError = "";
   let writeChain = Promise.resolve();
   let virtualInstalled = false;
+  let pendingPrimaryWrites = 0;
+  let lastConfirmedPrimaryAtMs = Number(primaryRecord?.updatedAtMs || 0);
   let migration = { migrated:false, source:"none", removedLegacy:false, verified:false };
+
+  const rejectLoss = (reference, next, operation) => {
+    const reason = kanjiLossReason(reference, next);
+    if (!reason) return null;
+    const error = new Error("Kanji-Datenschutz: " + operation + " wurde blockiert. " + reason);
+    lastError = error.message;
+    try { window.dispatchEvent(new CustomEvent("kq-durable-storage-error", { detail:{ message:lastError } })); } catch {}
+    return error;
+  };
 
   const get = key => transactionRequest(db, "readonly", store => store.get(key));
   const put = record => transactionRequest(db, "readwrite", store => store.put(record));
@@ -154,6 +167,15 @@ export async function createKotobaDurableStorage({
     }
 
     if (candidateRaw) {
+      // A physical legacy save is not allowed to erase Kanji evidence already held
+      // in the IndexedDB primary. Leave the legacy bytes untouched for diagnosis.
+      const regression = isValidProgress(primaryRecord?.raw)
+        ? rejectLoss(primaryRecord.raw, candidateRaw, "Startmigration")
+        : null;
+      if (regression) {
+        candidateRaw = primaryRecord.raw;
+        source = "indexeddb-primary-protected";
+      }
       const candidate = {
         key: PRIMARY_KEY,
         version: 3,
@@ -167,6 +189,7 @@ export async function createKotobaDurableStorage({
       }
       primaryRecord = verified;
       primaryRaw = verified.raw;
+      lastConfirmedPrimaryAtMs = Number(verified.updatedAtMs || 0);
       migration = { migrated: source === "legacy-localStorage", source, removedLegacy:false, verified:true };
 
       if (source === "legacy-localStorage") {
@@ -205,7 +228,8 @@ export async function createKotobaDurableStorage({
 
   // Keep an emergency checkpoint seeded from the chosen primary state.
   try {
-    if (isValidProgress(primaryRaw)) {
+    if (isValidProgress(primaryRaw) && !isValidProgress(mainRecord?.raw)) {
+      // Never replace an existing recovery checkpoint just because the app opened.
       const record = { key: MAIN_KEY, version: 2, updatedAtMs: Date.now(), raw: primaryRaw };
       await put(record);
       mainRecord = record;
@@ -240,23 +264,33 @@ export async function createKotobaDurableStorage({
       return Promise.reject(error);
     }
 
+    // Refuse any apparent loss of individual Kanji records or placement evidence.
+    // An intentional reset/migration must be an explicit, separately backed-up
+    // operation, never an incidental save/merge or a stale-tab overwrite.
+    const regression = rejectLoss(primaryRaw, nextRaw, "Primärspeicherung")
+      || (mainRecord?.raw !== primaryRaw ? rejectLoss(mainRecord?.raw, nextRaw, "Primärspeicherung gegen Checkpoint") : null)
+      || (vaultRecord?.data ? rejectLoss(vaultRecord.data, JSON.parse(nextRaw), "Primärspeicherung gegen Vault") : null);
+    if (regression) return Promise.reject(regression);
+
     // Synchronous callers (the legacy app uses localStorage.setItem) immediately
     // see the new value from memory, while durability is committed in sequence.
     primaryRaw = nextRaw;
     const record = { key: PRIMARY_KEY, version: 3, updatedAtMs: Date.now(), raw: nextRaw, reason };
     primaryRecord = record;
+    pendingPrimaryWrites += 1;
     return enqueue(async () => {
       await put(record);
       const verified = await get(PRIMARY_KEY);
       if (!verified || verified.raw !== nextRaw) throw new Error("IndexedDB-Primärsave konnte nicht verifiziert werden.");
       primaryRecord = verified;
+      lastConfirmedPrimaryAtMs = Number(verified.updatedAtMs || Date.now());
       try {
         window.dispatchEvent(new CustomEvent("kq-primary-storage-persisted", {
           detail:{ updatedAtMs:verified.updatedAtMs, bytes:bytesOfText(nextRaw), reason }
         }));
       } catch {}
       return true;
-    });
+    }).finally(() => { pendingPrimaryWrites = Math.max(0, pendingPrimaryWrites - 1); });
   };
 
   const api = {
@@ -333,6 +367,8 @@ export async function createKotobaDurableStorage({
 
     writeVault(data) {
       if (!data || typeof data !== "object") return Promise.resolve(false);
+      const regression = rejectLoss(vaultRecord?.data, data, "Vault-Sicherung");
+      if (regression) return Promise.reject(regression);
       const record = { key: VAULT_KEY, version: 2, updatedAtMs: Date.now(), data: cloneValue(data) };
       vaultRecord = record;
       return enqueue(async () => {
@@ -347,6 +383,8 @@ export async function createKotobaDurableStorage({
 
     writeMainCheckpoint(raw) {
       if (typeof raw !== "string" || !raw) return Promise.resolve(false);
+      const regression = rejectLoss(mainRecord?.raw, raw, "Checkpoint-Sicherung");
+      if (regression) return Promise.reject(regression);
       const record = { key: MAIN_KEY, version: 2, updatedAtMs: Date.now(), raw };
       mainRecord = record;
       return enqueue(async () => {
@@ -389,7 +427,10 @@ export async function createKotobaDurableStorage({
         mainCheckpointBytes: bytesOfText(mainRecord?.raw || ""),
         progressVaultBytes: bytesOfJson(vaultRecord?.data || {}),
         lastError,
-        migration
+        migration,
+        pendingPrimaryWrites,
+        lastConfirmedPrimaryAtMs,
+        kanjiRegressionProtection: true
       };
     },
 
