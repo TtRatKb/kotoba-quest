@@ -24833,6 +24833,18 @@
           else localStorage.setItem(STORAGE_KEY, JSON.stringify(sourceData()));
         } catch (error) { console.warn("Kanji-Pilot konnte nicht gespeichert werden", reason, error); }
         writeKanjiBackup(state, reason);
+        // saveData() keeps the UI synchronous, but the cloud wrapper commits
+        // the primary save through IndexedDB asynchronously.  Flush the
+        // parent-owned queue after every Kanji checkpoint so a reload after a
+        // placement answer cannot observe only the previous checkpoint.
+        try {
+          const owner = window.parent && window.parent !== window ? window.parent : window;
+          const durable = owner.KotobaQuestDurableStorage || window.KotobaQuestDurableStorage;
+          const bridge = owner.KotobaQuestPrimaryStorageBridge || window.KotobaQuestPrimaryStorageBridge;
+          void (durable?.flush?.() || bridge?.flush?.());
+        } catch (error) {
+          console.warn("Kanji-Pilot konnte den dauerhaften Schreibpuffer nicht leeren", reason, error);
+        }
         scheduleUiRefresh();
       }
       function toastMessage(message) {
