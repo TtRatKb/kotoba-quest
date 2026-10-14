@@ -422,5 +422,21 @@ export async function createKotobaDurableStorage({
     }
   };
 
+  // A page can be discarded while the browser still has queued IndexedDB
+  // writes.  Keep the last write queue alive through the normal lifecycle
+  // notifications so a reload/tab close cannot silently lose the newest
+  // learning checkpoint.  `flush()` is deliberately best effort here: the
+  // synchronous in-memory value and the verified previous checkpoint remain
+  // the recovery fallback if the browser terminates immediately.
+  const flushOnLifecycle = () => {
+    try { void api.flush(); } catch {}
+  };
+  try {
+    window.addEventListener("pagehide", flushOnLifecycle, { capture: true });
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushOnLifecycle();
+    }, { capture: true });
+  } catch {}
+
   return api;
 }
