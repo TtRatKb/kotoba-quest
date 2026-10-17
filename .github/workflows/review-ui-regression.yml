@@ -1,0 +1,29 @@
+name: Review UI regression
+
+on:
+  pull_request:
+    paths:
+      - "index.html"
+      - "cloud.html"
+      - "tests/review-ui-audio.test.mjs"
+      - ".github/workflows/review-ui-regression.yml"
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "cloud.html"
+      - "tests/review-ui-audio.test.mjs"
+      - ".github/workflows/review-ui-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/review-ui-audio.test.mjs
