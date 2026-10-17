@@ -51,3 +51,34 @@ test("changing vocabulary prompts cancels stale autoplay before it can speak", (
   assert.match(index, /function renderPlacement\(\) \{\s*\/\/ A new prompt invalidates delayed or playing audio/);
   assert.match(index, /function renderLesson\(\) \{\s*\/\/ A new prompt invalidates delayed or playing audio/);
 });
+
+test("sentence practice ignores stale or hidden autoplay callbacks", () => {
+  const oldQuestion = { spec: { jp: "古い" } };
+  const current = { spec: { jp: "新しい" } };
+  const session = { questions: [oldQuestion, current], index: 1 };
+  const spoken = [];
+  let visible = true;
+  const sandbox = {
+    session,
+    window: { speechSynthesis: {} },
+    document: { getElementById: () => ({ classList: { contains: () => visible } }) },
+    currentQuestion: () => session.questions[session.index],
+    speechSynthesis: { cancel() {}, getVoices: () => [], speak: utterance => spoken.push(utterance.text) },
+    SpeechSynthesisUtterance: class { constructor(text) { this.text = text; } },
+    clearTimeout() {}
+  };
+  const code = `let audioUtterance = null;
+    ${between(cloud, "      let practiceAutoplayTimer = null;", "      function grammarBadge")}
+    globalThis.practiceAudio = { playPracticeAudio, stopAudio };`;
+  new Script(code);
+  runInNewContext(code, sandbox);
+  sandbox.practiceAudio.playPracticeAudio(oldQuestion);
+  assert.deepEqual(spoken, []);
+  sandbox.practiceAudio.playPracticeAudio(current);
+  assert.deepEqual(spoken, ["新しい"]);
+  visible = false;
+  sandbox.practiceAudio.playPracticeAudio(current);
+  assert.deepEqual(spoken, ["新しい"]);
+  assert.match(cloud, /generation !== practiceAudioGeneration \|\| currentQuestion\(\) !== question/);
+  assert.match(cloud, /function renderPractice\(\) \{\s*stopAudio\(\)/);
+});
