@@ -77,6 +77,8 @@
       background:transparent; font-weight:800;
     }
     .nav button.active { color:white; background:var(--primary); box-shadow:0 8px 22px rgba(121,87,213,.24); }
+    /* Never show stale legacy tabs between cloud UI refreshes. */
+    .nav[data-kq-ia-version] > button:not([data-kq-main-group]) { display:none !important; }
 
     main { margin-top:24px; }
     .view { display:none; }
@@ -1318,6 +1320,7 @@
     };
 
     let audioRequestToken=0;
+    let pendingAutoplayTimer=null;
     let currentNativeAudio=null;
     let bluetoothKeepAliveAudio=null;
     let cachedJapaneseVoice=null;
@@ -1355,6 +1358,10 @@
 
     function stopAudioPlayback() {
       audioRequestToken++;
+      if(pendingAutoplayTimer!==null) {
+        clearTimeout(pendingAutoplayTimer);
+        pendingAutoplayTimer=null;
+      }
       if(currentNativeAudio) {
         currentNativeAudio.pause();
         currentNativeAudio.currentTime=0;
@@ -1571,10 +1578,15 @@
     }
 
     function autoplayJapanese(item) {
-      if(data.audioAutoplay && item?.reading) {
-        preloadItemAudio(item,"word");
-        setTimeout(() => playItemAudio(item,"word"),160);
-      }
+      if(!data.audioAutoplay || !item?.reading) return;
+      if(pendingAutoplayTimer!==null) clearTimeout(pendingAutoplayTimer);
+      const token=audioRequestToken;
+      preloadItemAudio(item,"word");
+      pendingAutoplayTimer=setTimeout(() => {
+        pendingAutoplayTimer=null;
+        if(token!==audioRequestToken) return;
+        playItemAudio(item,"word");
+      },160);
     }
 
     const REUSABLE_AUDIO_LICENSE=/cc\s*(?:by|0)|creative\s+commons|public\s+domain/i;
@@ -2983,6 +2995,8 @@
     }
 
     function renderPlacement() {
+      // A new prompt invalidates delayed or playing audio from the previous one.
+      stopAudioPlayback();
       const card=document.getElementById("placementCard");
       card.className="card study-card placement-card";
       if(!placementSession) {
@@ -3185,6 +3199,8 @@
     }
 
     function renderLesson() {
+      // A new prompt invalidates delayed or playing audio from the previous one.
+      stopAudioPlayback();
       const card=document.getElementById("lessonCard");
       card.className="card study-card";
       if(!lessonSession || !lessonSession.items.length) {
@@ -3374,6 +3390,8 @@
     }
 
     function renderReview() {
+      // A new prompt invalidates delayed or playing audio from the previous one.
+      stopAudioPlayback();
       const card=document.getElementById("reviewCard");
       card.className="card study-card";
       if(!reviewSession || reviewSession.empty) {
