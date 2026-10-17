@@ -28253,13 +28253,22 @@
 
       function currentQuestion() { return session?.questions?.[session.index] || null; }
 
+      let practiceAutoplayTimer = null;
+      let practiceAudioGeneration = 0;
       function stopAudio() {
+        practiceAudioGeneration++;
+        if (practiceAutoplayTimer !== null) {
+          clearTimeout(practiceAutoplayTimer);
+          practiceAutoplayTimer = null;
+        }
         try { if (typeof stopAudioPlayback === "function") stopAudioPlayback(); } catch {}
         try { speechSynthesis.cancel(); } catch {}
         audioUtterance = null;
       }
 
       function playPracticeAudio(question) {
+        // A stale delayed callback must never speak a previous sentence.
+        if (!session || currentQuestion() !== question || !document.getElementById("vocabPractice")?.classList.contains("active")) return;
         stopAudio();
         const text = question?.spec?.jp || "";
         if (!text || !("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
@@ -28388,6 +28397,7 @@
       }
 
       function renderPractice() {
+        stopAudio();
         const root = document.getElementById("kqContextPracticeRoot");
         if (!root) return;
         if (!session) { renderHome(); return; }
@@ -28438,7 +28448,14 @@
         root.querySelector("#kqPracticeNext")?.addEventListener("click",advance);
         root.querySelector("#kqPracticeQuit")?.addEventListener("click",() => { stopAudio(); session=null; renderHome(); });
         bindKeyboard(root,question,input);
-        if (question.mode === "listening" && !question.answered && !question.selfRating && !question.pendingDecision) setTimeout(() => playPracticeAudio(question),180);
+        if (question.mode === "listening" && !question.answered && !question.selfRating && !question.pendingDecision) {
+          const generation = practiceAudioGeneration;
+          practiceAutoplayTimer = setTimeout(() => {
+            practiceAutoplayTimer = null;
+            if (generation !== practiceAudioGeneration || currentQuestion() !== question) return;
+            playPracticeAudio(question);
+          },180);
+        }
       }
 
       function renderSummary() {
