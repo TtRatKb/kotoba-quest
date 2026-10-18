@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
+import { runInNewContext, Script } from "node:vm";
 
 const cloud = readFileSync(new URL("../cloud.html", import.meta.url), "utf8");
 function between(start, end) {
@@ -90,4 +90,12 @@ test("context explanation only renders in revealed feedback, never pre-answer", 
   assert.match(feedback, /question\.applied && question\.explanation/);
   assert.match(feedback, /escapeHtml\(question\.explanation\)/);
   assert.match(cloud, /skillState\.stage = Math\.max\(1, skillState\.stage - 1\)/);
+});
+
+test("complete embedded grammar script parses after question and feedback edits", () => {
+  const scripts = [...cloud.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/g)];
+  const owner = scripts.find(match => match[2].includes("const GUIDED_GRAMMAR_CHOICES ="));
+  assert.ok(owner, "expected grammar bootstrap script");
+  assert.doesNotMatch(owner[1], /type=["']module/);
+  new Script(owner[2]);
 });
