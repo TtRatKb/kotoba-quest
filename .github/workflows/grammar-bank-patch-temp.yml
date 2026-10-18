@@ -1,0 +1,37 @@
+name: Temporary grammar branch patch
+
+on:
+  push:
+    branches: ["feat/grammar-curated-n4-batch1"]
+    paths:
+      - ".github/workflows/grammar-bank-patch-temp.yml"
+      - "scripts/apply-grammar-bank-batch1.mjs"
+
+permissions:
+  contents: write
+
+jobs:
+  apply-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Guarded patch on feature branch only
+        run: node scripts/apply-grammar-bank-batch1.mjs
+      - name: All regression tests against patched cloud.html
+        run: node --test tests/*.test.mjs
+      - name: Verify whitespace and commit only the app file
+        run: |
+          git diff --check
+          git add -- cloud.html
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "feat: expand curated applied grammar reviews (batch 1)"
+            git push origin HEAD:refs/heads/feat/grammar-curated-n4-batch1
+          fi
