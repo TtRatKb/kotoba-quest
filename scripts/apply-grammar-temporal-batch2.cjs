@@ -7,91 +7,10 @@ const expected = '48aa4ab77754c655e877582247dab7c08d024195';
 assert.equal(cp.execFileSync('git',['hash-object',file],{encoding:'utf8'}).trim(),expected,
   'Unexpected cloud.html base: abort without changes');
 let content = fs.readFileSync(file,'utf8');
-const guided = {
-  "tokoro-da": {
-    "作るところです": [
-      "作っているところです",
-      "作ったところです",
-      "作るつもりです"
-    ],
-    "しているところです": [
-      "するところです",
-      "したところです",
-      "するつもりです"
-    ],
-    "着いたところです": [
-      "着くところです",
-      "着く予定です",
-      "着いたはずです"
-    ]
-  },
-  "ta-bakari": {
-    "来たばかりです": [
-      "来るところです",
-      "来る予定です",
-      "来ている途中です"
-    ],
-    "食べたばかりなので": [
-      "食べるところなので",
-      "食べているところなので",
-      "食べようと思ったので"
-    ],
-    "買ったばかりの": [
-      "買う予定の",
-      "買おうとしている",
-      "買いたかった"
-    ]
-  },
-  "saichuu-ni": {
-    "している最中です": [
-      "し始めるところです",
-      "終えたところです",
-      "する予定です"
-    ],
-    "食事の最中に": [
-      "食事の直前に",
-      "食事の後に",
-      "食事が終わった直後に"
-    ],
-    "発表している最中に": [
-      "発表する直前に",
-      "発表した後に",
-      "発表の準備中に"
-    ]
-  }
-};
-const alternates = {
-  "tokoro-da": {
-    "作るところです": [
-      "つくるところです"
-    ],
-    "着いたところです": [
-      "ついたところです"
-    ]
-  },
-  "ta-bakari": {
-    "来たばかりです": [
-      "きたばかりです"
-    ],
-    "食べたばかりなので": [
-      "たべたばかりなので"
-    ],
-    "買ったばかりの": [
-      "かったばかりの"
-    ]
-  },
-  "saichuu-ni": {
-    "している最中です": [
-      "しているさいちゅうです"
-    ],
-    "食事の最中に": [
-      "しょくじのさいちゅうに"
-    ],
-    "発表している最中に": [
-      "はっぴょうしているさいちゅうに"
-    ]
-  }
-};
+const bank = JSON.parse(fs.readFileSync('grammar/temporal-review-bank-batch2.json','utf8'));
+assert.equal(bank.status,'staged-not-connected');
+const guided = bank.choices;
+const alternates = bank.alternates;
 function insertIntoMap(name, nextMarker, additions) {
   const heading='const '+name+' = ';
   const start=content.indexOf(heading);
