@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "status": "staged-not-connected",
+  "description": "Nine source-aligned contrastive temporal clozes (read-only review content; no SRS migrations).",
+  "choices": {
+    "ta-totan": {
+      "出たとたんに": [
+        "出る前に",
+        "出ている間に",
+        "出たあとで"
+      ],
+      "立ち上がったとたん": [
+        "立ち上がる前に",
+        "立ち上がろうとしたとき",
+        "立ち上がったあとで"
+      ],
+      "開けたとたん": [
+        "開ける前に",
+        "開けている間に",
+        "開けたあとで"
+      ]
+    },
+    "tochuu-de": {
+      "行く途中で": [
+        "行く前に",
+        "行ったあとで",
+        "行くたびに"
+      ],
+      "書いている途中で": [
+        "書く前に",
+        "書いたあとで",
+        "書き終えたとたんに"
+      ],
+      "旅行の途中で": [
+        "旅行の前に",
+        "旅行のあとで",
+        "旅行のたびに"
+      ]
+    },
+    "tabi-ni": {
+      "聞くたびに": [
+        "聞く前に",
+        "聞いている間に",
+        "聞いて以来"
+      ],
+      "行くたびに": [
+        "行く前に",
+        "行く途中で",
+        "行って以来"
+      ],
+      "旅行のたびに": [
+        "旅行の前に",
+        "旅行の途中で",
+        "旅行のあとで"
+      ]
+    }
+  },
+  "alternates": {
+    "ta-totan": {
+      "出たとたんに": [
+        "でたとたんに"
+      ],
+      "立ち上がったとたん": [
+        "たちあがったとたん"
+      ],
+      "開けたとたん": [
+        "あけたとたん"
+      ]
+    },
+    "tochuu-de": {
+      "行く途中で": [
+        "いくとちゅうで"
+      ],
+      "書いている途中で": [
+        "かいているとちゅうで"
+      ],
+      "旅行の途中で": [
+        "りょこうのとちゅうで"
+      ]
+    },
+    "tabi-ni": {
+      "聞くたびに": [
+        "きくたびに"
+      ],
+      "行くたびに": [
+        "いくたびに"
+      ],
+      "旅行のたびに": [
+        "りょこうのたびに"
+      ]
+    }
+  },
+  "editorialNotes": {
+    "ta-totan": "German translations specify the immediate event. Alternatives mean before/during/after or at attempted onset, all using grammatical Japanese.",
+    "tochuu-de": "German translations refer to a one-off event during an unfinished process. Alternatives place events before/after or describe recurring events.",
+    "tabi-ni": "The recurring jedes Mal/jede contrasts with before/during/since. Alternatives do not claim the same recurrence."
+  }
+}
