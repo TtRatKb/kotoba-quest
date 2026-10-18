@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/grammar-bank-patch-temp.yml"
       - "scripts/apply-grammar-bank-batch1.mjs"
+      - "tests/grammar-bank-coverage.test.mjs"
 
 permissions:
   contents: write
