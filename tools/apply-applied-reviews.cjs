@@ -83,6 +83,7 @@ once("        if (skill.id === \"form\" || skill.id === \"production\") attachJa
 "        if (skill.id === \"form\" || skill.id === \"production\" || question.applied) attachJapaneseInput(grammarReviewAnswer);",
 "        if (question.choices?.length === 4 && grammarReviewAnswer) {",
 "          grammarReviewAnswer.hidden = true;",
+"          grammarReviewAnswer.style.display = 'none';",
 "          const group = document.createElement('div');",
 "          group.className = 'grammar-grade-row';",
 "          question.choices.forEach((choice, index) => {",
@@ -120,5 +121,6 @@ once("function kanjiQuestionSet(item) {\n        return [vocabReadingSpec(item),
 ].join("\n"));
 once("const questions=isKanji?kanjiQuestionSet(item):[meaningSpec(item,true)];",
 "const questions=isKanji?kanjiQuestionSet(item, Number(record.correct||0)+Number(record.incorrect||0)):[meaningSpec(item,true)];");
+once("        grammarReviewAnswer?.focus();", "        if (!question.choices?.length) grammarReviewAnswer?.focus();");
 fs.writeFileSync("cloud.html", source);
 console.log("Patched grammar/kanji review prompts only; source bytes:", Buffer.byteLength(source));
