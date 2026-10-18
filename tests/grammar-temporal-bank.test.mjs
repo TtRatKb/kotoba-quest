@@ -30,7 +30,7 @@ function simulateBankAddition(source,name,nextMarker,additions) {
   }
   return source.slice(0,start)+heading+JSON.stringify(existing,null,2)+";"+source.slice(start+end+3);
 }
-assert.equal(manifest.status,"staged-not-connected");
+assert.equal(manifest.status,"connected");
 qSource=simulateBankAddition(qSource,"GUIDED_GRAMMAR_CHOICES",
   "// Explicitly checked orthographic variants",manifest.choices);
 qSource=simulateBankAddition(qSource,"VERIFIED_GRAMMAR_ALTERNATES",
