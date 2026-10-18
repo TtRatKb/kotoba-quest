@@ -30626,11 +30626,7 @@ function shuffle(values) {
         const accepted=contrastCase?[point.particle]:(Array.isArray(point.accepted)&&point.accepted.length?point.accepted:[point.particle]);
         const acceptedSet=new Set(accepted.map(normalizeAnswer));
         const nearby=contrastPoints(point).map(candidate=>candidate.particle);
-        const pool=[
-          ...(contrastCase?.choices||[]),...(point.distractors||[]),...nearby,
-          "は","が","を","に","で","へ","と","の","から","まで","も","や",
-          "だけ","しか","でも","か","について","にとって","によって","として"
-        ];
+        const pool=[...(contrastCase?.choices||[]),...(point.distractors||[]),...nearby];
         const alternatives=shuffle([...new Set(pool.filter(value=>value&&!acceptedSet.has(normalizeAnswer(value))))]).slice(0,3);
         const guided=stage<=2&&alternatives.length===3;
         return {
