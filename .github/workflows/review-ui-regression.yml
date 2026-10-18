@@ -10,6 +10,7 @@ on:
       - "tests/grammar-review-ux.test.mjs"
       - "tests/applied-grammar-kanji.test.mjs"
       - "tests/grammar-bank-coverage.test.mjs"
+      - "tests/grammar-temporal-bank.test.mjs"
       - ".github/workflows/review-ui-regression.yml"
   push:
     branches: [main]
@@ -21,6 +22,7 @@ on:
       - "tests/grammar-review-ux.test.mjs"
       - "tests/applied-grammar-kanji.test.mjs"
       - "tests/grammar-bank-coverage.test.mjs"
+      - "tests/grammar-temporal-bank.test.mjs"
       - ".github/workflows/review-ui-regression.yml"
 
 permissions:
