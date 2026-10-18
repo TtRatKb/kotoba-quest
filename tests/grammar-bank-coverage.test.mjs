@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { runInNewContext, Script } from "node:vm";
+import { runInNewContext } from "node:vm";
+import { spawnSync } from "node:child_process";
 
 const cloud = readFileSync(new URL("../cloud.html", import.meta.url), "utf8");
 function between(start, end) {
@@ -96,6 +97,9 @@ test("complete embedded grammar script parses after question and feedback edits"
   const scripts = [...cloud.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)];
   const owner = scripts.find(match => match[2].includes("const GUIDED_GRAMMAR_CHOICES ="));
   assert.ok(owner, "expected grammar bootstrap script");
-  assert.doesNotMatch(owner[1], /type=["']module/);
-  new Script(owner[2]);
+  assert.match(owner[1], /type=["']module/);
+  const result = spawnSync(process.execPath, ["--input-type=module", "--check"], {
+    input: owner[2], encoding: "utf8", maxBuffer: 12 * 1024 * 1024
+  });
+  assert.equal(result.status, 0, result.stderr);
 });
