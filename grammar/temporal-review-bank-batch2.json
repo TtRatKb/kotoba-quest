@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "status": "staged-not-connected",
-  "description": "Nine source-aligned time-grammar clozes; editorially selected contrasts, not yet wired into cloud.html.",
+  "status": "connected",
+  "description": "Nine source-aligned time-grammar clozes; editorially selected contrasts, wired into cloud.html by PR #13.",
   "choices": {
     "tokoro-da": {
       "作るところです": [

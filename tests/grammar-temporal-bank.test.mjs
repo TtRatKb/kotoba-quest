@@ -22,12 +22,15 @@ function simulateBankAddition(source,name,nextMarker,additions) {
   assert.ok(end>0);
   const existing=JSON.parse(fragment.slice(heading.length,end+2));
   for(const [id,entries] of Object.entries(additions)) {
-    assert.ok(!Object.hasOwn(existing,id),"Bank already connected: "+id);
-    existing[id]=entries;
+    if (Object.hasOwn(existing,id)) {
+      assert.deepEqual(existing[id],entries,"Installed bank differs from vetted manifest: "+id);
+    } else {
+      existing[id]=entries;
+    }
   }
   return source.slice(0,start)+heading+JSON.stringify(existing,null,2)+";"+source.slice(start+end+3);
 }
-assert.equal(manifest.status,"staged-not-connected");
+assert.equal(manifest.status,"connected");
 qSource=simulateBankAddition(qSource,"GUIDED_GRAMMAR_CHOICES",
   "// Explicitly checked orthographic variants",manifest.choices);
 qSource=simulateBankAddition(qSource,"VERIFIED_GRAMMAR_ALTERNATES",
