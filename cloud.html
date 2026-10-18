@@ -17686,6 +17686,7 @@
               prompt: `Bilde die passende Grammatikform. Ausgangsform: ${item.base}`,
               shown: item.cloze,
               model: item.answer,
+              translation: item.de,
               answers: [item.answer, item.answerKana]
             })),
             listening: [
@@ -19673,6 +19674,7 @@
               prompt: "Setze die grammatisch passende Form in die Lücke ein.",
               shown: source.jp.replace(source.highlight, "＿＿＿＿"),
               model: source.highlight,
+               translation: source.de,
               answers: [source.highlight],
               aspect,
               aspectLabel
@@ -19795,6 +19797,7 @@
       }
 
       function adaptiveReviewPrompt(question, skillId, difficulty) {
+        if (difficulty === "guided" && skillId === "form") return "Ergänze die passende Form für diese Aussage.";
         if (difficulty === "guided") return String(question?.prompt || "");
         if (skillId === "form") return "Setze die grammatisch passende Form in die Lücke ein.";
         if (skillId === "listening") return "Höre den Satz und gib seine Kernaussage auf Deutsch wieder.";
@@ -19806,8 +19809,8 @@
         if (difficulty === "guided") {
           return {
             heading: null,
-            badge: "Mit Strukturhinweis",
-            note: "In den ersten beiden erfolgreichen Wiederholungen wird die Zielstruktur noch angezeigt."
+            badge: "Mit Satzkontext",
+            note: "Nutze Satz und Kontext. Die Zielstruktur wird erst nach der Antwort erklärt."
           };
         }
         if (difficulty === "reduced") {
@@ -19838,7 +19841,7 @@
         const question = reviewCurrent.question;
         const difficulty = difficultyMeta(reviewCurrent.difficulty);
         const adaptivePrompt = adaptiveReviewPrompt(question, skill.id, reviewCurrent.difficulty);
-        const heading = difficulty.heading || point.title;
+        const heading = reviewCurrent.difficulty === "independent" ? "Grammatik frei anwenden" : "Grammatik im Kontext";
         const progress = Math.round((reviewIndex / reviewQueue.length) * 100);
         const isListening = skill.id === "listening";
         const shown = question.shown || "";
@@ -19866,11 +19869,12 @@
           <div class="grammar-stepper"><span class="done" style="flex:${Math.max(1, progress)}"></span><span style="flex:${Math.max(1, 100 - progress)}"></span></div>
           <div class="counter">Aufgabe ${reviewIndex + 1} von ${reviewQueue.length}${reviewPracticeOnly ? " · Freies Üben" : " · SRS-Review"}</div>
           <div class="grammar-review-type">${skill.icon} ${skill.label}</div>
-          <div class="grammar-badge" style="margin-top:10px">${escapeHtml(reviewCurrent.difficulty === "guided" ? (question.aspectLabel || difficulty.badge) : difficulty.badge)}</div>
+          <div class="grammar-badge" style="margin-top:10px">${escapeHtml(difficulty.badge)}</div>
           <h2>${escapeHtml(heading)}</h2>
           <div class="small muted" style="margin:8px 0 4px">${escapeHtml(difficulty.note)}</div>
           <div class="grammar-review-prompt">${promptSupport.promptHtml}</div>
           ${promptSupport.notesHtml}
+          ${skill.id === "form" && question.translation ? `<p class="grammar-review-context-translation">${escapeHtml(question.translation)}</p>` : ""}
           ${productionVocabularyHelp}
           ${isListening
             ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz bleibt bis zur Auswertung verborgen. Unbekannte Vokabeln erscheinen darunter als Hörhilfe.</div></div>${listeningVocabularyHelp}`
