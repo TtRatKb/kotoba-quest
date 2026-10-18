@@ -47,6 +47,9 @@ jobs:
             id:z.id,particle:z.particle,accepted:z.accepted,distractors:z.distractors,
             examples:z.examples.map(e=>({before:e.before.map(v=>v[0]).join(''),after:e.after.map(v=>v[0]).join(''),de:e.de,note:e.note}))
           })),null,2));
+          const wrong=src.indexOf('P("nitaishite-target"',p);
+          if(wrong<0) throw Error('target not found');
+          fs.writeFileSync('.review-audit/nitaishite-target.txt',src.slice(wrong,wrong+2600));
           NODE
       - name: Commit inventory to inspection branch only
         run: |
