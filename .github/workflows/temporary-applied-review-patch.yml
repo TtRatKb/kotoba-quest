@@ -1,4 +1,5 @@
 name: Temporary guarded applied-review patch
+# Retry after adapting context assertions and guided-answer focus
 on:
   push:
     branches:
