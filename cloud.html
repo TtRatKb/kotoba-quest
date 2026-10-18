@@ -19713,6 +19713,42 @@
         });
       }
 
+      // Read-only question construction; historical grammar SRS IDs/records are unchanged.
+      const GUIDED_GRAMMAR_CHOICES = {
+        'you-ni-naru': {
+          '起きるようになりました': ['起きるようにしています', '起きることにしました', '起きるつもりです'],
+          'しないようになりました': ['しないようにしています', 'しないことにしました', 'しないつもりです']
+        }
+      };
+      function appliedGrammarQuestion(point, skillId, stage, rotation) {
+        const sources = (Array.isArray(point?.formation) ? point.formation : []).filter(source =>
+          source?.jp && source?.de && source?.highlight &&
+          String(source.jp).includes(String(source.highlight)) &&
+          String(source.jp).indexOf(String(source.highlight)) === String(source.jp).lastIndexOf(String(source.highlight))
+        );
+        if (!sources.length) return null;
+        const source = sources[Math.max(0, rotation) % sources.length];
+        if (skillId === 'listening') {
+          return { applied:true, audioDictation:true, audio:String(source.jp), model:String(source.jp),
+            translation:String(source.de), answers:[String(source.jp)],
+            prompt:'Höre die Aussage und schreibe den japanischen Satz auf. Achte auf die verwendeten Formen.' };
+        }
+        if (skillId === 'production' && stage >= 5) return null;
+        if (!['meaning', 'form', 'production'].includes(skillId)) return null;
+        const correct = String(source.highlight);
+        const question = { applied:true, shown:String(source.jp).replace(correct, '＿＿＿＿'),
+          model:correct, answers:[correct], translation:String(source.de),
+          prompt:'Ergänze die passende japanische Form für die deutsche Aussage.' };
+        if (stage <= 2) {
+          const distractors = GUIDED_GRAMMAR_CHOICES[point.id]?.[correct] || [];
+          const unique = [...new Set([correct, ...distractors])];
+          if (unique.length === 4 && unique[0] === correct) {
+            const shift = Math.max(0, rotation) % 4;
+            question.choices = [...unique.slice(shift), ...unique.slice(0, shift)];
+          }
+        }
+        return question;
+      }
       function makeReviewItem(pointId, skillId, practiceOnly = false) {
         const point = POINTS.find(item => item.id === pointId);
         const pool = reviewQuestionPool(point, skillId);
@@ -19734,10 +19770,12 @@
         const ordered = pool.length
           ? pool.map((_, index) => pool[(startIndex + index) % pool.length])
           : [];
-        const variant = ordered.find(question => {
+        const original = ordered.find(question => {
           const sentence = grammarQuestionSentence(question, skillId);
           return sentence && !used.has(normalizeJapanese(sentence));
         }) || ordered[0] || point?.questions?.[skillId]?.[0];
+        const rotation = Math.max(0, Number(skillState.rotationIndex || 0)) + Math.max(0, Number(skillState.variantIndex || 0));
+        const variant = appliedGrammarQuestion(point, skillId, stage, rotation) || original;
 
         const sentenceKey = normalizeJapanese(grammarQuestionSentence(variant, skillId));
         if (sentenceKey) used.add(sentenceKey);
@@ -19797,6 +19835,8 @@
       }
 
       function adaptiveReviewPrompt(question, skillId, difficulty) {
+        if (question?.applied) return String(question.prompt);
+
         if (difficulty === "guided" && skillId === "form") return "Ergänze die passende Form für diese Aussage.";
         if (difficulty === "guided") return String(question?.prompt || "");
         if (skillId === "form") return "Setze die grammatisch passende Form in die Lücke ein.";
@@ -19847,7 +19887,7 @@
         const shown = question.shown || "";
         const reviewSentence = isListening ? String(question.audio || "") : String(shown || "");
         const reviewSupport = reviewSentence
-          ? renderSupportedSentence({ jp: reviewSentence, de: String(question.model || ""), highlight: "" }, point.color || "#6c63d9")
+          ? renderSupportedSentence({ jp: reviewSentence, de: String(question.translation || (question.applied ? "" : question.model || "")), highlight: "" }, point.color || "#6c63d9")
           : { sentenceHtml: "", notesHtml: "" };
         const promptSupport = renderGrammarReviewPromptSupport(adaptivePrompt, point.color || "#6c63d9");
         const listeningVocabularyHelp = isListening
@@ -19858,7 +19898,7 @@
               "Der Satz bleibt bis zur Auswertung verborgen; unbekannte Wörter werden als Hörhilfe gezeigt."
             )
           : "";
-        const productionVocabularyHelp = skill.id === "production"
+        const productionVocabularyHelp = skill.id === "production" && !question.applied
           ? renderGrammarProductionVocabularyBank(
               String(question.model || ""),
               String(question.prompt || adaptivePrompt || "")
@@ -19874,7 +19914,7 @@
           <div class="small muted" style="margin:8px 0 4px">${escapeHtml(difficulty.note)}</div>
           <div class="grammar-review-prompt">${promptSupport.promptHtml}</div>
           ${promptSupport.notesHtml}
-          ${skill.id === "form" && question.translation ? `<p class="grammar-review-context-translation">${escapeHtml(question.translation)}</p>` : ""}
+          ${question.translation ? `<p class="grammar-review-context-translation">${escapeHtml(question.translation)}</p>` : ""}
           ${productionVocabularyHelp}
           ${isListening
             ? `<div class="grammar-listening-box"><button id="grammarPlayListening" title="Satz anhören">▶</button><div class="small muted" style="margin-top:10px">Der japanische Satz bleibt bis zur Auswertung verborgen. Unbekannte Vokabeln erscheinen darunter als Hörhilfe.</div></div>${listeningVocabularyHelp}`
@@ -19892,8 +19932,28 @@
         document.getElementById("grammarReviewExit")?.addEventListener("click", () => openGrammarView("grammar"));
         document.getElementById("grammarReviewCheck")?.addEventListener("click", revealReviewAnswer);
         const grammarReviewAnswer = document.getElementById("grammarReviewAnswer");
-        if (skill.id === "form" || skill.id === "production") attachJapaneseInput(grammarReviewAnswer);
-        grammarReviewAnswer?.focus();
+        if (skill.id === "form" || skill.id === "production" || question.applied) attachJapaneseInput(grammarReviewAnswer);
+        if (question.choices?.length === 4 && grammarReviewAnswer) {
+          grammarReviewAnswer.hidden = true;
+          grammarReviewAnswer.style.display = 'none';
+          const group = document.createElement('div');
+          group.className = 'grammar-grade-row';
+          question.choices.forEach((choice, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'secondary';
+            button.textContent = String(index + 1) + '. ' + choice;
+            button.addEventListener('click', () => {
+              if (reviewRevealed) return;
+              grammarReviewAnswer.value = choice;
+              revealReviewAnswer();
+            });
+            group.appendChild(button);
+          });
+          grammarReviewAnswer.before(group);
+          group.querySelector('button')?.focus();
+        }
+        if (!question.choices?.length) grammarReviewAnswer?.focus();
       }
 
       function normalizeJapanese(value) {
@@ -19906,6 +19966,11 @@
 
       function assessAnswer(question, skillId, answer) {
         if (!String(answer || "").trim()) return { likely: false, note: "Es wurde noch keine Antwort eingegeben." };
+        if (question.applied) {
+          const normalized = normalizeJapanese(answer);
+          const likely = (question.answers || [question.model]).some(model => normalizeJapanese(model) === normalized);
+          return { likely, note: likely ? 'Die Form stimmt mit der hinterlegten Lösung überein.' : 'Vergleiche deine Lösung mit dem Satzkontext und der Musterlösung.' };
+        }
         if (question.selfCheck) {
           return { likely: null, note: "Vergleiche deine inhaltliche Wiedergabe mit der Musterlösung und bewerte dich anschließend selbst." };
         }
@@ -24959,8 +25024,10 @@
           answerDisplay:isComponent ? item.meaning : item.meanings.join(" / ")
         };
       }
-      function kanjiQuestionSet(item) {
-        return [vocabReadingSpec(item), kanjiReadingSpec(item), meaningSpec(item,false)];
+      function kanjiQuestionSet(item, completedReviews=0) {
+        const questions = [vocabReadingSpec(item), kanjiReadingSpec(item), meaningSpec(item,false)];
+        const shift = Math.max(0, Math.trunc(Number(completedReviews) || 0)) % questions.length;
+        return [...questions.slice(shift), ...questions.slice(0, shift)];
       }
       function answerQuestion(question, input) {
         return question.type === "meaning" ? meaningAccepted(input, question.accepted) : readingAccepted(input, question.accepted);
@@ -25368,7 +25435,7 @@
       function renderReview(){
         const el=root(); if(!el) return;
         if(!reviewSession||reviewSession.index>=reviewSession.items.length){const done=reviewSession?.items?.length||0;reviewSession=null;mode="home";persist("kanji-review-batch");toastMessage(`${done} Kanji-Review${done===1?"":"s"} abgeschlossen.`);return renderHome();}
-        const item=reviewSession.items[reviewSession.index]; const isKanji=item.kind==="kanji"; const record=itemState(item,true); const questions=isKanji?kanjiQuestionSet(item):[meaningSpec(item,true)]; const question=questions[reviewSession.questionIndex]||questions[0]; const feedback=reviewSession.feedback;
+        const item=reviewSession.items[reviewSession.index]; const isKanji=item.kind==="kanji"; const record=itemState(item,true); const questions=isKanji?kanjiQuestionSet(item, Number(record.correct||0)+Number(record.incorrect||0)):[meaningSpec(item,true)]; const question=questions[reviewSession.questionIndex]||questions[0]; const feedback=reviewSession.feedback;
         const finishItem=()=>{const ok=questions.every(q=>reviewSession.answers[q.type]?.ok===true);if(ok){record.stage=Math.min(9,Number(record.stage||0)+1);record.correct=Number(record.correct||0)+1;}else{record.stage=Math.max(1,Number(record.stage||1)-1);record.incorrect=Number(record.incorrect||0)+1;}record.updatedAt=now();scheduleRecord(record);const s=ensureState();s.stats.reviews=Number(s.stats.reviews||0)+1;s.stats.correct=Number(s.stats.correct||0)+(ok?1:0);s.stats.incorrect=Number(s.stats.incorrect||0)+(ok?0:1);emitActivity("kanji-review",item,`${isKanji?"Kanji":"Baustein"} ${isKanji?item.char:item.glyph} Review`,{mode:"review",kind:isKanji?"kanji":"component",level:item.level,jlpt:isKanji?item.jlpt:"",stage:record.stage,correct:ok?1:0,total:1,rewardWeight:.7,parts:isKanji?3:1});persist("kanji-review");reviewSession.index++;reviewSession.questionIndex=0;reviewSession.answers={};reviewSession.feedback=null;renderReview();scheduleFurigana();};
         const advance=()=>{reviewSession.feedback=null;if(reviewSession.questionIndex>=questions.length-1)return finishItem();reviewSession.questionIndex++;renderReview();};
         el.innerHTML=`<section class="kq-kanji-card"><div class="kq-kanji-actions"><button class="ghost" id="kqKanjiReviewStop">← Pause</button><span class="small muted">Review ${reviewSession.index+1}/${reviewSession.items.length}${isKanji?` · Karte ${reviewSession.questionIndex+1}/3`:""} · ${esc(stageLabel(record.stage))}</span></div><span class="kq-kanji-type">${esc(question.label)}</span><div class="kq-kanji-big" lang="ja">${esc(question.surface)}</div>${feedback?`<div class="kq-kanji-feedback ${feedback.ok?"good":"bad"}" tabindex="0" id="kqKanjiReviewFeedback">${feedback.html}<div class="small muted" style="margin-top:7px">${feedback.ok?"Enter = nächste Karte":"T = nur vertippt · Enter = als falsch weiter"}</div></div>`:`<form id="kqKanjiReviewForm" class="kq-kanji-form">${questionInputHtml("kqKanjiReviewAnswer",question)}<button class="primary" type="submit">Prüfen</button></form>`}</section>`;
