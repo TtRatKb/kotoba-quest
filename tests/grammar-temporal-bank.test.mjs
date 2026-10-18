@@ -3,91 +3,46 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 const cloud=readFileSync(new URL("../cloud.html",import.meta.url),"utf8");
+const manifest=JSON.parse(readFileSync(new URL("../grammar/temporal-review-bank-batch2.json",import.meta.url),"utf8"));
 function between(a,b) {
   const start=cloud.indexOf(a),end=cloud.indexOf(b,start+a.length);
   assert.ok(start>=0 && end>start,"Missing "+a);
   return cloud.slice(start,end);
 }
-const qSource=between("// Read-only question construction; historical grammar SRS IDs/records are unchanged.",
+let qSource=between("// Read-only question construction; historical grammar SRS IDs/records are unchanged.",
   "      function makeReviewItem(pointId");
 const pointSource=between("      const POINTS = [","\n      ];")+"\n      ];\nglobalThis.points=POINTS;";
+function simulateBankAddition(source,name,nextMarker,additions) {
+  const heading="const "+name+" = ";
+  const start=source.indexOf(heading);
+  const stop=source.indexOf(nextMarker,start);
+  assert.ok(start>=0 && stop>start);
+  const fragment=source.slice(start,stop);
+  const end=fragment.lastIndexOf("\n};");
+  assert.ok(end>0);
+  const existing=JSON.parse(fragment.slice(heading.length,end+2));
+  for(const [id,entries] of Object.entries(additions)) {
+    assert.ok(!Object.hasOwn(existing,id),"Bank already connected: "+id);
+    existing[id]=entries;
+  }
+  return source.slice(0,start)+heading+JSON.stringify(existing,null,2)+";"+source.slice(start+end+3);
+}
+assert.equal(manifest.status,"staged-not-connected");
+qSource=simulateBankAddition(qSource,"GUIDED_GRAMMAR_CHOICES",
+  "// Explicitly checked orthographic variants",manifest.choices);
+qSource=simulateBankAddition(qSource,"VERIFIED_GRAMMAR_ALTERNATES",
+  "function appliedGrammarQuestion",manifest.alternates);
 const env={},pointsEnv={};
 runInNewContext(qSource+"\nglobalThis.build=appliedGrammarQuestion;",env,{timeout:5000});
 runInNewContext(pointSource,pointsEnv,{timeout:5000});
-const fixture={
-  "tokoro-da": {
-    "作るところです": [
-      "作っているところです",
-      "作ったところです",
-      "作るつもりです"
-    ],
-    "しているところです": [
-      "するところです",
-      "したところです",
-      "するつもりです"
-    ],
-    "着いたところです": [
-      "着くところです",
-      "着く予定です",
-      "着いたはずです"
-    ]
-  },
-  "ta-bakari": {
-    "来たばかりです": [
-      "来るところです",
-      "来る予定です",
-      "来ている途中です"
-    ],
-    "食べたばかりなので": [
-      "食べるところなので",
-      "食べているところなので",
-      "食べようと思ったので"
-    ],
-    "買ったばかりの": [
-      "買う予定の",
-      "買おうとしている",
-      "買いたかった"
-    ]
-  },
-  "saichuu-ni": {
-    "している最中です": [
-      "し始めるところです",
-      "終えたところです",
-      "する予定です"
-    ],
-    "食事の最中に": [
-      "食事の直前に",
-      "食事の後に",
-      "食事が終わった直後に"
-    ],
-    "発表している最中に": [
-      "発表する直前に",
-      "発表した後に",
-      "発表の準備中に"
-    ]
-  }
-};
-const kana={
-  "tokoro-da": {
-    "作るところです": "つくるところです",
-    "着いたところです": "ついたところです"
-  },
-  "ta-bakari": {
-    "来たばかりです": "きたばかりです",
-    "食べたばかりなので": "たべたばかりなので",
-    "買ったばかりの": "かったばかりの"
-  },
-  "saichuu-ni": {
-    "している最中です": "しているさいちゅうです",
-    "食事の最中に": "しょくじのさいちゅうに",
-    "発表している最中に": "はっぴょうしているさいちゅうに"
-  }
-};
+const fixture=manifest.choices;
+const kana=Object.fromEntries(Object.entries(manifest.alternates)
+  .map(([id,examples])=>[id,Object.fromEntries(Object.entries(examples).map(([correct,variants])=>[correct,variants[0]]))]));
 const assessSource=between("      function normalizeJapanese(value) {","      function revealReviewAnswer() {");
 const grading={};
 runInNewContext(assessSource+"\nglobalThis.assess=assessAnswer;",grading,{timeout:5000});
 
-test("nine temporal grammar clozes have four context-specific, distinct choices",()=>{
+test("staged bank simulates nine contextual MC clozes without changing cloud.html",()=>{
   let count=0;
   for(const [id,examples] of Object.entries(fixture)) {
     const point=pointsEnv.points.find(p=>p.id===id);
