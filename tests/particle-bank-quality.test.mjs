@@ -76,3 +76,11 @@ test("alternative movement marker is accepted, never presented as wrong MC choic
   assert.ok(q.accepted.includes("に"));
   assert.ok(!q.choices.includes("に"));
 });
+
+test("に対して source example expresses the advertised directed attitude",()=>{
+  const point=points.find(p=>p.id==="nitaishite-target");
+  const example=point.examples[1];
+  assert.equal(example.before.map(part=>part[0]).join(""),"兄は弟");
+  assert.equal(example.after.map(part=>part[0]).join(""),"とても厳しいです");
+  assert.equal(example.de,"Mein älterer Bruder ist seinem jüngeren Bruder gegenüber sehr streng.");
+});
