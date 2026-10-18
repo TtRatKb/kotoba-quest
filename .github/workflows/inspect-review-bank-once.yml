@@ -37,6 +37,16 @@ jobs:
           if(p<0||next<0||start<0) throw Error('particle boundaries missing');
           fs.writeFileSync('.review-audit/particle-builder.txt',src.slice(start,next));
           fs.writeFileSync('.review-audit/particle-definitions.txt',src.slice(p,Math.min(start,p+28000)));
+          const par=src.indexOf('      const R = (surface, reading =',p);
+          const ps=src.indexOf('      const POINTS = [',par);
+          const pe=src.indexOf('\n      ];',ps);
+          if(par<0||ps<0||pe<0) throw Error('particle points not found');
+          const pn={};
+          vm.runInNewContext(src.slice(par,pe)+'\n      ]; globalThis.items=POINTS;',pn,{timeout:5000});
+          fs.writeFileSync('.review-audit/particle-points.json',JSON.stringify(pn.items.map(z=>({
+            id:z.id,particle:z.particle,accepted:z.accepted,distractors:z.distractors,
+            examples:z.examples.map(e=>({before:e.before.map(v=>v[0]).join(''),after:e.after.map(v=>v[0]).join(''),de:e.de,note:e.note}))
+          })),null,2));
           NODE
       - name: Commit inventory to inspection branch only
         run: |
