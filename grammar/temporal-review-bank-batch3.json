@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "status": "staged-not-connected",
-  "description": "Nine source-aligned contrastive temporal clozes (read-only review content; no SRS migrations).",
+  "status": "connected",
+  "description": "Nine source-aligned contrastive temporal clozes installed in cloud.html; no progress logic touched.",
   "choices": {
     "ta-totan": {
       "出たとたんに": [

@@ -19852,6 +19852,57 @@
       "発表した後に",
       "発表の準備中に"
     ]
+  },
+  "ta-totan": {
+    "出たとたんに": [
+      "出る前に",
+      "出ている間に",
+      "出たあとで"
+    ],
+    "立ち上がったとたん": [
+      "立ち上がる前に",
+      "立ち上がろうとしたとき",
+      "立ち上がったあとで"
+    ],
+    "開けたとたん": [
+      "開ける前に",
+      "開けている間に",
+      "開けたあとで"
+    ]
+  },
+  "tochuu-de": {
+    "行く途中で": [
+      "行く前に",
+      "行ったあとで",
+      "行くたびに"
+    ],
+    "書いている途中で": [
+      "書く前に",
+      "書いたあとで",
+      "書き終えたとたんに"
+    ],
+    "旅行の途中で": [
+      "旅行の前に",
+      "旅行のあとで",
+      "旅行のたびに"
+    ]
+  },
+  "tabi-ni": {
+    "聞くたびに": [
+      "聞く前に",
+      "聞いている間に",
+      "聞いて以来"
+    ],
+    "行くたびに": [
+      "行く前に",
+      "行く途中で",
+      "行って以来"
+    ],
+    "旅行のたびに": [
+      "旅行の前に",
+      "旅行の途中で",
+      "旅行のあとで"
+    ]
   }
 };
       // Explicitly checked orthographic variants, without broad fuzzy matches.
@@ -19933,6 +19984,39 @@
     ],
     "発表している最中に": [
       "はっぴょうしているさいちゅうに"
+    ]
+  },
+  "ta-totan": {
+    "出たとたんに": [
+      "でたとたんに"
+    ],
+    "立ち上がったとたん": [
+      "たちあがったとたん"
+    ],
+    "開けたとたん": [
+      "あけたとたん"
+    ]
+  },
+  "tochuu-de": {
+    "行く途中で": [
+      "いくとちゅうで"
+    ],
+    "書いている途中で": [
+      "かいているとちゅうで"
+    ],
+    "旅行の途中で": [
+      "りょこうのとちゅうで"
+    ]
+  },
+  "tabi-ni": {
+    "聞くたびに": [
+      "きくたびに"
+    ],
+    "行くたびに": [
+      "いくたびに"
+    ],
+    "旅行のたびに": [
+      "りょこうのたびに"
     ]
   }
 };
@@ -30486,7 +30570,7 @@ function shuffle(values) {
           "に markiert allgemein ein Ziel. に対して betont eine gerichtete Haltung, Reaktion oder Gegenüberstellung.",
           [
             E([R("客", "きゃく")], [R("丁寧に", "ていねいに"), R("対応して", "たいおうして"), R("ください")], "Bitte verhalten Sie sich den Kundinnen und Kunden gegenüber höflich."),
-            E([R("兄", "あに"), R("は"), R("社交的", "しゃこうてき"), R("なの", ""), R("に"), R("、"), R("弟", "おとうと")], [R("静か", "しずか"), R("です")], "Während der ältere Bruder gesellig ist, ist der jüngere dagegen ruhig.")
+            E([R("兄", "あに"), R("は"), R("弟", "おとうと")], [R("とても", ""), R("厳しい", "きびしい"), R("です")], "Mein älterer Bruder ist seinem jüngeren Bruder gegenüber sehr streng.")
           ],
           { distractors: ["について", "にとって", "によって"], wrong: { "について": "について macht die Person zum Gesprächsthema. Hier richtet sich eine Handlung/Haltung auf sie oder es wird ein Gegensatz aufgebaut.", "にとって": "にとって wäre die Perspektive einer Bewertung, nicht das Gegenüber einer Reaktion." } }),
         P("toshite-role", 8, "として", "として – in der Rolle oder Eigenschaft als",
