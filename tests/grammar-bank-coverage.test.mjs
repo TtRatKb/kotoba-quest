@@ -58,7 +58,7 @@ test("first five grammar points have three vetted MC clozes each", () => {
 
 test("answer position rotates without changing the source or correctness", () => {
   const point = data.points.find(item => item.id === "koto-ni-naru");
-  const indices = [0,1,2,3].map(rotation => {
+  const indices = [0,3,6,9].map(rotation => {
     const q = sandbox.build(point, "form", 1, rotation);
     return q.choices.indexOf(q.model);
   });
