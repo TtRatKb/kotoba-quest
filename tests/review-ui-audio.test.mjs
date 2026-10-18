@@ -82,3 +82,65 @@ test("sentence practice ignores stale or hidden autoplay callbacks", () => {
   assert.match(cloud, /generation !== practiceAudioGeneration \|\| currentQuestion\(\) !== question/);
   assert.match(cloud, /function renderPractice\(\) \{\s*stopAudio\(\)/);
 });
+
+test("vocabulary reviews alternate first direction and separate both prompts", () => {
+  const sandbox = { Math };
+  runInNewContext(`
+    ${between(index, "    // Alternate which skill is tested first", "    function startReviews(kind)")}
+    globalThis.reviewOrder = { firstVocabularyReviewType, buildVocabularyReviewQuestions };
+  `, sandbox);
+  const { firstVocabularyReviewType, buildVocabularyReviewQuestions } = sandbox.reviewOrder;
+  const words = Array.from({length: 8}, (_, i) => ({
+    id: "item-" + i, packEntryId: "kc2k-" + i, reading: "かな", stage: 3,
+    correct: i % 3, incorrect: i % 2, availableAt: 123
+  }));
+  const unchanged = JSON.stringify(words);
+  const questions = Array.from(buildVocabularyReviewQuestions(words), q => ({...q}));
+  assert.equal(questions.length, words.length * 2);
+  for (const word of words) {
+    const indices = questions.flatMap((q, i) => q.itemId === word.id ? [i] : []);
+    assert.equal(indices.length, 2);
+    assert.equal(indices[1] - indices[0], words.length);
+    assert.deepEqual(indices.map(i => questions[i].type).sort(), ["listening", "production"]);
+    const originalDirection = firstVocabularyReviewType(word);
+    word.correct += 1;
+    assert.notEqual(firstVocabularyReviewType(word), originalDirection);
+    word.correct -= 1;
+  }
+  assert.equal(JSON.stringify(words), unchanged, "Generating prompts must not mutate saved SRS data");
+  const single = Array.from(buildVocabularyReviewQuestions([words[0]]), q => q.type);
+  assert.deepEqual(single.sort(), ["listening", "production"]);
+});
+
+test("starting a Core review queues both directions without touching saved progress", () => {
+  const vocabulary = [
+    { id: "a", packEntryId: "kc2k-0001", stage: 3, availableAt: 1000, correct: 2, incorrect: 1 },
+    { id: "b", packEntryId: "kc2k-0002", stage: 6, availableAt: 2000, correct: 4, incorrect: 0 }
+  ];
+  const saved = JSON.stringify(vocabulary);
+  const views = [];
+  const sandbox = {
+    Math,
+    getDueItems: kind => kind === "core" ? vocabulary : [],
+    switchView: view => views.push(view),
+    renderReview() {}
+  };
+  runInNewContext(`
+    let reviewSession = null;
+    ${between(index, "    // Alternate which skill is tested first", "    function pauseReviewSession()")}
+    globalThis.startForSmoke = startReviews;
+    globalThis.getSession = () => reviewSession;
+  `, sandbox);
+  sandbox.startForSmoke("core");
+  const session = sandbox.getSession();
+  assert.equal(session.questions.length, 4);
+  assert.equal(session.stats.totalItems, 2);
+  assert.equal(session.stats.totalQuestions, 4);
+  assert.equal(session.stats.completedItems, 0);
+  assert.equal(session.results.a.listening, null);
+  assert.equal(session.results.a.production, null);
+  assert.equal(session.results.b.listening, null);
+  assert.equal(session.results.b.production, null);
+  assert.equal(views.join(","), "reviews");
+  assert.equal(JSON.stringify(vocabulary), saved);
+});

@@ -3345,16 +3345,43 @@
       });
     }
 
+    // Alternate which skill is tested first on successive completed reviews.
+    // Existing counters already advance once per finalized two-direction review:
+    // no new persistent fields or SRS scheduling changes are necessary.
+    function firstVocabularyReviewType(item) {
+      const id=String(item.packEntryId || item.id || `${item.word || ""}/${item.reading || ""}`);
+      let parity=0;
+      for(const character of id) parity=(parity+character.codePointAt(0))%2;
+      const completed=Math.max(0,Math.trunc(Number(item.correct)||0))
+        +Math.max(0,Math.trunc(Number(item.incorrect)||0));
+      return (parity+completed)%2===0 ? "production" : "listening";
+    }
+
+    function buildVocabularyReviewQuestions(due) {
+      const shuffled=[...due];
+      for(let i=shuffled.length-1;i>0;i--) {
+        const j=Math.floor(Math.random()*(i+1));
+        [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+      }
+      const first=shuffled.map(item => ({
+        itemId:item.id,
+        type:firstVocabularyReviewType(item)
+      }));
+      // Separate both directions by the other due words instead of revealing
+      // the answer in the immediately following prompt.
+      const second=first.map(question => ({
+        itemId:question.itemId,
+        type:question.type==="production" ? "listening" : "production"
+      }));
+      return [...first,...second];
+    }
+
     function startReviews(kind) {
       const due=getDueItems(kind);
       if(!due.length) {
         reviewSession={kind,questions:[],index:0,results:{},errors:{},finalized:{},stats:{correctQuestions:0,totalQuestions:0,completedItems:0,totalItems:0,levelsGained:0},feedback:null,locked:false,empty:true};
       } else {
-        const questions=[];
-        [...due].sort(() => Math.random()-.5).forEach(item => {
-          const pair=[{itemId:item.id,type:"listening"},{itemId:item.id,type:"production"}].sort(() => Math.random()-.5);
-          questions.push(...pair);
-        });
+        const questions=buildVocabularyReviewQuestions(due);
         reviewSession={kind,questions,index:0,results:Object.fromEntries(due.map(item => [item.id,{listening:null,production:null}])),errors:Object.fromEntries(due.map(item => [item.id,{listening:false,production:false}])),finalized:{},stats:{correctQuestions:0,totalQuestions:due.length*2,completedItems:0,totalItems:due.length,levelsGained:0},feedback:null,locked:false,empty:false};
       }
       switchView("reviews"); renderReview();
