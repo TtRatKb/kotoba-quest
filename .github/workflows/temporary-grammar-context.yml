@@ -1,0 +1,39 @@
+name: Temporary guarded grammar UI patch
+on:
+  push:
+    branches:
+      - fix/grammar-review-context-no-spoilers-20261018
+    paths:
+      - .github/workflows/temporary-grammar-context.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Apply SHA-checked grammar display patch
+        run: |
+          node <<'PATCH'
+          const fs=require("fs"),cp=require("child_process"),assert=require("assert/strict");
+          const sha="0275b37955c07053d9191377d84336ceda97900d";
+          assert.equal(cp.execFileSync("git",["hash-object","cloud.html"],{encoding:"utf8"}).trim(),sha);
+          let file=fs.readFileSync("cloud.html","utf8");
+          const changes=[["          badge: \"Mit Strukturhinweis\",","          badge: \"Mit Satzkontext\",","early badge"],["          note: \"In den ersten beiden erfolgreichen Wiederholungen wird die Zielstruktur noch angezeigt.\"","          note: \"Nutze Satz und Kontext. Die Zielstruktur wird erst nach der Antwort erklärt.\"","early note"],["        const heading = difficulty.heading || point.title;","        const heading = reviewCurrent.difficulty === \"independent\" ? \"Grammatik frei anwenden\" : \"Grammatik im Kontext\";","rule-free heading"],["${escapeHtml(reviewCurrent.difficulty === \"guided\" ? (question.aspectLabel || difficulty.badge) : difficulty.badge)}","${escapeHtml(difficulty.badge)}","rule-free badge"],["              model: item.answer,\n              answers: [item.answer, item.answerKana]","              model: item.answer,\n              translation: item.de,\n              answers: [item.answer, item.answerKana]","curated context"],["              model: source.highlight,\n              answers: [source.highlight]","              model: source.highlight,\n               translation: source.de,\n              answers: [source.highlight]","generated context"],["          ${promptSupport.notesHtml}\n          ${productionVocabularyHelp}","          ${promptSupport.notesHtml}\n          ${skill.id === \"form\" && question.translation ? `<p class=\"grammar-review-context-translation\">${escapeHtml(question.translation)}</p>` : \"\"}\n          ${productionVocabularyHelp}","show context"],["        if (difficulty === \"guided\") return String(question?.prompt || \"\");","        if (difficulty === \"guided\" && skillId === \"form\") return \"Ergänze die passende Form für diese Aussage.\";\n        if (difficulty === \"guided\") return String(question?.prompt || \"\");","no form spoilers"]];
+          for(const [oldText,newText,label] of changes){assert.equal(file.split(oldText).length-1,1,label);file=file.replace(oldText,newText);}
+          fs.writeFileSync("cloud.html",file,"utf8");
+          
+          PATCH
+      - name: Test and commit
+        run: |
+          node --test tests/review-ui-audio.test.mjs tests/applied-particle-review.test.mjs tests/grammar-review-ux.test.mjs
+          git diff --check
+          test "$(git diff --name-only)" = "cloud.html"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloud.html
+          git commit -m "fix: hide target grammar structures and show German cloze context"
+          git push origin HEAD:fix/grammar-review-context-no-spoilers-20261018
