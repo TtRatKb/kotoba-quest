@@ -1,0 +1,35 @@
+name: Install reviewed temporal grammar batch (one-time)
+on:
+  push:
+    branches:
+      - feat/grammar-temporal-clozes-batch2
+    paths:
+      - ".github/workflows/install-temporal-grammar-once.yml"
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify unmodified source and apply reviewed content
+        run: node scripts/apply-grammar-temporal-batch2.cjs
+      - name: Run complete regression suite
+        run: node --test tests/*.test.mjs
+      - name: Syntax-check full generated module
+        run: |
+          node --test tests/grammar-bank-coverage.test.mjs
+      - name: Commit only grammar content to feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloud.html
+          git diff --cached --check
+          git diff --cached --name-only | grep -x 'cloud.html'
+          git commit -m "feat: connect nine reviewed temporal grammar clozes"
+          git push origin HEAD:feat/grammar-temporal-clozes-batch2
