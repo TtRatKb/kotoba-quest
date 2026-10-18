@@ -93,7 +93,7 @@ test("context explanation only renders in revealed feedback, never pre-answer", 
 });
 
 test("complete embedded grammar script parses after question and feedback edits", () => {
-  const scripts = [...cloud.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/g)];
+  const scripts = [...cloud.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)];
   const owner = scripts.find(match => match[2].includes("const GUIDED_GRAMMAR_CHOICES ="));
   assert.ok(owner, "expected grammar bootstrap script");
   assert.doesNotMatch(owner[1], /type=["']module/);
