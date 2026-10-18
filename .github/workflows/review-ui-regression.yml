@@ -11,6 +11,9 @@ on:
       - "tests/applied-grammar-kanji.test.mjs"
       - "tests/grammar-bank-coverage.test.mjs"
       - "tests/grammar-temporal-bank.test.mjs"
+      - "tests/grammar-temporal-batch3.test.mjs"
+      - "tests/particle-bank-quality.test.mjs"
+      - "grammar/temporal-review-bank-batch3.json"
       - ".github/workflows/review-ui-regression.yml"
   push:
     branches: [main]
@@ -23,6 +26,9 @@ on:
       - "tests/applied-grammar-kanji.test.mjs"
       - "tests/grammar-bank-coverage.test.mjs"
       - "tests/grammar-temporal-bank.test.mjs"
+      - "tests/grammar-temporal-batch3.test.mjs"
+      - "tests/particle-bank-quality.test.mjs"
+      - "grammar/temporal-review-bank-batch3.json"
       - ".github/workflows/review-ui-regression.yml"
 
 permissions:
