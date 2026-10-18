@@ -1,0 +1,4394 @@
+[
+  {
+    "id": "you-ni-naru",
+    "title": "〜ようになる",
+    "formation": [
+      {
+        "jp": "毎朝、早く起きるようになりました。",
+        "de": "Ich stehe inzwischen jeden Morgen früh auf.",
+        "highlight": "起きるようになりました",
+        "note": "Früher war frühes Aufstehen nicht die übliche Gewohnheit; inzwischen ist es so."
+      },
+      {
+        "jp": "忘れ物をしないようになりました。",
+        "de": "Ich vergesse inzwischen keine Sachen mehr.",
+        "highlight": "しないようになりました",
+        "note": "Die Veränderung führt zu einem neuen Muster: Vergessene Sachen kommen nicht mehr vor."
+      },
+      {
+        "jp": "漢字が読めるようになりました。",
+        "de": "Ich kann inzwischen Kanji lesen.",
+        "highlight": "読めるようになりました",
+        "note": "読める beschreibt die Fähigkeit; ようになりました macht deutlich, dass sie neu entstanden ist."
+      }
+    ]
+  },
+  {
+    "id": "you-ni-suru",
+    "title": "〜ようにする",
+    "formation": [
+      {
+        "jp": "明日から毎日歩くようにします。",
+        "de": "Ab morgen werde ich darauf achten, jeden Tag zu Fuß zu gehen.",
+        "highlight": "歩くようにします",
+        "note": "Die Person formuliert eine bewusste Absicht für die Zukunft."
+      },
+      {
+        "jp": "夜はスマホを見ないようにします。",
+        "de": "Ich werde darauf achten, abends nicht aufs Smartphone zu schauen.",
+        "highlight": "見ないようにします",
+        "note": "Nicht das Aufhören an sich, sondern die bewusste Selbststeuerung steht im Mittelpunkt."
+      },
+      {
+        "jp": "毎日、日本語を読むようにしています。",
+        "de": "Ich versuche, jeden Tag etwas auf Japanisch zu lesen.",
+        "highlight": "読むようにしています",
+        "note": "している zeigt, dass die Bemühung nicht nur einmalig, sondern fortlaufend ist."
+      }
+    ]
+  },
+  {
+    "id": "koto-ni-naru",
+    "title": "〜ことになる",
+    "formation": [
+      {
+        "jp": "来月、東京で働くことになりました。",
+        "de": "Es wurde entschieden, dass ich ab nächstem Monat in Tokio arbeite.",
+        "highlight": "働くことになりました",
+        "note": "Die Arbeit in Tokio wird als äußere Entscheidung oder Folge der Umstände dargestellt."
+      },
+      {
+        "jp": "明日の会議には参加しないことになりました。",
+        "de": "Es wurde entschieden, dass ich an der morgigen Besprechung nicht teilnehme.",
+        "highlight": "参加しないことになりました",
+        "note": "Auch die negative Entscheidung wird nicht als persönlicher Entschluss präsentiert."
+      },
+      {
+        "jp": "この部屋では食べないことになっています。",
+        "de": "Es gilt die Regel, dass in diesem Raum nicht gegessen wird.",
+        "highlight": "食べないことになっています",
+        "note": "なっている zeigt den fortbestehenden Zustand einer bereits festgelegten Regel."
+      }
+    ]
+  },
+  {
+    "id": "koto-ni-suru",
+    "title": "〜ことにする",
+    "formation": [
+      {
+        "jp": "毎日三十分勉強することにします。",
+        "de": "Ich entscheide mich, jeden Tag dreißig Minuten zu lernen.",
+        "highlight": "勉強することにします",
+        "note": "Der Entschluss wird in diesem Moment beziehungsweise für die Zukunft gefasst."
+      },
+      {
+        "jp": "今日は出かけないことにします。",
+        "de": "Ich entscheide mich, heute nicht auszugehen.",
+        "highlight": "出かけないことにします",
+        "note": "Die negative Handlung ist eine bewusste persönliche Entscheidung."
+      },
+      {
+        "jp": "日曜日は仕事をしないことにしています。",
+        "de": "Ich habe für mich festgelegt, sonntags nicht zu arbeiten.",
+        "highlight": "しないことにしています",
+        "note": "Die Entscheidung gilt wiederholt und wird als persönliche Regel beibehalten."
+      }
+    ]
+  },
+  {
+    "id": "naku-naru",
+    "title": "〜なくなる",
+    "formation": [
+      {
+        "jp": "最近、テレビを見なくなりました。",
+        "de": "In letzter Zeit schaue ich kein Fernsehen mehr.",
+        "highlight": "見なくなりました",
+        "note": "見ない wird zu 見なく und verbindet sich mit なる."
+      },
+      {
+        "jp": "日本語を話すのが怖くなくなりました。",
+        "de": "Ich habe keine Angst mehr davor, Japanisch zu sprechen.",
+        "highlight": "怖くなくなりました",
+        "note": "怖くない wird zu 怖くなくなる: Der Zustand „nicht beängstigend“ ist neu entstanden."
+      },
+      {
+        "jp": "この町は静かではなくなりました。",
+        "de": "Diese Stadt ist nicht mehr ruhig.",
+        "highlight": "静かではなくなりました",
+        "note": "静かではない wird mit なる zu einer Veränderung: Früher war die Stadt ruhig, jetzt nicht mehr."
+      }
+    ]
+  },
+  {
+    "id": "uchi-ni",
+    "title": "〜うちに",
+    "formation": [
+      {
+        "jp": "日本にいるうちに、京都へ行きたいです。",
+        "de": "Solange ich in Japan bin, möchte ich nach Kyoto fahren.",
+        "highlight": "いるうちに",
+        "note": "Der Aufenthalt in Japan bildet das begrenzte Zeitfenster, in dem die Fahrt stattfinden soll."
+      },
+      {
+        "jp": "忘れないうちに、予定をメモしてください。",
+        "de": "Bitte notiere den Termin, bevor du ihn vergisst.",
+        "highlight": "忘れないうちに",
+        "note": "Der Satz fordert dazu auf, zu handeln, solange das Vergessen noch nicht eingetreten ist."
+      },
+      {
+        "jp": "暖かいうちに、散歩しましょう。",
+        "de": "Lass uns spazieren gehen, solange es noch warm ist.",
+        "highlight": "暖かいうちに",
+        "note": "Die Wärme wird als vorübergehender Zustand verstanden."
+      },
+      {
+        "jp": "元気なうちに、いろいろな所へ旅行したいです。",
+        "de": "Solange ich gesund und fit bin, möchte ich an viele Orte reisen.",
+        "highlight": "元気なうちに",
+        "note": "Bei einem na-Adjektiv steht な vor うちに."
+      }
+    ]
+  },
+  {
+    "id": "aida-aida-ni",
+    "title": "〜間／〜間に",
+    "formation": [
+      {
+        "jp": "母が料理している間、私は部屋を掃除しました。",
+        "de": "Während meine Mutter kochte, räumte ich das Zimmer auf.",
+        "highlight": "料理している間",
+        "note": "Beide Handlungen erstrecken sich über denselben Zeitraum."
+      },
+      {
+        "jp": "夏休みの間、毎日アルバイトをしました。",
+        "de": "Während der Sommerferien arbeitete ich jeden Tag in einem Nebenjob.",
+        "highlight": "夏休みの間",
+        "note": "の verbindet das Nomen mit 間."
+      },
+      {
+        "jp": "電車を待っている間に、メールを書きました。",
+        "de": "Während ich auf den Zug wartete, schrieb ich eine E-Mail.",
+        "highlight": "待っている間に",
+        "note": "Das Schreiben wird als innerhalb des längeren Wartens abgeschlossen betrachtet."
+      },
+      {
+        "jp": "留守の間に、荷物が届きました。",
+        "de": "Während meiner Abwesenheit kam ein Paket an.",
+        "highlight": "留守の間に",
+        "note": "Die Ankunft war ein punktuelles Ereignis innerhalb der Abwesenheit."
+      }
+    ]
+  },
+  {
+    "id": "tokoro-da",
+    "title": "〜ところだ",
+    "formation": [
+      {
+        "jp": "これから夕飯を作るところです。",
+        "de": "Ich bin gerade im Begriff, das Abendessen zuzubereiten.",
+        "highlight": "作るところです",
+        "note": "Die Handlung hat noch nicht begonnen; これから verstärkt den unmittelbar bevorstehenden Beginn."
+      },
+      {
+        "jp": "今、宿題をしているところです。",
+        "de": "Ich mache gerade jetzt meine Hausaufgaben.",
+        "highlight": "しているところです",
+        "note": "Die ている-Form fokussiert den aktuellen Verlauf."
+      },
+      {
+        "jp": "たった今、駅に着いたところです。",
+        "de": "Ich bin gerade eben am Bahnhof angekommen.",
+        "highlight": "着いたところです",
+        "note": "Die た-Form zeigt den unmittelbar abgeschlossenen Vorgang."
+      }
+    ]
+  },
+  {
+    "id": "ta-bakari",
+    "title": "〜たばかり",
+    "formation": [
+      {
+        "jp": "日本に来たばかりです。",
+        "de": "Ich bin erst vor Kurzem nach Japan gekommen.",
+        "highlight": "来たばかりです",
+        "note": "Wie kurz „vor Kurzem“ ist, hängt von der subjektiven Perspektive ab."
+      },
+      {
+        "jp": "食べたばかりなので、まだお腹がいっぱいです。",
+        "de": "Da ich gerade erst gegessen habe, bin ich noch satt.",
+        "highlight": "食べたばかりなので",
+        "note": "ばかり kann innerhalb eines längeren Satzes stehen."
+      },
+      {
+        "jp": "これは買ったばかりのパソコンです。",
+        "de": "Das ist ein Computer, den ich erst vor Kurzem gekauft habe.",
+        "highlight": "買ったばかりの",
+        "note": "の verbindet die gesamte Form mit dem folgenden Nomen."
+      }
+    ]
+  },
+  {
+    "id": "saichuu-ni",
+    "title": "〜最中（に）",
+    "formation": [
+      {
+        "jp": "今、会議をしている最中です。",
+        "de": "Wir sind gerade mitten in einer Besprechung.",
+        "highlight": "している最中です",
+        "note": "最中 verstärkt, dass die Handlung im vollen Gange ist."
+      },
+      {
+        "jp": "食事の最中に、電話が鳴りました。",
+        "de": "Mitten beim Essen klingelte das Telefon.",
+        "highlight": "食事の最中に",
+        "note": "Ein überraschendes Ereignis unterbricht häufig die laufende Situation."
+      },
+      {
+        "jp": "発表している最中に、パソコンが止まりました。",
+        "de": "Mitten während der Präsentation blieb der Computer stehen.",
+        "highlight": "発表している最中に",
+        "note": "Der Satz hebt die störende zeitliche Überschneidung hervor."
+      }
+    ]
+  },
+  {
+    "id": "tame-ni",
+    "title": "〜ため（に）",
+    "formation": [
+      {
+        "jp": "日本で働くために、日本語を勉強しています。",
+        "de": "Ich lerne Japanisch, um in Japan zu arbeiten.",
+        "highlight": "働くために",
+        "note": "Das Ziel ist kontrollierbar und wird bewusst verfolgt."
+      },
+      {
+        "jp": "健康のために、毎日歩いています。",
+        "de": "Für meine Gesundheit gehe ich jeden Tag zu Fuß.",
+        "highlight": "健康のために",
+        "note": "Das Nomen wird mit の an ために angeschlossen."
+      },
+      {
+        "jp": "大雪のため、電車が遅れています。",
+        "de": "Wegen starken Schnees hat der Zug Verspätung.",
+        "highlight": "大雪のため",
+        "note": "Bei einem Nomen steht の; に kann in formellen Hinweisen entfallen."
+      },
+      {
+        "jp": "この町は静かなため、住みやすいです。",
+        "de": "Da diese Stadt ruhig ist, lässt es sich dort gut leben.",
+        "highlight": "静かなため",
+        "note": "Die Ursache wird sachlich beschrieben."
+      }
+    ]
+  },
+  {
+    "id": "okage-de",
+    "title": "〜おかげで",
+    "formation": [
+      {
+        "jp": "友達が手伝ってくれたおかげで、早く終わりました。",
+        "de": "Dank der Hilfe meines Freundes wurde ich früh fertig.",
+        "highlight": "手伝ってくれたおかげで",
+        "note": "Der Sprecher bewertet die Ursache ausdrücklich positiv."
+      },
+      {
+        "jp": "先生のおかげで、日本語が好きになりました。",
+        "de": "Dank meiner Lehrkraft begann ich Japanisch zu mögen.",
+        "highlight": "先生のおかげで",
+        "note": "の verbindet das Nomen mit おかげで."
+      },
+      {
+        "jp": "町が静かなおかげで、よく眠れます。",
+        "de": "Dank der Ruhe der Stadt kann ich gut schlafen.",
+        "highlight": "静かなおかげで",
+        "note": "Die Eigenschaft wird als günstige Ursache bewertet."
+      }
+    ]
+  },
+  {
+    "id": "sei-de",
+    "title": "〜せいで",
+    "formation": [
+      {
+        "jp": "寝坊したせいで、電車に乗り遅れました。",
+        "de": "Weil ich verschlafen hatte, verpasste ich den Zug.",
+        "highlight": "寝坊したせいで",
+        "note": "せいで enthält eine negative Bewertung oder Schuldzuweisung."
+      },
+      {
+        "jp": "雨のせいで、試合が中止になりました。",
+        "de": "Wegen des Regens wurde das Spiel abgesagt.",
+        "highlight": "雨のせいで",
+        "note": "の verbindet das Nomen mit せいで."
+      },
+      {
+        "jp": "部屋が静かではないせいで、眠れません。",
+        "de": "Weil das Zimmer nicht ruhig ist, kann ich nicht schlafen.",
+        "highlight": "静かではないせいで",
+        "note": "Auch negative Adjektivformen können unmittelbar vor せいで stehen."
+      }
+    ]
+  },
+  {
+    "id": "koto-kara",
+    "title": "〜ことから",
+    "formation": [
+      {
+        "jp": "足跡があることから、ここに動物がいたと分かります。",
+        "de": "Aus den Fußspuren lässt sich schließen, dass hier ein Tier war.",
+        "highlight": "足跡があることから",
+        "note": "Die Aussage beruht auf einem erkennbaren Hinweis."
+      },
+      {
+        "jp": "この町が港町であることから、魚料理が有名です。",
+        "de": "Da diese Stadt eine Hafenstadt ist, ist sie für Fischgerichte bekannt.",
+        "highlight": "港町であることから",
+        "note": "である verbindet ein Nomen formell mit ことから."
+      },
+      {
+        "jp": "形が星に似ていることから、この花は「星の花」と呼ばれています。",
+        "de": "Weil ihre Form einem Stern ähnelt, wird diese Blume „Sternblume“ genannt.",
+        "highlight": "似ていることから",
+        "note": "Ein sichtbares Merkmal begründet die Bezeichnung."
+      }
+    ]
+  },
+  {
+    "id": "wake-da",
+    "title": "〜わけだ",
+    "formation": [
+      {
+        "jp": "十年日本に住んでいたんですか。日本語が上手なわけですね。",
+        "de": "Du hast zehn Jahre in Japan gelebt? Kein Wunder, dass dein Japanisch gut ist.",
+        "highlight": "上手なわけですね",
+        "note": "Der Sprecher versteht nun den Grund für die beobachtete Tatsache."
+      },
+      {
+        "jp": "今日は祝日です。店が混んでいるわけです。",
+        "de": "Heute ist Feiertag. Deshalb ist der Laden also voll.",
+        "highlight": "混んでいるわけです",
+        "note": "わけだ formuliert das Ergebnis des gedanklichen Schlusses."
+      },
+      {
+        "jp": "彼は医者だから、病気に詳しいわけです。",
+        "de": "Er ist Arzt, daher kennt er sich natürlich mit Krankheiten aus.",
+        "highlight": "詳しいわけです",
+        "note": "Der zweite Teil ist die nachvollziehbare Schlussfolgerung aus dem Beruf."
+      }
+    ]
+  },
+  {
+    "id": "ippou-de",
+    "title": "〜一方で",
+    "formation": [
+      {
+        "jp": "この町は便利な一方で、家賃が高いです。",
+        "de": "Diese Stadt ist praktisch, andererseits sind die Mieten hoch.",
+        "highlight": "便利な一方で",
+        "note": "Bei na-Adjektiven steht な vor 一方で."
+      },
+      {
+        "jp": "オンラインで働く人が増える一方で、会社に通う人もいます。",
+        "de": "Während immer mehr Menschen online arbeiten, gibt es zugleich Menschen, die zur Firma pendeln.",
+        "highlight": "増える一方で",
+        "note": "Die Form kann auch zwei gleichzeitig bestehende Entwicklungen verbinden."
+      },
+      {
+        "jp": "彼は医者である一方で、作家でもあります。",
+        "de": "Er ist Arzt und zugleich auch Schriftsteller.",
+        "highlight": "医者である一方で",
+        "note": "一方で muss nicht immer einen negativen Gegensatz ausdrücken; auch zwei Rollen sind möglich."
+      }
+    ]
+  },
+  {
+    "id": "hanmen",
+    "title": "〜反面",
+    "formation": [
+      {
+        "jp": "在宅勤務は自由な反面、運動不足になりやすいです。",
+        "de": "Arbeiten von zu Hause ist frei, hat aber die Kehrseite, dass man leicht zu wenig Bewegung bekommt.",
+        "highlight": "自由な反面",
+        "note": "Bei na-Adjektiven steht な vor 反面."
+      },
+      {
+        "jp": "一人で暮らすと気楽な反面、寂しいこともあります。",
+        "de": "Allein zu leben ist entspannt, andererseits fühlt man sich manchmal einsam.",
+        "highlight": "気楽な反面",
+        "note": "反面 betrachtet besonders die Kehrseite desselben Sachverhalts."
+      },
+      {
+        "jp": "この薬は効果が高い反面、副作用もあります。",
+        "de": "Dieses Medikament ist sehr wirksam, hat aber auch Nebenwirkungen.",
+        "highlight": "効果が高い反面",
+        "note": "Beide Seiten gehören zu demselben Gegenstand."
+      }
+    ]
+  },
+  {
+    "id": "ni-taishite",
+    "title": "〜に対して／〜に対する",
+    "formation": [
+      {
+        "jp": "先生は学生に対して公平です。",
+        "de": "Die Lehrkraft ist den Studierenden gegenüber fair.",
+        "highlight": "学生に対して",
+        "note": "に対して zeigt das Ziel der Haltung."
+      },
+      {
+        "jp": "環境問題に対する関心が高まっています。",
+        "de": "Das Interesse an Umweltproblemen nimmt zu.",
+        "highlight": "環境問題に対する",
+        "note": "に対する verbindet die Zielrichtung mit dem Nomen 関心."
+      },
+      {
+        "jp": "兄が活発なのに対して、弟は静かです。",
+        "de": "Während der ältere Bruder lebhaft ist, ist der jüngere ruhig.",
+        "highlight": "活発なのに対して",
+        "note": "Na-Adjektive stehen mit な + のに対して."
+      }
+    ]
+  },
+  {
+    "id": "ni-kurabete",
+    "title": "〜に比べて／〜と比べて",
+    "formation": [
+      {
+        "jp": "去年に比べて、今年は雨が多いです。",
+        "de": "Im Vergleich zum letzten Jahr regnet es dieses Jahr häufiger.",
+        "highlight": "去年に比べて",
+        "note": "Der Vergleichsmaßstab steht direkt vor に比べて."
+      },
+      {
+        "jp": "東京と比べて、この町は家賃が安いです。",
+        "de": "Verglichen mit Tokio sind die Mieten in dieser Stadt günstig.",
+        "highlight": "東京と比べて",
+        "note": "に und と sind in vielen Vergleichssätzen austauschbar."
+      },
+      {
+        "jp": "以前に比べて、日本語がよく分かるようになりました。",
+        "de": "Im Vergleich zu früher verstehe ich Japanisch inzwischen viel besser.",
+        "highlight": "以前に比べて",
+        "note": "Die Form verbindet sich gut mit bereits gelernter Veränderungsgrammatik."
+      }
+    ]
+  },
+  {
+    "id": "hodo",
+    "title": "〜ほど",
+    "formation": [
+      {
+        "jp": "東京ほど人が多い町はありません。",
+        "de": "Es gibt keine Stadt mit so vielen Menschen wie Tokio.",
+        "highlight": "東京ほど",
+        "note": "Mit einer negativen Aussage entsteht häufig „nichts ist so … wie“."
+      },
+      {
+        "jp": "立てないほど疲れています。",
+        "de": "Ich bin so müde, dass ich nicht stehen kann.",
+        "highlight": "立てないほど",
+        "note": "Der Satz vor ほど beschreibt den Grad oder die Folge, an der die Intensität sichtbar wird."
+      },
+      {
+        "jp": "信じられないほどきれいな景色でした。",
+        "de": "Es war eine unglaublich schöne Landschaft.",
+        "highlight": "信じられないほど",
+        "note": "Wörtlich: so schön, dass man es nicht glauben kann."
+      }
+    ]
+  },
+  {
+    "id": "sou-appearance",
+    "title": "〜そうだ（様態）",
+    "formation": [
+      {
+        "jp": "空が暗いので、雨が降りそうです。",
+        "de": "Weil der Himmel dunkel ist, sieht es nach Regen aus.",
+        "highlight": "降りそうです",
+        "note": "降ります verliert ます: 降り + そうです."
+      },
+      {
+        "jp": "このケーキはおいしそうです。",
+        "de": "Dieser Kuchen sieht lecker aus.",
+        "highlight": "おいしそうです",
+        "note": "おいしい → おいし + そうです."
+      },
+      {
+        "jp": "新しい図書館は静かそうです。",
+        "de": "Die neue Bibliothek wirkt ruhig.",
+        "highlight": "静かそうです",
+        "note": "静か + そうです, nicht 静かなそうです."
+      },
+      {
+        "jp": "この計画はよさそうですが、時間がなさそうです。",
+        "de": "Dieser Plan sieht gut aus, aber wir scheinen keine Zeit zu haben.",
+        "highlight": "よさそうですが、時間がなさそうです",
+        "note": "Die Sonderstämme lauten よさ- und なさ-."
+      }
+    ]
+  },
+  {
+    "id": "sou-hearsay",
+    "title": "〜そうだ（伝聞）",
+    "formation": [
+      {
+        "jp": "天気予報によると、明日は雨が降るそうです。",
+        "de": "Laut Wetterbericht soll es morgen regnen.",
+        "highlight": "降るそうです",
+        "note": "Die Wörterbuchform 降る bleibt vollständig erhalten."
+      },
+      {
+        "jp": "この店のランチは安いそうです。",
+        "de": "Ich habe gehört, dass das Mittagessen in diesem Restaurant günstig ist.",
+        "highlight": "安いそうです",
+        "note": "Anders als beim Eindruck bleibt das い stehen."
+      },
+      {
+        "jp": "新しい先生はとても親切だそうです。",
+        "de": "Ich habe gehört, dass die neue Lehrkraft sehr freundlich ist.",
+        "highlight": "親切だそうです",
+        "note": "Das Kopulawort だ darf nicht entfallen."
+      },
+      {
+        "jp": "田中さんは来年、留学生だそうです。",
+        "de": "Ich habe gehört, dass Tanaka nächstes Jahr Austauschstudent ist.",
+        "highlight": "留学生だそうです",
+        "note": "Auch nach Nomen steht だ vor そうだ."
+      }
+    ]
+  },
+  {
+    "id": "rashii",
+    "title": "〜らしい",
+    "formation": [
+      {
+        "jp": "田中さんは今日は来ないらしいです。",
+        "de": "Anscheinend kommt Tanaka heute nicht.",
+        "highlight": "来ないらしいです",
+        "note": "Die Information ist nicht vollständig bestätigt."
+      },
+      {
+        "jp": "北海道の冬はとても寒いらしいです。",
+        "de": "Der Winter in Hokkaido soll offenbar sehr kalt sein.",
+        "highlight": "寒いらしいです",
+        "note": "Das i-Adjektiv bleibt vollständig."
+      },
+      {
+        "jp": "子供らしく、元気に外で遊んでいます。",
+        "de": "Das Kind spielt ganz kindgerecht lebhaft draußen.",
+        "highlight": "子供らしく",
+        "note": "らしく ist die adverbiale Form von らしい."
+      }
+    ]
+  },
+  {
+    "id": "youda-mitaida",
+    "title": "〜ようだ／〜みたいだ",
+    "formation": [
+      {
+        "jp": "電気が消えているので、もう寝たようです。",
+        "de": "Da das Licht aus ist, scheint die Person schon schlafen gegangen zu sein.",
+        "highlight": "寝たようです",
+        "note": "Der Sprecher schließt aus einem direkt beobachteten Hinweis."
+      },
+      {
+        "jp": "あの雲は動物のようです。",
+        "de": "Diese Wolke sieht wie ein Tier aus.",
+        "highlight": "動物のようです",
+        "note": "の verbindet das Nomen mit ようだ."
+      },
+      {
+        "jp": "この町は夜も安全なようです。",
+        "de": "Diese Stadt scheint auch nachts sicher zu sein.",
+        "highlight": "安全なようです",
+        "note": "Na-Adjektive benötigen な vor ようだ."
+      },
+      {
+        "jp": "外は雨みたいです。",
+        "de": "Draußen scheint es zu regnen.",
+        "highlight": "雨みたいです",
+        "note": "Nach Nomen steht kein の vor みたいだ."
+      }
+    ]
+  },
+  {
+    "id": "hazu-da",
+    "title": "〜はずだ",
+    "formation": [
+      {
+        "jp": "田中さんは三時に来るはずです。",
+        "de": "Tanaka sollte um drei Uhr kommen.",
+        "highlight": "来るはずです",
+        "note": "Die erwartete Ankunft beruht beispielsweise auf einer Verabredung."
+      },
+      {
+        "jp": "この道のほうが近いはずです。",
+        "de": "Dieser Weg müsste näher sein.",
+        "highlight": "近いはずです",
+        "note": "Die Einschätzung folgt aus vorhandenem Wissen über die Wege."
+      },
+      {
+        "jp": "予約したので、部屋は準備できているはずです。",
+        "de": "Da ich reserviert habe, müsste das Zimmer vorbereitet sein.",
+        "highlight": "準備できているはずです",
+        "note": "Hier steht ein Verb vor はず; na-Adjektive würden mit な verbunden: 静かなはずです."
+      },
+      {
+        "jp": "今日の担当は山田さんのはずです。",
+        "de": "Heute müsste Yamada zuständig sein.",
+        "highlight": "山田さんのはずです",
+        "note": "の verbindet ein Nomen mit はず."
+      }
+    ]
+  },
+  {
+    "id": "ni-chigainai",
+    "title": "〜に違いない",
+    "formation": [
+      {
+        "jp": "電気がついている。誰かが家にいるに違いありません。",
+        "de": "Das Licht ist an; es muss jemand zu Hause sein.",
+        "highlight": "いるに違いありません",
+        "note": "Die Beobachtung führt zu einer sehr starken Schlussfolgerung."
+      },
+      {
+        "jp": "行列が長いので、この店はおいしいに違いないです。",
+        "de": "Da die Schlange lang ist, muss dieses Restaurant gut sein.",
+        "highlight": "おいしいに違いないです",
+        "note": "Der Sprecher ist aufgrund eines Hinweises sehr überzeugt."
+      },
+      {
+        "jp": "あの人は専門家に違いありません。",
+        "de": "Diese Person muss ein Experte sein.",
+        "highlight": "専門家に違いありません",
+        "note": "Nicht 専門家だに違いない."
+      }
+    ]
+  },
+  {
+    "id": "wake-dewanai",
+    "title": "〜わけではない",
+    "formation": [
+      {
+        "jp": "甘い物を食べないわけではありません。",
+        "de": "Es ist nicht so, dass ich keine Süßigkeiten esse.",
+        "highlight": "食べないわけではありません",
+        "note": "Die Person isst sie möglicherweise selten, aber nicht überhaupt nicht."
+      },
+      {
+        "jp": "この商品は安いわけではありませんが、品質がいいです。",
+        "de": "Dieses Produkt ist nicht unbedingt günstig, aber die Qualität ist gut.",
+        "highlight": "安いわけではありません",
+        "note": "Die Eigenschaft „günstig“ wird ausdrücklich nicht behauptet."
+      },
+      {
+        "jp": "日本人なら全員漢字が得意だというわけではありません。",
+        "de": "Es ist nicht so, dass alle Japaner gut in Kanji sind.",
+        "highlight": "得意だというわけではありません",
+        "note": "というわけではない eignet sich für eine ganze zitierte Behauptung."
+      }
+    ]
+  },
+  {
+    "id": "wake-ga-nai",
+    "title": "〜わけがない",
+    "formation": [
+      {
+        "jp": "一日でこの本を全部読めるわけがありません。",
+        "de": "Es ist unmöglich, dieses ganze Buch an einem Tag zu lesen.",
+        "highlight": "読めるわけがありません",
+        "note": "Der Sprecher schließt die Möglichkeit vollständig aus."
+      },
+      {
+        "jp": "毎日練習したのだから、上手にならないわけがないです。",
+        "de": "Da du jeden Tag geübt hast, ist es unmöglich, dass du nicht besser wirst.",
+        "highlight": "上手にならないわけがないです",
+        "note": "Eine doppelte Verneinung ergibt eine sehr starke positive Erwartung."
+      },
+      {
+        "jp": "あの優しい人が犯人なわけがありません。",
+        "de": "Diese freundliche Person kann unmöglich der Täter sein.",
+        "highlight": "犯人なわけがありません",
+        "note": "Nomen verbinden sich mit な mit わけがない."
+      }
+    ]
+  },
+  {
+    "id": "wake-niwa-ikanai",
+    "title": "〜わけにはいかない",
+    "formation": [
+      {
+        "jp": "明日は大切な試験なので、休むわけにはいきません。",
+        "de": "Da morgen eine wichtige Prüfung ist, kann ich nicht einfach fehlen.",
+        "highlight": "休むわけにはいきません",
+        "note": "Fehlen wäre möglich, aber nicht verantwortbar."
+      },
+      {
+        "jp": "これは秘密ですから、他の人に話すわけにはいきません。",
+        "de": "Da dies ein Geheimnis ist, kann ich es anderen nicht erzählen.",
+        "highlight": "話すわけにはいきません",
+        "note": "Die Person besitzt die Fähigkeit zu sprechen, ist aber gebunden."
+      },
+      {
+        "jp": "約束したので、行かないわけにはいきません。",
+        "de": "Da ich es versprochen habe, muss ich hingehen.",
+        "highlight": "行かないわけにはいきません",
+        "note": "Wörtlich: Ich kann nicht nicht hingehen."
+      }
+    ]
+  },
+  {
+    "id": "nai-koto-wa-nai",
+    "title": "〜ないことはない／〜ないこともない",
+    "formation": [
+      {
+        "jp": "この料理は辛いですが、食べられないことはありません。",
+        "de": "Dieses Gericht ist scharf, aber ich kann es durchaus essen.",
+        "highlight": "食べられないことはありません",
+        "note": "Die Möglichkeit wird bejaht, zugleich bleibt ein Vorbehalt."
+      },
+      {
+        "jp": "少し遠いですが、歩いて行けないことはないです。",
+        "de": "Es ist etwas weit, aber man kann notfalls zu Fuß hingehen.",
+        "highlight": "行けないことはないです",
+        "note": "Es ist möglich, aber nicht besonders bequem."
+      },
+      {
+        "jp": "説明を読めば、分からないこともありません。",
+        "de": "Wenn man die Erklärung liest, kann man es durchaus verstehen.",
+        "highlight": "分からないこともありません",
+        "note": "Auch hier wird eine negative Aussage vorsichtig zurückgenommen."
+      }
+    ]
+  },
+  {
+    "id": "ta-totan",
+    "title": "〜たとたん（に）",
+    "formation": [
+      {
+        "jp": "外に出たとたんに、雨が降り始めました。",
+        "de": "In dem Moment, als ich nach draußen ging, begann es zu regnen.",
+        "highlight": "出たとたんに",
+        "note": "Der Regen begann unmittelbar und unerwartet."
+      },
+      {
+        "jp": "立ち上がったとたん、めまいがしました。",
+        "de": "Sobald ich aufstand, wurde mir schwindelig.",
+        "highlight": "立ち上がったとたん",
+        "note": "Das zweite Ereignis tritt ohne Absicht ein."
+      },
+      {
+        "jp": "ドアを開けたとたん、猫が飛び出しました。",
+        "de": "Sobald ich die Tür öffnete, sprang eine Katze heraus.",
+        "highlight": "開けたとたん",
+        "note": "Das Herausspringen war unerwartet und nicht kontrolliert."
+      }
+    ]
+  },
+  {
+    "id": "tsuide-ni",
+    "title": "〜ついでに",
+    "formation": [
+      {
+        "jp": "買い物に行くついでに、郵便局にも寄ります。",
+        "de": "Wenn ich ohnehin einkaufen gehe, gehe ich nebenbei auch zur Post.",
+        "highlight": "行くついでに",
+        "note": "Einkaufen ist der Hauptzweck; die Post ist die Zusatzhandlung."
+      },
+      {
+        "jp": "駅まで来たついでに、切符を買いました。",
+        "de": "Da ich ohnehin bis zum Bahnhof gekommen war, kaufte ich gleich eine Fahrkarte.",
+        "highlight": "来たついでに",
+        "note": "Die bereits erfolgte Bewegung schafft die Gelegenheit."
+      },
+      {
+        "jp": "散歩のついでに、コンビニで牛乳を買いました。",
+        "de": "Beim Spaziergang kaufte ich nebenbei im Konbini Milch.",
+        "highlight": "散歩のついでに",
+        "note": "の verbindet das Nomen mit ついでに."
+      }
+    ]
+  },
+  {
+    "id": "tochuu-de",
+    "title": "〜途中で／〜途中に",
+    "formation": [
+      {
+        "jp": "会社へ行く途中で、友達に会いました。",
+        "de": "Auf dem Weg zur Arbeit traf ich einen Freund.",
+        "highlight": "行く途中で",
+        "note": "Der Weg war noch nicht abgeschlossen."
+      },
+      {
+        "jp": "レポートを書いている途中で、パソコンが止まりました。",
+        "de": "Während ich den Bericht schrieb, blieb der Computer stehen.",
+        "highlight": "書いている途中で",
+        "note": "Der Bericht war noch nicht fertig."
+      },
+      {
+        "jp": "旅行の途中で、予定を変更しました。",
+        "de": "Während der Reise änderten wir den Plan.",
+        "highlight": "旅行の途中で",
+        "note": "Die Reise als Gesamtverlauf war noch nicht beendet."
+      }
+    ]
+  },
+  {
+    "id": "te-kara-denaito",
+    "title": "〜てからでないと／〜てからでなければ",
+    "formation": [
+      {
+        "jp": "予約してからでないと、この店には入れません。",
+        "de": "Ohne vorher zu reservieren, kann man dieses Restaurant nicht betreten.",
+        "highlight": "予約してからでないと",
+        "note": "Die Reservierung ist eine notwendige Voraussetzung."
+      },
+      {
+        "jp": "本人に確認してからでなければ、決められません。",
+        "de": "Erst nachdem wir die Person selbst gefragt haben, können wir entscheiden.",
+        "highlight": "確認してからでなければ",
+        "note": "Die Bestätigung muss der Entscheidung vorausgehen."
+      },
+      {
+        "jp": "使い方を読んでからでないと、この機械は使えません。",
+        "de": "Erst nachdem man die Anleitung gelesen hat, kann man diese Maschine benutzen.",
+        "highlight": "読んでからでないと",
+        "note": "Das Lesen ist die Voraussetzung für die sichere Nutzung."
+      }
+    ]
+  },
+  {
+    "id": "ta-tokoro-result",
+    "title": "〜たところ",
+    "formation": [
+      {
+        "jp": "先生に聞いたところ、すぐに説明してくれました。",
+        "de": "Als ich die Lehrkraft fragte, erklärte sie es mir sofort.",
+        "highlight": "聞いたところ",
+        "note": "Die Frage führte zu dem berichteten Ergebnis."
+      },
+      {
+        "jp": "薬を飲んだところ、熱が下がりました。",
+        "de": "Nachdem ich die Medizin genommen hatte, sank das Fieber.",
+        "highlight": "飲んだところ",
+        "note": "Das Ergebnis wird als tatsächlich beobachtete Wirkung berichtet."
+      },
+      {
+        "jp": "詳しく調べてみたところ、問題はありませんでした。",
+        "de": "Als ich genauer nachforschte, stellte sich heraus, dass es kein Problem gab.",
+        "highlight": "調べてみたところ",
+        "note": "てみる betont den Versuch; ところ leitet das entdeckte Ergebnis ein."
+      }
+    ]
+  },
+  {
+    "id": "ni-tsurete",
+    "title": "〜につれて",
+    "formation": [
+      {
+        "jp": "日本語が上手になるにつれて、会話が楽しくなりました。",
+        "de": "Je besser mein Japanisch wurde, desto mehr Spaß machte das Gespräch.",
+        "highlight": "上手になるにつれて",
+        "note": "Beide Entwicklungen verlaufen schrittweise."
+      },
+      {
+        "jp": "年齢につれて、体力が変わります。",
+        "de": "Mit zunehmendem Alter verändert sich die körperliche Kraft.",
+        "highlight": "年齢につれて",
+        "note": "Das Nomen bezeichnet die sich entwickelnde Dimension."
+      },
+      {
+        "jp": "夜が深くなるにつれて、町は静かになりました。",
+        "de": "Je später die Nacht wurde, desto ruhiger wurde die Stadt.",
+        "highlight": "深くなるにつれて",
+        "note": "Die Veränderung ist kontinuierlich, nicht punktuell."
+      }
+    ]
+  },
+  {
+    "id": "ni-shitagatte",
+    "title": "〜にしたがって／〜に従って",
+    "formation": [
+      {
+        "jp": "技術が進歩するにしたがって、生活も便利になりました。",
+        "de": "Mit dem Fortschritt der Technik wurde auch das Leben bequemer.",
+        "highlight": "進歩するにしたがって",
+        "note": "Die Form klingt sachlich und formell."
+      },
+      {
+        "jp": "人口の増加にしたがって、住宅が増えています。",
+        "de": "Mit dem Bevölkerungswachstum nimmt auch die Zahl der Wohnungen zu.",
+        "highlight": "増加にしたがって",
+        "note": "Das Nomen bezeichnet den formellen Entwicklungstrend."
+      },
+      {
+        "jp": "説明書に従って、機械を組み立ててください。",
+        "de": "Bitte bauen Sie die Maschine gemäß der Anleitung zusammen.",
+        "highlight": "説明書に従って",
+        "note": "Hier bedeutet die Form nicht Veränderung, sondern „gemäß“."
+      }
+    ]
+  },
+  {
+    "id": "to-tomoni",
+    "title": "〜とともに",
+    "formation": [
+      {
+        "jp": "家族とともに、新しい町へ引っ越しました。",
+        "de": "Ich zog gemeinsam mit meiner Familie in eine neue Stadt.",
+        "highlight": "家族とともに",
+        "note": "Die Form klingt formeller als 家族と一緒に."
+      },
+      {
+        "jp": "ベルが鳴るとともに、学生たちは教室を出ました。",
+        "de": "Gleichzeitig mit dem Klingeln verließen die Schüler das Klassenzimmer.",
+        "highlight": "鳴るとともに",
+        "note": "Die beiden Ereignisse werden als gleichzeitig dargestellt."
+      },
+      {
+        "jp": "時代とともに、働き方も変わってきました。",
+        "de": "Mit der Zeit haben sich auch die Arbeitsweisen verändert.",
+        "highlight": "時代とともに",
+        "note": "Die Form beschreibt eine längerfristige parallele Entwicklung."
+      }
+    ]
+  },
+  {
+    "id": "te-irai",
+    "title": "〜て以来",
+    "formation": [
+      {
+        "jp": "日本に来て以来、毎日日本語を使っています。",
+        "de": "Seit ich nach Japan gekommen bin, benutze ich jeden Tag Japanisch.",
+        "highlight": "来て以来",
+        "note": "Die Nutzung begann nach der Ankunft und dauert bis heute an."
+      },
+      {
+        "jp": "この本を読んで以来、歴史に興味を持つようになりました。",
+        "de": "Seit ich dieses Buch gelesen habe, interessiere ich mich für Geschichte.",
+        "highlight": "読んで以来",
+        "note": "Das Lesen bildet den Ausgangspunkt einer fortdauernden Veränderung."
+      },
+      {
+        "jp": "卒業以来、先生には会っていません。",
+        "de": "Seit dem Abschluss habe ich die Lehrkraft nicht gesehen.",
+        "highlight": "卒業以来",
+        "note": "Die negative Situation gilt vom Abschluss bis heute."
+      }
+    ]
+  },
+  {
+    "id": "tabi-ni",
+    "title": "〜たびに",
+    "formation": [
+      {
+        "jp": "この歌を聞くたびに、子供のころを思い出します。",
+        "de": "Jedes Mal, wenn ich dieses Lied höre, erinnere ich mich an meine Kindheit.",
+        "highlight": "聞くたびに",
+        "note": "Die Erinnerung kehrt bei jedem Hören wieder."
+      },
+      {
+        "jp": "日本へ行くたびに、新しい発見があります。",
+        "de": "Jedes Mal, wenn ich nach Japan fahre, entdecke ich etwas Neues.",
+        "highlight": "行くたびに",
+        "note": "Die Reise wiederholt sich und bringt jedes Mal eine neue Folge."
+      },
+      {
+        "jp": "旅行のたびに、写真をたくさん撮ります。",
+        "de": "Bei jeder Reise mache ich viele Fotos.",
+        "highlight": "旅行のたびに",
+        "note": "の verbindet das wiederkehrende Nomen mit たびに."
+      }
+    ]
+  },
+  {
+    "id": "ageru-completion",
+    "title": "〜上げる",
+    "formation": [
+      {
+        "jp": "三日でレポートを書き上げました。",
+        "de": "Ich habe den Bericht in drei Tagen vollständig fertiggeschrieben.",
+        "highlight": "書き上げました",
+        "note": "書く wird zu 書き und verbindet sich mit 上げる."
+      },
+      {
+        "jp": "新しい衣装が出来上がりました。",
+        "de": "Das neue Outfit ist fertig geworden.",
+        "highlight": "出来上がりました",
+        "note": "上がる beschreibt das entstandene Ergebnis, 上げる eher das aktive Fertigstellen."
+      }
+    ]
+  },
+  {
+    "id": "amari-nai",
+    "title": "あまり〜ない",
+    "formation": [
+      {
+        "jp": "朝はあまり食べません。",
+        "de": "Morgens esse ich nicht besonders viel.",
+        "highlight": "あまり食べません",
+        "note": "Ohne Negation würde die typische Bedeutung dieser Struktur fehlen."
+      },
+      {
+        "jp": "この問題はあまり難しくないです。",
+        "de": "Diese Aufgabe ist nicht besonders schwierig.",
+        "highlight": "あまり難しくない",
+        "note": "Die Negation steckt hier im i-Adjektiv 難しくない."
+      }
+    ]
+  },
+  {
+    "id": "amari-ni",
+    "title": "あまり（に）／あまりにも",
+    "formation": [
+      {
+        "jp": "その話はあまりにも突然でした。",
+        "de": "Diese Nachricht kam viel zu plötzlich.",
+        "highlight": "あまりにも突然",
+        "note": "にも verstärkt den Eindruck zusätzlich."
+      },
+      {
+        "jp": "緊張のあまり、名前を忘れました。",
+        "de": "Vor lauter Nervosität habe ich den Namen vergessen.",
+        "highlight": "緊張のあまり",
+        "note": "Das Nomen bezeichnet die überwältigende Ursache."
+      }
+    ]
+  },
+  {
+    "id": "au-mutual",
+    "title": "〜合う",
+    "formation": [
+      {
+        "jp": "二人でよく話し合いました。",
+        "de": "Die beiden haben ausführlich miteinander gesprochen.",
+        "highlight": "話し合いました",
+        "note": "話す wird zu 話し und bildet mit 合う 'miteinander besprechen'."
+      },
+      {
+        "jp": "仲間は互いに助け合っています。",
+        "de": "Die Teammitglieder helfen einander.",
+        "highlight": "助け合っています",
+        "note": "助け合う wird wie ein gewöhnliches u-Verb konjugiert."
+      }
+    ]
+  },
+  {
+    "id": "ba-ii",
+    "title": "〜ばいい",
+    "formation": [
+      {
+        "jp": "分からなければ、先生に聞けばいいです。",
+        "de": "Wenn du es nicht verstehst, kannst du einfach die Lehrkraft fragen.",
+        "highlight": "聞けばいい",
+        "note": "聞く → 聞けば."
+      },
+      {
+        "jp": "次はどうすればいいですか。",
+        "de": "Was soll ich als Nächstes tun?",
+        "highlight": "どうすればいい",
+        "note": "Sehr häufig als Bitte um Anleitung."
+      }
+    ]
+  },
+  {
+    "id": "ba-yokatta",
+    "title": "〜ばよかった",
+    "formation": [
+      {
+        "jp": "もっと早く相談すればよかった。",
+        "de": "Ich hätte früher um Rat fragen sollen.",
+        "highlight": "相談すればよかった",
+        "note": "Die Person hat nicht früh genug gefragt."
+      },
+      {
+        "jp": "あんなことを言わなければよかった。",
+        "de": "Ich hätte so etwas besser nicht gesagt.",
+        "highlight": "言わなければよかった",
+        "note": "ない → なければ."
+      }
+    ]
+  },
+  {
+    "id": "ba-hodo",
+    "title": "〜ば〜ほど",
+    "formation": [
+      {
+        "jp": "練習すればするほど、上手になります。",
+        "de": "Je mehr man übt, desto besser wird man.",
+        "highlight": "練習すればするほど",
+        "note": "Das Verb erscheint in Bedingungs- und Grundform."
+      },
+      {
+        "jp": "値段は安ければ安いほどいいです。",
+        "de": "Je günstiger der Preis, desto besser.",
+        "highlight": "安ければ安いほど",
+        "note": "安い → 安ければ + 安いほど."
+      }
+    ]
+  },
+  {
+    "id": "ba-noni",
+    "title": "〜ば〜のに",
+    "formation": [
+      {
+        "jp": "もっと早く来れば、会えたのに。",
+        "de": "Wenn du früher gekommen wärst, hätten wir uns treffen können.",
+        "highlight": "来れば、会えたのに",
+        "note": "Das tatsächliche Treffen fand nicht statt."
+      },
+      {
+        "jp": "雨が降らなければ、出かけたのに。",
+        "de": "Wenn es nicht geregnet hätte, wäre ich ausgegangen.",
+        "highlight": "降らなければ、出かけたのに",
+        "note": "Die Bedingung wurde nicht erfüllt."
+      }
+    ]
+  },
+  {
+    "id": "beki-da",
+    "title": "〜べきだ",
+    "formation": [
+      {
+        "jp": "約束は守るべきです。",
+        "de": "Versprechen sollte man halten.",
+        "highlight": "守るべきです",
+        "note": "する kann zu するべき oder すべき werden."
+      },
+      {
+        "jp": "人を見た目だけで判断するべきではありません。",
+        "de": "Man sollte Menschen nicht nur nach ihrem Aussehen beurteilen.",
+        "highlight": "判断するべきではありません",
+        "note": "Die Verneinung betrifft die Empfehlung, nicht das Grundverb."
+      }
+    ]
+  },
+  {
+    "id": "beki-dewanai",
+    "title": "〜べきではない",
+    "formation": [
+      {
+        "jp": "秘密を他人に話すべきではありません。",
+        "de": "Man sollte Geheimnisse nicht anderen erzählen.",
+        "highlight": "話すべきではありません",
+        "note": "べき bleibt positiv; ではない verneint die Sollensbewertung."
+      },
+      {
+        "jp": "そんな言い方をするべきじゃないよ。",
+        "de": "So solltest du nicht reden.",
+        "highlight": "するべきじゃない",
+        "note": "Inhaltlich gleich, aber weniger formell."
+      }
+    ]
+  },
+  {
+    "id": "bakari-de",
+    "title": "〜ばかりで",
+    "formation": [
+      {
+        "jp": "彼は文句を言ってばかりで、何もしません。",
+        "de": "Er beschwert sich nur und tut nichts.",
+        "highlight": "言ってばかりで",
+        "note": "Die て-Form verbindet das Verb mit ばかり."
+      },
+      {
+        "jp": "この部屋は古い物ばかりで、使いにくいです。",
+        "de": "In diesem Zimmer stehen nur alte Sachen, deshalb ist es unpraktisch.",
+        "highlight": "古い物ばかりで",
+        "note": "で verbindet die Begrenzung mit der Folge."
+      }
+    ]
+  },
+  {
+    "id": "bakari-denaku",
+    "title": "〜ばかりでなく",
+    "formation": [
+      {
+        "jp": "彼は日本語ばかりでなく、中国語も話せます。",
+        "de": "Er kann nicht nur Japanisch, sondern auch Chinesisch sprechen.",
+        "highlight": "日本語ばかりでなく",
+        "note": "も markiert typischerweise die Ergänzung B."
+      },
+      {
+        "jp": "このアプリは便利なばかりでなく、使いやすいです。",
+        "de": "Diese App ist nicht nur praktisch, sondern auch leicht zu bedienen.",
+        "highlight": "便利なばかりでなく",
+        "note": "Na-Adjektive stehen mit な vor ばかり."
+      }
+    ]
+  },
+  {
+    "id": "buri-ni",
+    "title": "〜ぶりに",
+    "formation": [
+      {
+        "jp": "三年ぶりに日本へ行きました。",
+        "de": "Ich bin zum ersten Mal seit drei Jahren wieder nach Japan gefahren.",
+        "highlight": "三年ぶりに",
+        "note": "Der Zeitraum zählt seit dem letzten entsprechenden Ereignis."
+      },
+      {
+        "jp": "彼に会うのは半年ぶりです。",
+        "de": "Ich sehe ihn zum ersten Mal seit einem halben Jahr wieder.",
+        "highlight": "半年ぶりです",
+        "note": "の nominalisiert die Handlung 会う."
+      }
+    ]
+  },
+  {
+    "id": "chuu",
+    "title": "〜中",
+    "formation": [
+      {
+        "jp": "今は会議中です。",
+        "de": "Wir sind gerade in einer Besprechung.",
+        "highlight": "会議中です",
+        "note": "Suru-Nomen verbinden sich direkt mit 中."
+      },
+      {
+        "jp": "夏休み中、毎日日本語を勉強しました。",
+        "de": "Während der ganzen Sommerferien habe ich jeden Tag Japanisch gelernt.",
+        "highlight": "夏休み中",
+        "note": "Die Lesung hängt von Bedeutung und festem Ausdruck ab."
+      }
+    ]
+  },
+  {
+    "id": "betsu-ni-nai",
+    "title": "別に〜ない",
+    "formation": [
+      {
+        "jp": "別に怒っていません。",
+        "de": "Ich bin nicht besonders wütend beziehungsweise ich bin doch nicht wütend.",
+        "highlight": "別に怒っていません",
+        "note": "Die natürliche Übersetzung hängt stark vom Gesprächston ab."
+      },
+      {
+        "jp": "別に何も欲しくないです。",
+        "de": "Ich möchte nichts Besonderes.",
+        "highlight": "別に何も欲しくない",
+        "note": "何も verlangt eine negative Form."
+      }
+    ]
+  },
+  {
+    "id": "dake",
+    "title": "〜だけ",
+    "formation": [
+      {
+        "jp": "必要な物だけ持ってきてください。",
+        "de": "Bitte bring nur die notwendigen Dinge mit.",
+        "highlight": "必要な物だけ",
+        "note": "Andere Dinge sind nicht nötig."
+      },
+      {
+        "jp": "食べたいだけ食べていいです。",
+        "de": "Du darfst so viel essen, wie du möchtest.",
+        "highlight": "食べたいだけ",
+        "note": "Der vorangehende Satzteil bestimmt die Grenze."
+      }
+    ]
+  },
+  {
+    "id": "dakedo",
+    "title": "〜だけど",
+    "formation": [
+      {
+        "jp": "行きたいんだけど、今日は時間がない。",
+        "de": "Ich würde gern gehen, aber heute habe ich keine Zeit.",
+        "highlight": "行きたいんだけど",
+        "note": "ん fügt häufig erklärenden Kontext hinzu."
+      },
+      {
+        "jp": "ちょっとお願いがあるんだけど…。",
+        "de": "Ich hätte da eine kleine Bitte …",
+        "highlight": "あるんだけど",
+        "note": "Die eigentliche Bitte kann danach folgen oder vom Gegenüber erschlossen werden."
+      }
+    ]
+  },
+  {
+    "id": "dake-denaku",
+    "title": "〜だけでなく",
+    "formation": [
+      {
+        "jp": "日本だけでなく、海外でも人気があります。",
+        "de": "Es ist nicht nur in Japan, sondern auch im Ausland beliebt.",
+        "highlight": "日本だけでなく",
+        "note": "でも markiert den zusätzlichen Ort."
+      },
+      {
+        "jp": "彼は話すだけでなく、よく聞いてくれます。",
+        "de": "Er spricht nicht nur, sondern hört auch gut zu.",
+        "highlight": "話すだけでなく",
+        "note": "Die Verbgrundform steht direkt vor だけ."
+      }
+    ]
+  },
+  {
+    "id": "darake",
+    "title": "〜だらけ",
+    "formation": [
+      {
+        "jp": "この作文は間違いだらけです。",
+        "de": "Dieser Aufsatz ist voller Fehler.",
+        "highlight": "間違いだらけ",
+        "note": "Die Menge wird als problematisch bewertet."
+      },
+      {
+        "jp": "泥だらけの靴を洗いました。",
+        "de": "Ich habe die völlig schlammigen Schuhe gewaschen.",
+        "highlight": "泥だらけの靴",
+        "note": "の verbindet die Beschreibung mit 靴."
+      }
+    ]
+  },
+  {
+    "id": "donna-ni-temo",
+    "title": "どんなに〜ても",
+    "formation": [
+      {
+        "jp": "どんなに難しくても、諦めません。",
+        "de": "Egal wie schwierig es ist, ich gebe nicht auf.",
+        "highlight": "どんなに難しくても",
+        "note": "難しい → 難しくて + も."
+      },
+      {
+        "jp": "どんなに考えても、答えが分かりません。",
+        "de": "Egal wie viel ich nachdenke, ich finde die Antwort nicht.",
+        "highlight": "どんなに考えても",
+        "note": "Die て-Form verbindet das Verb mit も."
+      }
+    ]
+  },
+  {
+    "id": "toshite",
+    "title": "〜として／〜としては",
+    "formation": [
+      {
+        "jp": "彼女はヒーローとして働いています。",
+        "de": "Sie arbeitet als Heldin.",
+        "highlight": "ヒーローとして",
+        "note": "Es geht um die Funktion, nicht um einen Vergleich mit ように."
+      },
+      {
+        "jp": "初心者としては、とても上手です。",
+        "de": "Für eine Anfängerin ist sie sehr gut.",
+        "highlight": "初心者としては",
+        "note": "は markiert den Rollenmaßstab als Thema/Kontrast."
+      }
+    ]
+  },
+  {
+    "id": "ni-totte",
+    "title": "〜にとって／〜にとっては",
+    "formation": [
+      {
+        "jp": "私にとって、日本語は大切です。",
+        "de": "Für mich ist Japanisch wichtig.",
+        "highlight": "私にとって",
+        "note": "Danach steht typischerweise eine Bewertung."
+      },
+      {
+        "jp": "これは私にとっての大きな挑戦です。",
+        "de": "Das ist für mich eine große Herausforderung.",
+        "highlight": "私にとっての大きな挑戦",
+        "note": "の verbindet die Perspektive mit dem folgenden Nomen."
+      }
+    ]
+  },
+  {
+    "id": "kawari-ni",
+    "title": "〜代わりに",
+    "formation": [
+      {
+        "jp": "今日は父の代わりに私が料理します。",
+        "de": "Heute koche ich anstelle meines Vaters.",
+        "highlight": "父の代わりに",
+        "note": "Nomen benötigen の."
+      },
+      {
+        "jp": "手伝う代わりに、夕食をおごってください。",
+        "de": "Als Gegenleistung dafür, dass ich helfe, lade mich bitte zum Abendessen ein.",
+        "highlight": "手伝う代わりに",
+        "note": "Beide Seiten bilden einen Austausch."
+      }
+    ]
+  },
+  {
+    "id": "mama",
+    "title": "〜まま",
+    "formation": [
+      {
+        "jp": "窓を開けたまま寝てしまいました。",
+        "de": "Ich bin eingeschlafen, während das Fenster offen blieb.",
+        "highlight": "開けたまま",
+        "note": "Das Fenster wurde geöffnet und danach nicht geschlossen."
+      },
+      {
+        "jp": "靴のまま部屋に入らないでください。",
+        "de": "Bitte betreten Sie das Zimmer nicht mit Schuhen an.",
+        "highlight": "靴のまま",
+        "note": "Der Zustand 'Schuhe tragen' wird nicht verändert."
+      }
+    ]
+  },
+  {
+    "id": "doushitemo",
+    "title": "どうしても",
+    "formation": [
+      {
+        "jp": "どうしてもこの試合に勝ちたいです。",
+        "de": "Ich möchte dieses Spiel unbedingt gewinnen.",
+        "highlight": "どうしても勝ちたい",
+        "note": "Der Wille ist stärker als ein neutrales ぜひ."
+      },
+      {
+        "jp": "何度聞いても、どうしても名前を覚えられません。",
+        "de": "Egal wie oft ich es höre, ich kann mir den Namen einfach nicht merken.",
+        "highlight": "どうしても覚えられません",
+        "note": "Die Verneinung beschreibt eine hartnäckige Grenze."
+      }
+    ]
+  },
+  {
+    "id": "furi-o-suru",
+    "title": "〜ふりをする",
+    "formation": [
+      {
+        "jp": "彼は何も知らないふりをしました。",
+        "de": "Er tat so, als wüsste er von nichts.",
+        "highlight": "知らないふりをしました",
+        "note": "Vor ふり steht die Form, deren Anschein erzeugt wird."
+      },
+      {
+        "jp": "平気なふりをしていました。",
+        "de": "Sie tat so, als wäre alles in Ordnung.",
+        "highlight": "平気なふり",
+        "note": "Na-Adjektive benötigen な."
+      }
+    ]
+  },
+  {
+    "id": "futo",
+    "title": "ふと",
+    "formation": [
+      {
+        "jp": "ふと窓の外を見ました。",
+        "de": "Ich schaute plötzlich/unwillkürlich aus dem Fenster.",
+        "highlight": "ふと窓の外を見ました",
+        "note": "Der Impuls ist kurz und ungeplant."
+      },
+      {
+        "jp": "ふと昔の友達を思い出しました。",
+        "de": "Plötzlich musste ich an einen alten Freund denken.",
+        "highlight": "ふと思い出しました",
+        "note": "Es geht nicht um ein dramatisches äußeres Ereignis."
+      }
+    ]
+  },
+  {
+    "id": "gachi",
+    "title": "〜がち",
+    "formation": [
+      {
+        "jp": "忙しいと、復習を忘れがちです。",
+        "de": "Wenn ich beschäftigt bin, neige ich dazu, die Wiederholung zu vergessen.",
+        "highlight": "忘れがちです",
+        "note": "忘れる → 忘れ + がち."
+      },
+      {
+        "jp": "冬は病気がちでした。",
+        "de": "Im Winter war ich häufig kränklich.",
+        "highlight": "病気がち",
+        "note": "Typische feste Verbindung mit Zustandsnomen."
+      }
+    ]
+  },
+  {
+    "id": "gatai",
+    "title": "〜がたい",
+    "formation": [
+      {
+        "jp": "彼の説明は信じがたいです。",
+        "de": "Seine Erklärung ist schwer zu glauben.",
+        "highlight": "信じがたい",
+        "note": "信じる → 信じ + がたい."
+      },
+      {
+        "jp": "この経験は忘れがたいものです。",
+        "de": "Diese Erfahrung ist unvergesslich/schwer zu vergessen.",
+        "highlight": "忘れがたい",
+        "note": "Oft schriftsprachlich oder nachdrücklich."
+      }
+    ]
+  },
+  {
+    "id": "gimi",
+    "title": "〜気味",
+    "formation": [
+      {
+        "jp": "最近、少し疲れ気味です。",
+        "de": "In letzter Zeit bin ich etwas müde.",
+        "highlight": "疲れ気味",
+        "note": "疲れる → 疲れ + 気味."
+      },
+      {
+        "jp": "今日は風邪気味なので、早く寝ます。",
+        "de": "Heute bin ich etwas erkältet, deshalb gehe ich früh schlafen.",
+        "highlight": "風邪気味",
+        "note": "Nicht so stark wie eine klare Diagnose."
+      }
+    ]
+  },
+  {
+    "id": "goto-ni",
+    "title": "〜ごとに",
+    "formation": [
+      {
+        "jp": "一時間ごとに休憩します。",
+        "de": "Ich mache jede Stunde eine Pause.",
+        "highlight": "一時間ごとに",
+        "note": "Jede Einheit wird einzeln betrachtet."
+      },
+      {
+        "jp": "この曲を聞くごとに、元気になります。",
+        "de": "Jedes Mal, wenn ich dieses Lied höre, werde ich munter.",
+        "highlight": "聞くごとに",
+        "note": "Schriftsprachlicher als たびに."
+      }
+    ]
+  },
+  {
+    "id": "hodo-nai",
+    "title": "〜ほど〜ない",
+    "formation": [
+      {
+        "jp": "今日は昨日ほど寒くないです。",
+        "de": "Heute ist es nicht so kalt wie gestern.",
+        "highlight": "昨日ほど寒くない",
+        "note": "ほど markiert den Vergleichsmaßstab."
+      },
+      {
+        "jp": "日本語ほど面白い言語はありません。",
+        "de": "Es gibt keine Sprache, die so interessant ist wie Japanisch.",
+        "highlight": "日本語ほど",
+        "note": "Rhetorische Höchststellung, nicht zwingend objektiver Fakt."
+      }
+    ]
+  },
+  {
+    "id": "ikura-temo",
+    "title": "いくら〜ても",
+    "formation": [
+      {
+        "jp": "いくら練習しても、まだうまくできません。",
+        "de": "Egal wie viel ich übe, ich kann es noch nicht gut.",
+        "highlight": "いくら練習しても",
+        "note": "Die Menge der Versuche wird hervorgehoben."
+      },
+      {
+        "jp": "いくら高くても、必要なら買います。",
+        "de": "Egal wie teuer es ist, wenn ich es brauche, kaufe ich es.",
+        "highlight": "いくら高くても",
+        "note": "Bei na-Adjektiven/Nomen steht でも."
+      }
+    ]
+  },
+  {
+    "id": "ichido-ni",
+    "title": "一度に",
+    "formation": [
+      {
+        "jp": "一度に十個の単語を覚えるのは難しいです。",
+        "de": "Zehn Wörter auf einmal zu lernen ist schwierig.",
+        "highlight": "一度に十個",
+        "note": "Die Menge wird nicht auf mehrere Durchgänge verteilt."
+      },
+      {
+        "jp": "質問が一度に三つ来ました。",
+        "de": "Drei Fragen kamen auf einmal.",
+        "highlight": "一度に三つ",
+        "note": "Oft mit Zahlen oder Mengen."
+      }
+    ]
+  },
+  {
+    "id": "ittai",
+    "title": "一体",
+    "formation": [
+      {
+        "jp": "一体何が起きたんですか。",
+        "de": "Was ist hier eigentlich passiert?",
+        "highlight": "一体何が",
+        "note": "Die Übersetzung muss nicht vulgär sein."
+      },
+      {
+        "jp": "一体誰がこんなことをしたの？",
+        "de": "Wer hat so etwas nur getan?",
+        "highlight": "一体誰が",
+        "note": "Je nach Ton überrascht, verärgert oder verwirrt."
+      }
+    ]
+  },
+  {
+    "id": "janai",
+    "title": "〜じゃない／〜じゃないか",
+    "formation": [
+      {
+        "jp": "前に説明したじゃない。",
+        "de": "Ich habe es dir doch vorher erklärt.",
+        "highlight": "説明したじゃない",
+        "note": "Oft emotionaler als ね."
+      },
+      {
+        "jp": "それ、いいアイデアじゃない？",
+        "de": "Ist das nicht eine gute Idee?",
+        "highlight": "いいアイデアじゃない",
+        "note": "Steigende Intonation macht eine Bestätigungsfrage."
+      }
+    ]
+  },
+  {
+    "id": "ippou-da",
+    "title": "〜一方だ",
+    "formation": [
+      {
+        "jp": "物価は上がる一方です。",
+        "de": "Die Preise steigen immer weiter.",
+        "highlight": "上がる一方です",
+        "note": "Das Verb muss eine veränderliche Entwicklung ausdrücken."
+      },
+      {
+        "jp": "便利になる一方で、問題も増えています。",
+        "de": "Einerseits wird es praktischer, andererseits nehmen auch Probleme zu.",
+        "highlight": "一方で",
+        "note": "Nicht mit der einseitigen Entwicklung verwechseln."
+      }
+    ]
+  },
+  {
+    "id": "ka-nanika",
+    "title": "〜か何か",
+    "formation": [
+      {
+        "jp": "コーヒーか何か飲みませんか。",
+        "de": "Möchtest du Kaffee oder so etwas trinken?",
+        "highlight": "コーヒーか何か",
+        "note": "Die Alternative bleibt offen."
+      },
+      {
+        "jp": "ゲームをするか何かして待ちましょう。",
+        "de": "Lass uns beim Warten spielen oder irgendetwas in der Art machen.",
+        "highlight": "するか何かして",
+        "note": "Locker und gesprächssprachlich."
+      }
+    ]
+  },
+  {
+    "id": "kakeru-incomplete",
+    "title": "〜かける／〜かけ",
+    "formation": [
+      {
+        "jp": "読みかけた本を机に置きました。",
+        "de": "Ich legte das halb gelesene Buch auf den Tisch.",
+        "highlight": "読みかけた本",
+        "note": "読みかけの本 ist ebenfalls häufig."
+      },
+      {
+        "jp": "飲みかけの水を捨てないでください。",
+        "de": "Bitte wirf das angebrochene Wasser nicht weg.",
+        "highlight": "飲みかけの水",
+        "note": "Die Handlung des Trinkens ist nicht abgeschlossen."
+      }
+    ]
+  },
+  {
+    "id": "kekka",
+    "title": "〜結果",
+    "formation": [
+      {
+        "jp": "調べた結果、原因が分かりました。",
+        "de": "Als Ergebnis der Untersuchung wurde die Ursache klar.",
+        "highlight": "調べた結果",
+        "note": "Das Resultat wird rückblickend berichtet."
+      },
+      {
+        "jp": "話し合いの結果、計画を変えることになりました。",
+        "de": "Als Ergebnis der Besprechung wurde beschlossen, den Plan zu ändern.",
+        "highlight": "話し合いの結果",
+        "note": "Häufig in Berichten und formeller Sprache."
+      }
+    ]
+  },
+  {
+    "id": "kara-ni-kakete",
+    "title": "〜から〜にかけて",
+    "formation": [
+      {
+        "jp": "今夜から明日の朝にかけて雨が降るでしょう。",
+        "de": "Von heute Nacht bis morgen früh wird es wohl regnen.",
+        "highlight": "今夜から明日の朝にかけて",
+        "note": "Die Grenzen sind nicht minutengenau."
+      },
+      {
+        "jp": "関東から東北にかけて雪が降りました。",
+        "de": "Von Kantō bis Tōhoku fiel Schnee.",
+        "highlight": "関東から東北にかけて",
+        "note": "Flächige Verteilung statt einzelner Reiseroute."
+      }
+    ]
+  },
+  {
+    "id": "kesshite-nai",
+    "title": "決して〜ない",
+    "formation": [
+      {
+        "jp": "この約束は決して忘れません。",
+        "de": "Dieses Versprechen werde ich niemals vergessen.",
+        "highlight": "決して忘れません",
+        "note": "Die Negation ist obligatorisch."
+      },
+      {
+        "jp": "決して簡単なわけではありません。",
+        "de": "Es ist keineswegs einfach.",
+        "highlight": "決して簡単なわけではありません",
+        "note": "Verstärkt die eingeschränkte Verneinung."
+      }
+    ]
+  },
+  {
+    "id": "kekkyoku",
+    "title": "結局",
+    "formation": [
+      {
+        "jp": "結局、そのゲームを買いました。",
+        "de": "Letztendlich habe ich das Spiel gekauft.",
+        "highlight": "結局",
+        "note": "Der vorherige Entscheidungsprozess wird mitgedacht."
+      },
+      {
+        "jp": "何度も試しましたが、結局できませんでした。",
+        "de": "Ich versuchte es oft, konnte es am Ende aber doch nicht.",
+        "highlight": "結局できませんでした",
+        "note": "Nicht nur zeitliches „zuletzt“."
+      }
+    ]
+  },
+  {
+    "id": "kirenai",
+    "title": "〜切れない",
+    "formation": [
+      {
+        "jp": "この量は一人では食べ切れません。",
+        "de": "Diese Menge kann eine Person nicht vollständig aufessen.",
+        "highlight": "食べ切れません",
+        "note": "食べる → 食べ + 切れない."
+      },
+      {
+        "jp": "数え切れないほど星があります。",
+        "de": "Es gibt unzählbar viele Sterne.",
+        "highlight": "数え切れないほど",
+        "note": "Oft idiomatisch „unzählige“."
+      }
+    ]
+  },
+  {
+    "id": "kiri",
+    "title": "〜きり",
+    "formation": [
+      {
+        "jp": "彼は出かけたきり、帰ってきません。",
+        "de": "Seit er weggegangen ist, ist er nicht zurückgekommen.",
+        "highlight": "出かけたきり",
+        "note": "Oft folgt ein fortdauernder negativer Zustand."
+      },
+      {
+        "jp": "二人きりで話しました。",
+        "de": "Wir sprachen nur zu zweit.",
+        "highlight": "二人きり",
+        "note": "Besonders häufig 一人きり, 二人きり, 一度きり."
+      }
+    ]
+  },
+  {
+    "id": "kiru-completion",
+    "title": "〜切る",
+    "formation": [
+      {
+        "jp": "長い本を一日で読み切りました。",
+        "de": "Ich las das lange Buch an einem Tag vollständig durch.",
+        "highlight": "読み切りました",
+        "note": "Stärker als neutrales 読み終わる."
+      },
+      {
+        "jp": "走り切った後、足が痛くなりました。",
+        "de": "Nachdem ich die Strecke vollständig gelaufen war, taten meine Beine weh.",
+        "highlight": "走り切った",
+        "note": "Oft Leistung oder Ausschöpfung."
+      }
+    ]
+  },
+  {
+    "id": "kke",
+    "title": "〜っけ",
+    "formation": [
+      {
+        "jp": "明日の会議は何時からだっけ？",
+        "de": "Um wie viel Uhr war die Besprechung morgen noch mal?",
+        "highlight": "何時からだっけ",
+        "note": "Sehr gesprächssprachlich."
+      },
+      {
+        "jp": "この単語、前に習ったっけ？",
+        "de": "Haben wir dieses Wort schon einmal gelernt?",
+        "highlight": "習ったっけ",
+        "note": "Der Sprecher fragt oft auch sich selbst."
+      }
+    ]
+  },
+  {
+    "id": "komu-compound",
+    "title": "〜込む",
+    "formation": [
+      {
+        "jp": "電車に人が乗り込んできました。",
+        "de": "Menschen stiegen in den Zug hinein.",
+        "highlight": "乗り込んできました",
+        "note": "Räumliche Innenrichtung."
+      },
+      {
+        "jp": "その問題について考え込みました。",
+        "de": "Ich versank in Gedanken über dieses Problem.",
+        "highlight": "考え込みました",
+        "note": "Übertragene Tiefe/Intensität."
+      }
+    ]
+  },
+  {
+    "id": "koso",
+    "title": "〜こそ",
+    "formation": [
+      {
+        "jp": "今度こそ合格したいです。",
+        "de": "Diesmal möchte ich wirklich bestehen.",
+        "highlight": "今度こそ",
+        "note": "Frühere Versuche sind oft mitgedacht."
+      },
+      {
+        "jp": "好きだからこそ、厳しく言います。",
+        "de": "Gerade weil ich dich mag, sage ich es streng.",
+        "highlight": "だからこそ",
+        "note": "Stärker als neutrales から."
+      }
+    ]
+  },
+  {
+    "id": "koto-nominalizer",
+    "title": "〜こと",
+    "formation": [
+      {
+        "jp": "毎日復習することが大切です。",
+        "de": "Es ist wichtig, jeden Tag zu wiederholen.",
+        "highlight": "復習すること",
+        "note": "Der gesamte Verbteil funktioniert als „das Wiederholen“."
+      },
+      {
+        "jp": "日本語を勉強することを楽しんでいます。",
+        "de": "Ich genieße es, Japanisch zu lernen.",
+        "highlight": "勉強することを",
+        "note": "こと erhält wie ein Nomen eine Partikel."
+      }
+    ]
+  },
+  {
+    "id": "koto-ni-natteiru",
+    "title": "〜ことになっている",
+    "formation": [
+      {
+        "jp": "この会社では、九時までに来ることになっています。",
+        "de": "In dieser Firma ist festgelegt, dass man bis neun Uhr kommt.",
+        "highlight": "来ることになっています",
+        "note": "Die Regel besteht bereits und gilt allgemein."
+      },
+      {
+        "jp": "図書館では、大きな声で話さないことになっています。",
+        "de": "In der Bibliothek ist festgelegt, dass man nicht laut spricht.",
+        "highlight": "話さないことになっています",
+        "note": "Die negative Handlung ist Teil der bestehenden Ordnung."
+      }
+    ]
+  },
+  {
+    "id": "koto-wa-nai",
+    "title": "〜ことはない",
+    "formation": [
+      {
+        "jp": "そんなに心配することはありません。",
+        "de": "Du brauchst dir nicht so viele Sorgen zu machen.",
+        "highlight": "心配することはありません",
+        "note": "Oft als beruhigender Rat."
+      },
+      {
+        "jp": "彼が約束を破ることはないでしょう。",
+        "de": "Er wird sein Versprechen wohl keinesfalls brechen.",
+        "highlight": "破ることはない",
+        "note": "Der Kontext entscheidet zwischen fehlender Notwendigkeit und starker Erwartung."
+      }
+    ]
+  },
+  {
+    "id": "koto-wa-ga",
+    "title": "〜ことは〜が",
+    "formation": [
+      {
+        "jp": "読むことは読みましたが、よく分かりませんでした。",
+        "de": "Ich habe es zwar gelesen, aber nicht gut verstanden.",
+        "highlight": "読むことは読みましたが",
+        "note": "Das wiederholte Verb bestätigt A ausdrücklich."
+      },
+      {
+        "jp": "便利なことは便利ですが、少し高いです。",
+        "de": "Praktisch ist es zwar, aber etwas teuer.",
+        "highlight": "便利なことは便利ですが",
+        "note": "Bei na-Adjektiven erscheint die passende Kopulaform."
+      }
+    ]
+  },
+  {
+    "id": "kurai-gurai",
+    "title": "〜くらい／〜ぐらい",
+    "formation": [
+      {
+        "jp": "毎日三十分ぐらい日本語を勉強します。",
+        "de": "Ich lerne jeden Tag ungefähr dreißig Minuten Japanisch.",
+        "highlight": "三十分ぐらい",
+        "note": "Keine exakte Messung."
+      },
+      {
+        "jp": "泣きたいくらいうれしかったです。",
+        "de": "Ich war so glücklich, dass ich hätte weinen können.",
+        "highlight": "泣きたいくらい",
+        "note": "Der Satz vor くらい dient als Gradmaßstab."
+      },
+      {
+        "jp": "名前くらい書いてください。",
+        "de": "Schreib bitte wenigstens deinen Namen.",
+        "highlight": "名前くらい",
+        "note": "Kann je nach Ton abwertend oder fordernd wirken."
+      }
+    ]
+  },
+  {
+    "id": "kuse-ni",
+    "title": "〜くせに",
+    "formation": [
+      {
+        "jp": "知っているくせに、教えてくれません。",
+        "de": "Obwohl er es weiß, sagt er es mir nicht.",
+        "highlight": "知っているくせに",
+        "note": "Der Sprecher kritisiert die Person."
+      },
+      {
+        "jp": "初心者のくせに、偉そうに話します。",
+        "de": "Obwohl er Anfänger ist, redet er überheblich.",
+        "highlight": "初心者のくせに",
+        "note": "Bei Nomen steht の."
+      }
+    ]
+  },
+  {
+    "id": "marude",
+    "title": "まるで〜ようだ／みたいだ",
+    "formation": [
+      {
+        "jp": "この町はまるで映画の世界のようです。",
+        "de": "Diese Stadt ist ganz wie die Welt eines Films.",
+        "highlight": "まるで映画の世界のようです",
+        "note": "ようだ macht den Vergleich ausdrücklich."
+      },
+      {
+        "jp": "彼はまるで何も知らないみたいです。",
+        "de": "Er wirkt, als wüsste er überhaupt nichts.",
+        "highlight": "まるで何も知らないみたいです",
+        "note": "みたいだ ist gesprächssprachlicher."
+      },
+      {
+        "jp": "説明を聞いても、まるで分かりませんでした。",
+        "de": "Obwohl ich die Erklärung hörte, verstand ich überhaupt nichts.",
+        "highlight": "まるで分かりませんでした",
+        "note": "Ohne Vergleichsmarker möglich."
+      }
+    ]
+  },
+  {
+    "id": "masaka",
+    "title": "まさか",
+    "formation": [
+      {
+        "jp": "まさか、彼が犯人ですか。",
+        "de": "Er ist doch nicht etwa der Täter?",
+        "highlight": "まさか",
+        "note": "Starke Überraschung oder Zweifel."
+      },
+      {
+        "jp": "まさか合格できるとは思いませんでした。",
+        "de": "Ich hätte nie gedacht, dass ich bestehen könnte.",
+        "highlight": "まさか合格できるとは思いませんでした",
+        "note": "Sehr häufige rückblickende Konstruktion."
+      },
+      {
+        "jp": "まさか忘れていないでしょうね。",
+        "de": "Du hast es doch wohl nicht vergessen, oder?",
+        "highlight": "まさか忘れていない",
+        "note": "Kann warnend oder drängend wirken."
+      }
+    ]
+  },
+  {
+    "id": "metta-ni-nai",
+    "title": "めったに〜ない",
+    "formation": [
+      {
+        "jp": "私はめったにテレビを見ません。",
+        "de": "Ich sehe nur sehr selten fern.",
+        "highlight": "めったにテレビを見ません",
+        "note": "Die Negation ist Teil der festen Konstruktion."
+      },
+      {
+        "jp": "こんな機会はめったにあることではありません。",
+        "de": "Eine solche Gelegenheit gibt es nur äußerst selten.",
+        "highlight": "めったにあることではありません",
+        "note": "Formeller und stärker nominalisiert."
+      }
+    ]
+  },
+  {
+    "id": "mo-ba-mo",
+    "title": "〜も〜ば〜も",
+    "formation": [
+      {
+        "jp": "彼は日本語も話せれば、英語も話せます。",
+        "de": "Er spricht sowohl Japanisch als auch Englisch.",
+        "highlight": "日本語も話せれば、英語も",
+        "note": "Die ば-Form verbindet parallele Merkmale."
+      },
+      {
+        "jp": "この部屋は窓もなければ、エアコンもありません。",
+        "de": "Dieses Zimmer hat weder Fenster noch Klimaanlage.",
+        "highlight": "窓もなければ、エアコンもありません",
+        "note": "Die beiden Seiten sind gleichrangig negativ."
+      }
+    ]
+  },
+  {
+    "id": "moshika-shitara",
+    "title": "もしかしたら／もしかすると",
+    "formation": [
+      {
+        "jp": "もしかしたら、明日は雨が降るかもしれません。",
+        "de": "Vielleicht regnet es morgen.",
+        "highlight": "もしかしたら",
+        "note": "Die doppelte Markierung ist sehr natürlich."
+      },
+      {
+        "jp": "もしかすると、彼はもう知っているでしょう。",
+        "de": "Möglicherweise weiß er es bereits.",
+        "highlight": "もしかすると",
+        "note": "Auch mit でしょう oder einer offenen Frage möglich."
+      }
+    ]
+  },
+  {
+    "id": "moshimo-tara",
+    "title": "もしも〜たら",
+    "formation": [
+      {
+        "jp": "もしも時間があったら、もっとゲームをしたいです。",
+        "de": "Wenn ich Zeit hätte, würde ich gern mehr spielen.",
+        "highlight": "もしも時間があったら",
+        "note": "Der Satz ist klar als Vorstellung gerahmt."
+      },
+      {
+        "jp": "もしもこのアプリがなかったら、勉強を続けられなかったかもしれません。",
+        "de": "Wenn es diese App nicht gäbe, hätte ich vielleicht nicht weiterlernen können.",
+        "highlight": "もしもこのアプリがなかったら",
+        "note": "Oft kontrafaktisch oder emotional."
+      }
+    ]
+  },
+  {
+    "id": "muke",
+    "title": "〜向け",
+    "formation": [
+      {
+        "jp": "これは初心者向けの文法書です。",
+        "de": "Das ist ein Grammatikbuch für Anfänger.",
+        "highlight": "初心者向けの",
+        "note": "Die Zielgruppe war bei der Gestaltung beabsichtigt."
+      },
+      {
+        "jp": "子供向けに、説明を簡単にしました。",
+        "de": "Für Kinder habe ich die Erklärung vereinfacht.",
+        "highlight": "子供向けに",
+        "note": "に verbindet die Zielgruppe mit der Gestaltungshandlung."
+      }
+    ]
+  },
+  {
+    "id": "muki",
+    "title": "〜向き",
+    "formation": [
+      {
+        "jp": "この仕事は、細かい作業が好きな人向きです。",
+        "de": "Diese Arbeit eignet sich für Menschen, die detailreiche Tätigkeiten mögen.",
+        "highlight": "人向きです",
+        "note": "Beobachtete Eignung."
+      },
+      {
+        "jp": "これは夏向きの軽い料理です。",
+        "de": "Das ist ein leichtes Gericht, das sich für den Sommer eignet.",
+        "highlight": "夏向きの",
+        "note": "Nicht zwingend speziell für den Sommer produziert."
+      }
+    ]
+  },
+  {
+    "id": "mushiro",
+    "title": "むしろ",
+    "formation": [
+      {
+        "jp": "電車に乗るより、むしろ歩きたいです。",
+        "de": "Statt mit dem Zug zu fahren, würde ich lieber laufen.",
+        "highlight": "むしろ歩きたい",
+        "note": "B ist die bevorzugte Alternative."
+      },
+      {
+        "jp": "難しいというより、むしろ時間がかかります。",
+        "de": "Es ist weniger schwierig als vielmehr zeitaufwendig.",
+        "highlight": "むしろ時間がかかります",
+        "note": "B trifft den Sachverhalt besser."
+      }
+    ]
+  },
+  {
+    "id": "nagara-mo",
+    "title": "〜ながらも",
+    "formation": [
+      {
+        "jp": "危険だと知りながらも、彼は進みました。",
+        "de": "Obwohl er wusste, dass es gefährlich war, ging er weiter.",
+        "highlight": "知りながらも",
+        "note": "Der Widerspruch wird ausdrücklich anerkannt."
+      },
+      {
+        "jp": "小さいながらも、強い力があります。",
+        "de": "Obwohl es klein ist, besitzt es große Kraft.",
+        "highlight": "小さいながらも",
+        "note": "Bei Nomen ist でありながらも typisch."
+      }
+    ]
+  },
+  {
+    "id": "naito",
+    "title": "〜ないと",
+    "formation": [
+      {
+        "jp": "もう勉強しないと。",
+        "de": "Ich muss jetzt lernen.",
+        "highlight": "勉強しないと",
+        "note": "Eigentlich: Wenn ich nicht lerne, ist es schlecht."
+      },
+      {
+        "jp": "明日までに終わらせないといけません。",
+        "de": "Ich muss es bis morgen fertigstellen.",
+        "highlight": "終わらせないといけません",
+        "note": "Klarer und vollständiger als die Kurzform."
+      }
+    ]
+  },
+  {
+    "id": "nakanaka",
+    "title": "なかなか",
+    "formation": [
+      {
+        "jp": "このゲームはなかなか面白いです。",
+        "de": "Dieses Spiel ist ziemlich interessant.",
+        "highlight": "なかなか面白い",
+        "note": "Oft anerkennendes Lob."
+      },
+      {
+        "jp": "新しい漢字がなかなか覚えられません。",
+        "de": "Ich kann mir die neuen Kanji einfach nicht so leicht merken.",
+        "highlight": "なかなか覚えられません",
+        "note": "Die Schwierigkeit oder Verzögerung steht im Vordergrund."
+      }
+    ]
+  },
+  {
+    "id": "nanka-nante-nado",
+    "title": "なんか／なんて／など",
+    "formation": [
+      {
+        "jp": "本やゲームなどから日本語を学びます。",
+        "de": "Ich lerne Japanisch aus Büchern, Spielen und Ähnlichem.",
+        "highlight": "ゲームなど",
+        "note": "Sachlich und auch schriftsprachlich."
+      },
+      {
+        "jp": "そんな噂なんか信じません。",
+        "de": "So ein Gerücht glaube ich doch nicht.",
+        "highlight": "噂なんか",
+        "note": "Kann das Nomen gering schätzen."
+      },
+      {
+        "jp": "私なんて、まだ初心者です。",
+        "de": "Jemand wie ich ist doch noch Anfänger.",
+        "highlight": "私なんて",
+        "note": "Die genaue Nuance hängt stark vom Ton ab."
+      }
+    ]
+  },
+  {
+    "id": "naosu-compound",
+    "title": "〜直す",
+    "formation": [
+      {
+        "jp": "間違えた文を書き直しました。",
+        "de": "Ich schrieb den falschen Satz neu.",
+        "highlight": "書き直しました",
+        "note": "書く → 書き + 直す."
+      },
+      {
+        "jp": "説明をもう一度読み直してみます。",
+        "de": "Ich werde versuchen, die Erklärung noch einmal neu zu lesen.",
+        "highlight": "読み直してみます",
+        "note": "Nicht nur Wiederholung, sondern erneute Prüfung."
+      }
+    ]
+  },
+  {
+    "id": "narubeku",
+    "title": "なるべく",
+    "formation": [
+      {
+        "jp": "なるべく毎日、日本語を読んでください。",
+        "de": "Lies möglichst jeden Tag Japanisch.",
+        "highlight": "なるべく毎日",
+        "note": "Kein absoluter Zwang."
+      },
+      {
+        "jp": "なるべく早く答えてください。",
+        "de": "Antworte bitte möglichst schnell.",
+        "highlight": "なるべく早く",
+        "note": "Die reale Situation kann Grenzen setzen."
+      }
+    ]
+  },
+  {
+    "id": "nazenara",
+    "title": "なぜなら〜からだ",
+    "formation": [
+      {
+        "jp": "今日は出かけません。なぜなら、雨が降っているからです。",
+        "de": "Heute gehe ich nicht aus. Denn es regnet.",
+        "highlight": "なぜなら",
+        "note": "Besonders klar in Erklärungen und Argumentationen."
+      },
+      {
+        "jp": "この方法が必要です。なぜなら、時間を節約できるためです。",
+        "de": "Diese Methode ist nötig, denn dadurch lässt sich Zeit sparen.",
+        "highlight": "なぜなら",
+        "note": "Der Grund steht nach dem Konnektor."
+      }
+    ]
+  },
+  {
+    "id": "ndatte",
+    "title": "〜んだって／〜んですって",
+    "formation": [
+      {
+        "jp": "明日は学校が休みなんだって。",
+        "de": "Ich habe gehört, dass morgen die Schule ausfällt.",
+        "highlight": "休みなんだって",
+        "note": "Bei Nomen und na-Adjektiven steht なんだって."
+      },
+      {
+        "jp": "彼は来ないんだって。",
+        "de": "Angeblich kommt er nicht.",
+        "highlight": "来ないんだって",
+        "note": "Die Quelle bleibt oft ungenannt."
+      },
+      {
+        "jp": "ヒーローになったんだって？",
+        "de": "Ich habe gehört, du bist ein Held geworden?",
+        "highlight": "なったんだって",
+        "note": "Frage nach Bestätigung."
+      }
+    ]
+  },
+  {
+    "id": "ni-hanshite",
+    "title": "〜に反して／〜に反する",
+    "formation": [
+      {
+        "jp": "予想に反して、試験は簡単でした。",
+        "de": "Entgegen der Erwartung war die Prüfung leicht.",
+        "highlight": "予想に反して",
+        "note": "Der Bezugspunkt ist meist eine Erwartung, Regel oder ein Wunsch."
+      },
+      {
+        "jp": "規則に反する行動は認められません。",
+        "de": "Handlungen, die gegen die Regeln verstoßen, werden nicht akzeptiert.",
+        "highlight": "規則に反する行動",
+        "note": "に反する steht direkt vor dem beschriebenen Nomen."
+      }
+    ]
+  },
+  {
+    "id": "ni-kakete-wa",
+    "title": "〜にかけては",
+    "formation": [
+      {
+        "jp": "漢字の記憶にかけては、彼に勝てません。",
+        "de": "Wenn es um das Merken von Kanji geht, kann ich ihn nicht schlagen.",
+        "highlight": "記憶にかけては",
+        "note": "Häufig folgt eine positive oder negative Bewertung der besonderen Fähigkeit."
+      },
+      {
+        "jp": "料理にかけて、彼女は専門家です。",
+        "de": "Was das Kochen betrifft, ist sie eine Expertin.",
+        "highlight": "料理にかけて",
+        "note": "Die Kompetenz steht im Mittelpunkt."
+      }
+    ]
+  },
+  {
+    "id": "ni-kanshite",
+    "title": "〜に関して／〜に関する",
+    "formation": [
+      {
+        "jp": "この問題に関して、質問があります。",
+        "de": "Bezüglich dieses Problems habe ich eine Frage.",
+        "highlight": "問題に関して",
+        "note": "Häufig in Erklärungen, Berichten und formellen Gesprächen."
+      },
+      {
+        "jp": "文法に関する本を読みました。",
+        "de": "Ich habe ein Buch über Grammatik gelesen.",
+        "highlight": "文法に関する本",
+        "note": "に関する verbindet Thema und nachfolgendes Nomen."
+      }
+    ]
+  },
+  {
+    "id": "ni-kawatte",
+    "title": "〜に代わって／〜に代わり",
+    "formation": [
+      {
+        "jp": "先生に代わって、私が説明します。",
+        "de": "Anstelle des Lehrers erkläre ich es.",
+        "highlight": "先生に代わって",
+        "note": "Die ersetzte Person wird mit に markiert."
+      },
+      {
+        "jp": "父に代わり、お礼を申し上げます。",
+        "de": "Im Namen meines Vaters möchte ich mich bedanken.",
+        "highlight": "父に代わり",
+        "note": "Besonders in formeller Sprache verbreitet."
+      },
+      {
+        "jp": "紙の辞書に代わって、アプリを使う人が増えました。",
+        "de": "Statt Papierwörterbüchern verwenden immer mehr Menschen Apps.",
+        "highlight": "辞書に代わって",
+        "note": "Ein neues Mittel übernimmt die Funktion."
+      }
+    ]
+  },
+  {
+    "id": "ni-nareru",
+    "title": "〜に慣れる",
+    "formation": [
+      {
+        "jp": "日本の生活に慣れました。",
+        "de": "Ich habe mich an das Leben in Japan gewöhnt.",
+        "highlight": "生活に慣れました",
+        "note": "に markiert das, woran man sich gewöhnt."
+      },
+      {
+        "jp": "日本語で話すのに慣れてきました。",
+        "de": "Ich gewöhne mich allmählich daran, auf Japanisch zu sprechen.",
+        "highlight": "話すのに慣れて",
+        "note": "Die Handlung wird mit の nominalisiert."
+      },
+      {
+        "jp": "この操作には慣れています。",
+        "de": "Mit dieser Bedienung bin ich vertraut.",
+        "highlight": "慣れています",
+        "note": "ている beschreibt den erreichten Gewöhnungszustand."
+      }
+    ]
+  },
+  {
+    "id": "ni-oite",
+    "title": "〜において／〜における",
+    "formation": [
+      {
+        "jp": "会議は東京において行われます。",
+        "de": "Die Konferenz findet in Tokio statt.",
+        "highlight": "東京において",
+        "note": "Formeller als 東京で."
+      },
+      {
+        "jp": "現代社会における教育の役割を考えます。",
+        "de": "Wir betrachten die Rolle der Bildung in der modernen Gesellschaft.",
+        "highlight": "社会における教育",
+        "note": "Typisch in Texten, Vorträgen und Berichten."
+      },
+      {
+        "jp": "発音において、彼は大きく進歩しました。",
+        "de": "Im Bereich der Aussprache hat er große Fortschritte gemacht.",
+        "highlight": "発音において",
+        "note": "Der Fokus liegt auf einem sachlich definierten Bereich."
+      }
+    ]
+  },
+  {
+    "id": "ni-shite-mo",
+    "title": "〜にしても／〜にしろ／〜にせよ",
+    "formation": [
+      {
+        "jp": "行かないにしても、連絡はしてください。",
+        "de": "Selbst wenn du nicht gehst, gib bitte Bescheid.",
+        "highlight": "行かないにしても",
+        "note": "Die Bedingung ändert die Pflicht zur Kontaktaufnahme nicht."
+      },
+      {
+        "jp": "初心者にしても、これは簡単すぎます。",
+        "de": "Selbst für einen Anfänger ist das zu leicht.",
+        "highlight": "初心者にしても",
+        "note": "Der genannte Fall wird als Annahme betrachtet."
+      },
+      {
+        "jp": "冗談にせよ、そんなことを言うべきではない。",
+        "de": "Selbst wenn es ein Scherz ist, sollte man so etwas nicht sagen.",
+        "highlight": "冗談にせよ",
+        "note": "Die Bewertung bleibt trotz Einräumung bestehen."
+      }
+    ]
+  },
+  {
+    "id": "ni-shite-wa",
+    "title": "〜にしては",
+    "formation": [
+      {
+        "jp": "初心者にしては、日本語が上手です。",
+        "de": "Für einen Anfänger ist sein Japanisch gut.",
+        "highlight": "初心者にしては",
+        "note": "Die Leistung übertrifft die übliche Erwartung."
+      },
+      {
+        "jp": "よく勉強したにしては、点が低かったです。",
+        "de": "Dafür, dass ich viel gelernt hatte, war die Punktzahl niedrig.",
+        "highlight": "勉強したにしては",
+        "note": "Das Ergebnis widerspricht der erwartbaren Folge."
+      },
+      {
+        "jp": "夏にしては涼しいですね。",
+        "de": "Für den Sommer ist es kühl, nicht wahr?",
+        "highlight": "夏にしては",
+        "note": "Abweichung vom normalen Maßstab."
+      }
+    ]
+  },
+  {
+    "id": "ni-tsuite",
+    "title": "〜について／〜についての",
+    "formation": [
+      {
+        "jp": "日本の歴史について勉強しています。",
+        "de": "Ich lerne über die japanische Geschichte.",
+        "highlight": "歴史について",
+        "note": "Sehr häufig bei 話す, 調べる, 学ぶ und 考える."
+      },
+      {
+        "jp": "文法についての質問があります。",
+        "de": "Ich habe eine Frage zur Grammatik.",
+        "highlight": "文法についての質問",
+        "note": "の ist nötig, wenn danach ein Nomen folgt."
+      },
+      {
+        "jp": "発音については、あとで説明します。",
+        "de": "Was die Aussprache betrifft, erkläre ich sie später.",
+        "highlight": "発音については",
+        "note": "Ein Thema wird gegenüber anderen abgegrenzt."
+      }
+    ]
+  },
+  {
+    "id": "ni-wa-purpose",
+    "title": "〜には",
+    "formation": [
+      {
+        "jp": "日本語が上手になるには、毎日使うことが大切です。",
+        "de": "Um gut in Japanisch zu werden, ist tägliche Anwendung wichtig.",
+        "highlight": "上手になるには",
+        "note": "Der Folgesatz nennt, was dafür nötig ist."
+      },
+      {
+        "jp": "合格するには、復習が必要です。",
+        "de": "Um zu bestehen, ist Wiederholung nötig.",
+        "highlight": "合格するには",
+        "note": "Häufig mit 必要だ, 大切だ, 〜なければならない."
+      },
+      {
+        "jp": "この仕事には経験が必要です。",
+        "de": "Für diese Arbeit ist Erfahrung nötig.",
+        "highlight": "仕事には",
+        "note": "Hier ist der Bezug ‚für diese Sache‘, nicht zwingend eine Verbzielkonstruktion."
+      }
+    ]
+  },
+  {
+    "id": "ni-yoruto",
+    "title": "〜によると／〜によれば／〜によりますと",
+    "formation": [
+      {
+        "jp": "天気予報によると、明日は雨だそうです。",
+        "de": "Laut Wetterbericht soll es morgen regnen.",
+        "highlight": "天気予報によると",
+        "note": "Typisch mit そうだ, ということだ oder らしい."
+      },
+      {
+        "jp": "先生によれば、この表現はよく使われるそうです。",
+        "de": "Laut dem Lehrer wird dieser Ausdruck häufig verwendet.",
+        "highlight": "先生によれば",
+        "note": "Etwas schriftlicher oder argumentativer möglich."
+      },
+      {
+        "jp": "発表によりますと、試験日は変更されました。",
+        "de": "Laut der Mitteilung wurde der Prüfungstag geändert.",
+        "highlight": "発表によりますと",
+        "note": "Sehr formell und häufig in Nachrichtensprache."
+      }
+    ]
+  },
+  {
+    "id": "ni-yotte",
+    "title": "〜によって／〜による",
+    "formation": [
+      {
+        "jp": "インターネットによって、世界中の情報を得られます。",
+        "de": "Durch das Internet kann man Informationen aus aller Welt erhalten.",
+        "highlight": "インターネットによって",
+        "note": "Formeller als で."
+      },
+      {
+        "jp": "大雨によって、試合が中止になりました。",
+        "de": "Wegen starken Regens wurde das Spiel abgesagt.",
+        "highlight": "大雨によって",
+        "note": "Häufig bei Ereignissen und Schäden."
+      },
+      {
+        "jp": "この作品は有名な作家によって書かれました。",
+        "de": "Dieses Werk wurde von einem berühmten Autor geschrieben.",
+        "highlight": "作家によって",
+        "note": "Besonders bei Schöpfungs- und Entstehungsvorgängen."
+      },
+      {
+        "jp": "人によって、覚え方が違います。",
+        "de": "Je nach Person unterscheidet sich die Lernweise.",
+        "highlight": "人によって",
+        "note": "Bedeutung ‚je nach‘."
+      }
+    ]
+  },
+  {
+    "id": "no-deshou-ka",
+    "title": "〜のでしょうか／〜んでしょうか",
+    "formation": [
+      {
+        "jp": "なぜこの形を使うのでしょうか。",
+        "de": "Warum verwendet man wohl diese Form?",
+        "highlight": "使うのでしょうか",
+        "note": "Die Frage bittet um eine erklärende Antwort."
+      },
+      {
+        "jp": "これは本当に必要なのでしょうか。",
+        "de": "Ist das wirklich notwendig?",
+        "highlight": "必要なのでしょうか",
+        "note": "Die Form bleibt höflich und reflektierend."
+      },
+      {
+        "jp": "次は何をすればいいんでしょうか。",
+        "de": "Was sollte ich als Nächstes tun?",
+        "highlight": "いいんでしょうか",
+        "note": "Im Gespräch sehr natürlich."
+      }
+    ]
+  },
+  {
+    "id": "o-chuushin-ni",
+    "title": "〜を中心に／〜を中心として",
+    "formation": [
+      {
+        "jp": "若者を中心に、このゲームが人気です。",
+        "de": "Dieses Spiel ist vor allem bei jungen Menschen beliebt.",
+        "highlight": "若者を中心に",
+        "note": "Die Gruppe bildet den Schwerpunkt, nicht zwingend die Gesamtheit."
+      },
+      {
+        "jp": "東京を中心として、イベントが行われます。",
+        "de": "Die Veranstaltungen finden hauptsächlich rund um Tokio statt.",
+        "highlight": "東京を中心として",
+        "note": "Der Ort dient als organisatorisches Zentrum."
+      },
+      {
+        "jp": "文法を中心とする学習計画です。",
+        "de": "Es ist ein Lernplan mit Schwerpunkt Grammatik.",
+        "highlight": "文法を中心とする",
+        "note": "Das folgende Nomen ist um den Schwerpunkt organisiert."
+      }
+    ]
+  },
+  {
+    "id": "o-hajime",
+    "title": "〜をはじめ／〜をはじめとして",
+    "formation": [
+      {
+        "jp": "日本をはじめ、多くの国でこの作品が人気です。",
+        "de": "Angefangen mit Japan ist dieses Werk in vielen Ländern beliebt.",
+        "highlight": "日本をはじめ",
+        "note": "Japan ist ein wichtiges Beispiel innerhalb einer größeren Gruppe."
+      },
+      {
+        "jp": "先生をはじめとして、みんなが応援してくれました。",
+        "de": "Angefangen beim Lehrer unterstützten mich alle.",
+        "highlight": "先生をはじめとして",
+        "note": "Das erste Beispiel steht repräsentativ für die Gruppe."
+      },
+      {
+        "jp": "東京をはじめとする大都市で開催されます。",
+        "de": "Es findet in Großstädten wie Tokio statt.",
+        "highlight": "東京をはじめとする",
+        "note": "Das nachfolgende Nomen umfasst weitere ähnliche Beispiele."
+      }
+    ]
+  },
+  {
+    "id": "o-komete",
+    "title": "〜を込めて／〜がこもった",
+    "formation": [
+      {
+        "jp": "感謝を込めて、手紙を書きました。",
+        "de": "Ich schrieb den Brief voller Dankbarkeit.",
+        "highlight": "感謝を込めて",
+        "note": "Das Gefühl begleitet und prägt die Handlung."
+      },
+      {
+        "jp": "心を込めたプレゼントです。",
+        "de": "Es ist ein Geschenk von Herzen.",
+        "highlight": "心を込めた",
+        "note": "Häufig mit 心, 愛, 願い, 感謝."
+      },
+      {
+        "jp": "気持ちがこもった言葉でした。",
+        "de": "Es waren Worte voller Gefühl.",
+        "highlight": "気持ちがこもった",
+        "note": "Fokus auf dem Ergebnis statt der bewussten Handlung."
+      }
+    ]
+  },
+  {
+    "id": "o-tsuujite",
+    "title": "〜を通じて／〜を通して",
+    "formation": [
+      {
+        "jp": "ゲームを通して、日本語を学びました。",
+        "de": "Durch Videospiele habe ich Japanisch gelernt.",
+        "highlight": "ゲームを通して",
+        "note": "Das Spiel ist Vermittlungsweg, nicht bloß Werkzeug."
+      },
+      {
+        "jp": "一年を通じて、この町は観光客が多いです。",
+        "de": "Das ganze Jahr über hat diese Stadt viele Touristen.",
+        "highlight": "一年を通じて",
+        "note": "Kontinuität über den gesamten Zeitraum."
+      },
+      {
+        "jp": "友達を通して、先生を紹介してもらいました。",
+        "de": "Über einen Freund wurde ich dem Lehrer vorgestellt.",
+        "highlight": "友達を通して",
+        "note": "Indirekte Vermittlung."
+      }
+    ]
+  },
+  {
+    "id": "ppanashi",
+    "title": "〜っぱなし",
+    "formation": [
+      {
+        "jp": "電気をつけっぱなしで寝てしまいました。",
+        "de": "Ich schlief ein und ließ das Licht an.",
+        "highlight": "つけっぱなし",
+        "note": "Die erwartete Folgehandlung ‚ausschalten‘ fehlt."
+      },
+      {
+        "jp": "今日は一日中立ちっぱなしでした。",
+        "de": "Heute stand ich den ganzen Tag ununterbrochen.",
+        "highlight": "立ちっぱなし",
+        "note": "Belastende oder ungewöhnlich lange Dauer."
+      },
+      {
+        "jp": "ドアを開けっぱなしにしないでください。",
+        "de": "Bitte lassen Sie die Tür nicht offen stehen.",
+        "highlight": "開けっぱなしに",
+        "note": "Häufige Warnung oder Kritik."
+      }
+    ]
+  },
+  {
+    "id": "ppoi",
+    "title": "〜っぽい",
+    "formation": [
+      {
+        "jp": "この服は少し子供っぽいです。",
+        "de": "Diese Kleidung wirkt etwas kindlich.",
+        "highlight": "子供っぽい",
+        "note": "Ähnlichkeit oder typischer Eindruck."
+      },
+      {
+        "jp": "彼は忘れっぽいです。",
+        "de": "Er ist vergesslich.",
+        "highlight": "忘れっぽい",
+        "note": "Wiederkehrende Tendenz."
+      },
+      {
+        "jp": "このスープは水っぽいです。",
+        "de": "Diese Suppe ist wässrig.",
+        "highlight": "水っぽい",
+        "note": "Oft leicht negative Bewertung."
+      }
+    ]
+  },
+  {
+    "id": "sae",
+    "title": "〜さえ",
+    "formation": [
+      {
+        "jp": "子供でさえ、その漢字を知っています。",
+        "de": "Sogar Kinder kennen dieses Kanji.",
+        "highlight": "子供でさえ",
+        "note": "で kann bei Nomen erscheinen, besonders als Subjektkategorie."
+      },
+      {
+        "jp": "先生にさえ分からない問題です。",
+        "de": "Es ist eine Aufgabe, die nicht einmal der Lehrer versteht.",
+        "highlight": "先生にさえ",
+        "note": "Die grammatische Rolle bleibt durch に sichtbar."
+      },
+      {
+        "jp": "忙しくて、水さえ飲めませんでした。",
+        "de": "Ich war so beschäftigt, dass ich nicht einmal Wasser trinken konnte.",
+        "highlight": "水さえ",
+        "note": "Das minimale Beispiel war unmöglich."
+      }
+    ]
+  },
+  {
+    "id": "sae-ba",
+    "title": "〜さえ〜ば",
+    "formation": [
+      {
+        "jp": "時間さえあれば、もっと勉強できます。",
+        "de": "Wenn ich nur Zeit habe, kann ich mehr lernen.",
+        "highlight": "時間さえあれば",
+        "note": "Alles andere wird als weniger wichtig behandelt."
+      },
+      {
+        "jp": "毎日復習しさえすれば、忘れにくくなります。",
+        "de": "Wenn du nur jeden Tag wiederholst, vergisst du es weniger leicht.",
+        "highlight": "復習しさえすれば",
+        "note": "する → しさえすれば."
+      },
+      {
+        "jp": "意味が分かりさえすれば、完璧でなくてもいいです。",
+        "de": "Solange man nur die Bedeutung versteht, muss es nicht perfekt sein.",
+        "highlight": "分かりさえすれば",
+        "note": "Die Form betont ausreichende Minimalerfüllung."
+      }
+    ]
+  },
+  {
+    "id": "sai-ni",
+    "title": "〜際に／〜際は",
+    "formation": [
+      {
+        "jp": "申し込む際に、名前を確認してください。",
+        "de": "Überprüfen Sie bei der Anmeldung Ihren Namen.",
+        "highlight": "申し込む際に",
+        "note": "Wörterbuchform blickt auf die Handlung als Anlass."
+      },
+      {
+        "jp": "面接の際に、この書類を持ってきてください。",
+        "de": "Bringen Sie bei dem Vorstellungsgespräch dieses Dokument mit.",
+        "highlight": "面接の際に",
+        "note": "Bei Nomen ist の nötig."
+      },
+      {
+        "jp": "問題がある際は、先生に連絡してください。",
+        "de": "Falls es ein Problem gibt, kontaktieren Sie den Lehrer.",
+        "highlight": "ある際は",
+        "note": "Typisch in Anweisungen."
+      }
+    ]
+  },
+  {
+    "id": "sarani",
+    "title": "さらに",
+    "formation": [
+      {
+        "jp": "このアプリは語彙を練習できます。さらに、文法も学べます。",
+        "de": "Mit dieser App kann man Vokabeln üben. Außerdem kann man Grammatik lernen.",
+        "highlight": "さらに",
+        "note": "Sachliche Erweiterung."
+      },
+      {
+        "jp": "練習すると、さらに上手になります。",
+        "de": "Wenn man übt, wird man noch besser.",
+        "highlight": "さらに上手に",
+        "note": "Bedeutung ‚noch mehr/weiter‘."
+      },
+      {
+        "jp": "さらに五つの例を追加しました。",
+        "de": "Es wurden fünf weitere Beispiele hinzugefügt.",
+        "highlight": "さらに五つ",
+        "note": "Zusätzliche Menge."
+      }
+    ]
+  },
+  {
+    "id": "sate",
+    "title": "さて",
+    "formation": [
+      {
+        "jp": "さて、次の文法を見てみましょう。",
+        "de": "Nun schauen wir uns die nächste Grammatik an.",
+        "highlight": "さて",
+        "note": "Typisch in Erklärungen und Präsentationen."
+      },
+      {
+        "jp": "さて、そろそろ勉強を始めます。",
+        "de": "Also, ich fange langsam mit dem Lernen an.",
+        "highlight": "さて",
+        "note": "Leitet eine neue Phase ein."
+      },
+      {
+        "jp": "さて、どの言葉から覚えようかな。",
+        "de": "Nun, mit welchem Wort soll ich anfangen?",
+        "highlight": "さて",
+        "note": "Auch als Selbstgespräch möglich."
+      }
+    ]
+  },
+  {
+    "id": "seizei",
+    "title": "せいぜい",
+    "formation": [
+      {
+        "jp": "一日に覚えられるのは、せいぜい十語です。",
+        "de": "An einem Tag kann ich höchstens zehn Wörter lernen.",
+        "highlight": "せいぜい十語",
+        "note": "Die Menge darüber gilt als unrealistisch."
+      },
+      {
+        "jp": "せいぜい頑張ってください。",
+        "de": "Gib dir wenigstens/bestens Mühe.",
+        "highlight": "せいぜい頑張って",
+        "note": "Je nach Ton kann dies aufmunternd oder herablassend klingen."
+      },
+      {
+        "jp": "待っても、せいぜい十分です。",
+        "de": "Selbst wenn ich warte, dann höchstens zehn Minuten.",
+        "highlight": "せいぜい十分",
+        "note": "Klare Obergrenze."
+      }
+    ]
+  },
+  {
+    "id": "shibaraku",
+    "title": "しばらく",
+    "formation": [
+      {
+        "jp": "しばらく休みましょう。",
+        "de": "Machen wir eine Weile Pause.",
+        "highlight": "しばらく",
+        "note": "Die Dauer bleibt bewusst ungenau."
+      },
+      {
+        "jp": "しばらくゲームをしません。",
+        "de": "Ich werde eine Weile keine Videospiele spielen.",
+        "highlight": "しばらく",
+        "note": "Vorübergehende Entscheidung."
+      },
+      {
+        "jp": "しばらくぶりに友達に会いました。",
+        "de": "Ich traf nach längerer Zeit einen Freund.",
+        "highlight": "しばらくぶりに",
+        "note": "Verwandt mit 〜ぶりに."
+      }
+    ]
+  },
+  {
+    "id": "shikanai",
+    "title": "〜しかない",
+    "formation": [
+      {
+        "jp": "もう一度やるしかありません。",
+        "de": "Es bleibt nichts anderes übrig, als es noch einmal zu tun.",
+        "highlight": "やるしかありません",
+        "note": "Höfliche Form mit ありません."
+      },
+      {
+        "jp": "今はこの方法しかないです。",
+        "de": "Im Moment gibt es nur diese Methode.",
+        "highlight": "この方法しかない",
+        "note": "しか steht mit Negation."
+      },
+      {
+        "jp": "電車がなくて、歩くしかなかった。",
+        "de": "Es gab keinen Zug, also blieb mir nur zu Fuß zu gehen.",
+        "highlight": "歩くしかなかった",
+        "note": "Äußere Umstände begrenzen die Optionen."
+      }
+    ]
+  },
+  {
+    "id": "sono-tame-ni",
+    "title": "そのため（に）",
+    "formation": [
+      {
+        "jp": "今日は大雪です。そのため、電車が遅れています。",
+        "de": "Heute schneit es stark. Deshalb haben die Züge Verspätung.",
+        "highlight": "そのため",
+        "note": "In dieser Verwendung steht die Ursache vollständig im vorherigen Satz."
+      },
+      {
+        "jp": "日本語でゲームをしたいです。そのために、毎日勉強しています。",
+        "de": "Ich möchte Spiele auf Japanisch spielen. Zu diesem Zweck lerne ich jeden Tag.",
+        "highlight": "そのために",
+        "note": "Der Kontext entscheidet zwischen Folge und Zweck."
+      }
+    ]
+  },
+  {
+    "id": "soretomo",
+    "title": "それとも",
+    "formation": [
+      {
+        "jp": "先に文法をしますか。それとも、語彙を復習しますか。",
+        "de": "Machst du zuerst Grammatik? Oder wiederholst du Vokabeln?",
+        "highlight": "それとも",
+        "note": "Beide Seiten können eigenständige Fragen sein."
+      },
+      {
+        "jp": "コーヒー、それともお茶にしますか。",
+        "de": "Kaffee oder Tee?",
+        "highlight": "それとも",
+        "note": "Das Fragezeichen beziehungsweise die Fragesituation ist entscheidend."
+      }
+    ]
+  },
+  {
+    "id": "sou-ni-nai",
+    "title": "〜そうにない／〜そうもない",
+    "formation": [
+      {
+        "jp": "雨はしばらく止みそうにありません。",
+        "de": "Es sieht nicht so aus, als würde der Regen bald aufhören.",
+        "highlight": "止みそうにありません",
+        "note": "Die Beurteilung basiert auf der gegenwärtigen Situation."
+      },
+      {
+        "jp": "この問題は一人では解けそうもない。",
+        "de": "Dieses Problem scheint allein kaum lösbar zu sein.",
+        "highlight": "解けそうもない",
+        "note": "も verstärkt den Eindruck ‚überhaupt nicht danach aussehen‘."
+      },
+      {
+        "jp": "今日は全部覚えられそうにないです。",
+        "de": "Heute werde ich wohl nicht alles behalten können.",
+        "highlight": "覚えられそうにない",
+        "note": "Die Form bezieht sich auf die Aussicht, nicht auf eine feste Unmöglichkeit."
+      }
+    ]
+  },
+  {
+    "id": "sudeni",
+    "title": "すでに／既に",
+    "formation": [
+      {
+        "jp": "その文法はすでに勉強しました。",
+        "de": "Diese Grammatik habe ich bereits gelernt.",
+        "highlight": "すでに勉強しました",
+        "note": "Der Abschluss liegt vor dem betrachteten Jetzt."
+      },
+      {
+        "jp": "必要なデータはすでに保存されています。",
+        "de": "Die erforderlichen Daten sind bereits gespeichert.",
+        "highlight": "すでに保存されています",
+        "note": "Häufig in sachlichen Meldungen."
+      },
+      {
+        "jp": "家に着いた時には、すでに暗くなっていました。",
+        "de": "Als ich zu Hause ankam, war es bereits dunkel geworden.",
+        "highlight": "すでに暗くなって",
+        "note": "‚Bereits‘ bezieht sich auf den damaligen Zeitpunkt."
+      }
+    ]
+  },
+  {
+    "id": "sunawachi",
+    "title": "すなわち／即ち",
+    "formation": [
+      {
+        "jp": "五回の復習が必要です。すなわち、あと二回です。",
+        "de": "Fünf Wiederholungen sind nötig. Das heißt, es fehlen noch zwei.",
+        "highlight": "すなわち",
+        "note": "B ist keine neue Folge, sondern eine Umformulierung."
+      },
+      {
+        "jp": "SRS、すなわち間隔反復システムを使います。",
+        "de": "Wir verwenden SRS, also ein System der verteilten Wiederholung.",
+        "highlight": "すなわち",
+        "note": "Typisch in Erklärtexten und Definitionen."
+      }
+    ]
+  },
+  {
+    "id": "suuryou-wa",
+    "title": "数量 + は",
+    "formation": [
+      {
+        "jp": "この本を読むには三日はかかります。",
+        "de": "Um dieses Buch zu lesen, braucht man mindestens drei Tage.",
+        "highlight": "三日はかかります",
+        "note": "Mehr als drei Tage bleibt möglich."
+      },
+      {
+        "jp": "新しい単語を覚えるには、五回は復習が必要です。",
+        "de": "Um ein neues Wort zu behalten, sind mindestens fünf Wiederholungen nötig.",
+        "highlight": "五回は",
+        "note": "は hebt die Menge als Untergrenze hervor."
+      },
+      {
+        "jp": "今日は十語は覚えられると思います。",
+        "de": "Ich denke, heute kann ich mindestens zehn Wörter lernen.",
+        "highlight": "十語は",
+        "note": "Es handelt sich um eine Schätzung, nicht um eine exakte Begrenzung."
+      }
+    ]
+  },
+  {
+    "id": "ta-mono-da",
+    "title": "〜たものだ",
+    "formation": [
+      {
+        "jp": "子供の頃、よく夜遅くまでゲームをしたものです。",
+        "de": "Als Kind spielte ich oft bis spät in die Nacht.",
+        "highlight": "したものです",
+        "note": "よく verstärkt den Gewohnheitscharakter."
+      },
+      {
+        "jp": "昔はこの漢字を何度も間違えたものだ。",
+        "de": "Früher machte ich bei diesem Kanji immer wieder Fehler.",
+        "highlight": "間違えたものだ",
+        "note": "Die Form blickt mit zeitlicher Distanz zurück."
+      },
+      {
+        "jp": "昔はオンラインで簡単に学べたものではありません。",
+        "de": "Früher konnte man nicht einfach online lernen.",
+        "highlight": "ものではありません",
+        "note": "Diese Variante ist formeller und seltener."
+      }
+    ]
+  },
+  {
+    "id": "tashika-ni",
+    "title": "確かに",
+    "formation": [
+      {
+        "jp": "確かに、この文法はよく使われます。",
+        "de": "Tatsächlich wird diese Grammatik oft verwendet.",
+        "highlight": "確かに",
+        "note": "Die Zustimmung kann allein stehen."
+      },
+      {
+        "jp": "確かに難しいですが、練習すれば分かります。",
+        "de": "Zugegeben, es ist schwierig, aber mit Übung versteht man es.",
+        "highlight": "確かに難しいですが",
+        "note": "Sehr häufig in abwägenden Argumenten."
+      },
+      {
+        "jp": "確かにそうですね。",
+        "de": "Das stimmt tatsächlich.",
+        "highlight": "確かにそう",
+        "note": "Gesprächige Zustimmung."
+      }
+    ]
+  },
+  {
+    "id": "tate",
+    "title": "〜たて",
+    "formation": [
+      {
+        "jp": "焼きたてのパンはおいしいです。",
+        "de": "Frisch gebackenes Brot ist lecker.",
+        "highlight": "焼きたてのパン",
+        "note": "Besonders häufig bei Herstellung und Zubereitung."
+      },
+      {
+        "jp": "覚えたての言葉を使ってみました。",
+        "de": "Ich probierte ein gerade erst gelerntes Wort aus.",
+        "highlight": "覚えたての言葉",
+        "note": "Auch neue Fähigkeiten oder Rollen sind möglich."
+      },
+      {
+        "jp": "このデータは保存したてです。",
+        "de": "Diese Daten wurden gerade erst gespeichert.",
+        "highlight": "保存したてです",
+        "note": "Nicht jede Verbindung klingt gleich idiomatisch."
+      }
+    ]
+  },
+  {
+    "id": "tatoe-temo",
+    "title": "たとえ〜ても／〜でも",
+    "formation": [
+      {
+        "jp": "たとえ間違えても、もう一度挑戦します。",
+        "de": "Selbst wenn ich einen Fehler mache, versuche ich es noch einmal.",
+        "highlight": "たとえ間違えても",
+        "note": "Der Hauptsatz bleibt trotz der Bedingung gültig."
+      },
+      {
+        "jp": "たとえ難しくても、最後まで読みたいです。",
+        "de": "Selbst wenn es schwierig ist, möchte ich bis zum Ende lesen.",
+        "highlight": "たとえ難しくても",
+        "note": "い-Adjektiv: い → くても."
+      },
+      {
+        "jp": "たとえ初心者でも、このモードを使えます。",
+        "de": "Selbst als Anfänger kann man diesen Modus benutzen.",
+        "highlight": "たとえ初心者でも",
+        "note": "Die Hypothese kann auch eine Kategorie betreffen."
+      }
+    ]
+  },
+  {
+    "id": "tatoeba",
+    "title": "例えば",
+    "formation": [
+      {
+        "jp": "短いゲーム表現は覚えやすいです。例えば、『任せて』です。",
+        "de": "Kurze Spielausdrücke sind leicht zu merken, zum Beispiel ‚Überlass es mir‘.",
+        "highlight": "例えば",
+        "note": "Das Beispiel soll die allgemeine Aussage verständlicher machen."
+      },
+      {
+        "jp": "例えば、文法や語彙をゲームから学べます。",
+        "de": "Zum Beispiel kann man Grammatik und Vokabeln aus Spielen lernen.",
+        "highlight": "例えば",
+        "note": "や zeigt, dass die Liste nicht vollständig ist."
+      },
+      {
+        "jp": "復習方法、例えばクイズを追加できます。",
+        "de": "Man kann Wiederholungsmethoden hinzufügen, beispielsweise Quizfragen.",
+        "highlight": "例えばクイズ",
+        "note": "Häufig in Erklärungen."
+      }
+    ]
+  },
+  {
+    "id": "tatte",
+    "title": "〜たって／〜だって／〜くたって",
+    "formation": [
+      {
+        "jp": "今から急いだって、間に合わないよ。",
+        "de": "Selbst wenn du dich jetzt beeilst, schaffst du es nicht mehr rechtzeitig.",
+        "highlight": "急いだって",
+        "note": "急いでも entspricht der neutraleren Form."
+      },
+      {
+        "jp": "難しくたって、やってみたい。",
+        "de": "Auch wenn es schwierig ist, möchte ich es versuchen.",
+        "highlight": "難しくたって",
+        "note": "Lockerer gesprochener Stil."
+      },
+      {
+        "jp": "初心者だって使えます。",
+        "de": "Sogar als Anfänger kann man es benutzen.",
+        "highlight": "初心者だって",
+        "note": "Je nach Kontext kann だって auch ‚sogar‘ heißen."
+      }
+    ]
+  },
+  {
+    "id": "te-bakari-iru",
+    "title": "〜てばかりいる",
+    "formation": [
+      {
+        "jp": "単語を集めてばかりいて、復習していません。",
+        "de": "Ich sammle ständig nur Wörter und wiederhole sie nicht.",
+        "highlight": "集めてばかりいて",
+        "note": "Die zweite Aussage zeigt oft, was dadurch vernachlässigt wird."
+      },
+      {
+        "jp": "彼はゲームをしてばかりいます。",
+        "de": "Er spielt ständig nur Videospiele.",
+        "highlight": "してばかりいます",
+        "note": "Kann je nach Kontext auch neutral beobachtend sein."
+      },
+      {
+        "jp": "休みの日は寝てばかりいました。",
+        "de": "An freien Tagen habe ich fast nur geschlafen.",
+        "highlight": "寝てばかりいました",
+        "note": "Vergangene Gewohnheit mit begrenztem Zeitraum."
+      }
+    ]
+  },
+  {
+    "id": "te-goran",
+    "title": "〜てごらん（なさい）",
+    "formation": [
+      {
+        "jp": "この文を声に出して読んでごらん。",
+        "de": "Lies diesen Satz einmal laut vor.",
+        "highlight": "読んでごらん",
+        "note": "Der Sprecher erwartet, dass der Versuch hilfreich ist."
+      },
+      {
+        "jp": "分からなければ、例を見てごらんなさい。",
+        "de": "Wenn du es nicht verstehst, sieh dir das Beispiel einmal an.",
+        "highlight": "見てごらんなさい",
+        "note": "Typisch von Eltern oder Lehrpersonen."
+      },
+      {
+        "jp": "一度使ってごらんよ。",
+        "de": "Probier es doch einmal aus.",
+        "highlight": "使ってごらんよ",
+        "note": "Trotzdem bleibt ein Rollenunterschied möglich."
+      }
+    ]
+  },
+  {
+    "id": "te-hajimete",
+    "title": "〜てはじめて",
+    "formation": [
+      {
+        "jp": "実際に使ってはじめて、この文法の違いが分かりました。",
+        "de": "Erst nachdem ich sie tatsächlich benutzt hatte, verstand ich den Unterschied dieser Grammatik.",
+        "highlight": "使ってはじめて",
+        "note": "Die Erfahrung verändert das Verständnis."
+      },
+      {
+        "jp": "基礎を覚えてはじめて、長い文が読めます。",
+        "de": "Erst wenn man die Grundlagen gelernt hat, kann man lange Sätze lesen.",
+        "highlight": "覚えてはじめて",
+        "note": "Die Voraussetzung ist inhaltlich notwendig."
+      },
+      {
+        "jp": "失敗して初めて準備の大切さに気づきました。",
+        "de": "Erst durch das Scheitern erkannte ich die Bedeutung der Vorbereitung.",
+        "highlight": "失敗して初めて",
+        "note": "Kanji oder Hiragana sind möglich."
+      }
+    ]
+  },
+  {
+    "id": "te-shouganai",
+    "title": "〜てしょうがない／〜てしかたがない",
+    "formation": [
+      {
+        "jp": "結果が気になってしょうがありません。",
+        "de": "Das Ergebnis beschäftigt mich unglaublich stark.",
+        "highlight": "気になってしょうがありません",
+        "note": "Häufig mit 気になる, 心配する oder 思う."
+      },
+      {
+        "jp": "今日は眠くてしょうがないです。",
+        "de": "Heute bin ich unglaublich schläfrig.",
+        "highlight": "眠くてしょうがない",
+        "note": "Die て-Verbindung des Adjektivs ist nötig."
+      },
+      {
+        "jp": "不安でしかたがありません。",
+        "de": "Ich bin furchtbar beunruhigt.",
+        "highlight": "不安でしかたがありません",
+        "note": "しかたがない klingt etwas vollständiger als しょうがない."
+      }
+    ]
+  },
+  {
+    "id": "te-sumu",
+    "title": "〜て済む／〜ないで済む",
+    "formation": [
+      {
+        "jp": "説明するだけで済みました。",
+        "de": "Es reichte, es nur zu erklären.",
+        "highlight": "だけで済みました",
+        "note": "Oft steht だけで, Nで oder einer kurzen Maßnahme."
+      },
+      {
+        "jp": "データが戻ったので、最初からやり直さないで済みました。",
+        "de": "Weil die Daten zurückkamen, musste ich nicht von vorn beginnen.",
+        "highlight": "やり直さないで済みました",
+        "note": "Die vermiedene Handlung wäre sonst nötig gewesen."
+      },
+      {
+        "jp": "この修理は千円で済みました。",
+        "de": "Diese Reparatur war mit tausend Yen erledigt.",
+        "highlight": "千円で済みました",
+        "note": "Die tatsächliche Belastung blieb begrenzt."
+      }
+    ]
+  },
+  {
+    "id": "teiru-baai-janai",
+    "title": "〜ている場合じゃない／〜ている場合ではない",
+    "formation": [
+      {
+        "jp": "迷っている場合じゃない。今すぐ始めよう。",
+        "de": "Jetzt ist keine Zeit zum Zögern. Fangen wir sofort an.",
+        "highlight": "迷っている場合じゃない",
+        "note": "Der zweite Satz nennt oft die dringendere Alternative."
+      },
+      {
+        "jp": "細かい表現を気にしている場合ではありません。",
+        "de": "Dies ist nicht der Moment, sich um kleine Formulierungen zu kümmern.",
+        "highlight": "場合ではありません",
+        "note": "Höflich und dennoch deutlich."
+      },
+      {
+        "jp": "休憩の場合ではない。",
+        "de": "Für eine Pause ist jetzt keine Zeit.",
+        "highlight": "場合ではない",
+        "note": "Bei Handlungen ist die ている-Form typischer."
+      }
+    ]
+  },
+  {
+    "id": "teki",
+    "title": "〜的（てき）",
+    "formation": [
+      {
+        "jp": "効果的な勉強方法を探しています。",
+        "de": "Ich suche eine effektive Lernmethode.",
+        "highlight": "効果的な勉強方法",
+        "note": "的な verhält sich wie ein な-Adjektiv vor Nomen."
+      },
+      {
+        "jp": "この説明は具体的です。",
+        "de": "Diese Erklärung ist konkret.",
+        "highlight": "具体的です",
+        "note": "Viele Kombinationen sind feste Wörter."
+      },
+      {
+        "jp": "文法を体系的に学びます。",
+        "de": "Ich lerne Grammatik systematisch.",
+        "highlight": "体系的に",
+        "note": "に macht das な-Adjektiv adverbial."
+      }
+    ]
+  },
+  {
+    "id": "temo-hajimaranai",
+    "title": "〜ても始まらない",
+    "formation": [
+      {
+        "jp": "ここで文句を言っても始まりません。",
+        "de": "Es bringt nichts, sich hier zu beschweren.",
+        "highlight": "言っても始まりません",
+        "note": "Oft folgt eine konstruktive Alternative."
+      },
+      {
+        "jp": "悩んでも始まらないから、まず一問やってみよう。",
+        "de": "Grübeln bringt nichts, also lösen wir zunächst eine Aufgabe.",
+        "highlight": "悩んでも始まらない",
+        "note": "Typische motivierende Verwendung."
+      },
+      {
+        "jp": "今さら後悔しても始まらない。",
+        "de": "Jetzt noch zu bereuen bringt nichts.",
+        "highlight": "後悔しても始まらない",
+        "note": "今さら verstärkt den irreversiblen Kontext."
+      }
+    ]
+  },
+  {
+    "id": "temo-kamawanai",
+    "title": "〜ても構わない／〜でも構わない",
+    "formation": [
+      {
+        "jp": "分からなければ、辞書を使っても構いません。",
+        "de": "Wenn du es nicht verstehst, darfst du ein Wörterbuch benutzen.",
+        "highlight": "使っても構いません",
+        "note": "Höfliche Erlaubnis."
+      },
+      {
+        "jp": "少し遅くても構いません。",
+        "de": "Es ist in Ordnung, wenn es etwas spät ist.",
+        "highlight": "遅くても構いません",
+        "note": "Die Bedingung wird toleriert."
+      },
+      {
+        "jp": "答えはひらがなでも構いません。",
+        "de": "Die Antwort darf auch in Hiragana sein.",
+        "highlight": "ひらがなでも構いません",
+        "note": "Bei Nomen und な-Adjektiven steht でも."
+      }
+    ]
+  },
+  {
+    "id": "temo-shouganai",
+    "title": "〜てもしょうがない／〜てもしかたがない",
+    "formation": [
+      {
+        "jp": "終わったことを心配してもしょうがないです。",
+        "de": "Es bringt nichts, sich wegen etwas Abgeschlossenem zu sorgen.",
+        "highlight": "心配してもしょうがない",
+        "note": "Häufig bei Gedanken und Reaktionen."
+      },
+      {
+        "jp": "今から急いでもしかたがありません。",
+        "de": "Es hat keinen Sinn, sich jetzt noch zu beeilen.",
+        "highlight": "急いでもしかたがありません",
+        "note": "Die Situation ist bereits festgelegt."
+      },
+      {
+        "jp": "忘れてもしょうがないから、もう一度復習します。",
+        "de": "Vergessen lässt sich nicht völlig vermeiden, also wiederhole ich noch einmal.",
+        "highlight": "しょうがないから",
+        "note": "Nicht bloß Resignation, sondern oft pragmatischer Wechsel."
+      }
+    ]
+  },
+  {
+    "id": "to-ieba",
+    "title": "〜と言えば／〜といえば",
+    "formation": [
+      {
+        "jp": "日本のゲームと言えば、RPGを思い浮かべます。",
+        "de": "Wenn man von japanischen Spielen spricht, denke ich an RPGs.",
+        "highlight": "ゲームと言えば",
+        "note": "Die folgende Aussage ist eine typische Verbindung im Kopf des Sprechers."
+      },
+      {
+        "jp": "難しいと言えば難しいですが、面白いです。",
+        "de": "Wenn man es schwierig nennen will, ist es schwierig, aber interessant.",
+        "highlight": "難しいと言えば難しい",
+        "note": "Wiederholung kann eine eingeschränkte Zustimmung ausdrücken."
+      },
+      {
+        "jp": "そう言えば、今日はレビューをしていません。",
+        "de": "Wo du es sagst: Heute habe ich noch keine Reviews gemacht.",
+        "highlight": "そう言えば",
+        "note": "Spontane Erinnerung durch das Gesprächsthema."
+      }
+    ]
+  },
+  {
+    "id": "to-ii-tara-ii",
+    "title": "〜といい／〜たらいい",
+    "formation": [
+      {
+        "jp": "明日、晴れるといいですね。",
+        "de": "Hoffentlich ist es morgen sonnig.",
+        "highlight": "晴れるといい",
+        "note": "Häufig mit ね, な oder のに."
+      },
+      {
+        "jp": "疲れたら、少し休んだらいいですよ。",
+        "de": "Wenn du müde bist, solltest du etwas pausieren.",
+        "highlight": "休んだらいい",
+        "note": "Je nach Ton Rat oder Vorschlag."
+      },
+      {
+        "jp": "この言葉を忘れたら、どうしたらいいですか。",
+        "de": "Was soll ich tun, wenn ich dieses Wort vergesse?",
+        "highlight": "どうしたらいいですか",
+        "note": "Sehr häufige Beratungsfrage."
+      }
+    ]
+  },
+  {
+    "id": "to-ittemo",
+    "title": "〜といっても／〜と言っても",
+    "formation": [
+      {
+        "jp": "日本語が話せるといっても、まだ簡単な会話だけです。",
+        "de": "Auch wenn ich sage, dass ich Japanisch sprechen kann, sind es bisher nur einfache Gespräche.",
+        "highlight": "話せるといっても",
+        "note": "Der zweite Teil begrenzt den Umfang."
+      },
+      {
+        "jp": "旅行といっても、近くの町へ行くだけです。",
+        "de": "Es heißt zwar Reise, aber ich fahre nur in eine nahe Stadt.",
+        "highlight": "旅行といっても",
+        "note": "Typische Korrektur einer Erwartung."
+      },
+      {
+        "jp": "夏とはいっても、朝は寒いです。",
+        "de": "Obwohl es Sommer ist, ist es morgens kalt.",
+        "highlight": "夏とはいっても",
+        "note": "Stärker kontrastiv."
+      }
+    ]
+  },
+  {
+    "id": "to-iu-koto-da",
+    "title": "〜ということだ",
+    "formation": [
+      {
+        "jp": "ニュースによると、来週から電車が増えるということです。",
+        "de": "Laut Nachrichten sollen ab nächster Woche mehr Züge fahren.",
+        "highlight": "増えるということです",
+        "note": "Eine Quelle wie によると macht die Hörensagen-Funktion deutlich."
+      },
+      {
+        "jp": "レビューが五回終わりました。つまり、エネルギーが一つ増えたということです。",
+        "de": "Fünf Reviews sind erledigt. Das bedeutet also, dass eine Energie hinzugekommen ist.",
+        "highlight": "増えたということです",
+        "note": "つまり oder der logische Vorkontext weist auf die Schlussfolgerung."
+      },
+      {
+        "jp": "先生は少し遅れるとのことです。",
+        "de": "Es wurde mitgeteilt, dass der Lehrer sich etwas verspätet.",
+        "highlight": "とのことです",
+        "note": "Häufig in Nachrichten und formeller Kommunikation."
+      }
+    ]
+  },
+  {
+    "id": "to-iu-no-wa",
+    "title": "〜というのは",
+    "formation": [
+      {
+        "jp": "『共鳴訓練』というのは、新しい言葉を覚えるためのモードです。",
+        "de": "Mit ‚Resonanztraining‘ ist ein Modus zum Einprägen neuer Wörter gemeint.",
+        "highlight": "というのは",
+        "note": "Das folgende Prädikat erklärt den Begriff."
+      },
+      {
+        "jp": "彼が来ないというのは、本当ですか。",
+        "de": "Stimmt es, dass er nicht kommt?",
+        "highlight": "来ないというのは",
+        "note": "Der nominalisierte Satz wird kommentiert."
+      },
+      {
+        "jp": "今日は休む。というのは、熱があるからだ。",
+        "de": "Heute ruhe ich mich aus. Der Grund ist, dass ich Fieber habe.",
+        "highlight": "というのは",
+        "note": "Schriftlich kann die Erklärung auch einen neuen Satz bilden."
+      }
+    ]
+  },
+  {
+    "id": "to-iu-to",
+    "title": "〜というと／〜と言うと",
+    "formation": [
+      {
+        "jp": "日本のゲームというと、RPGを思い浮かべます。",
+        "de": "Wenn man von japanischen Spielen spricht, denke ich an RPGs.",
+        "highlight": "というと",
+        "note": "Die folgende Aussage ist eine typische Verbindung des Sprechers."
+      },
+      {
+        "jp": "もう終わったというと、全部できたんですか。",
+        "de": "Wenn du sagst, es sei fertig – heißt das, dass alles geschafft ist?",
+        "highlight": "というと",
+        "note": "Der Sprecher prüft, was genau gemeint war."
+      },
+      {
+        "jp": "春というと、桜ですね。",
+        "de": "Wenn man von Frühling spricht, sind es wohl Kirschblüten.",
+        "highlight": "春というと",
+        "note": "Sehr häufig in Gesprächen."
+      }
+    ]
+  },
+  {
+    "id": "to-iu-yori",
+    "title": "〜というより",
+    "formation": [
+      {
+        "jp": "これは勉強というより、ゲームに近いです。",
+        "de": "Das ist weniger Lernen als vielmehr ein Spiel.",
+        "highlight": "というより",
+        "note": "A wird relativiert, B bevorzugt."
+      },
+      {
+        "jp": "覚えたというより、見たら分かる程度です。",
+        "de": "Nicht so sehr ‚gelernt‘ – eher erkenne ich es, wenn ich es sehe.",
+        "highlight": "というより",
+        "note": "Die zweite Aussage präzisiert den Grad."
+      },
+      {
+        "jp": "難しいというより、むしろ長いです。",
+        "de": "Es ist weniger schwierig als vielmehr lang.",
+        "highlight": "むしろ",
+        "note": "Die Kombination ist häufig, aber nicht zwingend."
+      }
+    ]
+  },
+  {
+    "id": "to-mieru",
+    "title": "〜とみえる／〜とみえて",
+    "formation": [
+      {
+        "jp": "彼はこの漢字を知らないとみえる。",
+        "de": "Offenbar kennt er dieses Kanji nicht.",
+        "highlight": "とみえる",
+        "note": "Die Schlussfolgerung beruht auf seinem Verhalten."
+      },
+      {
+        "jp": "疲れているとみえて、返事が遅いです。",
+        "de": "Offenbar ist er müde; seine Antworten sind langsam.",
+        "highlight": "とみえて",
+        "note": "Die zweite Aussage ist das beobachtete Ergebnis."
+      },
+      {
+        "jp": "初心者だとみえて、ゆっくり読んでいます。",
+        "de": "Offenbar ist die Person Anfänger und liest langsam.",
+        "highlight": "だとみえて",
+        "note": "Die Form ist eher schriftlich oder erzählerisch."
+      }
+    ]
+  },
+  {
+    "id": "to-sureba",
+    "title": "〜とすれば／〜としたら／〜とすると",
+    "formation": [
+      {
+        "jp": "毎日五語覚えるとすれば、一か月で百五十語です。",
+        "de": "Angenommen, man lernt täglich fünf Wörter, sind es 150 im Monat.",
+        "highlight": "とすれば",
+        "note": "Häufig bei Berechnungen oder logischen Überlegungen."
+      },
+      {
+        "jp": "自由に選べるとしたら、どのゲームをしますか。",
+        "de": "Angenommen, du könntest frei wählen: Welches Spiel würdest du spielen?",
+        "highlight": "としたら",
+        "note": "Gut für hypothetische Fragen."
+      },
+      {
+        "jp": "彼が来ないとすると、三人で始めることになります。",
+        "de": "Wenn wir annehmen, dass er nicht kommt, beginnen wir zu dritt.",
+        "highlight": "とすると",
+        "note": "Die Folge steht oft direkt danach."
+      }
+    ]
+  },
+  {
+    "id": "tokoro-de",
+    "title": "ところで",
+    "formation": [
+      {
+        "jp": "この文法は以上です。ところで、次のレビューはいつですか。",
+        "de": "Das war alles zu dieser Grammatik. Übrigens: Wann ist das nächste Review?",
+        "highlight": "ところで",
+        "note": "Der Themenwechsel darf locker verbunden sein."
+      },
+      {
+        "jp": "ところで、その言葉はどこで見つけましたか。",
+        "de": "Übrigens, wo hast du dieses Wort gefunden?",
+        "highlight": "ところで",
+        "note": "Gesprächssteuerung, keine Satzgrammatik im engeren Sinn."
+      }
+    ]
+  },
+  {
+    "id": "tokoro-ga",
+    "title": "ところが",
+    "formation": [
+      {
+        "jp": "簡単な問題だと思いました。ところが、全然解けませんでした。",
+        "de": "Ich hielt es für eine einfache Aufgabe. Doch ich konnte sie überhaupt nicht lösen.",
+        "highlight": "ところが",
+        "note": "Der zweite Satz ist ein echtes Ergebnis, keine bloße Meinung."
+      },
+      {
+        "jp": "ストーリーを読もうとしました。ところが、エネルギーが足りませんでした。",
+        "de": "Ich wollte die Story lesen. Doch die Energie reichte nicht.",
+        "highlight": "ところが",
+        "note": "Häufig in Erzählungen."
+      }
+    ]
+  },
+  {
+    "id": "toori-ni",
+    "title": "〜とおりに／〜どおりに",
+    "formation": [
+      {
+        "jp": "説明したとおりに設定してください。",
+        "de": "Bitte stelle es so ein, wie ich es erklärt habe.",
+        "highlight": "説明したとおりに",
+        "note": "Die た-Form verweist auf eine bereits gegebene Erklärung."
+      },
+      {
+        "jp": "予定どおりにレッスンが終わりました。",
+        "de": "Die Lektion endete wie geplant.",
+        "highlight": "予定どおりに",
+        "note": "Bei festen Verbindungen wird と zu ど."
+      },
+      {
+        "jp": "画面の指示のとおりに答えてください。",
+        "de": "Antworte entsprechend den Anweisungen auf dem Bildschirm.",
+        "highlight": "指示のとおりに",
+        "note": "Bei konkreten Nomen häufig."
+      }
+    ]
+  },
+  {
+    "id": "toosu",
+    "title": "〜通す",
+    "formation": [
+      {
+        "jp": "六時間の動画を最後まで見通しました。",
+        "de": "Ich sah das sechsstündige Video vollständig bis zum Ende.",
+        "highlight": "見通しました",
+        "note": "Durchhaltecharakter."
+      },
+      {
+        "jp": "彼は自分の意見を最後まで言い通した。",
+        "de": "Er vertrat seine Meinung bis zum Schluss konsequent.",
+        "highlight": "言い通した",
+        "note": "Auch bei Behauptungen und Überzeugungen häufig."
+      },
+      {
+        "jp": "この量は一日では読み通せません。",
+        "de": "Diese Menge kann ich nicht an einem Tag vollständig durchlesen.",
+        "highlight": "読み通せません",
+        "note": "Potential- beziehungsweise Negativform des zusammengesetzten Verbs."
+      }
+    ]
+  },
+  {
+    "id": "totemo-nai",
+    "title": "とても〜ない",
+    "formation": [
+      {
+        "jp": "この漢字を一日で全部覚えるのは、とてもできません。",
+        "de": "All diese Kanji an einem Tag zu lernen, schaffe ich unmöglich.",
+        "highlight": "とてもできません",
+        "note": "Sehr häufig mit できない, 読めない, 信じられない."
+      },
+      {
+        "jp": "そんなひどいことはとても言えない。",
+        "de": "So etwas Schreckliches könnte ich unmöglich sagen.",
+        "highlight": "とても言えない",
+        "note": "Neben Fähigkeit kann auch emotionale Unmöglichkeit gemeint sein."
+      },
+      {
+        "jp": "今日はとても終わりそうにありません。",
+        "de": "Heute sieht es überhaupt nicht danach aus, als würden wir fertig.",
+        "highlight": "とても終わりそうにありません",
+        "note": "Hier verstärkt とても die geringe Aussicht."
+      }
+    ]
+  },
+  {
+    "id": "towa-kagiranai",
+    "title": "〜とは限らない",
+    "formation": [
+      {
+        "jp": "頻度が高い言葉が覚えやすいとは限りません。",
+        "de": "Häufige Wörter sind nicht unbedingt leicht zu merken.",
+        "highlight": "とは限りません",
+        "note": "X wird nicht vollständig verneint."
+      },
+      {
+        "jp": "有名な教材が自分に合うとは限らない。",
+        "de": "Bekanntes Lernmaterial passt nicht unbedingt zu einem selbst.",
+        "highlight": "合うとは限らない",
+        "note": "Der ganze Satz steht vor と."
+      },
+      {
+        "jp": "高いものが必ずしも良いとは限りません。",
+        "de": "Teure Dinge sind nicht notwendigerweise gut.",
+        "highlight": "必ずしも",
+        "note": "Sehr typische Kombination."
+      }
+    ]
+  },
+  {
+    "id": "tsui",
+    "title": "つい",
+    "formation": [
+      {
+        "jp": "面白くて、つい次の話も見てしまいました。",
+        "de": "Weil es spannend war, sah ich unwillkürlich auch die nächste Folge.",
+        "highlight": "つい",
+        "note": "Die Kombination mit てしまう ist sehr häufig."
+      },
+      {
+        "jp": "難しい言葉を見ると、つい飛ばします。",
+        "de": "Wenn ich ein schwieriges Wort sehe, überspringe ich es oft unwillkürlich.",
+        "highlight": "つい飛ばします",
+        "note": "Gewohnheitsmäßige spontane Reaktion."
+      },
+      {
+        "jp": "本音をつい口にしてしまった。",
+        "de": "Ich sprach versehentlich meine ehrliche Meinung aus.",
+        "highlight": "つい口にして",
+        "note": "Nicht geplant."
+      }
+    ]
+  },
+  {
+    "id": "tsuini",
+    "title": "ついに",
+    "formation": [
+      {
+        "jp": "ついにN3コアの終わりが見えてきました。",
+        "de": "Endlich ist das Ende des N3-Cores in Sicht.",
+        "highlight": "ついに",
+        "note": "Erleichterung oder Erfolg."
+      },
+      {
+        "jp": "古い端末はついに動かなくなりました。",
+        "de": "Das alte Gerät funktionierte schließlich überhaupt nicht mehr.",
+        "highlight": "ついに",
+        "note": "Nicht automatisch positiv."
+      },
+      {
+        "jp": "彼はついに答えなかった。",
+        "de": "Er antwortete letztlich überhaupt nicht.",
+        "highlight": "ついに答えなかった",
+        "note": "Endgültiges Ausbleiben."
+      }
+    ]
+  },
+  {
+    "id": "tsumari",
+    "title": "つまり",
+    "formation": [
+      {
+        "jp": "このモードは短い間隔で何度も出題します。つまり、覚える前の練習です。",
+        "de": "Dieser Modus fragt in kurzen Abständen wiederholt ab. Kurz gesagt: Er ist Training vor dem eigentlichen Behalten.",
+        "highlight": "つまり",
+        "note": "B sollte A verdichten."
+      },
+      {
+        "jp": "必要なレビューは五回で、今は四回です。つまり、あと一回です。",
+        "de": "Benötigt werden fünf Reviews, aktuell sind es vier. Also fehlt noch eines.",
+        "highlight": "つまり",
+        "note": "Logische Zusammenfassung."
+      },
+      {
+        "jp": "つまりは、続けることが大切です。",
+        "de": "Kurz gesagt ist es wichtig, weiterzumachen.",
+        "highlight": "つまりは",
+        "note": "Etwas markierter oder schriftlicher."
+      }
+    ]
+  },
+  {
+    "id": "tsumori-datta",
+    "title": "〜つもりだった",
+    "formation": [
+      {
+        "jp": "昨日は復習するつもりでしたが、寝てしまいました。",
+        "de": "Gestern wollte ich wiederholen, schlief aber ein.",
+        "highlight": "するつもりでした",
+        "note": "Der Plan wurde möglicherweise nicht umgesetzt."
+      },
+      {
+        "jp": "保存したつもりでしたが、できていませんでした。",
+        "de": "Ich dachte, ich hätte gespeichert, aber es war nicht geschehen.",
+        "highlight": "保存したつもりでした",
+        "note": "Abweichung zwischen Annahme und Realität."
+      },
+      {
+        "jp": "冗談のつもりでした。",
+        "de": "Ich meinte es als Scherz.",
+        "highlight": "冗談のつもり",
+        "note": "Die Wirkung kann anders gewesen sein."
+      }
+    ]
+  },
+  {
+    "id": "tsumori-de",
+    "title": "〜つもりで",
+    "formation": [
+      {
+        "jp": "本番で使うつもりで練習してください。",
+        "de": "Übe mit der Absicht, es in der echten Situation zu benutzen.",
+        "highlight": "使うつもりで",
+        "note": "Die Absicht steuert die Übung."
+      },
+      {
+        "jp": "旅行したつもりで、このゲームを楽しみました。",
+        "de": "Ich genoss das Spiel, als wäre ich gereist.",
+        "highlight": "旅行したつもりで",
+        "note": "Vorstellung statt tatsächlicher Reise."
+      },
+      {
+        "jp": "復習のつもりで、最初のレベルをやりました。",
+        "de": "Ich machte das erste Level als Wiederholung.",
+        "highlight": "復習のつもりで",
+        "note": "Die Handlung wird entsprechend eingeordnet."
+      }
+    ]
+  },
+  {
+    "id": "ue-de",
+    "title": "〜上で",
+    "formation": [
+      {
+        "jp": "説明を読んだ上で、答えてください。",
+        "de": "Lies die Erklärung und antworte dann auf dieser Grundlage.",
+        "highlight": "読んだ上で",
+        "note": "Mehr als bloße zeitliche Reihenfolge."
+      },
+      {
+        "jp": "日本語を学ぶ上で、復習は重要です。",
+        "de": "Beim Japanischlernen ist Wiederholung wichtig.",
+        "highlight": "学ぶ上で",
+        "note": "Rahmen oder Gesichtspunkt."
+      },
+      {
+        "jp": "安全の上で問題があります。",
+        "de": "Hinsichtlich der Sicherheit gibt es ein Problem.",
+        "highlight": "安全の上で",
+        "note": "Diese Verwendung ist formeller."
+      }
+    ]
+  },
+  {
+    "id": "ue-ni",
+    "title": "〜上に",
+    "formation": [
+      {
+        "jp": "この説明は分かりやすい上に、例も多いです。",
+        "de": "Diese Erklärung ist verständlich und enthält außerdem viele Beispiele.",
+        "highlight": "上に",
+        "note": "Beide Punkte sind positiv."
+      },
+      {
+        "jp": "彼は親切な上に、説明が丁寧です。",
+        "de": "Er ist nicht nur freundlich, sondern erklärt auch sorgfältig.",
+        "highlight": "親切な上に",
+        "note": "Gleichgerichtete Bewertung."
+      },
+      {
+        "jp": "この問題は長い上に、答えも曖昧です。",
+        "de": "Diese Aufgabe ist lang und außerdem ist die Antwort unklar.",
+        "highlight": "長い上に",
+        "note": "Beide Punkte sind negativ."
+      }
+    ]
+  },
+  {
+    "id": "wa-betsu-toshite",
+    "title": "〜は別として",
+    "formation": [
+      {
+        "jp": "値段は別として、この教材は使いやすいです。",
+        "de": "Abgesehen vom Preis ist dieses Lernmaterial leicht zu benutzen.",
+        "highlight": "は別として",
+        "note": "Der Preis bleibt ein eigener Punkt."
+      },
+      {
+        "jp": "合格できるかどうかは別として、挑戦する価値があります。",
+        "de": "Unabhängig davon, ob ich bestehen kann, ist der Versuch wertvoll.",
+        "highlight": "かどうかは別として",
+        "note": "Häufige abstrakte Form."
+      },
+      {
+        "jp": "結果はともかく、よく頑張りました。",
+        "de": "Vom Ergebnis abgesehen hast du dich sehr bemüht.",
+        "highlight": "ともかく",
+        "note": "Ähnliche Ausklammerung."
+      }
+    ]
+  },
+  {
+    "id": "wa-mochiron",
+    "title": "〜はもちろん",
+    "formation": [
+      {
+        "jp": "語彙はもちろん、文法も復習できます。",
+        "de": "Natürlich kann man Vokabeln wiederholen, aber auch Grammatik.",
+        "highlight": "はもちろん",
+        "note": "B trägt die Erweiterung."
+      },
+      {
+        "jp": "読む力はもちろんのこと、聞く力も必要です。",
+        "de": "Nicht nur Lesefähigkeit, sondern auch Hörfähigkeit ist nötig.",
+        "highlight": "はもちろんのこと",
+        "note": "Häufig in schriftlicher Sprache."
+      },
+      {
+        "jp": "語彙だけでなく、文法も学びます。",
+        "de": "Ich lerne nicht nur Vokabeln, sondern auch Grammatik.",
+        "highlight": "だけでなく",
+        "note": "Neutralere Erweiterung."
+      }
+    ]
+  },
+  {
+    "id": "wa-de-yuumei",
+    "title": "〜は〜で有名だ",
+    "formation": [
+      {
+        "jp": "京都は古い寺で有名です。",
+        "de": "Kyoto ist für seine alten Tempel bekannt.",
+        "highlight": "寺で有名",
+        "note": "で bedeutet hier ‚hinsichtlich／wegen‘."
+      },
+      {
+        "jp": "このゲームは物語が深いことで有名です。",
+        "de": "Dieses Spiel ist dafür bekannt, eine tiefgründige Geschichte zu haben.",
+        "highlight": "ことで有名",
+        "note": "こと nominalisiert die Tatsache."
+      },
+      {
+        "jp": "彼は声優として有名です。",
+        "de": "Er ist als Synchronsprecher bekannt.",
+        "highlight": "として有名",
+        "note": "Rolle statt Merkmal."
+      }
+    ]
+  },
+  {
+    "id": "wari-ni",
+    "title": "〜割に／〜割には",
+    "formation": [
+      {
+        "jp": "あまり勉強しなかった割に、よくできました。",
+        "de": "Dafür, dass ich nicht viel gelernt hatte, lief es gut.",
+        "highlight": "割に",
+        "note": "Das Ergebnis ist überraschend positiv."
+      },
+      {
+        "jp": "この本は値段の割に内容が多いです。",
+        "de": "Für seinen Preis enthält dieses Buch viel Inhalt.",
+        "highlight": "値段の割に",
+        "note": "Preis und Inhalt werden ins Verhältnis gesetzt."
+      },
+      {
+        "jp": "簡単な割に、間違いが多い問題です。",
+        "de": "Dafür, dass die Aufgabe einfach ist, gibt es viele Fehler.",
+        "highlight": "簡単な割に",
+        "note": "Erwartungswidrige Relation."
+      }
+    ]
+  },
+  {
+    "id": "wazato",
+    "title": "わざと",
+    "formation": [
+      {
+        "jp": "先生は違いを見せるために、わざと間違えました。",
+        "de": "Der Lehrer machte absichtlich einen Fehler, um den Unterschied zu zeigen.",
+        "highlight": "わざと間違えました",
+        "note": "Absicht kann auch didaktisch oder neutral sein."
+      },
+      {
+        "jp": "わざとではありません。",
+        "de": "Es war nicht absichtlich.",
+        "highlight": "わざとではありません",
+        "note": "Häufige Entschuldigung."
+      },
+      {
+        "jp": "彼はわざと返事をしなかった。",
+        "de": "Er antwortete absichtlich nicht.",
+        "highlight": "わざと返事をしなかった",
+        "note": "Deutlich negative Bewertung möglich."
+      }
+    ]
+  },
+  {
+    "id": "wazawaza",
+    "title": "わざわざ",
+    "formation": [
+      {
+        "jp": "わざわざ説明してくれて、ありがとうございます。",
+        "de": "Danke, dass du dir extra die Mühe gemacht hast, es zu erklären.",
+        "highlight": "わざわざ説明して",
+        "note": "Häufig in Dank."
+      },
+      {
+        "jp": "わざわざ難しい言い方をする必要はありません。",
+        "de": "Es ist nicht nötig, es extra kompliziert auszudrücken.",
+        "highlight": "わざわざ難しい言い方",
+        "note": "‚Warum so umständlich?‘"
+      },
+      {
+        "jp": "遠い所からわざわざ来てくれました。",
+        "de": "Die Person kam eigens von weit her.",
+        "highlight": "わざわざ来て",
+        "note": "Typischer Aufwandskontext."
+      }
+    ]
+  },
+  {
+    "id": "yori-mo",
+    "title": "〜よりも",
+    "formation": [
+      {
+        "jp": "読むよりも、聞くほうが覚えやすいです。",
+        "de": "Hören ist für mich leichter zu behalten als Lesen.",
+        "highlight": "読むよりも",
+        "note": "B beziehungsweise Bのほうが trägt die stärkere Eigenschaft."
+      },
+      {
+        "jp": "単語の数よりも、使えるかどうかが大切です。",
+        "de": "Wichtiger als die Zahl der Wörter ist, ob man sie benutzen kann.",
+        "highlight": "数よりも",
+        "note": "Der Vergleich kann auch eine Priorität ausdrücken."
+      },
+      {
+        "jp": "これは暗記よりもむしろ慣れの問題です。",
+        "de": "Das ist weniger eine Frage des Auswendiglernens als vielmehr der Gewöhnung.",
+        "highlight": "よりもむしろ",
+        "note": "むしろ verstärkt die Bevorzugung von B."
+      }
+    ]
+  },
+  {
+    "id": "you-ga-nai",
+    "title": "〜ようがない",
+    "formation": [
+      {
+        "jp": "説明がなければ、答えようがありません。",
+        "de": "Ohne Erklärung gibt es keine Möglichkeit zu antworten.",
+        "highlight": "答えようがありません",
+        "note": "答える wird zum Stamm 答え + ようがない."
+      },
+      {
+        "jp": "証拠がないので、確かめようもない。",
+        "de": "Da es keine Beweise gibt, lässt es sich überhaupt nicht überprüfen.",
+        "highlight": "確かめようもない",
+        "note": "Die Bedeutung bleibt dieselbe, wirkt aber stärker."
+      },
+      {
+        "jp": "別の調べようがあるかもしれません。",
+        "de": "Vielleicht gibt es eine andere Art, es zu untersuchen.",
+        "highlight": "調べよう",
+        "note": "よう funktioniert hier wie ‚Art und Weise‘."
+      }
+    ]
+  },
+  {
+    "id": "you-na-ki-ga-suru",
+    "title": "〜ような気がする",
+    "formation": [
+      {
+        "jp": "この言葉は前にも見たような気がします。",
+        "de": "Ich habe das Gefühl, dieses Wort schon einmal gesehen zu haben.",
+        "highlight": "見たような気がします",
+        "note": "Der Sprecher ist sich nicht sicher."
+      },
+      {
+        "jp": "少し不自然なような気がします。",
+        "de": "Es fühlt sich ein wenig unnatürlich an.",
+        "highlight": "不自然なような気",
+        "note": "Die Bewertung wird bewusst abgeschwächt."
+      },
+      {
+        "jp": "これは前の問題と同じ答えのような気がします。",
+        "de": "Ich habe das Gefühl, dass dies dieselbe Antwort wie zuvor ist.",
+        "highlight": "答えのような気",
+        "note": "Subjektiver Eindruck statt Feststellung."
+      }
+    ]
+  },
+  {
+    "id": "you-ni-purpose",
+    "title": "〜ように",
+    "formation": [
+      {
+        "jp": "字幕なしでも分かるように、毎日聞いています。",
+        "de": "Ich höre jeden Tag, damit ich es auch ohne Untertitel verstehen kann.",
+        "highlight": "分かるように",
+        "note": "Das Verstehen selbst lässt sich nicht direkt befehlen."
+      },
+      {
+        "jp": "忘れないように、メモしてください。",
+        "de": "Mach dir eine Notiz, damit du es nicht vergisst.",
+        "highlight": "忘れないように",
+        "note": "Sehr häufig bei Vorsichtsmaßnahmen."
+      },
+      {
+        "jp": "先生は毎日復習するように言いました。",
+        "de": "Der Lehrer sagte, wir sollten täglich wiederholen.",
+        "highlight": "復習するように",
+        "note": "Die Aufforderung wird als gewünschter Zustand formuliert."
+      }
+    ]
+  },
+  {
+    "id": "you-ni-mieru",
+    "title": "〜ように見える",
+    "formation": [
+      {
+        "jp": "彼は答えを知っているように見えます。",
+        "de": "Er sieht so aus, als kenne er die Antwort.",
+        "highlight": "知っているように見えます",
+        "note": "Die tatsächliche Kenntnis bleibt offen."
+      },
+      {
+        "jp": "簡単なように見えますが、実は難しいです。",
+        "de": "Es sieht einfach aus, ist aber tatsächlich schwierig.",
+        "highlight": "簡単なように見えます",
+        "note": "Eindruck und Realität können auseinanderfallen."
+      },
+      {
+        "jp": "その光は星のように見えました。",
+        "de": "Dieses Licht sah wie ein Stern aus.",
+        "highlight": "星のように見えました",
+        "note": "Auch echte Ähnlichkeit statt Vermutung ist möglich."
+      }
+    ]
+  },
+  {
+    "id": "you-to-suru",
+    "title": "〜ようとする",
+    "formation": [
+      {
+        "jp": "知らない言葉の意味を思い出そうとしました。",
+        "de": "Ich versuchte, mich an die Bedeutung des unbekannten Wortes zu erinnern.",
+        "highlight": "思い出そうとしました",
+        "note": "Ob der Versuch gelingt, bleibt offen."
+      },
+      {
+        "jp": "今、答えを書こうとしています。",
+        "de": "Ich bin gerade dabei, die Antwort zu schreiben.",
+        "highlight": "書こうとしています",
+        "note": "Fokus auf dem Ansatz zur Handlung."
+      },
+      {
+        "jp": "新しい章が始まろうとしています。",
+        "de": "Ein neues Kapitel steht kurz vor dem Beginn.",
+        "highlight": "始まろうとしています",
+        "note": "Keine Absicht des Kapitels, sondern bevorstehender Übergang."
+      }
+    ]
+  },
+  {
+    "id": "you-to-shinai",
+    "title": "〜ようとしない",
+    "formation": [
+      {
+        "jp": "彼は説明を読もうとしません。",
+        "de": "Er versucht gar nicht erst, die Erklärung zu lesen.",
+        "highlight": "読もうとしません",
+        "note": "Stärker als bloß 読みません."
+      },
+      {
+        "jp": "彼女は謝ろうともしなかった。",
+        "de": "Sie machte nicht einmal den Versuch, sich zu entschuldigen.",
+        "highlight": "謝ろうともしなかった",
+        "note": "Deutlich kritischer Ton."
+      },
+      {
+        "jp": "失敗が続いて、話そうとしなくなりました。",
+        "de": "Nach wiederholten Misserfolgen versuchte die Person nicht mehr zu sprechen.",
+        "highlight": "話そうとしなくなりました",
+        "note": "Veränderung des Verhaltens."
+      }
+    ]
+  },
+  {
+    "id": "zuni",
+    "title": "〜ずに",
+    "formation": [
+      {
+        "jp": "辞書を見ずに答えてください。",
+        "de": "Antworte bitte, ohne ins Wörterbuch zu schauen.",
+        "highlight": "見ずに",
+        "note": "見る → 見ない → 見ずに."
+      },
+      {
+        "jp": "復習をせずに寝てしまいました。",
+        "de": "Ich schlief ein, ohne zu wiederholen.",
+        "highlight": "せずに",
+        "note": "Nicht しずに sagen."
+      },
+      {
+        "jp": "何も言わず、部屋を出ました。",
+        "de": "Ohne etwas zu sagen verließ ich das Zimmer.",
+        "highlight": "言わず",
+        "note": "Kommaartige Verbindung, etwas formeller."
+      }
+    ]
+  },
+  {
+    "id": "zuni-wa-irarenai",
+    "title": "〜ずにはいられない",
+    "formation": [
+      {
+        "jp": "その結末を知ると、泣かずにはいられません。",
+        "de": "Wenn ich dieses Ende kenne, kann ich nicht anders, als zu weinen.",
+        "highlight": "泣かずにはいられません",
+        "note": "Nicht äußere Pflicht, sondern Emotion."
+      },
+      {
+        "jp": "新しい単語を見ると、保存せずにはいられません。",
+        "de": "Wenn ich ein neues Wort sehe, kann ich nicht anders, als es zu speichern.",
+        "highlight": "保存せずにはいられません",
+        "note": "Humorvoll oder ernst möglich."
+      },
+      {
+        "jp": "笑わないではいられなかった。",
+        "de": "Ich konnte nicht anders, als zu lachen.",
+        "highlight": "ないではいられなかった",
+        "note": "Etwas transparenter gebildet."
+      }
+    ]
+  },
+  {
+    "id": "zutsu",
+    "title": "〜ずつ",
+    "formation": [
+      {
+        "jp": "一人にカードを二枚ずつ配りました。",
+        "de": "Ich verteilte an jede Person jeweils zwei Karten.",
+        "highlight": "二枚ずつ",
+        "note": "Die Bezugsgruppe wird aus dem Kontext klar."
+      },
+      {
+        "jp": "新しい文法を少しずつ覚えています。",
+        "de": "Ich lerne die neue Grammatik nach und nach.",
+        "highlight": "少しずつ",
+        "note": "Fortschritt in kleinen Schritten."
+      },
+      {
+        "jp": "毎日五問ずつ復習します。",
+        "de": "Ich wiederhole jeden Tag jeweils fünf Aufgaben.",
+        "highlight": "五問ずつ",
+        "note": "Feste Portion pro Tag."
+      }
+    ]
+  },
+  {
+    "id": "tewa-ikenai-kara",
+    "title": "〜てはいけないから",
+    "formation": [
+      {
+        "jp": "遅れてはいけないから、早めに出発します。",
+        "de": "Weil ich auf keinen Fall zu spät kommen darf, breche ich frühzeitig auf.",
+        "highlight": "遅れてはいけないから",
+        "note": "Die folgende Handlung soll das genannte Risiko verhindern."
+      },
+      {
+        "jp": "データを失ってはいけないので、コピーを保存します。",
+        "de": "Da die Daten keinesfalls verloren gehen dürfen, speichere ich eine Kopie.",
+        "highlight": "失ってはいけないので",
+        "note": "Die Präventionslogik bleibt dieselbe."
+      }
+    ]
+  }
+]
