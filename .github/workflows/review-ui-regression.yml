@@ -8,6 +8,7 @@ on:
       - "tests/review-ui-audio.test.mjs"
       - "tests/applied-particle-review.test.mjs"
       - "tests/grammar-review-ux.test.mjs"
+      - "tests/applied-grammar-kanji.test.mjs"
       - ".github/workflows/review-ui-regression.yml"
   push:
     branches: [main]
@@ -17,6 +18,7 @@ on:
       - "tests/review-ui-audio.test.mjs"
       - "tests/applied-particle-review.test.mjs"
       - "tests/grammar-review-ux.test.mjs"
+      - "tests/applied-grammar-kanji.test.mjs"
       - ".github/workflows/review-ui-regression.yml"
 
 permissions:
@@ -30,4 +32,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/review-ui-audio.test.mjs tests/applied-particle-review.test.mjs tests/grammar-review-ux.test.mjs
+      - run: node --test tests/*.test.mjs

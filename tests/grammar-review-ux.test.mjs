@@ -21,7 +21,7 @@ test("grammar structure is not revealed by initial heading or badge",()=>{
 test("German translation is shown for verified form cloze examples",()=>{
   assert.match(cloud,/translation: item\.de,/);
   assert.match(cloud,/translation: source\.de,/);
-  assert.match(renderBlock,/skill\.id === "form" && question\.translation/);
+  assert.match(renderBlock,/question\.translation \?/);
   assert.match(renderBlock,/escapeHtml\(question\.translation\)/);
 });
 test("Review SRS stage and feedback remain in original APIs",()=>{
