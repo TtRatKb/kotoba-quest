@@ -22,8 +22,11 @@ function simulateBankAddition(source,name,nextMarker,additions) {
   assert.ok(end>0);
   const existing=JSON.parse(fragment.slice(heading.length,end+2));
   for(const [id,entries] of Object.entries(additions)) {
-    assert.ok(!Object.hasOwn(existing,id),"Bank already connected: "+id);
-    existing[id]=entries;
+    if (Object.hasOwn(existing,id)) {
+      assert.deepEqual(existing[id],entries,"Installed bank differs from vetted manifest: "+id);
+    } else {
+      existing[id]=entries;
+    }
   }
   return source.slice(0,start)+heading+JSON.stringify(existing,null,2)+";"+source.slice(start+end+3);
 }
