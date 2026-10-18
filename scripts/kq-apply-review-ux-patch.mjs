@@ -16,6 +16,6 @@ assert.ok(result.includes("kqWkKanjiReviews"));
 assert.ok(result.includes('type:guided?"choice-particle":"input"'));
 assert.equal(result.match(/function gradeCurrent\(correct,entered\)/g)?.length,1);
 writeFileSync("cloud.html",result,"utf8");
-const scripts=[...result.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g)];
+const scripts=[...result.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
 for(const [,source] of scripts) new Script(source);
 console.info("Patched",changes.edits.length,"targeted locations and parsed",scripts.length,"inline scripts");
