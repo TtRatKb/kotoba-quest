@@ -9,6 +9,7 @@ on:
       - "tests/applied-particle-review.test.mjs"
       - "tests/grammar-review-ux.test.mjs"
       - "tests/applied-grammar-kanji.test.mjs"
+      - "tests/grammar-bank-coverage.test.mjs"
       - ".github/workflows/review-ui-regression.yml"
   push:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - "tests/applied-particle-review.test.mjs"
       - "tests/grammar-review-ux.test.mjs"
       - "tests/applied-grammar-kanji.test.mjs"
+      - "tests/grammar-bank-coverage.test.mjs"
       - ".github/workflows/review-ui-regression.yml"
 
 permissions:
