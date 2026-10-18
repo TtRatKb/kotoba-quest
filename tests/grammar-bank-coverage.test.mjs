@@ -103,3 +103,32 @@ test("complete embedded grammar script parses after question and feedback edits"
   });
   assert.equal(result.status, 0, result.stderr);
 });
+
+test("all vetted grammar examples preserve stage boundaries and never prefill answers", () => {
+  for (const id of ids) {
+    const point = data.points.find(item => item.id === id);
+    for (let index = 0; index < point.formation.length; index++) {
+      const source = point.formation[index];
+      const before = JSON.stringify(point);
+      for (const stage of [1, 2, 3, 4]) {
+        for (const skill of ["meaning", "form"]) {
+          const question = sandbox.build(point, skill, stage, index);
+          assert.ok(question, id + " / " + stage);
+          assert.equal(question.model, source.highlight);
+          assert.equal(question.translation, source.de);
+          assert.equal(question.shown.replace("＿＿＿＿", question.model), source.jp);
+          assert.ok(question.answers.includes(source.highlight));
+          assert.equal(question.prompt.includes(source.highlight), false);
+          if (stage <= 2) {
+            assert.equal(question.choices.length, 4);
+            assert.equal(new Set(Array.from(question.choices)).size, 4);
+            assert.equal(question.choices.filter(choice => choice === question.model).length, 1);
+          } else {
+            assert.equal(question.choices, undefined, "stage 3+ must require typed input");
+          }
+        }
+      }
+      assert.equal(JSON.stringify(point), before, "review generation must be read-only");
+    }
+  }
+});
