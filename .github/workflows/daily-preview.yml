@@ -42,5 +42,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --check daily.js && node --check daily-mix.mjs
+      - run: node --check daily.js && node --check daily-engine.mjs && node --check daily-mix.mjs
       - run: node --test tests/*.test.mjs

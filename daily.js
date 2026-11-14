@@ -78,12 +78,12 @@ function promptCard(task) {
       <input id="dailyAnswer" name="answer" lang="ja" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Japanisch schreiben …" ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Beispielantwort ansehen</button>'}</form>`;
   } else {
-    control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.kind==='production'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
-      <input id="dailyAnswer" name="answer" ${task.kind==='production'?'lang="ja"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
+    control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.kind==='production'||task.kind==='cloze'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
+      <input id="dailyAnswer" name="answer" ${task.kind==='production'||task.kind==='cloze'?'lang="ja"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Antwort prüfen</button>'}</form>`;
   }
   const feedback = answered ? `<div class="feedback ${state.result.correct===false?'error':''}" role="status">
-    <strong>${state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
+    <strong>${state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':task.kind==='cloze'?'Vergleiche mit dem ursprünglichen Satz':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
     <p>${safe(task.explanation)}</p>
     ${state.result.correct===false?`<p><b>Erwartete Antwort:</b> ${safe(task.correct || task.explanation)}</p>`:''}
     ${task.kind==='open'?`<div class="example"><span lang="ja">${safe(task.example)}</span></div>`:''}
@@ -93,6 +93,7 @@ function promptCard(task) {
     <p class="task-secondary">${safe(task.secondary)}</p>
     <div class="${isJapanese?'task-jp':'task-de'}" ${isJapanese?'lang="ja"':''}>${content}</div>
     ${task.kind==='context'?`<p class="subtle">Gesuchtes Wort: <span lang="ja">${safe(task.target)}</span></p>`:''}
+    ${task.kind==='cloze' && task.exampleTranslation?`<p class="subtle">Satzbedeutung: ${safe(task.exampleTranslation)}</p>`:''}
     ${control}${feedback}</section>`;
 }
 

@@ -28,7 +28,7 @@ test('refresh is deterministic, makes eight questions and does not mutate the SR
   assert.deepEqual(a, b);
   assert.equal(a.tasks.length, 8);
   assert(a.tasks.some(x => x.kind === 'production'));
-  assert(a.tasks.some(x => x.kind === 'context'));
+  assert(a.tasks.some(x => x.kind === 'cloze' || x.kind === 'context'));
   assert(a.tasks.every(x => x.scored));
   assert.equal(JSON.stringify(cards), before);
 });

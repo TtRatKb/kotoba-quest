@@ -40,6 +40,14 @@ Die P0-Problematik mit historischen Kanji-SRS-Einzelrecords ist ungeklärt. Es w
 - Neuer Startbutton „Mein Daily Mix“ in der Mobile-Vorschau, während Daily Refresh, Growth-Probelektion und einzelne Guided Quests unverändert erreichbar bleiben.
 - Separate `tests/daily-mix.test.mjs` prüft Aufgabenfolge, stabile Auswahl, echte Lernvoraussetzungen, vollständige Unveränderlichkeit des Spielstands, sichere Bewertung und fehlende Schreibpfade. Mobile-Gerätetests und Produktionsspeicher bleiben weiterhin offen.
 
+## Satzlücken aus echtem Vokabelkontext – sicherer Ausbau (14.11.2026)
+- `Daily Refresh` zeigt, **falls geeignete Beispiele in bereits gelernten Karten vorhanden sind**, nun eine zusätzliche Aufgabe „Satzlücke ergänzen“. Beispiel: `学校へ＿＿。` mit dem deutschen Hinweis `gehen`; die Antwort kann `行く` oder `いく` sein. Anschließend wird der vorhandene Originalsatz samt gegebenenfalls vorhandener Übersetzung angezeigt.
+- Eine Lücke wird **nur** aus einem bereits gespeicherten Wort mit einer **einzigen, exakten** Oberflächenübereinstimmung im bestehenden Beispielsatz erstellt. Einzelzeichen, mehrfache Treffer und offensichtliche Kanji-/Katakana-Teiltreffer werden übersprungen; es wird keine neue japanische Form generiert.
+- Ohne verlässlichen Kontext bleibt die bestehende Bedeutungsaufgabe als Fallback bestehen; es gibt keine fingierte Lücke.
+- Die automatische Prüfung bestätigt ausschließlich bekannte Schreibweisen und gespeicherte Lesungen. Nicht erkannte Eingaben werden mit Musterlösung **manuell verglichen** und als `unbewertet` gezählt, **nicht** als Fehler oder SRS-Negativerfolg.
+- Dieser Ausbau greift **nicht** in die großen Kotoba-Saves, Firebase, Kanji, Grammatik-/Partikel-SRS oder Life-RPG-Ledger ein; die Resultate verbleiben im Arbeitsspeicher.
+- Unit-Tests prüfen exakten Wortabgleich, fehlende Kontexte, Nichtfreischaltung neuer Karten, dynamische Auswahl, erlaubte Eingaben und Null-Datenmutation. Kein Test mit dem echten produktiven Browser-Spielstand erfolgt.
+
 ## Nächste Schritte
 1. Live-Einbindung der Navigation und mobile Endgeräte getrennt prüfen; falls `dungeon-nav.js` in `cloud.html` nicht geladen wird, einen **geprüften additiven** Einstieg ergänzen, ohne die große Cloud-Datei ungeprüft umzuschreiben.
 2. Ein **isoliertes, transparentes Tagesabschluss-/Streak-Metadatenmodell** erst nach unveränderter vollständiger Sicherung aller autoritativen Daten sowie Prüfung von Origin, Cloud-Konflikten, Idempotenz und Rollback anbinden.
