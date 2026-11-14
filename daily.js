@@ -36,7 +36,7 @@ function home() {
   </section>
   <div class="mode-grid">
     <button class="mode" type="button" data-start="daily" ${ready?'':'disabled'}>
-      <span class="icon" aria-hidden="true">🌷</span><span><strong>Mein Daily Mix</strong><small>Deine tägliche Mini-Quest · bekannte Vokabeln, Grammatik oder Partikel und ein eigener Satz · ca. 5 Minuten</small></span><span class="arrow" aria-hidden="true">›</span>
+      <span class="icon" aria-hidden="true">🌷</span><span><strong>Meine tägliche Quest</strong><small>Deine tägliche Mini-Quest · bekannte Vokabeln, Grammatik oder Partikel und ein eigener Satz · ca. 5 Minuten</small></span><span class="arrow" aria-hidden="true">›</span>
     </button>
     <button class="mode" type="button" data-start="refresh" ${ready?'':'disabled'}>
       <span class="icon" aria-hidden="true">🌸</span><span><strong>Daily Refresh</strong><small>8 Aufgaben · Bedeutung, aktive Produktion und Wörter im Kontext · dein gelernter Wortschatz</small></span><span class="arrow" aria-hidden="true">›</span>
@@ -101,10 +101,11 @@ function active() {
   const session = state.session;
   const i = state.index;
   const task = session.tasks[i];
-  const percent = (i / session.tasks.length) * 100;
-  const modeLabel = session.mode==='daily'?'Mein Daily Mix':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
+  const completed = i + (state.result ? 1 : 0);
+  const percent = (completed / session.tasks.length) * 100;
+  const modeLabel = session.mode==='daily'?'Meine tägliche Quest':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
   return `<div class="status-row"><span class="eyebrow">${modeLabel}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
-    <div class="progress" role="progressbar" aria-label="Fortschritt" aria-valuenow="${i}" aria-valuemin="0" aria-valuemax="${session.tasks.length}"><div style="width:${percent}%"></div></div>
+    <div class="progress" role="progressbar" aria-label="Fortschritt" aria-valuenow="${completed}" aria-valuemin="0" aria-valuemax="${session.tasks.length}"><div style="width:${percent}%"></div></div>
     ${session.mode==='daily'?`<p class="muted small">Lernziel: ${safe(session.growthTitle)} · ${session.growthType==='learned'?'an deinen Lernstand angepasst':'freiwillige neue Probelektion'} · kein SRS-Eingriff</p>`:''}
     ${session.mode==='guided'?`<p class="muted small">Lernziel: ${safe(session.title)} · freies Training ohne SRS-Buchung</p>`:''}
     ${promptCard(task)}<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>`;
@@ -113,8 +114,18 @@ function active() {
 function summary() {
   const scored = state.answers.filter(answer => answer.correct !== null);
   const correct = scored.filter(answer => answer.correct).length;
+  const vocabulary = [...new Set(state.session.tasks
+    .filter(task => task.group === 'vocab' || (state.session.mode === 'refresh' && task.reading))
+    .map(task => task.explanation))];
+  const goal = state.session.growthTitle || (state.session.mode === 'guided' ? state.session.title : state.session.mode === 'discovery' ? '〜てしまう: Bedauern und vollständigen Abschluss unterscheiden' : 'Bekannte Wörter verstehen und aktiv abrufen');
+  const transfer = state.answers.find(answer => state.session.tasks.find(task => task.id === answer.taskId)?.kind === 'open');
   return `<section class="panel results"><div class="flower" aria-hidden="true">🌸</div><p class="eyebrow">QUEST ABSOLVIERT</p>
     <h1>${state.session.mode==='daily'?'Deine Daily Quest ist geschafft!':state.session.mode==='refresh'?'Dein Japanisch ist heute in Bewegung!':state.session.mode==='guided'?'Du hast ein Lernziel aktiv trainiert!':'Du hast eine neue Struktur entdeckt!'}</h1>
+    <div class="note learned-summary" style="text-align:left"><strong>Das hast du geübt</strong>
+      <p>${safe(goal)}</p>
+      ${vocabulary.length ? `<ul>${vocabulary.map(word => `<li>${safe(word)}</li>`).join('')}</ul>` : ''}
+      ${transfer?.response?.trim() ? `<p>Dein eigener Satz <span class="muted small">(unbewertet)</span>:</p><p lang="ja">${safe(transfer.response)}</p><p class="small">Vergleiche Wortwahl und Struktur mit der Musterlösung. Regelmäßiges Üben zählt – du musst nicht alles sofort können.</p>` : ''}
+    </div>
     <div class="score">${correct} / ${scored.length}<small>automatisch bewertete Antworten</small></div>
     <p class="muted">${state.answers.length-scored.length} angeleitete bzw. offene Aufgaben wurden bewusst nicht automatisch bewertet.</p>
     <div class="note" style="text-align:left"><strong>Wichtig:</strong> Diese Vorschau speichert noch keinen Tagesabschluss und keine Streak. Es wurden keine SRS-Einträge, Firebase-Daten oder Life-RPG-Belohnungen verändert.</div>
@@ -148,7 +159,7 @@ function answer(response) {
   // A different free-text translation can be valid: never confidently mark it wrong.
   const correct = evaluated === false && (task.kind === 'production' || task.kind === 'meaning-type') ? null : evaluated;
   state.result = { correct, response: String(response) };
-  state.answers.push({ taskId: task.id, correct });
+  state.answers.push({ taskId: task.id, correct, response: String(response) });
   render();
   const button = root.querySelector('[data-next]');
   button?.focus({preventScroll:true});
