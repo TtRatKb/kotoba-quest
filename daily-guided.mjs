@@ -3,6 +3,9 @@
  * Content is aligned with grammar/particle examples in cloud.html (2026-11-14).
  * This module never performs a storage read or write itself.
  */
+import { asDayNumber } from './daily-streak.mjs';
+import { EXTRA_GUIDED_PATHS, GUIDED_ALT_TASKS } from './daily-guided-variety.mjs';
+
 const obj = v => v && typeof v === 'object' && !Array.isArray(v) ? v : {};
 const hasLesson = (save, section, id) => obj(obj(obj(save)[section]).points)[id]?.lessonComplete === true;
 const skillRecords = (save, section, id) => Object.values(obj(obj(obj(obj(obj(save)[section]).points)[id]).skills));
@@ -140,7 +143,8 @@ export const GUIDED_PATHS = Object.freeze([
         example:'毎日日本語を読むようにしています。',
         explanation:'〜ようにしています kann eine andauernde selbstgesteuerte Routine ausdrücken.',scored:false}
     ]
-  }
+  },
+  ...EXTRA_GUIDED_PATHS
 ]);
 
 /** No curriculum advancement is inferred from level counters, badges or aggregate statistics. */
@@ -177,10 +181,19 @@ export function buildGuidedQuest(save, day = 'preview', chosenId = null, now = D
   const recommended = available.filter(item=>item.priority===highest).sort((a,b)=>a.id.localeCompare(b.id));
   const pick = eligible || recommended[rotate % recommended.length];
   const template = GUIDED_PATHS.find(path=>path.id===pick.id);
+  // Alternating day variants are chosen by calendar day rather than stored activity.
+  // Date parity remains stable across refreshes, DST changes and time-zone offsets.
+  const dayNumber = asDayNumber(String(day));
+  const alternate = Array.isArray(GUIDED_ALT_TASKS[template.id]) &&
+    dayNumber !== null && dayNumber % 2 === 1;
+  const chosenTasks = alternate
+    ? [template.tasks[0], ...GUIDED_ALT_TASKS[template.id]]
+    : template.tasks;
   return {
     mode:'guided',id:template.id,title:template.title,domain:template.domain,
     reason:pick.focus,prerequisites:[...template.prerequisites],
-    tasks:template.tasks.map(task=>({...task,options:task.options?[...task.options]:undefined})),
+    variant:alternate?'B':'A',
+    tasks:chosenTasks.map(task=>({...task,options:task.options?[...task.options]:undefined})),
     readOnly:true
   };
 }

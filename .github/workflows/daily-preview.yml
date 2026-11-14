@@ -10,6 +10,9 @@ on:
       - "daily-guided.mjs"
       - "daily-mix.mjs"
       - "tests/daily-mix.test.mjs"
+
+      - "daily-guided-variety.mjs"
+      - "tests/daily-variety.test.mjs"
       - "tests/daily-guided.test.mjs"
       - "daily-streak.mjs"
       - "dungeon-nav.js"
@@ -25,6 +28,9 @@ on:
       - "daily-guided.mjs"
       - "daily-mix.mjs"
       - "tests/daily-mix.test.mjs"
+
+      - "daily-guided-variety.mjs"
+      - "tests/daily-variety.test.mjs"
       - "tests/daily-guided.test.mjs"
       - "daily-streak.mjs"
       - "dungeon-nav.js"
@@ -43,4 +49,6 @@ jobs:
         with:
           node-version: "22"
       - run: node --check daily.js && node --check daily-engine.mjs && node --check daily-mix.mjs
+
+      - run: node --check daily-guided.mjs && node --check daily-guided-variety.mjs
       - run: node --test tests/*.test.mjs
