@@ -8,7 +8,7 @@ Ein neuer, ausschließlich Daily gehörender localStorage-Eintrag `kotobaDailyCo
 Dies ist zunächst ein Entwurf für einen **einzelnen lokalen Browser**, keine geräteübergreifende Synchronisation. Ein anderes Gerät, Origin oder Browserprofil hat einen eigenen Stand. Browserlöschung kann ihn verlieren. Ohne sichere Zuordnung auf gemeinsam verwendeten Geräten würde ein gemeinsamer Eintrag verschiedene Konten vermischen: vor Implementierung entweder ausdrücklich einen browserbezogenen Fortschritt mit verständlicher Anzeige festlegen oder Kontotrennung separat klären. Keine neuen Auth-/Firebase-Abhängigkeiten allein für die Streak hinzufügen.
 
 ## Qualifizierender Abschluss
-- Ausschließlich abgeschlossene, unveränderte, von den vorhandenen Generatoren erzeugte Sessions mit mindestens drei aktiven Aufgaben. Erklärung lesen oder Start anklicken genügt nicht.
+- Ausschließlich abgeschlossene, unveränderte, von den vorhandenen Generatoren erzeugte Sessions mit mindestens drei Schritten und zwei aktiven Aufgaben. Damit qualifiziert auch ein vollständiger kurzer Guided-Pfad aus Erklärung, Anwendung und eigener Transferformulierung. Erklärung lesen oder Start anklicken genügt nicht.
 - Alle Schritte genau einmal durchlaufen; eindeutige Zuordnung der Antworten zu Aufgaben; kein Abschluss bei Abbruch, nur geöffneter Musterlösung oder leerer Eingabe. Eine offene Transferaufgabe benötigt einen eigenen nichtleeren japanischen Versuch. Automatische Sprachbeherrschung kann damit nicht nachgewiesen werden.
 - Kein Mindestscore, keine perfekten Antworten nötig. Unklare Antworten bleiben unbewertet. Fehler dürfen eine ernsthafte Lernaktivität nicht entwerten.
 - Maximal eine Tagesgutschrift unabhängig vom Modus. Keine SRS-Voraussetzung außer bereits gelernten Inhalten bei personalisierten Aufgaben; keine regulären Reviews erledigen oder erzeugen.
@@ -34,3 +34,9 @@ Kein Speicher-Adapter ist Teil dieses PRs. Die Voraussetzungen sind noch nicht e
 - Zusätzlich leere und nicht lesbare künstliche Quellen: persönliche Modi deaktiviert, keine Guided-Freischaltung, Probelektion zugänglich.
 - Reale Geräte/IME, produktive Speicherstände und Mehrgeräte-Verhalten weiterhin offen. Der Browser-Test ersetzt den Source-Adapter, prüft also ausdrücklich keine echten IndexedDB/Firebase-Datenflüsse.
 - Integration #21: CI erfolgreich auf `261e278b6c2e2b20e4e466c0ecd2c1a04d199b43`, Run 43614757881. Dieser Folgebranch braucht einen eigenen CI-Lauf.
+
+
+## Fortschreibung: Tagesabschluss ohne Persistenz
+Die folgende Funktionsstufe implementiert die Aktivitätsprüfung und die Anzeige eines Tagesziels bzw. einer Serie ausschließlich im Arbeitsspeicher der geöffneten Seite. Alle Schritte müssen bestätigt und alle aktiven Aufgaben selbst versucht werden. Japanische Textaufgaben benötigen einen Versuch in japanischer Schrift; dies prüft Teilnahme, nicht sprachliche Korrektheit oder Beherrschung. Eine reine Musterlösungsansicht qualifiziert nicht. Lokaler Tag wird beim Abschluss bestimmt; erneuter Abschluss am selben Tag bleibt idempotent. Nach Neuladen/Schließen verschwindet die Anzeige; andere Tabs/Geräte teilen sie nicht. Die UI benennt diese Grenze ausdrücklich.
+
+Dies ist keine Umsetzung des oben vorgeschlagenen Speicheradapters. Verifizierte vollständige produktive Backups und die Entscheidung Browserprofil/Kontotrennung fehlen weiterhin. Kein neuer Speicher-Key, keine Synchronisation, keine Änderungen an den vorhandenen Datenflüssen. Die Vorbereitungsfunktionen können später nach Sicherheitsfreigabe angebunden werden.

@@ -15,6 +15,7 @@ on:
       - "tests/daily-variety.test.mjs"
       - "tests/daily-guided.test.mjs"
       - "daily-streak.mjs"
+      - "daily-completion.mjs"
       - "dungeon-nav.js"
       - "tests/daily-*.test.mjs"
       - ".github/workflows/daily-preview.yml"
@@ -33,6 +34,7 @@ on:
       - "tests/daily-variety.test.mjs"
       - "tests/daily-guided.test.mjs"
       - "daily-streak.mjs"
+      - "daily-completion.mjs"
       - "dungeon-nav.js"
       - "tests/daily-*.test.mjs"
       - ".github/workflows/daily-preview.yml"
@@ -48,7 +50,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --check daily.js && node --check daily-engine.mjs && node --check daily-mix.mjs
+      - run: node --check daily.js && node --check daily-engine.mjs && node --check daily-mix.mjs && node --check daily-completion.mjs
 
       - run: node --check daily-guided.mjs && node --check daily-guided-variety.mjs
       - run: node --test tests/*.test.mjs
