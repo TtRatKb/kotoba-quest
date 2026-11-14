@@ -39,7 +39,7 @@ test('a meaningful daily quest combines known vocabulary, one licensed learning 
   assert.equal(session.tasks.filter(t=>t.group==='vocab').length,4);
   assert.equal(session.tasks.filter(t=>t.group==='growth').length,4);
   assert(session.tasks.some(t=>t.kind==='production'));
-  assert(session.tasks.some(t=>t.kind==='context'));
+  assert(session.tasks.some(t=>t.kind==='cloze')); // PR #19 replaces the early context task.
   assert.equal(new Set(session.tasks.map(t=>t.id)).size,session.tasks.length);
   assert.equal(JSON.stringify({cards,save}),before);
 });
@@ -102,4 +102,26 @@ test('daily mixed route contains no local or remote write path',()=>{
   assert.match(ui,/data-start="daily"/);
   assert.match(ui,/buildDailyMix\(state\.source\?\.learned/);
   assert.doesNotMatch(ui,/\b(?:localStorage|sessionStorage)\s*\.\s*(?:setItem|removeItem|clear)\s*\(/);
+});
+
+// Exercise the actual composition of PRs #18, #19 and #20, not just each generator.
+import { GUIDED_PATHS, buildGuidedQuest } from '../daily-guided.mjs';
+test('all licensed paths compose with sentence gaps on both rotating calendar variants', () => {
+  for (const path of GUIDED_PATHS) {
+    for (const day of ['2026-11-14', '2026-11-15']) {
+      const save = {[path.section]: {points: complete(...path.prerequisites)}};
+      const before = JSON.stringify(save);
+      const mix = buildDailyMix(cards, save, day, 2000);
+      const guided = buildGuidedQuest(save, day, path.id, 2000);
+      assert.equal(mix.growthPathId, path.id);
+      assert.equal(mix.tasks.length, 8);
+      assert.deepEqual(mix.tasks.filter(t => t.group === 'growth').map(t => t.prompt), guided.tasks.map(t => t.prompt));
+      const gap = mix.tasks.find(t => t.kind === 'cloze');
+      assert(gap);
+      assert.equal(isCorrect(gap, gap.reading), true);
+      assert.equal(isCorrect(gap, 'unbekannte Variante'), null);
+      assert.equal(mix.tasks.at(-1).kind, 'open');
+      assert.equal(JSON.stringify(save), before);
+    }
+  }
 });
