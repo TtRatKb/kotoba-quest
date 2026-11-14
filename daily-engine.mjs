@@ -62,10 +62,10 @@ export function contextCloze(card) {
   const before = sentence.slice(0, start);
   const after = sentence.slice(start + word.length);
   const context = before + after;
-  if (!/[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]/u.test(context)) return null;
+  if (!/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(context)) return null;
   // A substring of a longer Kanji/Katakana compound is not a trustworthy word gap.
-  if (/[\\p{Script=Han}\\p{Script=Katakana}]/u.test(before.at(-1) || '') ||
-      /[\\p{Script=Han}\\p{Script=Katakana}]/u.test(after[0] || '')) return null;
+  if (/[\p{Script=Han}\p{Script=Katakana}]/u.test(before.at(-1) || '') ||
+      /[\p{Script=Han}\p{Script=Katakana}]/u.test(after[0] || '')) return null;
   return { prompt: before + '＿＿' + after, answer: word };
 }
 
