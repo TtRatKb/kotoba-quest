@@ -49,6 +49,26 @@ function shuffle(items, seed) {
 
 function primaryMeaning(card) { return list(card.meanings)[0]; }
 
+/** Only mask an exact, unique surface form from an existing card example.
+ * Conservatively reject potential Kanji/Katakana compounds and sentence-only words.
+ * Never morph or generate Japanese grammar; the learner reconstructs the source form.
+ */
+export function contextCloze(card) {
+  const word = clean(card?.word);
+  const sentence = clean(card?.example);
+  if ([...word].length < 2 || !sentence || !primaryMeaning(card || {})) return null;
+  const start = sentence.indexOf(word);
+  if (start < 0 || sentence.indexOf(word, start + word.length) >= 0) return null;
+  const before = sentence.slice(0, start);
+  const after = sentence.slice(start + word.length);
+  const context = before + after;
+  if (!/[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]/u.test(context)) return null;
+  // A substring of a longer Kanji/Katakana compound is not a trustworthy word gap.
+  if (/[\\p{Script=Han}\\p{Script=Katakana}]/u.test(before.at(-1) || '') ||
+      /[\\p{Script=Han}\\p{Script=Katakana}]/u.test(after[0] || '')) return null;
+  return { prompt: before + '＿＿' + after, answer: word };
+}
+
 function optionsFor(card, candidates, seed) {
   const correct = primaryMeaning(card);
   const used = new Set([key(correct)]);
@@ -70,6 +90,23 @@ function createVocabularyTask(card, type, all, seed, index) {
   const meaning = primaryMeaning(card);
   const context = clean(card.example);
   const hasExample = context && (context.includes(word) || context.includes(reading));
+  const cloze = type === 'cloze' ? contextCloze(card) : null;
+  if (cloze) return {
+    id: `vocab-${index}`,
+    kind: 'cloze',
+    label: 'Satzlücke ergänzen',
+    prompt: cloze.prompt,
+    secondary: `Welches bereits gelernte Wort bedeutet „${meaning}“? Ergänze die Lücke mit dem Wort oder seiner Lesung.`,
+    target: '',
+    reading,
+    options: null,
+    correct: word,
+    accepted: acceptedAnswers(card, 'japanese'),
+    explanation: `Gesucht war 「${word}」（${reading}） – ${meaning}. Weitere passende Formulierungen werden nicht automatisch als falsch bewertet.`,
+    example: context,
+    exampleTranslation: clean(card.exampleTranslation),
+    scored: true
+  };
   const options = optionsFor(card, all, `${seed}|${index}`);
   const isContext = type === 'context' && Boolean(hasExample);
   const effectiveType = type === 'production' ? 'production' : options ? (isContext ? 'context' : 'meaning') : 'meaning-type';
@@ -116,7 +153,13 @@ export function buildRefresh(cards, dateKey = 'preview') {
     arranged.push(selected);
     recent.add(selected);
   }
-  const order = ['meaning', 'production', 'context', 'meaning', 'production', 'context', 'production', 'meaning'];
+  // Prefer one safe, exact sentence gap if a suitable learned example exists.
+  // Keep the later context-meaning task: variety instead of eight text entries.
+  if (!contextCloze(arranged[2])) {
+    const gapIndex = arranged.findIndex((card, index) => index !== 2 && contextCloze(card));
+    if (gapIndex >= 0) [arranged[2], arranged[gapIndex]] = [arranged[gapIndex], arranged[2]];
+  }
+  const order = ['meaning', 'production', 'cloze', 'meaning', 'production', 'context', 'production', 'meaning'];
   return {
     mode: 'refresh',
     tasks: arranged.map((card, index) => createVocabularyTask(card, order[index], learned, dateKey, index)),
@@ -165,6 +208,7 @@ export function buildGrammarPreview() {
 }
 
 export function isCorrect(task, response) {
+  if (task.kind === 'cloze') return checkTyped(task, response) ? true : null;
   if (task.kind === 'production' || task.kind === 'meaning-type') return checkTyped(task, response);
   if (task.kind === 'choice' || task.kind === 'context' || task.kind === 'meaning') return key(task.correct) === key(response);
   return null;
