@@ -31,6 +31,15 @@ Die P0-Problematik mit historischen Kanji-SRS-Einzelrecords ist ungeklärt. Es w
 - Testabdeckung: Lehrnachweis, vollständige Paar-Voraussetzungen, Vorher-/Nachher-Identität des gesamten Spielstands, Korrektheit eindeutiger Antworten und Schreibpfadschutz. Kein Live-Zugriff auf echte Nutzerdaten.
 - **Begrenzung:** Noch kein Vollkurs und keine dynamische Extraktion beliebiger Aufgaben aus `cloud.html`. Nur diese bewusst kuratierten Lernziele gelten als unterstützt. Als Nächstes weitere geprüfte Fragenbanken ergänzen und eventuell den lokalen Streak-Metadatenbereich nach separater Datensicherung anbinden.
 
+## Daily Mix – zusammenhängende Mini-Quest (Featurebranch, 14.11.2026)
+- Neuer reiner Kompositionsbaustein `daily-mix.mjs`: **eine** zusammenhängende Session statt Auswahlzwang zwischen Vokabel- und Grammatiktraining. Bereits gelernte Wörter eröffnen die Quest; dann folgen Erklärung, kontrastive Anwendung, weitere Wortübungen und zum Abschluss ein selbst formulierter japanischer Satz.
+- **Tagesumfang:** maximal acht kurze Schritte. Die Auswahl enthält drei bis fünf Vokabelaufgaben und einen vollständigen 3–4-teiligen Growth-Pfad; sie nutzt die bestehenden Generatoren statt neuer Fortschrittsdaten.
+- **Personalisiertes Lernziel** nur bei bestehenden `lessonComplete === true`-Voraussetzungen im vorhandenen Snapshot. Andernfalls klar deklarierte **freiwillige Probelektion** zu 〜てしまう, nicht als bereits gelernt markiert.
+- Der Mix ist pro lokalem Kalendertag deterministisch und berücksichtigt bei mehreren bekannten Themen vorhandene Fälligkeiten **nur als Lesepriorität**. Der abschließende freie Satz bleibt unbenotet.
+- **Sicherheitsgrenze:** keine neuen Browser-Keys, keine Streak-Speicherung, keine SRS-/Kanji-/Firebase-/Life-RPG-Schreibzugriffe. Abschluss und Antworten bleiben ausschließlich im Arbeitsspeicher.
+- Neuer Startbutton „Mein Daily Mix“ in der Mobile-Vorschau, während Daily Refresh, Growth-Probelektion und einzelne Guided Quests unverändert erreichbar bleiben.
+- Separate `tests/daily-mix.test.mjs` prüft Aufgabenfolge, stabile Auswahl, echte Lernvoraussetzungen, vollständige Unveränderlichkeit des Spielstands, sichere Bewertung und fehlende Schreibpfade. Mobile-Gerätetests und Produktionsspeicher bleiben weiterhin offen.
+
 ## Nächste Schritte
 1. Live-Einbindung der Navigation und mobile Endgeräte getrennt prüfen; falls `dungeon-nav.js` in `cloud.html` nicht geladen wird, einen **geprüften additiven** Einstieg ergänzen, ohne die große Cloud-Datei ungeprüft umzuschreiben.
 2. Ein **isoliertes, transparentes Tagesabschluss-/Streak-Metadatenmodell** erst nach unveränderter vollständiger Sicherung aller autoritativen Daten sowie Prüfung von Origin, Cloud-Konflikten, Idempotenz und Rollback anbinden.
