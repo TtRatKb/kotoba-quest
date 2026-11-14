@@ -21,6 +21,16 @@ Die P0-Problematik mit historischen Kanji-SRS-Einzelrecords ist ungeklärt. Es w
 - GitHub CI führt `node --test tests/*.test.mjs` aus. In der Browser-Simulation wurde **kein** echter Lernstand gelesen.
 - **Nicht getestet:** tatsächliche Kotoba-Cloud/IndexedDB in Produktion, Safari auf iOS, Android-Geräte, Mehrgeräte-Sync, Cache/Service Worker und reale Antwortqualität aller Bestandskarten.
 
+
+## Nächster Ausbauschritt: Read-only Guided Practice (14.11.2026)
+- Neue Datei `daily-guided.mjs`: kuratierte, kurze Übungspfade, deren Voraussetzungen direkt mit den **vorhandenen** `grammar.points[ID].lessonComplete` und `particlePath.points[ID].lessonComplete` abgeglichen werden. Die Datensätze werden nur über den unveränderten `KotobaDungeonSource.readSave()` im lokalen, autoritativen Snapshot gelesen; kein zusätzlicher Speicherort, keine `normalizeState`- oder Migrationsaufrufe.
+- Erste **didaktisch überprüfbare** Kontrastlektionen: は/が, に/で, ようになる/ようにする. Die beiden よう-Einzelpfade werden nur angeboten, wenn die jeweilige einzelne Lektion bekannt, die Vergleichslektion aber noch nicht gelernt wurde.
+- Jede geführte Einheit hat eine Erklärung, konkrete Kontextentscheidungen, Kontrastfeedback und einen offenen Transfersatz. Freie japanische Antworten sind bewusst **nicht automatisch benotet**; alle Übungen sind freiwilliges Training und reduzieren keine SRS-Wiederholungen.
+- Wenn der gespeicherte Fortschritt keine passende nachgewiesene Lektion enthält, gibt es **keine erfundene Freischaltung**: Die vorhandene Grammatik-Probelektion bleibt separat zugänglich.
+- Bei mehreren verfügbaren Themen zeigt Daily alle geprüften Pfade an. Für künftige Empfehlungen wird ausschließlich lesend anhand fälliger Skill-Intervalle priorisiert; die Priorität bedeutet **keinen** SRS-Commit.
+- Testabdeckung: Lehrnachweis, vollständige Paar-Voraussetzungen, Vorher-/Nachher-Identität des gesamten Spielstands, Korrektheit eindeutiger Antworten und Schreibpfadschutz. Kein Live-Zugriff auf echte Nutzerdaten.
+- **Begrenzung:** Noch kein Vollkurs und keine dynamische Extraktion beliebiger Aufgaben aus `cloud.html`. Nur diese bewusst kuratierten Lernziele gelten als unterstützt. Als Nächstes weitere geprüfte Fragenbanken ergänzen und eventuell den lokalen Streak-Metadatenbereich nach separater Datensicherung anbinden.
+
 ## Nächste Schritte
 1. Live-Einbindung der Navigation und mobile Endgeräte getrennt prüfen; falls `dungeon-nav.js` in `cloud.html` nicht geladen wird, einen **geprüften additiven** Einstieg ergänzen, ohne die große Cloud-Datei ungeprüft umzuschreiben.
 2. Ein **isoliertes, transparentes Tagesabschluss-/Streak-Metadatenmodell** erst nach unveränderter vollständiger Sicherung aller autoritativen Daten sowie Prüfung von Origin, Cloud-Konflikten, Idempotenz und Rollback anbinden.

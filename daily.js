@@ -1,9 +1,10 @@
 /* Kotoba Daily – mobile-first preview. In-memory sessions only, never touches storage. */
 import { buildRefresh, buildGrammarPreview, isCorrect } from './daily-engine.mjs';
+import { availableGuidedPaths, buildGuidedQuest } from './daily-guided.mjs';
 
 const root = document.getElementById('dailyRoot');
 const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const state = { source: null, error: '', session: null, index: 0, result: null, answers: [] };
+const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [] };
 
 function todayKey() {
   const d = new Date();
@@ -21,6 +22,7 @@ function highlightExample(example, target) {
 function home() {
   const learnedCount = state.source?.learned?.length || 0;
   const ready = learnedCount >= 3;
+  const personalPaths = availableGuidedPaths(state.save || {});
   const note = state.error
     ? `Der Lernstand konnte nicht geladen werden: ${safe(state.error)}. Die unabhängige Grammatik-Probelektion funktioniert trotzdem.`
     : !ready
@@ -39,8 +41,12 @@ function home() {
       <span class="icon" aria-hidden="true">✨</span><span><strong>Daily Growth · Probelektion</strong><small>4 Schritte · 〜てしまう verstehen, Nuancen unterscheiden und selbst formulieren</small></span><span class="arrow" aria-hidden="true">›</span>
     </button>
   </div>
+  <section class="panel"><span class="eyebrow">🧩 LERNEN MIT SYSTEM</span><h2>Geführte Übungen aus deinem Lernstand</h2>
+  <p class="muted small">Nur Themen, deren Kotoba-Lektionen bereits abgeschlossen wurden. Wir unterscheiden gezielt ähnliche Strukturen, statt Aufgaben zufällig zu mischen.</p>
+  ${personalPaths.length?`<div class="mode-grid">${personalPaths.map(path=>`<button class="mode" type="button" data-guided="${safe(path.id)}"><span class="icon" aria-hidden="true">${path.domain==='grammar'?'📚':'🧩'}</span><span><strong>${safe(path.title)}</strong><small>${safe(path.subtitle)} · ${safe(path.focus)} · kein SRS-Eingriff</small></span><span class="arrow" aria-hidden="true">›</span></button>`).join('')}</div>`:`<div class="note">${state.progressError?`Der lokale Lernstand konnte nicht gelesen werden: ${safe(state.progressError)}`:'Für diese erste Auswahl sind noch keine passenden abgeschlossenen Grammatik-/Partikellektionen im lokalen Spielstand nachgewiesen. Die Probelektion oben bleibt verfügbar.'}</div>`}
+  </section>
   <div class="note"><strong>${ready?'Dein Lernstand ist da.':'Zur Verfügbarkeit'}</strong> ${note}</div>
-  <div class="note"><strong>Datenschutz und Lernfortschritt:</strong> Diese erste Version liest Vokabeldaten nur aus dem vorhandenen lokalen Kotoba-Spielstand. Antworten bleiben im Arbeitsspeicher und werden weder an Firebase gesendet noch ins SRS geschrieben. Streaks, echte SRS-Abschlüsse, Audio und automatische Grammatik-Auswahl folgen erst in späteren, abgesicherten Schritten.</div>`;
+  <div class="note"><strong>Datenschutz und Lernfortschritt:</strong> Die App liest lokale Vokabeln sowie die abgeschlossenen Grammatik-/Partikellektionen nur aus dem vorhandenen Kotoba-Spielstand. Antworten bleiben im Arbeitsspeicher und werden weder an Firebase gesendet noch ins SRS geschrieben. Die Auswahl umfasst zunächst einige redaktionell geprüfte Lernziele, nicht den gesamten Kurs. Gespeicherte Streaks, echte SRS-Abschlüsse und Audio folgen in getrennten Schritten.</div>`;
 }
 
 function promptCard(task) {
@@ -91,8 +97,10 @@ function active() {
   const i = state.index;
   const task = session.tasks[i];
   const percent = (i / session.tasks.length) * 100;
-  return `<div class="status-row"><span class="eyebrow">${session.mode==='refresh'?'Daily Refresh':'Daily Growth · Probe'}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
+  const modeLabel = session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
+  return `<div class="status-row"><span class="eyebrow">${modeLabel}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
     <div class="progress" role="progressbar" aria-label="Fortschritt" aria-valuenow="${i}" aria-valuemin="0" aria-valuemax="${session.tasks.length}"><div style="width:${percent}%"></div></div>
+    ${session.mode==='guided'?`<p class="muted small">Lernziel: ${safe(session.title)} · freies Training ohne SRS-Buchung</p>`:''}
     ${promptCard(task)}<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>`;
 }
 
@@ -100,7 +108,7 @@ function summary() {
   const scored = state.answers.filter(answer => answer.correct !== null);
   const correct = scored.filter(answer => answer.correct).length;
   return `<section class="panel results"><div class="flower" aria-hidden="true">🌸</div><p class="eyebrow">QUEST ABSOLVIERT</p>
-    <h1>${state.session.mode==='refresh'?'Dein Japanisch ist heute in Bewegung!':'Du hast eine neue Struktur entdeckt!'}</h1>
+    <h1>${state.session.mode==='refresh'?'Dein Japanisch ist heute in Bewegung!':state.session.mode==='guided'?'Du hast ein Lernziel aktiv trainiert!':'Du hast eine neue Struktur entdeckt!'}</h1>
     <div class="score">${correct} / ${scored.length}<small>automatisch bewertete Antworten</small></div>
     <p class="muted">${state.answers.length-scored.length} angeleitete bzw. offene Aufgaben wurden bewusst nicht automatisch bewertet.</p>
     <div class="note" style="text-align:left"><strong>Wichtig:</strong> Diese Vorschau speichert noch keinen Tagesabschluss und keine Streak. Es wurden keine SRS-Einträge, Firebase-Daten oder Life-RPG-Belohnungen verändert.</div>
@@ -112,11 +120,11 @@ function render(focus = false) {
   if (focus) { root.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'}); }
 }
 
-function start(mode) {
+function start(mode, pathId = null) {
   const session = mode === 'refresh'
     ? buildRefresh(state.source?.learned || [], todayKey())
-    : buildGrammarPreview();
-  if (!session.tasks.length) return;
+    : mode === 'guided' ? buildGuidedQuest(state.save || {}, todayKey(), pathId) : buildGrammarPreview();
+  if (!session?.tasks?.length) return;
   state.session = session;
   state.index = 0;
   state.result = null;
@@ -149,6 +157,8 @@ function next() {
 }
 
 root.addEventListener('click', event => {
+  const guidedButton = event.target.closest('[data-guided]');
+  if (guidedButton) { start('guided', guidedButton.dataset.guided); return; }
   const startButton = event.target.closest('[data-start]');
   if (startButton) { start(startButton.dataset.start); return; }
   if (event.target.closest('[data-home]')) { state.session = null; state.result = null; render(true); return; }
@@ -189,6 +199,12 @@ async function init() {
     if (!window.KotobaDungeonSource?.load) throw new Error('Lesemodul nicht verfügbar');
     state.source = await window.KotobaDungeonSource.load();
   } catch (error) { state.error = String(error?.message || error); }
+  try {
+    // Direct, read-only view of the exact persisted snapshot; do not normalize or save.
+    const snapshot = await window.KotobaDungeonSource?.readSave?.();
+    state.save = snapshot?.data || null;
+    if (!state.save) state.progressError = 'Kein vollständig lesbarer Kotoba-Spielstand';
+  } catch (error) { state.progressError = String(error?.message || error); }
   render();
 }
 init();
