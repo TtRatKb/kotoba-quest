@@ -1,0 +1,37 @@
+name: Kotoba Daily preview regression
+
+on:
+  pull_request:
+    paths:
+      - "daily.html"
+      - "daily.css"
+      - "daily.js"
+      - "daily-engine.mjs"
+      - "daily-streak.mjs"
+      - "dungeon-nav.js"
+      - "tests/daily-*.test.mjs"
+      - ".github/workflows/daily-preview.yml"
+  push:
+    branches: [main]
+    paths:
+      - "daily.html"
+      - "daily.css"
+      - "daily.js"
+      - "daily-engine.mjs"
+      - "daily-streak.mjs"
+      - "dungeon-nav.js"
+      - "tests/daily-*.test.mjs"
+      - ".github/workflows/daily-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/*.test.mjs
