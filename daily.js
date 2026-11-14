@@ -2,15 +2,14 @@
 import { buildRefresh, buildGrammarPreview, isCorrect } from './daily-engine.mjs';
 import { availableGuidedPaths, buildGuidedQuest } from './daily-guided.mjs';
 import { buildDailyMix } from './daily-mix.mjs';
+import { assessCompletion, localDay } from './daily-completion.mjs';
+import { recordDailyCompletion, streakSummary } from './daily-streak.mjs';
 
 const root = document.getElementById('dailyRoot');
 const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [] };
+const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false };
 
-function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+const todayKey = () => localDay();
 
 function highlightExample(example, target) {
   const source = String(example || '');
@@ -24,6 +23,7 @@ function home() {
   const learnedCount = state.source?.learned?.length || 0;
   const ready = learnedCount >= 3;
   const personalPaths = availableGuidedPaths(state.save || {});
+  const streak = streakSummary(state.completedDays, todayKey());
   const note = state.error
     ? `Der Lernstand konnte nicht geladen werden: ${safe(state.error)}. Die unabhängige Grammatik-Probelektion funktioniert trotzdem.`
     : !ready
@@ -33,6 +33,10 @@ function home() {
     <div class="eyebrow">✿ KOTOBA DAILY · PREVIEW</div>
     <h1>Ein bisschen Japanisch.<br>Jeden Tag besser.</h1>
     <p>Kurze Übungen mit echtem Lernziel – ohne einen Berg offener Wiederholungen abarbeiten zu müssen.</p>
+  </section>
+  <section class="note daily-day" aria-label="Dein Tagesziel"><strong>${streak.doneToday ? 'Heute geübt ✓' : 'Dein Tagesziel: eine kurze aktive Quest'}</strong>
+    <p>${streak.current ? `${streak.current} ${streak.current === 1 ? 'Lerntag' : 'Lerntage'} in Folge. ` : ''}${streak.doneToday ? 'Für heute ist dein Tagesziel erreicht. Weitere Übungen sind freiwillig.' : 'Ein eigener Versuch zählt – perfekte Antworten sind nicht nötig.'}</p>
+    <span class="muted small">Vorschau: Tagesabschluss und Serie bleiben nur auf dieser geöffneten Seite erhalten. Nach Neuladen oder Schließen sind sie weg; keine Synchronisation.</span>
   </section>
   <div class="mode-grid">
     <button class="mode" type="button" data-start="daily" ${ready?'':'disabled'}>
@@ -50,7 +54,7 @@ function home() {
   ${personalPaths.length?`<div class="mode-grid">${personalPaths.map(path=>`<button class="mode" type="button" data-guided="${safe(path.id)}"><span class="icon" aria-hidden="true">${path.domain==='grammar'?'📚':'🧩'}</span><span><strong>${safe(path.title)}</strong><small>${safe(path.subtitle)} · ${safe(path.focus)} · kein SRS-Eingriff</small></span><span class="arrow" aria-hidden="true">›</span></button>`).join('')}</div>`:`<div class="note">${state.progressError?`Der lokale Lernstand konnte nicht gelesen werden: ${safe(state.progressError)}`:'Für diese erste Auswahl sind noch keine passenden abgeschlossenen Grammatik-/Partikellektionen im lokalen Spielstand nachgewiesen. Die Probelektion oben bleibt verfügbar.'}</div>`}
   </section>
   <div class="note"><strong>${ready?'Dein Lernstand ist da.':'Zur Verfügbarkeit'}</strong> ${note}</div>
-  <div class="note"><strong>Datenschutz und Lernfortschritt:</strong> Die App liest lokale Vokabeln sowie die abgeschlossenen Grammatik-/Partikellektionen nur aus dem vorhandenen Kotoba-Spielstand. Antworten bleiben im Arbeitsspeicher und werden weder an Firebase gesendet noch ins SRS geschrieben. Die Auswahl umfasst zunächst einige redaktionell geprüfte Lernziele, nicht den gesamten Kurs. Gespeicherte Streaks, echte SRS-Abschlüsse und Audio folgen in getrennten Schritten.</div>`;
+  <div class="note"><strong>Datenschutz und Lernfortschritt:</strong> Die App liest lokale Vokabeln sowie die abgeschlossenen Grammatik-/Partikellektionen nur aus dem vorhandenen Kotoba-Spielstand. Antworten bleiben im Arbeitsspeicher und werden weder an Firebase gesendet noch ins SRS geschrieben. Die Auswahl umfasst zunächst einige redaktionell geprüfte Lernziele, nicht den gesamten Kurs. Dauerhaft gespeicherte Streaks und Audio folgen in getrennten Schritten.</div>`;
 }
 
 function promptCard(task) {
@@ -76,14 +80,14 @@ function promptCard(task) {
   } else if (task.kind === 'open') {
     control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">Dein eigener Satz</label>
       <input id="dailyAnswer" name="answer" lang="ja" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Japanisch schreiben …" ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
-      ${answered?'':'<button class="button" type="submit">Beispielantwort ansehen</button>'}</form>`;
+      ${answered?'':'<button class="button" type="submit">Meinen Versuch vergleichen</button><button class="button secondary" type="button" data-example>Nur Musterlösung ansehen</button>'}</form>`;
   } else {
     control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.kind==='production'||task.kind==='cloze'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
       <input id="dailyAnswer" name="answer" ${task.kind==='production'||task.kind==='cloze'?'lang="ja"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Antwort prüfen</button>'}</form>`;
   }
   const feedback = answered ? `<div class="feedback ${state.result.correct===false?'error':''}" role="status">
-    <strong>${state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':task.kind==='cloze'?'Vergleiche mit dem ursprünglichen Satz':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
+    <strong>${state.result.skipped?'Musterlösung zum Anschauen':state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':task.kind==='cloze'?'Vergleiche mit dem ursprünglichen Satz':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
     <p>${safe(task.explanation)}</p>
     ${state.result.correct===false?`<p><b>Erwartete Antwort:</b> ${safe(task.correct || task.explanation)}</p>`:''}
     ${task.kind==='open'?`<div class="example"><span lang="ja">${safe(task.example)}</span></div>`:''}
@@ -119,8 +123,8 @@ function summary() {
     .map(task => task.explanation))];
   const goal = state.session.growthTitle || (state.session.mode === 'guided' ? state.session.title : state.session.mode === 'discovery' ? '〜てしまう: Bedauern und vollständigen Abschluss unterscheiden' : 'Bekannte Wörter verstehen und aktiv abrufen');
   const transfer = state.answers.find(answer => state.session.tasks.find(task => task.id === answer.taskId)?.kind === 'open');
-  return `<section class="panel results"><div class="flower" aria-hidden="true">🌸</div><p class="eyebrow">QUEST ABSOLVIERT</p>
-    <h1>${state.session.mode==='daily'?'Deine Daily Quest ist geschafft!':state.session.mode==='refresh'?'Dein Japanisch ist heute in Bewegung!':state.session.mode==='guided'?'Du hast ein Lernziel aktiv trainiert!':'Du hast eine neue Struktur entdeckt!'}</h1>
+  return `<section class="panel results"><div class="flower" aria-hidden="true">🌸</div><p class="eyebrow">${state.completion?.qualified ? 'AKTIV GEÜBT' : 'ÜBUNG ANGESEHEN'}</p>
+    <h1>${!state.completion?.qualified?'Deine Übung ist abgeschlossen.':state.session.mode==='daily'?'Deine Daily Quest ist geschafft!':state.session.mode==='refresh'?'Dein Japanisch ist heute in Bewegung!':state.session.mode==='guided'?'Du hast ein Lernziel aktiv trainiert!':'Du hast eine neue Struktur entdeckt!'}</h1>
     <div class="note learned-summary" style="text-align:left"><strong>Das hast du geübt</strong>
       <p>${safe(goal)}</p>
       ${vocabulary.length ? `<ul>${vocabulary.map(word => `<li>${safe(word)}</li>`).join('')}</ul>` : ''}
@@ -128,7 +132,10 @@ function summary() {
     </div>
     <div class="score">${correct} / ${scored.length}<small>automatisch bewertete Antworten</small></div>
     <p class="muted">${state.answers.length-scored.length} angeleitete bzw. offene Aufgaben wurden bewusst nicht automatisch bewertet.</p>
-    <div class="note" style="text-align:left"><strong>Wichtig:</strong> Diese Vorschau speichert noch keinen Tagesabschluss und keine Streak. Es wurden keine SRS-Einträge, Firebase-Daten oder Life-RPG-Belohnungen verändert.</div>
+    <div class="note completion-note" role="status" style="text-align:left"><strong>${state.completion?.qualified ? state.completion.alreadyDone ? 'Dein Tagesziel war heute schon erreicht.' : 'Dein Tagesziel ist erreicht! 🌷' : 'Heute ganz ohne Druck.'}</strong>
+      <p>${state.completion?.qualified ? 'Eine vollständig bearbeitete Quest mit eigenen Versuchen zählt. Weitere Quests am selben Tag erhöhen die Serie nicht.' : 'Musterlösungen anzusehen ist willkommen. Für den Tagesabschluss braucht es eigene Antwortversuche in allen aktiven Aufgaben, bei japanischen Aufgaben auf Japanisch. Die sprachliche Richtigkeit wird dafür nicht vorausgesetzt.'}</p>
+      <p class="small">Vorschau: Der Tagesabschluss bleibt nur auf dieser geöffneten Seite erhalten und verschwindet beim Neuladen oder Schließen. Keine Synchronisation. SRS und Cloud-Lernstand bleiben unverändert.</p>
+    </div>
     <div class="actions"><button class="button" type="button" data-home>Weitere Quest auswählen</button><a class="button secondary" style="text-decoration:none;display:grid;place-items:center" href="./cloud.html">Zurück zu Kotoba Quest</a></div></section>`;
 }
 
@@ -148,30 +155,45 @@ function start(mode, pathId = null) {
   state.index = 0;
   state.result = null;
   state.answers = [];
+  state.completion = null;
+  state.composing = false;
   render(true);
 }
 
-function answer(response) {
-  if (!state.session || state.result) return;
+function answer(response, skipped = false) {
+  if (!state.session || state.result || state.composing) return;
   const task = state.session.tasks[state.index];
-  if (task.kind === 'lesson') return;
+  if (!task || task.kind === 'lesson') return;
+  if (!skipped && !String(response).trim()) {
+    const input = root.querySelector('#dailyAnswer');
+    input?.setCustomValidity('Schreibe erst einen eigenen Versuch oder wähle „Nur Musterlösung ansehen“.');
+    input?.reportValidity();
+    return;
+  }
   const evaluated = isCorrect(task, response);
   // A different free-text translation can be valid: never confidently mark it wrong.
   const correct = evaluated === false && (task.kind === 'production' || task.kind === 'meaning-type') ? null : evaluated;
-  state.result = { correct, response: String(response) };
-  state.answers.push({ taskId: task.id, correct, response: String(response) });
+  state.result = { correct, response: String(response), skipped };
+  state.answers.push({ taskId: task.id, correct, response: String(response), skipped });
   render();
   const button = root.querySelector('[data-next]');
   button?.focus({preventScroll:true});
 }
 
 function next() {
-  if (!state.session) return;
+  if (!state.session || state.index >= state.session.tasks.length) return;
   const task = state.session.tasks[state.index];
   if (task.kind !== 'lesson' && !state.result) return;
-  if (task.kind === 'lesson') state.answers.push({taskId:task.id,correct:null});
+  if (task.kind === 'lesson') state.answers.push({taskId:task.id,correct:null,acknowledged:true});
   state.index++;
   state.result = null;
+  if (state.index === state.session.tasks.length) {
+    const completion = assessCompletion(state.session, state.answers);
+    const day = todayKey(); // Credit the local calendar day of finishing, not starting.
+    const alreadyDone = state.completedDays.includes(day);
+    if (completion.qualified) state.completedDays = recordDailyCompletion(state.completedDays, day);
+    state.completion = { ...completion, day, alreadyDone };
+  }
   render(true);
 }
 
@@ -182,6 +204,7 @@ root.addEventListener('click', event => {
   if (startButton) { start(startButton.dataset.start); return; }
   if (event.target.closest('[data-home]')) { state.session = null; state.result = null; render(true); return; }
   if (event.target.closest('[data-next]')) { next(); return; }
+  if (event.target.closest('[data-example]')) { answer('', true); return; }
   const choice = event.target.closest('[data-choice]');
   if (choice && state.session && !state.result) {
     const task = state.session.tasks[state.index];
@@ -189,6 +212,23 @@ root.addEventListener('click', event => {
     if (Number.isInteger(idx) && idx >= 0 && idx < (task.options?.length || 0)) answer(task.options[idx]);
   }
 });
+
+root.addEventListener('compositionstart', () => { state.composing = true; });
+root.addEventListener('compositionend', () => { state.composing = false; });
+root.addEventListener('input', event => { event.target.setCustomValidity?.(''); });
+
+// Keep a still-open page honest after midnight or returning from the background.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !state.session) render(); });
+window.addEventListener('focus', () => { if (!state.session) render(); });
+function refreshAtMidnight() {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  window.setTimeout(() => {
+    if (!state.session) render();
+    refreshAtMidnight();
+  }, midnight - now + 50);
+}
+refreshAtMidnight();
 
 root.addEventListener('submit', event => {
   if (event.target.id !== 'dailyAnswerForm') return;
@@ -198,7 +238,7 @@ root.addEventListener('submit', event => {
 });
 
 root.addEventListener('keydown', event => {
-  if (!state.session || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (!state.session || state.index >= state.session.tasks.length || state.composing || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
   const tag = event.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
   if (state.result && event.key === 'Enter') {
