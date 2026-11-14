@@ -1,6 +1,7 @@
 /* Kotoba Daily – mobile-first preview. In-memory sessions only, never touches storage. */
 import { buildRefresh, buildGrammarPreview, isCorrect } from './daily-engine.mjs';
 import { availableGuidedPaths, buildGuidedQuest } from './daily-guided.mjs';
+import { buildDailyMix } from './daily-mix.mjs';
 
 const root = document.getElementById('dailyRoot');
 const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -34,6 +35,9 @@ function home() {
     <p>Kurze Übungen mit echtem Lernziel – ohne einen Berg offener Wiederholungen abarbeiten zu müssen.</p>
   </section>
   <div class="mode-grid">
+    <button class="mode" type="button" data-start="daily" ${ready?'':'disabled'}>
+      <span class="icon" aria-hidden="true">🌷</span><span><strong>Mein Daily Mix</strong><small>Deine tägliche Mini-Quest · bekannte Vokabeln, Grammatik oder Partikel und ein eigener Satz · ca. 5 Minuten</small></span><span class="arrow" aria-hidden="true">›</span>
+    </button>
     <button class="mode" type="button" data-start="refresh" ${ready?'':'disabled'}>
       <span class="icon" aria-hidden="true">🌸</span><span><strong>Daily Refresh</strong><small>8 Aufgaben · Bedeutung, aktive Produktion und Wörter im Kontext · dein gelernter Wortschatz</small></span><span class="arrow" aria-hidden="true">›</span>
     </button>
@@ -74,12 +78,12 @@ function promptCard(task) {
       <input id="dailyAnswer" name="answer" lang="ja" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Japanisch schreiben …" ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Beispielantwort ansehen</button>'}</form>`;
   } else {
-    control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.kind==='production'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
-      <input id="dailyAnswer" name="answer" ${task.kind==='production'?'lang="ja"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
+    control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.kind==='production'||task.kind==='cloze'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
+      <input id="dailyAnswer" name="answer" ${task.kind==='production'||task.kind==='cloze'?'lang="ja"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Antwort prüfen</button>'}</form>`;
   }
   const feedback = answered ? `<div class="feedback ${state.result.correct===false?'error':''}" role="status">
-    <strong>${state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
+    <strong>${state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':task.kind==='cloze'?'Vergleiche mit dem ursprünglichen Satz':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
     <p>${safe(task.explanation)}</p>
     ${state.result.correct===false?`<p><b>Erwartete Antwort:</b> ${safe(task.correct || task.explanation)}</p>`:''}
     ${task.kind==='open'?`<div class="example"><span lang="ja">${safe(task.example)}</span></div>`:''}
@@ -89,6 +93,7 @@ function promptCard(task) {
     <p class="task-secondary">${safe(task.secondary)}</p>
     <div class="${isJapanese?'task-jp':'task-de'}" ${isJapanese?'lang="ja"':''}>${content}</div>
     ${task.kind==='context'?`<p class="subtle">Gesuchtes Wort: <span lang="ja">${safe(task.target)}</span></p>`:''}
+    ${task.kind==='cloze' && task.exampleTranslation?`<p class="subtle">Satzbedeutung: ${safe(task.exampleTranslation)}</p>`:''}
     ${control}${feedback}</section>`;
 }
 
@@ -97,9 +102,10 @@ function active() {
   const i = state.index;
   const task = session.tasks[i];
   const percent = (i / session.tasks.length) * 100;
-  const modeLabel = session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
+  const modeLabel = session.mode==='daily'?'Mein Daily Mix':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
   return `<div class="status-row"><span class="eyebrow">${modeLabel}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
     <div class="progress" role="progressbar" aria-label="Fortschritt" aria-valuenow="${i}" aria-valuemin="0" aria-valuemax="${session.tasks.length}"><div style="width:${percent}%"></div></div>
+    ${session.mode==='daily'?`<p class="muted small">Lernziel: ${safe(session.growthTitle)} · ${session.growthType==='learned'?'an deinen Lernstand angepasst':'freiwillige neue Probelektion'} · kein SRS-Eingriff</p>`:''}
     ${session.mode==='guided'?`<p class="muted small">Lernziel: ${safe(session.title)} · freies Training ohne SRS-Buchung</p>`:''}
     ${promptCard(task)}<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>`;
 }
@@ -108,7 +114,7 @@ function summary() {
   const scored = state.answers.filter(answer => answer.correct !== null);
   const correct = scored.filter(answer => answer.correct).length;
   return `<section class="panel results"><div class="flower" aria-hidden="true">🌸</div><p class="eyebrow">QUEST ABSOLVIERT</p>
-    <h1>${state.session.mode==='refresh'?'Dein Japanisch ist heute in Bewegung!':state.session.mode==='guided'?'Du hast ein Lernziel aktiv trainiert!':'Du hast eine neue Struktur entdeckt!'}</h1>
+    <h1>${state.session.mode==='daily'?'Deine Daily Quest ist geschafft!':state.session.mode==='refresh'?'Dein Japanisch ist heute in Bewegung!':state.session.mode==='guided'?'Du hast ein Lernziel aktiv trainiert!':'Du hast eine neue Struktur entdeckt!'}</h1>
     <div class="score">${correct} / ${scored.length}<small>automatisch bewertete Antworten</small></div>
     <p class="muted">${state.answers.length-scored.length} angeleitete bzw. offene Aufgaben wurden bewusst nicht automatisch bewertet.</p>
     <div class="note" style="text-align:left"><strong>Wichtig:</strong> Diese Vorschau speichert noch keinen Tagesabschluss und keine Streak. Es wurden keine SRS-Einträge, Firebase-Daten oder Life-RPG-Belohnungen verändert.</div>
@@ -121,7 +127,9 @@ function render(focus = false) {
 }
 
 function start(mode, pathId = null) {
-  const session = mode === 'refresh'
+  const session = mode === 'daily'
+    ? buildDailyMix(state.source?.learned || [], state.save || {}, todayKey())
+    : mode === 'refresh'
     ? buildRefresh(state.source?.learned || [], todayKey())
     : mode === 'guided' ? buildGuidedQuest(state.save || {}, todayKey(), pathId) : buildGrammarPreview();
   if (!session?.tasks?.length) return;

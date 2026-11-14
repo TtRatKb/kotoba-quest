@@ -31,6 +31,32 @@ Die P0-Problematik mit historischen Kanji-SRS-Einzelrecords ist ungeklärt. Es w
 - Testabdeckung: Lehrnachweis, vollständige Paar-Voraussetzungen, Vorher-/Nachher-Identität des gesamten Spielstands, Korrektheit eindeutiger Antworten und Schreibpfadschutz. Kein Live-Zugriff auf echte Nutzerdaten.
 - **Begrenzung:** Noch kein Vollkurs und keine dynamische Extraktion beliebiger Aufgaben aus `cloud.html`. Nur diese bewusst kuratierten Lernziele gelten als unterstützt. Als Nächstes weitere geprüfte Fragenbanken ergänzen und eventuell den lokalen Streak-Metadatenbereich nach separater Datensicherung anbinden.
 
+## Daily Mix – zusammenhängende Mini-Quest (Featurebranch, 14.11.2026)
+- Neuer reiner Kompositionsbaustein `daily-mix.mjs`: **eine** zusammenhängende Session statt Auswahlzwang zwischen Vokabel- und Grammatiktraining. Bereits gelernte Wörter eröffnen die Quest; dann folgen Erklärung, kontrastive Anwendung, weitere Wortübungen und zum Abschluss ein selbst formulierter japanischer Satz.
+- **Tagesumfang:** maximal acht kurze Schritte. Die Auswahl enthält drei bis fünf Vokabelaufgaben und einen vollständigen 3–4-teiligen Growth-Pfad; sie nutzt die bestehenden Generatoren statt neuer Fortschrittsdaten.
+- **Personalisiertes Lernziel** nur bei bestehenden `lessonComplete === true`-Voraussetzungen im vorhandenen Snapshot. Andernfalls klar deklarierte **freiwillige Probelektion** zu 〜てしまう, nicht als bereits gelernt markiert.
+- Der Mix ist pro lokalem Kalendertag deterministisch und berücksichtigt bei mehreren bekannten Themen vorhandene Fälligkeiten **nur als Lesepriorität**. Der abschließende freie Satz bleibt unbenotet.
+- **Sicherheitsgrenze:** keine neuen Browser-Keys, keine Streak-Speicherung, keine SRS-/Kanji-/Firebase-/Life-RPG-Schreibzugriffe. Abschluss und Antworten bleiben ausschließlich im Arbeitsspeicher.
+- Neuer Startbutton „Mein Daily Mix“ in der Mobile-Vorschau, während Daily Refresh, Growth-Probelektion und einzelne Guided Quests unverändert erreichbar bleiben.
+- Separate `tests/daily-mix.test.mjs` prüft Aufgabenfolge, stabile Auswahl, echte Lernvoraussetzungen, vollständige Unveränderlichkeit des Spielstands, sichere Bewertung und fehlende Schreibpfade. Mobile-Gerätetests und Produktionsspeicher bleiben weiterhin offen.
+
+## Satzlücken aus echtem Vokabelkontext – sicherer Ausbau (14.11.2026)
+- `Daily Refresh` zeigt, **falls geeignete Beispiele in bereits gelernten Karten vorhanden sind**, nun eine zusätzliche Aufgabe „Satzlücke ergänzen“. Beispiel: `学校へ＿＿。` mit dem deutschen Hinweis `gehen`; die Antwort kann `行く` oder `いく` sein. Anschließend wird der vorhandene Originalsatz samt gegebenenfalls vorhandener Übersetzung angezeigt.
+- Eine Lücke wird **nur** aus einem bereits gespeicherten Wort mit einer **einzigen, exakten** Oberflächenübereinstimmung im bestehenden Beispielsatz erstellt. Einzelzeichen, mehrfache Treffer und offensichtliche Kanji-/Katakana-Teiltreffer werden übersprungen; es wird keine neue japanische Form generiert.
+- Ohne verlässlichen Kontext bleibt die bestehende Bedeutungsaufgabe als Fallback bestehen; es gibt keine fingierte Lücke.
+- Die automatische Prüfung bestätigt ausschließlich bekannte Schreibweisen und gespeicherte Lesungen. Nicht erkannte Eingaben werden mit Musterlösung **manuell verglichen** und als `unbewertet` gezählt, **nicht** als Fehler oder SRS-Negativerfolg.
+- Dieser Ausbau greift **nicht** in die großen Kotoba-Saves, Firebase, Kanji, Grammatik-/Partikel-SRS oder Life-RPG-Ledger ein; die Resultate verbleiben im Arbeitsspeicher.
+- Unit-Tests prüfen exakten Wortabgleich, fehlende Kontexte, Nichtfreischaltung neuer Karten, dynamische Auswahl, erlaubte Eingaben und Null-Datenmutation. Kein Test mit dem echten produktiven Browser-Spielstand erfolgt.
+
+## Alltagsdialoge und wechselnde Grammatik-/Partikelquests (14.11.2026)
+- **Zwei zusätzliche kuratierte Kontrastpfade:** `から` gegen `まで` (Anfang und Ende von Zeitspannen) sowie `だけ` gegen `しか〜ない` (neutrales „nur“ versus erforderliche Negation). Quellenabgleich gegen die echten Particle-Path-IDs in `cloud.html`: `kara-source`, `made-limit`, `dake-only`, `shika-negative`.
+- **Zwei Aufgabensätze je Pfad:** Die bisherigen fünf Guided-Quests sowie die zwei neuen Pfade verfügen über getrennte, redaktionell formulierte Anwendungsszenarien und offene Transfersätze. Pro Tag wird anhand eines DST-sicheren Kalenderwerts entweder Variante A oder B angezeigt; bei gleichem Tag und Lernstand bleibt die Variante stabil.
+- Aufgabenarten: Lücken in japanischen Alltagssätzen, Gesprächsfragen und Bedeutungsentscheidungen mit gezieltem Kontrastfeedback. Die Einführung bleibt erhalten, die nachfolgenden Fragen wechseln. Dialogzeilen bleiben durch `white-space:pre-line` lesbar.
+- **Keine erfundene Freischaltung:** Individuelle Guided-Quests bleiben nur verfügbar, wenn **alle** vorhandenen `lessonComplete === true`-Flags ihrer Voraussetzungen im maßgeblichen Save stehen. Bei fehlender Evidenz bleiben sie gesperrt.
+- **Keine zusätzliche Last:** Maximal die bisherige Pfadlänge (je 3–4 Schritte), keine automatisch hinzugenommenen SRS-Karten; wechselnde Antworten werden nicht persistent gespeichert.
+- **Schutzmaßnahmen:** Keine Änderungen an `cloud.html`, `index.html`, IndexedDB, Firebase, Kanji, Life RPG oder den SRS-Commit-APIs. Varianten sind reine Definitionsdaten; Auswahl und Auswertung sind unverändert read-only.
+- Neue Tests prüfen Freischaltungsbedingungen und echte Curriculum-IDs, Fragequalität, unveränderte Spielstände, Dateirotation inkl. DST, unbenotete freie Produktion sowie das Fehlen von Schreibpfaden. Produktiver Browser-/Smartphone-Test steht weiterhin aus.
+
 ## Nächste Schritte
 1. Live-Einbindung der Navigation und mobile Endgeräte getrennt prüfen; falls `dungeon-nav.js` in `cloud.html` nicht geladen wird, einen **geprüften additiven** Einstieg ergänzen, ohne die große Cloud-Datei ungeprüft umzuschreiben.
 2. Ein **isoliertes, transparentes Tagesabschluss-/Streak-Metadatenmodell** erst nach unveränderter vollständiger Sicherung aller autoritativen Daten sowie Prüfung von Origin, Cloud-Konflikten, Idempotenz und Rollback anbinden.
