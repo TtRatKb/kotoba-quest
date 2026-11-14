@@ -31,6 +31,15 @@ Die P0-Problematik mit historischen Kanji-SRS-Einzelrecords ist ungeklärt. Es w
 - Testabdeckung: Lehrnachweis, vollständige Paar-Voraussetzungen, Vorher-/Nachher-Identität des gesamten Spielstands, Korrektheit eindeutiger Antworten und Schreibpfadschutz. Kein Live-Zugriff auf echte Nutzerdaten.
 - **Begrenzung:** Noch kein Vollkurs und keine dynamische Extraktion beliebiger Aufgaben aus `cloud.html`. Nur diese bewusst kuratierten Lernziele gelten als unterstützt. Als Nächstes weitere geprüfte Fragenbanken ergänzen und eventuell den lokalen Streak-Metadatenbereich nach separater Datensicherung anbinden.
 
+## Alltagsdialoge und wechselnde Grammatik-/Partikelquests (14.11.2026)
+- **Zwei zusätzliche kuratierte Kontrastpfade:** `から` gegen `まで` (Anfang und Ende von Zeitspannen) sowie `だけ` gegen `しか〜ない` (neutrales „nur“ versus erforderliche Negation). Quellenabgleich gegen die echten Particle-Path-IDs in `cloud.html`: `kara-source`, `made-limit`, `dake-only`, `shika-negative`.
+- **Zwei Aufgabensätze je Pfad:** Die bisherigen fünf Guided-Quests sowie die zwei neuen Pfade verfügen über getrennte, redaktionell formulierte Anwendungsszenarien und offene Transfersätze. Pro Tag wird anhand eines DST-sicheren Kalenderwerts entweder Variante A oder B angezeigt; bei gleichem Tag und Lernstand bleibt die Variante stabil.
+- Aufgabenarten: Lücken in japanischen Alltagssätzen, Gesprächsfragen und Bedeutungsentscheidungen mit gezieltem Kontrastfeedback. Die Einführung bleibt erhalten, die nachfolgenden Fragen wechseln. Dialogzeilen bleiben durch `white-space:pre-line` lesbar.
+- **Keine erfundene Freischaltung:** Individuelle Guided-Quests bleiben nur verfügbar, wenn **alle** vorhandenen `lessonComplete === true`-Flags ihrer Voraussetzungen im maßgeblichen Save stehen. Bei fehlender Evidenz bleiben sie gesperrt.
+- **Keine zusätzliche Last:** Maximal die bisherige Pfadlänge (je 3–4 Schritte), keine automatisch hinzugenommenen SRS-Karten; wechselnde Antworten werden nicht persistent gespeichert.
+- **Schutzmaßnahmen:** Keine Änderungen an `cloud.html`, `index.html`, IndexedDB, Firebase, Kanji, Life RPG oder den SRS-Commit-APIs. Varianten sind reine Definitionsdaten; Auswahl und Auswertung sind unverändert read-only.
+- Neue Tests prüfen Freischaltungsbedingungen und echte Curriculum-IDs, Fragequalität, unveränderte Spielstände, Dateirotation inkl. DST, unbenotete freie Produktion sowie das Fehlen von Schreibpfaden. Produktiver Browser-/Smartphone-Test steht weiterhin aus.
+
 ## Nächste Schritte
 1. Live-Einbindung der Navigation und mobile Endgeräte getrennt prüfen; falls `dungeon-nav.js` in `cloud.html` nicht geladen wird, einen **geprüften additiven** Einstieg ergänzen, ohne die große Cloud-Datei ungeprüft umzuschreiben.
 2. Ein **isoliertes, transparentes Tagesabschluss-/Streak-Metadatenmodell** erst nach unveränderter vollständiger Sicherung aller autoritativen Daten sowie Prüfung von Origin, Cloud-Konflikten, Idempotenz und Rollback anbinden.
