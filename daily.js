@@ -2,12 +2,13 @@
 import { buildRefresh, buildGrammarPreview, isCorrect } from './daily-engine.mjs';
 import { availableGuidedPaths, buildGuidedQuest } from './daily-guided.mjs';
 import { buildDailyMix } from './daily-mix.mjs';
+import { buildPractice } from './daily-practice.mjs';
 import { assessCompletion, localDay } from './daily-completion.mjs';
 import { recordDailyCompletion, streakSummary } from './daily-streak.mjs';
 
 const root = document.getElementById('dailyRoot');
 const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false };
+const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false, practiceOrigin: null };
 
 const todayKey = () => localDay();
 
@@ -107,15 +108,28 @@ function active() {
   const task = session.tasks[i];
   const completed = i + (state.result ? 1 : 0);
   const percent = (completed / session.tasks.length) * 100;
-  const modeLabel = session.mode==='daily'?'Meine tägliche Quest':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
+  const modeLabel = session.mode==='practice'?'Freiwillig nachüben':session.mode==='daily'?'Meine tägliche Quest':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
   return `<div class="status-row"><span class="eyebrow">${modeLabel}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
     <div class="progress" role="progressbar" aria-label="Fortschritt" aria-valuenow="${completed}" aria-valuemin="0" aria-valuemax="${session.tasks.length}"><div style="width:${percent}%"></div></div>
     ${session.mode==='daily'?`<p class="muted small">Lernziel: ${safe(session.growthTitle)} · ${session.growthType==='learned'?'an deinen Lernstand angepasst':'freiwillige neue Probelektion'} · kein SRS-Eingriff</p>`:''}
+    ${session.mode==='practice'?'<p class="muted small">Einmal erneut abrufen und mit dem Feedback vergleichen. Unklare Texteingaben sind keine festgestellten Fehler.</p>':''}
     ${session.mode==='guided'?`<p class="muted small">Lernziel: ${safe(session.title)} · freies Training ohne SRS-Buchung</p>`:''}
-    ${promptCard(task)}<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>`;
+    ${promptCard(task)}${session.mode==='practice'?'<button class="button ghost" type="button" data-return>← Zurück zu deiner Quest-Auswertung</button>':'<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>'}`;
+}
+
+function practiceSummary() {
+  const scored = state.answers.filter(answer => answer.correct !== null);
+  return `<section class="panel results"><div class="flower" aria-hidden="true">🌱</div><p class="eyebrow">FREIWILLIG NACHGEÜBT</p>
+    <h1>Einmal bewusst wieder abgerufen.</h1>
+    <p>Du hast ${state.session.tasks.length} ${state.session.tasks.length === 1 ? 'Aufgabe' : 'Aufgaben'} noch einmal bearbeitet.</p>
+    <p>${scored.length ? `${scored.filter(answer => answer.correct).length} von ${scored.length} automatisch bewerteten Antworten waren richtig.` : 'Diese Texteingaben werden nicht automatisch benotet.'} ${state.answers.length - scored.length} Antworten bleiben zum eigenen Vergleich unbewertet.</p>
+    <div class="note">Deine ursprüngliche Quest-Auswertung und dein Tagesabschluss bleiben erhalten. Aus dieser Übung entsteht keine weitere Aufgabenliste. Du kannst für heute aufhören.</div>
+    <div class="actions"><button class="button" type="button" data-return>Zurück zu deiner Quest-Auswertung</button><button class="button secondary" type="button" data-home>Zur Übersicht</button></div></section>`;
 }
 
 function summary() {
+  if (state.session.mode === 'practice') return practiceSummary();
+  const practice = !state.practiceOrigin && buildPractice(state.session, state.answers);
   const scored = state.answers.filter(answer => answer.correct !== null);
   const correct = scored.filter(answer => answer.correct).length;
   const vocabulary = [...new Set(state.session.tasks
@@ -136,6 +150,7 @@ function summary() {
       <p>${state.completion?.qualified ? 'Eine vollständig bearbeitete Quest mit eigenen Versuchen zählt. Weitere Quests am selben Tag erhöhen die Serie nicht.' : 'Musterlösungen anzusehen ist willkommen. Für den Tagesabschluss braucht es eigene Antwortversuche in allen aktiven Aufgaben, bei japanischen Aufgaben auf Japanisch. Die sprachliche Richtigkeit wird dafür nicht vorausgesetzt.'}</p>
       <p class="small">Vorschau: Der Tagesabschluss bleibt nur auf dieser geöffneten Seite erhalten und verschwindet beim Neuladen oder Schließen. Keine Synchronisation. SRS und Cloud-Lernstand bleiben unverändert.</p>
     </div>
+    ${practice ? `<div class="note practice-offer"><strong>Noch einen Gedanken festigen?</strong><p>Freiwillig ${practice.tasks.length} ${practice.tasks.length === 1 ? 'Aufgabe' : 'Aufgaben'} aus dieser Quest erneut abrufen – falsche Auswahlantworten und unklare Texteingaben. Das ist keine zusätzliche Tagespflicht.</p><button class="button secondary" type="button" data-practice>Einmal gezielt nachüben</button></div>` : ''}
     <div class="actions"><button class="button" type="button" data-home>Weitere Quest auswählen</button><a class="button secondary" style="text-decoration:none;display:grid;place-items:center" href="./cloud.html">Zurück zu Kotoba Quest</a></div></section>`;
 }
 
@@ -151,11 +166,38 @@ function start(mode, pathId = null) {
     ? buildRefresh(state.source?.learned || [], todayKey())
     : mode === 'guided' ? buildGuidedQuest(state.save || {}, todayKey(), pathId) : buildGrammarPreview();
   if (!session?.tasks?.length) return;
+  state.practiceOrigin = null;
   state.session = session;
   state.index = 0;
   state.result = null;
   state.answers = [];
   state.completion = null;
+  state.composing = false;
+  render(true);
+}
+
+function startPractice() {
+  if (!state.session || state.index !== state.session.tasks.length || state.practiceOrigin) return;
+  const practice = buildPractice(state.session, state.answers);
+  if (!practice) return;
+  state.practiceOrigin = { session: state.session, index: state.index, answers: state.answers, completion: state.completion };
+  state.session = practice;
+  state.index = 0;
+  state.answers = [];
+  state.result = null;
+  state.composing = false;
+  render(true);
+}
+
+function returnFromPractice() {
+  if (!state.practiceOrigin) return;
+  const original = state.practiceOrigin;
+  state.session = original.session;
+  state.index = original.index;
+  state.answers = original.answers;
+  state.completion = original.completion;
+  // Keep the origin marker until another quest starts: offer at most once.
+  state.result = null;
   state.composing = false;
   render(true);
 }
@@ -187,7 +229,7 @@ function next() {
   if (task.kind === 'lesson') state.answers.push({taskId:task.id,correct:null,acknowledged:true});
   state.index++;
   state.result = null;
-  if (state.index === state.session.tasks.length) {
+  if (state.index === state.session.tasks.length && state.session.mode !== 'practice') {
     const completion = assessCompletion(state.session, state.answers);
     const day = todayKey(); // Credit the local calendar day of finishing, not starting.
     const alreadyDone = state.completedDays.includes(day);
@@ -202,7 +244,9 @@ root.addEventListener('click', event => {
   if (guidedButton) { start('guided', guidedButton.dataset.guided); return; }
   const startButton = event.target.closest('[data-start]');
   if (startButton) { start(startButton.dataset.start); return; }
-  if (event.target.closest('[data-home]')) { state.session = null; state.result = null; render(true); return; }
+  if (event.target.closest('[data-home]')) { state.session = null; state.result = null; state.practiceOrigin = null; render(true); return; }
+  if (event.target.closest('[data-practice]')) { startPractice(); return; }
+  if (event.target.closest('[data-return]')) { returnFromPractice(); return; }
   if (event.target.closest('[data-next]')) { next(); return; }
   if (event.target.closest('[data-example]')) { answer('', true); return; }
   const choice = event.target.closest('[data-choice]');

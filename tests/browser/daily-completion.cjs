@@ -5,7 +5,7 @@ const http=require('node:http');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const root=path.resolve(__dirname,'../..');
-const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs']);
+const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs']);
 const cards=[['行く','いく','gehen','学校へ行く。'],['食べる','たべる','essen','ご飯を食べる。'],['見る','みる','sehen','映画を見る。']].map(([word,reading,meaning,example],i)=>({id:String(i),word,reading,meanings:[meaning],example,stage:2}));
 const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringify(cards)}}),readSave:async()=>({data:{particlePath:{points:{'ni-target':{lessonComplete:true},'de-action':{lessonComplete:true}}}}})};`;
 (async()=>{
@@ -71,9 +71,28 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
    // Active attempts earn one day even with wrong choices; IME remains editable.
    await start();await finish({ime:true});
    assert((await page.locator('.completion-note').textContent()).includes('Dein Tagesziel ist erreicht'));
-   await home();assert((await page.locator('.daily-day').textContent()).includes('1 Lerntag in Folge'));
+   // Optional follow-up cannot rewrite the original score or credit a new date.
+   const originalScore=await page.locator('.score').textContent();
+   const originalCompletion=await page.locator('.completion-note').textContent();
+   await page.locator('[data-practice]').click();
+   assert(Number(await page.locator('[role=progressbar]').getAttribute('aria-valuemax'))<=3);
+   await page.evaluate(()=>{window.testNow='2026-11-14T23:01:00Z';});
+   await finish();assert.equal(await page.locator('[data-practice]').count(),0);
+   await page.locator('[data-return]').click();
+   assert.equal(await page.locator('.score').textContent(),originalScore);
+   assert.equal(await page.locator('.completion-note').textContent(),originalCompletion);
+   assert.equal(await page.locator('[data-practice]').count(),0,'at most one practice offer');
+   await home();
+   assert(!(await page.locator('.daily-day').textContent()).includes('Heute geübt'),'practice across midnight cannot earn the new day');
+   assert((await page.locator('.daily-day').textContent()).includes('1 Lerntag in Folge'));
+   await page.evaluate(()=>{window.testNow='2026-11-14T22:55:00Z';window.dispatchEvent(new Event('focus'));});
+
    // A second active quest is idempotent, while all old modes remain usable.
-   await start();await finish();assert((await page.locator('.completion-note').textContent()).includes('schon erreicht'));await home();
+   await start();await finish();assert((await page.locator('.completion-note').textContent()).includes('schon erreicht'));
+   const beforeAbort=await page.locator('.score').textContent();
+   await page.locator('[data-practice]').click();await page.locator('[data-return]').click();
+   assert.equal(await page.locator('.score').textContent(),beforeAbort,'aborting optional practice preserves original score');
+   assert.equal(await page.locator('[data-practice]').count(),0);await home();
    for(const mode of ['daily','refresh']){await start(mode);assert.equal(await finish(),8);await home();}
    // Finishing across midnight credits the new date, not the start date.
    await start();await finish({midnight:true});await home();
@@ -83,7 +102,7 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
    await page.reload();await page.locator('.daily-day').waitFor();
    assert(!(await page.locator('.daily-day').textContent()).includes('Heute geübt'));
    assert.deepEqual(await page.evaluate(()=>window.writes),[]);assert.deepEqual(errors,[]);
-   console.log(`PASS ${width}px: active day, opt-out, abort, duplicates, midnight, all modes, IME guard, no writes/overflow`);
+   console.log(`PASS ${width}px: active day, opt-out, abort, duplicates, midnight, all modes, IME, optional practice preserves score/day, no writes/overflow`);
    await context.close();
   }
  }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
