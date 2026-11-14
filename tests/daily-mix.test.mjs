@@ -98,8 +98,8 @@ test('choice answers are unambiguous; open production is never automatically awa
 test('daily mixed route contains no local or remote write path',()=>{
   const module=readFileSync(new URL('../daily-mix.mjs',import.meta.url),'utf8');
   const ui=readFileSync(new URL('../daily.js',import.meta.url),'utf8');
-  assert.doesNotMatch(module,/\\b(?:localStorage|sessionStorage|indexedDB|fetch|postMessage|setDoc|updateDoc|addDoc|removeItem|setItem|commit-vocabulary-item)\\b/);
+  assert.doesNotMatch(module,/\b(?:localStorage|sessionStorage|indexedDB|fetch|postMessage|setDoc|updateDoc|addDoc|removeItem|setItem|commit-vocabulary-item)\b/);
   assert.match(ui,/data-start="daily"/);
-  assert.match(ui,/buildDailyMix\\(state\\.source\\?\\.learned/);
-  assert.doesNotMatch(ui,/\\b(?:localStorage|sessionStorage)\\s*\\.\\s*(?:setItem|removeItem|clear)\\s*\\(/);
+  assert.match(ui,/buildDailyMix\(state\.source\?\.learned/);
+  assert.doesNotMatch(ui,/\b(?:localStorage|sessionStorage)\s*\.\s*(?:setItem|removeItem|clear)\s*\(/);
 });
