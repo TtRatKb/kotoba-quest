@@ -7,7 +7,9 @@ on:
       - "daily.css"
       - "daily.js"
       - "daily-engine.mjs"
-      - "tests/daily-engine.test.mjs"
+      - "daily-streak.mjs"
+      - "dungeon-nav.js"
+      - "tests/daily-*.test.mjs"
       - ".github/workflows/daily-preview.yml"
   push:
     branches: [main]
@@ -16,7 +18,9 @@ on:
       - "daily.css"
       - "daily.js"
       - "daily-engine.mjs"
-      - "tests/daily-engine.test.mjs"
+      - "daily-streak.mjs"
+      - "dungeon-nav.js"
+      - "tests/daily-*.test.mjs"
       - ".github/workflows/daily-preview.yml"
 
 permissions:
