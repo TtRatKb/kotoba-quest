@@ -24,7 +24,7 @@
   const nav = document.querySelector('nav.nav[aria-label="Hauptnavigation"], header nav.nav, header .nav');
   const welcome = document.querySelector('.hero .welcome, .dashboard .hero, main .hero');
   for (const entry of existing) {
-    if (document.getElementById(entry.id)) continue;
+    if (document.getElementById(entry.id) || document.querySelector(`a[href*="${entry.file}"]`)) continue;
     const a = document.createElement('a');
     a.id = entry.id;
     a.href = new URL('./' + entry.file, document.baseURI).href;

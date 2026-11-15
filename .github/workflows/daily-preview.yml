@@ -22,6 +22,10 @@ on:
       - "cloud.html"
       - "index.html"
       - "dungeon-nav.js"
+      - "daily-navigation.js"
+      - "daily-navigation.css"
+      - "cloud.html"
+      - "index.html"
       - "tests/daily-*.test.mjs"
       - ".github/workflows/daily-preview.yml"
   push:
@@ -46,6 +50,10 @@ on:
       - "cloud.html"
       - "index.html"
       - "dungeon-nav.js"
+      - "daily-navigation.js"
+      - "daily-navigation.css"
+      - "cloud.html"
+      - "index.html"
       - "tests/daily-*.test.mjs"
       - ".github/workflows/daily-preview.yml"
 

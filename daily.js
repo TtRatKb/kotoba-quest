@@ -8,6 +8,8 @@ import { assessCompletion, localDay } from './daily-completion.mjs';
 import { recordDailyCompletion, streakSummary } from './daily-streak.mjs';
 
 const root = document.getElementById('dailyRoot');
+const mainApp = new URLSearchParams(window.location.search).get('from') === 'index' ? './index.html' : './cloud.html';
+document.querySelector('.back').href = mainApp;
 const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false, practiceOrigin: null };
 
@@ -152,7 +154,7 @@ function summary() {
       <p class="small">Vorschau: Der Tagesabschluss bleibt nur auf dieser geöffneten Seite erhalten und verschwindet beim Neuladen oder Schließen. Keine Synchronisation. SRS und Cloud-Lernstand bleiben unverändert.</p>
     </div>
     ${practice ? `<div class="note practice-offer"><strong>Noch einen Gedanken festigen?</strong><p>Freiwillig ${practice.tasks.length} ${practice.tasks.length === 1 ? 'Aufgabe' : 'Aufgaben'} aus dieser Quest erneut abrufen – falsche Auswahlantworten und unklare Texteingaben. Das ist keine zusätzliche Tagespflicht.</p><button class="button secondary" type="button" data-practice>Einmal gezielt nachüben</button></div>` : ''}
-    <div class="actions"><button class="button" type="button" data-home>Weitere Quest auswählen</button><a class="button secondary" style="text-decoration:none;display:grid;place-items:center" href="./cloud.html">Zurück zu Kotoba Quest</a></div></section>`;
+    <div class="actions"><button class="button" type="button" data-home>Weitere Quest auswählen</button><a class="button secondary" style="text-decoration:none;display:grid;place-items:center" href="${mainApp}">Zurück zu Kotoba Quest</a></div></section>`;
 }
 
 function render(focus = false) {
