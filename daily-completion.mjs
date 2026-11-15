@@ -1,4 +1,5 @@
 /* Evidence for a Daily activity, independent of persistence and SRS. */
+import {evaluatePlay, isPlayTask} from './daily-play.mjs';
 const modes = new Set(['daily', 'refresh', 'guided', 'discovery']);
 const kinds = new Set(['lesson', 'meaning', 'context', 'choice', 'production', 'meaning-type', 'cloze', 'open']);
 
@@ -9,6 +10,9 @@ export function localDay(date = new Date()) {
 
 // This establishes participation, never grammatical correctness or mastery.
 export function hasActiveAttempt(task, response) {
+  if(isPlayTask(task)) {
+    try { return evaluatePlay(task,response).complete; } catch { return false; }
+  }
   if (typeof response !== 'string') return false;
   const text = response.normalize('NFKC').trim();
   if (!text || !/[\p{L}\p{N}]/u.test(text)) return false;
@@ -24,7 +28,7 @@ export function assessCompletion(session, answers) {
   const tasks = session?.tasks;
   const failed = reason => ({ qualified: false, reason });
   if (!modes.has(session?.mode) || session.blocked || !Array.isArray(tasks) || tasks.length < 3 || tasks.length > 8) return failed('invalid-session');
-  if (tasks.some(task => !task || typeof task.id !== 'string' || !task.id || !kinds.has(task.kind)) || new Set(tasks.map(task => task.id)).size !== tasks.length) return failed('invalid-session');
+  if (tasks.some(task => !task || typeof task.id !== 'string' || !task.id || (!kinds.has(task.kind) && !(session.mode==='daily' && isPlayTask(task)))) || new Set(tasks.map(task => task.id)).size !== tasks.length) return failed('invalid-session');
   if (!Array.isArray(answers) || answers.length !== tasks.length) return failed('incomplete');
   const byId = new Map(answers.map(answer => [answer?.taskId, answer]));
   if (byId.size !== tasks.length || tasks.some(task => !byId.has(task.id))) return failed('incomplete');
@@ -34,7 +38,7 @@ export function assessCompletion(session, answers) {
     if (task.kind === 'lesson') {
       if (answer.acknowledged !== true) return failed('incomplete');
     } else {
-      if (answer.skipped || !hasActiveAttempt(task, answer.response)) return failed('viewed-only');
+      if (answer.skipped || !hasActiveAttempt(task, isPlayTask(task)?answer.activityResponse:answer.response)) return failed('viewed-only');
       active++;
     }
   }
