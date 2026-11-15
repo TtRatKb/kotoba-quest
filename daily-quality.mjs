@@ -1,9 +1,10 @@
 /* Read-only exercise metadata and conservative context/distractor policy. */
 const text = value => String(value ?? '').normalize('NFKC').trim();
+export const genericContext = example => /という(?:言葉|単語|表現)を(?:覚えました|学びました|勉強しました)/u.test(text(example));
 export function usableContext(example) {
   const sentence = text(example);
   return sentence.length >= 5 && sentence.length <= 300 && /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(sentence) &&
-    !/という(?:言葉|単語|表現)を(?:覚えました|学びました|勉強しました)/u.test(sentence);
+    !genericContext(sentence);
 }
 
 // Explicitly curated semantic neighbourhoods, not generated sentence content.
