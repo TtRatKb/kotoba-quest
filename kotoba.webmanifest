@@ -1,0 +1,16 @@
+{
+  "id": "./cloud.html",
+  "name": "Kotoba Quest",
+  "short_name": "Kotoba",
+  "lang": "de",
+  "description": "Japanisch lernen mit Kotoba Quest und kurzen Daily Quests.",
+  "start_url": "./cloud.html?source=homescreen",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f3ff",
+  "theme_color": "#7957d5",
+  "icons": [
+    {"src": "./assets/kotoba/icon-192-v1.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./assets/kotoba/icon-512-v1.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

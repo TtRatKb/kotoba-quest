@@ -5,7 +5,7 @@ const http=require('node:http');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const root=path.resolve(__dirname,'../..');
-const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs','japanese-romaji.js','daily-input.mjs']);
+const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs','japanese-romaji.js','daily-input.mjs','kotoba-install.css','kotoba.webmanifest','assets/kotoba/icon-180-v1.png','assets/kotoba/icon-192-v1.png','assets/kotoba/icon-512-v1.png']);
 const cards=[['行く','いく','gehen','学校へ行く。'],['食べる','たべる','essen','ご飯を食べる。'],['見る','みる','sehen','映画を見る。']].map(([word,reading,meaning,example],i)=>({id:String(i),word,reading,meanings:[meaning],example,stage:2}));
 const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringify(cards)}}),readSave:async()=>({data:{particlePath:{points:{'ni-target':{lessonComplete:true},'de-action':{lessonComplete:true}}}}})};`;
 (async()=>{
@@ -14,7 +14,7 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
   const name=new URL(req.url,'http://localhost').pathname.slice(1);
   if(name==='dungeon-source.js'){res.setHeader('Content-Type','text/javascript');res.end(source);return;}
   if(!assets.has(name)){res.writeHead(404);res.end();return;}
-  res.setHeader('Content-Type',name.endsWith('.html')?'text/html':name.endsWith('.css')?'text/css':'text/javascript');
+  res.setHeader('Content-Type',name.endsWith('.html')?'text/html':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':name.endsWith('.webmanifest')?'application/manifest+json':'text/javascript');
   try{res.end(await fs.readFile(path.join(root,name)));}catch{res.writeHead(500);res.end();}
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
