@@ -26,6 +26,8 @@ on:
       - "tests/daily-guided.test.mjs"
       - "daily-streak.mjs"
       - "daily-vocab-srs-gateway.mjs"
+      - "daily-streak-store.mjs"
+      - "scripts/audit-daily-streak-isolation.mjs"
       - "daily-completion.mjs"
       - "daily-practice.mjs"
       - "daily-input.mjs"
@@ -66,6 +68,8 @@ on:
       - "tests/daily-guided.test.mjs"
       - "daily-streak.mjs"
       - "daily-vocab-srs-gateway.mjs"
+      - "daily-streak-store.mjs"
+      - "scripts/audit-daily-streak-isolation.mjs"
       - "daily-completion.mjs"
       - "daily-practice.mjs"
       - "daily-input.mjs"
@@ -98,3 +102,4 @@ jobs:
       - run: node --check daily-play.mjs && node --check daily-play-view.mjs && node --check daily-feedback.mjs
       - run: node --test tests/*.test.mjs
       - run: node scripts/validate-daily-original-contexts.mjs
+      - run: node scripts/audit-daily-streak-isolation.mjs
