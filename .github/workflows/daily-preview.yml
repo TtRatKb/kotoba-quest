@@ -12,6 +12,9 @@ on:
       - "daily-feedback.mjs"
       - "assets/daily/**"
       - "daily-quality.mjs"
+      - "daily-contexts.mjs"
+      - "content/daily/contexts-v*.mjs"
+      - "scripts/validate-daily-original-contexts.mjs"
       - "daily-furigana.mjs"
       - "daily-kanji-map.mjs"
       - "daily-guided.mjs"
@@ -48,6 +51,9 @@ on:
       - "daily-feedback.mjs"
       - "assets/daily/**"
       - "daily-quality.mjs"
+      - "daily-contexts.mjs"
+      - "content/daily/contexts-v*.mjs"
+      - "scripts/validate-daily-original-contexts.mjs"
       - "daily-furigana.mjs"
       - "daily-kanji-map.mjs"
       - "daily-guided.mjs"
@@ -89,3 +95,4 @@ jobs:
       - run: node --check daily-guided.mjs && node --check daily-guided-variety.mjs
       - run: node --check daily-play.mjs && node --check daily-play-view.mjs && node --check daily-feedback.mjs
       - run: node --test tests/*.test.mjs
+      - run: node scripts/validate-daily-original-contexts.mjs

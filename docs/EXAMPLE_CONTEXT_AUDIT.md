@@ -1,5 +1,7 @@
 # Beispielsatz-Ursachenbericht — 15.11.2026
 
+Fortschreibung: Die [separate Original-Anzeigesammlung](../content/daily/README.md) ergänzt Daily um 40 eigene Satz-/Übersetzungspaare. Der hier untersuchte gemeinsame Katalog und seine generischen Originalfelder bleiben unverändert; keine gespeicherten oder persönlichen Kontexte werden migriert.
+
 Untersuchte Ausgangsbasis: main nach #24 (`028869e`). Ausschließlich Repository-Inhalte, keine persönlichen Spielstände.
 
 ## Befund und Herkunft

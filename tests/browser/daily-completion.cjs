@@ -5,7 +5,7 @@ const http=require('node:http');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const root=path.resolve(__dirname,'../..');
-const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-play.mjs','daily-play-view.mjs','daily-feedback.mjs','daily-quality.mjs','daily-furigana.mjs','daily-kanji-map.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs','japanese-romaji.js','daily-input.mjs','kotoba-install.css','kotoba.webmanifest','assets/kotoba/icon-180-v1.png','assets/kotoba/icon-192-v1.png','assets/kotoba/icon-512-v1.png']);
+const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-contexts.mjs','content/daily/contexts-v1.mjs','daily-play.mjs','daily-play-view.mjs','daily-feedback.mjs','daily-quality.mjs','daily-furigana.mjs','daily-kanji-map.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs','japanese-romaji.js','daily-input.mjs','kotoba-install.css','kotoba.webmanifest','assets/kotoba/icon-180-v1.png','assets/kotoba/icon-192-v1.png','assets/kotoba/icon-512-v1.png']);
 const cards=[['行く','いく','gehen','学校へ行く。'],['食べる','たべる','essen','ご飯を食べる。'],['見る','みる','sehen','映画を見る。']].map(([word,reading,meaning,example],i)=>({id:String(i),word,reading,meanings:[meaning],example,stage:2}));
 const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringify(cards)}}),readSave:async()=>({data:{particlePath:{points:{'ni-target':{lessonComplete:true},'de-action':{lessonComplete:true}}}}})};`;
 (async()=>{

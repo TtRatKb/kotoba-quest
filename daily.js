@@ -4,6 +4,7 @@ import { availableGuidedPaths, buildGuidedQuest } from './daily-guided.mjs';
 import { buildDailyMix, buildDailyExtension } from './daily-mix.mjs';
 import { convertJapaneseField } from './daily-input.mjs';
 import { prepareDailyCards } from './daily-quality.mjs';
+import { withDailyContexts } from './daily-contexts.mjs';
 import { readingLexicon, japaneseSegments } from './daily-furigana.mjs';
 import { buildPlaySession, evaluatePlay, sentenceText, isPair, isPlayTask } from './daily-play.mjs';
 import { playCard } from './daily-play-view.mjs';
@@ -79,18 +80,19 @@ function home() {
 }
 
 function promptCard(task) {
-  if (isPlayTask(task)) return playCard(task,state.play,state.result,{safe,japanese,word:item=>japanese(item.word,{lexicon:readingLexicon([item])}),canSpeak:effects.canSpeak(),enabled:effects.enabled,isLast:state.index+1===state.session.tasks.length});
+  const taskJapanese = (value,options={}) => japanese(value,{...options,...(task.contextReadings?{lexicon:readingLexicon(task.contextReadings)}:{})});
+  if (isPlayTask(task)) return playCard(task,state.play,state.result,{safe,japanese:taskJapanese,word:item=>taskJapanese(item.word,{lexicon:readingLexicon([item])}),canSpeak:effects.canSpeak(),enabled:effects.enabled,isLast:state.index+1===state.session.tasks.length});
   if (task.kind === 'lesson') {
     return `<section class="panel question"><span class="pill">${safe(task.label)}</span>
-      <h1 class="task-jp" lang="ja">${japanese(task.prompt)}</h1><p>${safe(task.secondary)}</p>
-      <div class="example"><span lang="ja" style="font-size:1.12rem;color:var(--ink)">${japanese(task.example)}</span><span>${safe(task.exampleTranslation)}</span></div>
+      <h1 class="task-jp" lang="ja">${taskJapanese(task.prompt)}</h1><p>${safe(task.secondary)}</p>
+      <div class="example"><span lang="ja" style="font-size:1.12rem;color:var(--ink)">${taskJapanese(task.example)}</span><span>${safe(task.exampleTranslation)}</span></div>
       <p class="muted small">${safe(task.explanation)}</p><div class="actions"><button class="button" type="button" data-next>Verstanden · weiter →</button></div></section>`;
   }
   const answered = Boolean(state.result);
   const isJapanese = task.readingTask || (task.kind !== 'production' && task.kind !== 'open');
   const content = task.target && task.kind !== 'cloze'
-    ? japanese(task.prompt, {target:task.target})
-    : isJapanese ? japanese(task.prompt, {hide:task.readingTask && !answered}) : safe(task.prompt);
+    ? taskJapanese(task.prompt, {target:task.target})
+    : isJapanese ? taskJapanese(task.prompt, {hide:task.readingTask && !answered}) : safe(task.prompt);
   let control = '';
   if (task.options) {
     control = `<div class="answers" role="group" aria-label="Antwortmöglichkeiten">${task.options.map((option,i) => {
@@ -112,13 +114,13 @@ function promptCard(task) {
     <strong>${state.result.skipped?'Musterlösung zum Anschauen':state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':task.kind==='cloze'?'Vergleiche mit dem ursprünglichen Satz':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
     <p>${safe(task.explanation)}</p>
     ${state.result.correct===false?`<p><b>Erwartete Antwort:</b> ${safe(task.correct || task.explanation)}</p>`:''}
-    ${task.kind==='open'?`<div class="example"><span lang="ja">${japanese(task.example)}</span></div>`:''}
-    ${task.example && task.kind!=='open'?`<div class="example"><span lang="ja">${japanese(task.example)}</span>${task.exampleTranslation?`<span>${safe(task.exampleTranslation)}</span>`:''}</div>`:''}
+    ${task.kind==='open'?`<div class="example"><span lang="ja">${taskJapanese(task.example)}</span></div>`:''}
+    ${task.example && task.kind!=='open'?`<div class="example"><span lang="ja">${taskJapanese(task.example)}</span>${task.exampleTranslation?`<span>${safe(task.exampleTranslation)}</span>`:''}</div>`:''}
   </div><div class="actions"><button class="button" type="button" data-next>${state.index+1===state.session.tasks.length?'Auswertung ansehen →':'Nächste Aufgabe →'}</button></div>` : '';
   return `<section class="panel question"><span class="pill">${safe(task.label)}</span>
     <p class="task-secondary">${safe(task.secondary)}</p>
     <div class="${isJapanese?'task-jp':'task-de'}" ${isJapanese?'lang="ja" inputmode="text" enterkeyhint="done"':''}>${content}</div>
-    ${task.target?`<p class="subtle">Gesuchtes Wort: <span lang="ja">${japanese(task.target)}</span></p>`:''}
+    ${task.target?`<p class="subtle">Gesuchtes Wort: <span lang="ja">${taskJapanese(task.target)}</span></p>`:''}
     ${task.kind==='cloze' && task.exampleTranslation?`<p class="subtle">Satzbedeutung: ${safe(task.exampleTranslation)}</p>`:''}
     ${control}${feedback}</section>`;
 }
@@ -457,7 +459,7 @@ async function init() {
     state.save = snapshot?.data || null;
     if (!state.save) state.progressError = 'Kein vollständig lesbarer Kotoba-Spielstand';
   } catch (error) { state.progressError = String(error?.message || error); }
-  state.source = state.source ? {...state.source, learned:prepareDailyCards(state.source.learned, state.source.catalog, state.save)} : null;
+  state.source = state.source ? {...state.source, learned:withDailyContexts(prepareDailyCards(state.source.learned, state.source.catalog, state.save),state.source.catalog)} : null;
   state.lexicon = readingLexicon([...(state.source?.catalog || []),...(state.source?.learned || [])]);
   render();
 }

@@ -1,13 +1,14 @@
 # Daily quality, reading support and context preparation
 
 ## Shipped behavior
+- Versioned original-context display overlay: [content/daily/README.md](../content/daily/README.md). Forty AI-authored, linguistically self-reviewed Japanese/German pairs supplement missing/generic examples on exact Core identities. Personal/original examples and translation-only edits are protected; card fields and the catalogue are unchanged. Independent bilingual review remains open. Context-specific explicit readings reuse existing Furigana rules; 24 contexts pass the unchanged safe-cloze guard.
 - Known generic metalinguistic templates (`という言葉/単語/表現を…`) are excluded from context questions, cloze generation and example feedback. This is a conservative exclusion rule, not a certificate that all remaining user/catalogue sentences are authentic. Existing good examples stay intact; cards/saves are not edited.
 - Vocabulary choices require a known compatible POS and one of a small editorial set of semantic neighbourhoods. Accepted meanings/synonyms on both sides are excluded from distractors. Unclear POS, out-of-group choices or insufficient distinct alternatives fall back to typed recall. POS is decorated on ephemeral copies using exact ID + word/reading matches; no source-adapter or hydration changes.
 - Refresh keeps eight steps. One existing production slot becomes an explicit reading-recall task where suitable: answer accepts stored readings, not the displayed Kanji spelling. Ordinary production still accepts stored Kanji/kana/variants. No official SRS evidence is inferred.
 - Ruby uses explicit whole-word readings from the existing catalogue/learned cards and a small editorial glossary for existing guided examples. Conflicting readings and substrings inside unknown compounds are not guessed. Partial sentence support is explicitly labelled; no per-Kanji on/kun reading is synthesized.
 - Furigana is retained unless every relevant Kanji has an exact current-schema (version 4) canonical individual record, lessonComplete=true, stage 5–9, without an obsolete placement flag. Missing/older/aggregate/partial data retains the aid; “always” retains it too. Only the prompt of an explicit reading task suppresses available ruby before answering. Feedback restores the aid. No normalizer, recovery or Kanji getter is called.
 
-## Context enrichment preparation — no new sentences activated
+## External context enrichment preparation — no Tatoeba sentences activated
 The candidate file is deliberately empty and is not imported by Daily. `node scripts/validate-daily-contexts.mjs [candidate-file]` checks separate Japanese and German identities, author attribution, license, source URLs, direct translation relationship, target surface and editorial approval metadata. Structural validation is not proof of authorship, licensing or correctness; a reviewer must check those against the sources. Audio is rejected pending its own license review.
 
 Sources consulted 15 November 2026:

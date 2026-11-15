@@ -1,6 +1,7 @@
 /* Kotoba Daily · pure, read-only exercise generation. No storage/SRS writes. */
 
 import { usableContext, compatibleDistractor } from './daily-quality.mjs';
+import { displayContext } from './daily-contexts.mjs';
 
 const clean = value => String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ');
 const list = value => Array.isArray(value) ? value.map(clean).filter(Boolean) : [];
@@ -57,7 +58,7 @@ function primaryMeaning(card) { return list(card.meanings)[0]; }
  */
 export function contextCloze(card) {
   const word = clean(card?.word);
-  const sentence = clean(card?.example);
+  const sentence = clean(displayContext(card).sentence);
   if ([...word].length < 2 || !usableContext(sentence) || !primaryMeaning(card || {})) return null;
   const start = sentence.indexOf(word);
   if (start < 0 || sentence.indexOf(word, start + 1) >= 0) return null;
@@ -91,11 +92,14 @@ function createVocabularyTask(card, type, all, seed, index) {
   const word = clean(card.word);
   const reading = clean(card.reading);
   const meaning = primaryMeaning(card);
-  const context = usableContext(card.example) ? clean(card.example) : '';
+  const pair = displayContext(card);
+  const context = clean(pair.sentence);
+  const contextMeta = {contextId:pair.id,contextReadings:pair.id?pair.readings:undefined};
   const hasExample = context && (context.includes(word) || context.includes(reading));
   const cloze = type === 'cloze' ? contextCloze(card) : null;
   if (cloze) return {
     id: `vocab-${index}`,
+    ...contextMeta,
     kind: 'cloze',
     label: 'Satzlücke ergänzen',
     prompt: cloze.prompt,
@@ -107,21 +111,22 @@ function createVocabularyTask(card, type, all, seed, index) {
     accepted: acceptedAnswers(card, 'japanese'),
     explanation: `Gesucht war 「${word}」（${reading}） – ${meaning}. Weitere passende Formulierungen werden nicht automatisch als falsch bewertet.`,
     example: context,
-    exampleTranslation: context ? clean(card.exampleTranslation) : '',
+    exampleTranslation: context ? clean(pair.translation) : '',
     scored: true
   };
   if (type === 'reading' && /\p{Script=Han}/u.test(word)) return {
-    id: `vocab-${index}`, kind:'production', readingTask:true, label:'Lesung abrufen',
+    id: `vocab-${index}`, ...contextMeta, kind:'production', readingTask:true, label:'Lesung abrufen',
     prompt:word, word, reading, secondary:'Wie liest du dieses Wort? Tippe seine Lesung in Kana oder Romaji.',
     options:null, correct:reading, accepted:[reading,...list(card.acceptedReadings)].map(key),
     explanation:`「${word}」（${reading}） – ${meaning}`, example:context,
-    exampleTranslation:context ? clean(card.exampleTranslation) : '', scored:true
+    exampleTranslation:context ? clean(pair.translation) : '', scored:true
   };
   const options = optionsFor(card, all, `${seed}|${index}`);
   const isContext = type === 'context' && Boolean(hasExample);
   const effectiveType = type === 'production' ? 'production' : options ? (isContext ? 'context' : 'meaning') : 'meaning-type';
   return {
     id: `vocab-${index}`,
+    ...contextMeta,
     kind: effectiveType,
     label: isContext ? 'Wort im Kontext' : type === 'production' ? 'Aktiv anwenden' : 'Bedeutung verstehen',
     prompt: type === 'production' ? meaning : isContext ? context : word,
@@ -133,7 +138,7 @@ function createVocabularyTask(card, type, all, seed, index) {
     accepted: acceptedAnswers(card, type === 'production' ? 'japanese' : 'meaning'),
     explanation: `「${word}」（${reading}） – ${meaning}`,
     example: context || '',
-    exampleTranslation: context ? clean(card.exampleTranslation) : '',
+    exampleTranslation: context ? clean(pair.translation) : '',
     scored: true
   };
 }
