@@ -30,6 +30,7 @@ on:
       - "cloud.html"
       - "index.html"
       - "tests/daily-*.test.mjs"
+      - "tests/helpers/srs-source.mjs"
       - ".github/workflows/daily-preview.yml"
   push:
     branches: [main]
@@ -61,6 +62,7 @@ on:
       - "cloud.html"
       - "index.html"
       - "tests/daily-*.test.mjs"
+      - "tests/helpers/srs-source.mjs"
       - ".github/workflows/daily-preview.yml"
 
 permissions:

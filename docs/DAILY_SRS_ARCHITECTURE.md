@@ -1,0 +1,50 @@
+# Daily → canonical SRS: read-only architecture assessment
+
+Status: **NO PRODUCTIVE WRITE APPROVAL**. Analysis and tests only. No Daily imports, new storage key, migrations, recovery calls, Firebase traffic or commit integration. The standing permission to merge/deploy routine changes does not waive the explicit backup/rollback prerequisites for SRS or persistent streak writes.
+
+## Current boundary map
+| Area | Existing authoritative interface | Important behavior and limits |
+|---|---|---|
+| Vocabulary | cloud.html externalQuickReviewBootstrap → KotobaQuestExternalReviewApi: createVocabularySession, evaluateVocabularyAnswer, commitVocabularyItemReview | Reuses index evaluateAnswer and the final patched finalizeReviewItemIfReady. Session contains jp-de and de-jp for each item. dueVocabulary can call ensureCoreVocabularyContent; it is not a guaranteed read-only getter. |
+| Grammar | KotobaQuestGrammarSupportApi createExternalSession / evaluateExternalAnswer / commitExternalReview | Completed point + valid skill required. Caller supplies generated question and grade (good/close/bad); current stage/due guards are optional arguments. Free production is not automatically established mastery. |
+| Particles | KotobaQuestParticlePath createExternalSession / evaluateExternalAnswer / commitExternalReview | Caller supplies task accepted variants and correctness. Commit checks completed lesson, stage and due. Some pointState/getProgress paths normalize/create records. |
+| Kanji | KotobaQuestKanjiPilot closures | ensureState can normalize, recover backups and infer/migrate records. No safe external SRS commit contract approved. Daily must inspect only the already-read snapshot and exact current individual records. |
+| Life RPG | sync/kotoba-bridge.js same-origin, parent-checked request channel, enabled with lifeRpgBridge=1 | Existing create/evaluate/commit actions wrap live Cloud APIs and emit events. Normal Daily does not enable this bridge or load a hidden Cloud instance. |
+
+## Canonical vocabulary semantics to retain
+The active Cloud partial-direction/fair-outcome wrappers supersede the plain index review implementation. Both required directions must eventually be correct, retaining the error history from earlier attempts. One weak direction keeps stage but uses the earlier cadence; two weak directions demote once; an error-free pair advances once. Guru history is deliberately retained after demotion. Wrong-type and unconverted Romaji are retries; close answers reappear without an error penalty. Accepted readings, meanings and synonyms use the main evaluator. Do not copy Daily's forgiving typed answer policy into official SRS scoring.
+
+Multiple choice, generic context practice, visible readings during a reading test, sentence ordering and open Daily transfer cannot silently become official review evidence. Grammar self-checks must match main-app workflow; arbitrary client grades are not proof.
+
+## Persistence and synchronization path
+Main vocabulary finalization invokes the existing directional outcome, revision/timestamp, commit journal, partial-direction store/backup and writeMainDataAtomic; Story energy/activity hooks can run. Grammar and particles serialize the main save via persistGrammar/persist and the kotobaQuestDataV3 shim. Cloud owns createKotobaDurableStorage, whose initialization may migrate legacy data. The shim writes primaryLearningState in IndexedDB database kotobaQuestDurableStorageV1 / snapshots; mainCheckpoint, progressVault and primaryMeta are additional records. Queued writes/flush, snapshot adoption and Firebase save/merge happen through existing Cloud paths. A synchronous UI result is not proof that IndexedDB, backup, outbox and Cloud are durably committed together.
+
+Bridge wrappers call the core commit, then rememberCommand, then enqueue an event (grammar/particle also adopt runtime snapshots). processedCommandIds is capped at 600. API/getter names and comments alone do not establish cross-tab, reload, power-failure or offline atomicity.
+
+## Reproduced gaps — not fixed here
+1. Vocabulary commit fills a scratch session with both directions=true from caller-provided error flags. It does not validate a server/host-owned question/answer transcript. Both directions must instead be tracked by a trusted canonical session; the UI must never manufacture the scratch proof.
+2. Vocabulary exposes expectedStage only; an expected due/revision/cycle token is not checked. Missing/null due dates are numerically coerced to zero in existing due checks. Grammar/particle session due selection can also coerce missing due dates, even though their commit guards reject null. A future adapter must fail closed on invalid due records, preserving rather than repairing them.
+3. Particle evaluation accepts task.accepted from its caller. Grammar evaluation similarly consumes a supplied question and commit grade. Task identity, accepted variants and outcomes need binding to the exact question issued by the authority.
+4. A core commit may return before the idempotency marker is persisted. A later outbox error can happen after the marker; duplicate handling returns success without retrying that event at this wrapper boundary. Canonical stale checks/journals/background scanning may mitigate some cases, but full recovery/exactly-once behavior has not been proven. These probes do not establish actual permanent production loss or double counting.
+5. Same-stage weak-direction outcomes, bounded command retention, reopened tabs, main-vs-Daily races and recovered old snapshots require item-cycle/revision guards and durable recovery tests. Do not assume a request-ID set alone solves them.
+6. Normalizers/backup recovery can run when booting Cloud or accessing Kanji/live vocabulary getters. Opening an invisible second Cloud app just to reach APIs is not approved as a harmless read-only integration.
+
+## Isolated evidence
+`node --test tests/daily-srs-boundary.test.mjs` executes **actual source-extracted evaluator/outcome/commit/wrapper functions** in a VM with artificial data. It never boots Cloud, initializes real storage, imports Firebase or contacts the network. Persistence/outbox/normalizer calls are spies or explicit simulated failures. Source markers must match, otherwise tests fail rather than silently using a copied implementation.
+
+Probes cover accepted variants, wrong type/Romaji, paired outcome rules, exact preservation of unrelated synthetic grammar/particle/Kanji/Mining/Story/N4/Dungeon/analytics records, stale/future/duplicate commits, canonical grammar close/bad and particle errors, duplicate request IDs across a simulated reload, failure before marker, and failure after marker before outbox. Passing BLOCKER characterization tests demonstrate unsafe assumptions; they are **not** approval tests. No real-browser reload/offline/IndexedDB/Firebase durability or real-user backup losslessness is claimed.
+
+## Before productive SRS or persistent streak writes
+- Verify full, unchanged, immutable user backups from every authoritative location: raw IndexedDB records and metadata, relevant localStorage safety journals/backups, Firestore learning payload/revisions, bridge/outbox and per-domain states. Preserve exact bytes with hashes, origin/profile/account/schema/time provenance. An app JSON export alone must not be assumed complete. No such backup exists in this task.
+- Prove record-level losslessness on isolated restored copies, including IDs/pack identities, both review directions/error histories, synonyms/readings, stages/due/revisions, individual Kanji, grammar/particles, Mining, Story/N4/Dungeon/activity and bridge pending/processed events. Investigate Kanji P0 separately. Never restore to production as a test.
+- Review/approve a narrow canonical session contract capturing item identity, issued task, both directions and error/close history, expected stage+due+revision/cycle, command ID and acknowledgement state. Only the canonical evaluator/commit may advance state.
+- Establish atomic or safely recoverable local commit + idempotency + outbox semantics, locking across tabs, stale rejection and durable acknowledgements. Reuse existing infrastructure where proven; any changes to it require the backup/rollback gate first.
+- Exercise double clicks, stale same-stage records, reload before/after each durable step, offline/online/quota failure, retry after event export, command retention, changed account/origin and main/Daily concurrent sessions in an actual isolated browser/Firebase test project. Assert one real SRS effect and at most one eligible Life-RPG event, with no lost event where required.
+- Provide and rehearse rollback on isolated copies before approving a productive write flag. Keep Kanji read-only. Approve explicitly what will be enabled; do not treat passing unit tests or standing deployment permission as that write approval.
+
+## Product decisions and later phases
+Pending authority/host choice: Daily currently has its own page and no access to the live closure APIs. Choose a trusted single authority/host integration; do not create a second SRS engine or uncontrolled hidden instance. Agree on what official task types qualify, including grammar self-assessment and how supported reading aids affect evidence.
+
+After write approval, short/normal/extended plans can allocate a bounded number of issued due items and supplementary exercises. Pair completion is one vocabulary item, not two reviews; backlog visibility must remain unchanged. Summary must separate durable official completions, supplementary attempts and pending/failed acknowledgements. No fabricated level or Guru successes.
+
+For streak persistence, browser-profile vs account scope is still unresolved. Any independent store needs quota/account/origin/concurrency/error analysis and the same verified safety prerequisites; it must not be inserted into the main learning payload or advertised as synchronization. Existing in-memory day math and active-completion checks remain the safe baseline. A visual path may expose only individually evidenced prerequisites; it must not imply unearned mastery.
