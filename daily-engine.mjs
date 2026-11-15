@@ -1,5 +1,7 @@
 /* Kotoba Daily · pure, read-only exercise generation. No storage/SRS writes. */
 
+import { usableContext, compatibleDistractor } from './daily-quality.mjs';
+
 const clean = value => String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ');
 const list = value => Array.isArray(value) ? value.map(clean).filter(Boolean) : [];
 const key = value => clean(value).toLocaleLowerCase('de-DE').replace(/[.!?。！？，、]+$/u, '');
@@ -56,9 +58,9 @@ function primaryMeaning(card) { return list(card.meanings)[0]; }
 export function contextCloze(card) {
   const word = clean(card?.word);
   const sentence = clean(card?.example);
-  if ([...word].length < 2 || !sentence || !primaryMeaning(card || {})) return null;
+  if ([...word].length < 2 || !usableContext(sentence) || !primaryMeaning(card || {})) return null;
   const start = sentence.indexOf(word);
-  if (start < 0 || sentence.indexOf(word, start + word.length) >= 0) return null;
+  if (start < 0 || sentence.indexOf(word, start + 1) >= 0) return null;
   const before = sentence.slice(0, start);
   const after = sentence.slice(start + word.length);
   const context = before + after;
@@ -73,11 +75,12 @@ function optionsFor(card, candidates, seed) {
   const correct = primaryMeaning(card);
   const used = new Set([key(correct)]);
   const alternatives = shuffle(candidates, seed).filter(other => {
-    if (other === card) return false;
+    if (other === card || !compatibleDistractor(card, other)) return false;
     const label = primaryMeaning(other);
     if (!label || used.has(key(label))) return false;
     // Never offer a distractor that is also an accepted meaning for the target.
     if (acceptedAnswers(card, 'meaning').includes(key(label))) return false;
+    if (acceptedAnswers(other, 'meaning').some(answer => acceptedAnswers(card, 'meaning').includes(answer))) return false;
     used.add(key(label));
     return true;
   }).slice(0, 3).map(primaryMeaning);
@@ -88,7 +91,7 @@ function createVocabularyTask(card, type, all, seed, index) {
   const word = clean(card.word);
   const reading = clean(card.reading);
   const meaning = primaryMeaning(card);
-  const context = clean(card.example);
+  const context = usableContext(card.example) ? clean(card.example) : '';
   const hasExample = context && (context.includes(word) || context.includes(reading));
   const cloze = type === 'cloze' ? contextCloze(card) : null;
   if (cloze) return {
@@ -98,14 +101,21 @@ function createVocabularyTask(card, type, all, seed, index) {
     prompt: cloze.prompt,
     secondary: `Welches bereits gelernte Wort bedeutet „${meaning}“? Ergänze die Lücke mit dem Wort oder seiner Lesung.`,
     target: '',
-    reading,
+    word, reading,
     options: null,
     correct: word,
     accepted: acceptedAnswers(card, 'japanese'),
     explanation: `Gesucht war 「${word}」（${reading}） – ${meaning}. Weitere passende Formulierungen werden nicht automatisch als falsch bewertet.`,
     example: context,
-    exampleTranslation: clean(card.exampleTranslation),
+    exampleTranslation: context ? clean(card.exampleTranslation) : '',
     scored: true
+  };
+  if (type === 'reading' && /\p{Script=Han}/u.test(word)) return {
+    id: `vocab-${index}`, kind:'production', readingTask:true, label:'Lesung abrufen',
+    prompt:word, word, reading, secondary:'Wie liest du dieses Wort? Tippe seine Lesung in Kana oder Romaji.',
+    options:null, correct:reading, accepted:[reading,...list(card.acceptedReadings)].map(key),
+    explanation:`「${word}」（${reading}） – ${meaning}`, example:context,
+    exampleTranslation:context ? clean(card.exampleTranslation) : '', scored:true
   };
   const options = optionsFor(card, all, `${seed}|${index}`);
   const isContext = type === 'context' && Boolean(hasExample);
@@ -117,13 +127,13 @@ function createVocabularyTask(card, type, all, seed, index) {
     prompt: type === 'production' ? meaning : isContext ? context : word,
     secondary: type === 'production' ? 'Wie heißt das auf Japanisch?' : isContext ? 'Was bedeutet das hervorgehobene Wort?' : 'Was bedeutet dieses Wort?',
     target: isContext ? word : '',
-    reading,
+    word, reading,
     options: effectiveType === 'production' || effectiveType === 'meaning-type' ? null : options,
     correct: meaning,
     accepted: acceptedAnswers(card, type === 'production' ? 'japanese' : 'meaning'),
     explanation: `「${word}」（${reading}） – ${meaning}`,
     example: context || '',
-    exampleTranslation: clean(card.exampleTranslation),
+    exampleTranslation: context ? clean(card.exampleTranslation) : '',
     scored: true
   };
 }
@@ -159,7 +169,7 @@ export function buildRefresh(cards, dateKey = 'preview') {
     const gapIndex = arranged.findIndex((card, index) => index !== 2 && contextCloze(card));
     if (gapIndex >= 0) [arranged[2], arranged[gapIndex]] = [arranged[gapIndex], arranged[2]];
   }
-  const order = ['meaning', 'production', 'cloze', 'meaning', 'production', 'context', 'production', 'meaning'];
+  const order = ['meaning', 'production', 'cloze', 'meaning', 'reading', 'context', 'production', 'meaning'];
   return {
     mode: 'refresh',
     tasks: arranged.map((card, index) => createVocabularyTask(card, order[index], learned, dateKey, index)),

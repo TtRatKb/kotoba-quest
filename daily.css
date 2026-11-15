@@ -35,3 +35,5 @@ body.in-session{overflow:hidden;height:var(--app-height,100dvh)}
 .session-dock{padding:8px 2px max(8px,env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--border)}
 .session-dock .answer-form,.session-dock .actions{margin:0;gap:8px}.session-dock .answer-form input{height:48px;font-size:16px}.session-dock .answer-form{grid-template-columns:1fr 1fr}.session-dock .answer-form label,.session-dock .answer-form input{grid-column:1/-1}.session-dock .button{min-height:44px;padding:9px 10px;box-shadow:none}.session-dock>.button{margin-top:6px;font-size:.8rem;min-height:40px}.session-dock .answer-form>.button:only-of-type{grid-column:1/-1}
 @media(max-height:500px){.in-session .header{display:none}.session-top p{display:none}.session-top{padding:3px}.session-content .question{padding:10px}.session-dock{padding-top:5px}.session-dock .answer-form{gap:5px}.session-dock .answer-form label{font-size:.75rem}}
+
+ruby{ruby-position:over}rt{font-size:.52em;font-weight:500;line-height:1.2}.reading-help{color:var(--muted);padding:0 8px;line-height:1.4}
