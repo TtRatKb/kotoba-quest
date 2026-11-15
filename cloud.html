@@ -364,6 +364,7 @@
         </div>
         <div class="actions">
           <button class="button ghost storage-health-button" id="storageHealthButton" type="button" title="Speicherstatus anzeigen">💾 Speicher</button>
+          <button class="button ghost" id="backupExportButton" type="button" title="Lernstand als lokale Datei sichern">⬇ Sicherungsdatei</button>
           <button class="button" id="loginButton">Mit Google anmelden</button>
           <button class="button secondary" id="syncButton" hidden>Jetzt sichern</button>
           <button class="button ghost" id="reviewRecoveryButton" hidden>🛟 Verlorenen Reviewblock reparieren</button>
@@ -447,6 +448,7 @@
       setDoc
     } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
     import { createKotobaDurableStorage } from "./storage/kotoba-durable-storage.js?v=3.1.0";
+    import { collectDurableSnapshot, collectKotobaLocalStorage, createBackupBundle, downloadBackupBundle, sha256, verifyBackupBundle } from "./kotoba-backup-export.mjs?v=1";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBONS67dSKsL-Bgi46tu2ZDCWLV3YJkqpY",
@@ -481,6 +483,7 @@
     const syncButton = document.getElementById("syncButton");
     const reviewRecoveryButton = document.getElementById("reviewRecoveryButton");
     const storageHealthButton = document.getElementById("storageHealthButton");
+    const backupExportButton = document.getElementById("backupExportButton");
     const storageDialog = document.getElementById("storageDialog");
     const storageHealthTitle = document.getElementById("storageHealthTitle");
     const storageHealthDetail = document.getElementById("storageHealthDetail");
@@ -41393,6 +41396,28 @@ function smartReviewBootstrap() {
 
     loginButton.addEventListener("click", handleLogin);
     storageHealthButton.addEventListener("click", () => { updateStorageHealthUi({renderDialog:true}); storageDialog.showModal(); });
+    backupExportButton.addEventListener("click", async () => {
+      backupExportButton.disabled = true;
+      try {
+        await durableStorage?.flush?.();
+        const cloudProgress = currentUser ? await readCloudProgress(currentUser) : null;
+        const accountScope = currentUser ? `firebase-uid-sha256:${await sha256(currentUser.uid)}` : "local-profile";
+        const bundle = await createBackupBundle({
+          durable: collectDurableSnapshot(durableStorage),
+          localStorageEntries: collectKotobaLocalStorage(localStorage),
+          cloud: cloudProgress,
+          accountScope,
+          origin: location.origin
+        });
+        const verification = await verifyBackupBundle(bundle);
+        if (!verification.valid) throw new Error(verification.errors.join(" "));
+        downloadBackupBundle(bundle);
+        toast(currentUser ? "Sicherungsdatei erstellt · lokaler und Cloud-Lernstand enthalten." : "Lokale Sicherungsdatei erstellt · für den Cloudstand bitte zuerst anmelden.");
+      } catch (error) {
+        console.error("Read-only backup export failed", error);
+        toast(`⚠️ Sicherungsdatei nicht erstellt: ${readableError(error)}`);
+      } finally { backupExportButton.disabled = false; }
+    });
     storageCloseButton.addEventListener("click", () => storageDialog.close());
     storageOptimizeButton.addEventListener("click", async () => {
       storageOptimizeButton.disabled = true;
@@ -41598,6 +41623,7 @@ function smartReviewBootstrap() {
         const actions = dialog.querySelector("#kqCloudMobileActions");
         actions.innerHTML =
           proxyAction(storageHealthButton, `💾 Speicher · ${formatStorageBytes(health.used)} · ${health.label}`) +
+          proxyAction(backupExportButton, "⬇ Sicherungsdatei erstellen", "button secondary") +
           proxyAction(loginButton, "Mit Google anmelden", "button") +
           proxyAction(syncButton, "☁️ Jetzt in der Cloud sichern", "button secondary") +
           proxyAction(reviewRecoveryButton, reviewRecoveryButton.textContent || "🛟 Reviewblock reparieren", "button ghost") +
