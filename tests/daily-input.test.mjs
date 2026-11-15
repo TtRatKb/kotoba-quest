@@ -8,11 +8,11 @@ runInNewContext(readFileSync(new URL('../japanese-romaji.js',import.meta.url),'u
 globalThis.window=sandbox.window;
 const kana=window.KotobaRomaji.toHiragana;
 test('shared Cloud converter handles normal spelling, small kana, gemination and n',()=>{
- for(const [raw,expected] of [['nenrei','ねんれい'],['gakkou','がっこう'],['konnichiha','こんにちは'],["kin'en",'きんえん'],['kan','かん'],['kann','かん'],['shashin','しゃしん'],['syashin','しゃしん'],['chotto','ちょっと'],['tyotto','ちょっと'],['xya','ゃ'],['la','ぁ'],['ltsu','っ'],['sensei','せんせい'],['ookii','おおきい'],['スーパーと学校','スーパーと学校']])assert.equal(kana(raw,true),expected,raw);
+ for(const [raw,expected] of [['matcha','まっちゃ'],['shimbun','しんぶん'],['kampai','かんぱい'],['nenrei','ねんれい'],['gakkou','がっこう'],['konnichiha','こんにちは'],["kin'en",'きんえん'],['kan','かん'],['kann','かん'],['shashin','しゃしん'],['syashin','しゃしん'],['chotto','ちょっと'],['tyotto','ちょっと'],['xya','ゃ'],['la','ぁ'],['ltsu','っ'],['sensei','せんせい'],['ookii','おおきい'],['スーパーと学校','スーパーと学校']])assert.equal(kana(raw,true),expected,raw);
  assert.equal(kana('n'), 'n');assert.equal(kana('nn'),'nn');
 });
 test('live converted prefixes remain usable while typing, including trailing nn',()=>{
- for(const [raw,expected] of [['nenrei','ねんれい'],['konnichiha','こんにちは'],['gakkou','がっこう'],['kann','かん']]){
+ for(const [raw,expected] of [['matcha','まっちゃ'],['shimbun','しんぶん'],['kampai','かんぱい'],['nenrei','ねんれい'],['konnichiha','こんにちは'],['gakkou','がっこう'],['kann','かん']]){
   let value='';for(const letter of raw)value=kana(value+letter);
   assert.equal(kana(value,true),expected,raw);
  }

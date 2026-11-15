@@ -17,6 +17,9 @@
             if(!/[aeiouy]/.test(tail[1])){result+="ん";index++;continue;}
           }
           if(tail.length>=2&&tail[0]===tail[1]&&/[bcdfghjklmpqrstvwxyz]/.test(first)&&first!=="n"){result+="っ";index++;continue;}
+          // Conventional Hepburn spellings: matcha, shimbun, kampai.
+          if(tail.startsWith("tch")){result+="っ";index++;continue;}
+          if(first==="m"&&/[bmp]/.test(tail[1]||"")){result+="ん";index++;continue;}
           const key=KEYS.find(candidate=>tail.startsWith(candidate));
           if(key){result+=MAP[key];index+=key.length;}else{result+=source[index];index++;}
         }
