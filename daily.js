@@ -5,20 +5,26 @@ import { buildDailyMix } from './daily-mix.mjs';
 import { convertJapaneseField } from './daily-input.mjs';
 import { prepareDailyCards } from './daily-quality.mjs';
 import { readingLexicon, japaneseSegments } from './daily-furigana.mjs';
+import { buildPlaySession, evaluatePlay, sentenceText, isPair } from './daily-play.mjs';
+import { playCard } from './daily-play-view.mjs';
+import { createFeedback } from './daily-feedback.mjs';
 import { buildPractice } from './daily-practice.mjs';
 import { assessCompletion, localDay } from './daily-completion.mjs';
 import { recordDailyCompletion, streakSummary } from './daily-streak.mjs';
 
+const effects = createFeedback();
 const root = document.getElementById('dailyRoot');
+const feedbackToggle = document.getElementById('feedbackToggle');
+const header = document.querySelector('.header');
 const mainApp = new URLSearchParams(window.location.search).get('from') === 'index' ? './index.html' : './cloud.html';
 document.querySelector('.back').href = mainApp;
 const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false, practiceOrigin: null, lexicon: readingLexicon([]) };
+const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false, practiceOrigin: null, lexicon: readingLexicon([]), play:null };
 
 const todayKey = () => localDay();
 
-function japanese(value, options = {}) {
-  return japaneseSegments(value, state.lexicon, state.save, options).map(part => {
+function japanese(value, {lexicon=state.lexicon,...options} = {}) {
+  return japaneseSegments(value, lexicon, state.save, options).map(part => {
     const word = part.reading ? `<ruby>${safe(part.text)}<rp>(</rp><rt>${safe(part.reading)}</rt><rp>)</rp></ruby>` : safe(part.text);
     return part.highlight ? `<mark>${word}</mark>` : word;
   }).join('');
@@ -27,6 +33,7 @@ function japanese(value, options = {}) {
 function home() {
   const learnedCount = state.source?.learned?.length || 0;
   const ready = learnedCount >= 3;
+  const playAvailable = buildPlaySession(state.source?.learned || [],state.save || {},todayKey()).tasks.length;
   const personalPaths = availableGuidedPaths(state.save || {});
   const streak = streakSummary(state.completedDays, todayKey());
   const note = state.error
@@ -54,6 +61,10 @@ function home() {
       <span class="icon" aria-hidden="true">✨</span><span><strong>Daily Growth · Probelektion</strong><small>4 Schritte · 〜てしまう verstehen, Nuancen unterscheiden und selbst formulieren</small></span><span class="arrow" aria-hidden="true">›</span>
     </button>
   </div>
+  <section class="panel"><span class="eyebrow">🎨 VISUELL & SPIELERISCH</span><h2>Mit Bildern und Bausteinen üben</h2><p class="small muted">Bildauswahl, Paare und Satzbau · freiwilliges Zusatztraining, keine SRS-Reviews und kein zusätzlicher Tagesabschluss.</p>
+    <div class="actions"><button class="button" type="button" data-start="play" ${playAvailable?'':'disabled'}>Mit meinem Lernstand üben</button><button class="button secondary" type="button" data-start="play-demo">Kuratiertes Probetraining ansehen</button></div>
+    ${playAvailable?'':'<p class="small muted">Noch keine passenden gelernten Bildwörter oder abgeschlossenen Satzbau-Voraussetzungen gefunden. Die freiwillige Demo bleibt zugänglich.</p>'}
+  </section>
   <section class="panel"><span class="eyebrow">🧩 LERNEN MIT SYSTEM</span><h2>Geführte Übungen aus deinem Lernstand</h2>
   <p class="muted small">Nur Themen, deren Kotoba-Lektionen bereits abgeschlossen wurden. Wir unterscheiden gezielt ähnliche Strukturen, statt Aufgaben zufällig zu mischen.</p>
   ${personalPaths.length?`<div class="mode-grid">${personalPaths.map(path=>`<button class="mode" type="button" data-guided="${safe(path.id)}"><span class="icon" aria-hidden="true">${path.domain==='grammar'?'📚':'🧩'}</span><span><strong>${safe(path.title)}</strong><small>${safe(path.subtitle)} · ${safe(path.focus)} · kein SRS-Eingriff</small></span><span class="arrow" aria-hidden="true">›</span></button>`).join('')}</div>`:`<div class="note">${state.progressError?`Der lokale Lernstand konnte nicht gelesen werden: ${safe(state.progressError)}`:'Für diese erste Auswahl sind noch keine passenden abgeschlossenen Grammatik-/Partikellektionen im lokalen Spielstand nachgewiesen. Die Probelektion oben bleibt verfügbar.'}</div>`}
@@ -63,6 +74,7 @@ function home() {
 }
 
 function promptCard(task) {
+  if (state.session.mode === 'play') return playCard(task,state.play,state.result,{safe,japanese,word:item=>japanese(item.word,{lexicon:readingLexicon([item])}),canSpeak:effects.canSpeak(),enabled:effects.enabled,isLast:state.index+1===state.session.tasks.length});
   if (task.kind === 'lesson') {
     return `<section class="panel question"><span class="pill">${safe(task.label)}</span>
       <h1 class="task-jp" lang="ja">${japanese(task.prompt)}</h1><p>${safe(task.secondary)}</p>
@@ -112,13 +124,14 @@ function active() {
   const task = session.tasks[i];
   const completed = i + (state.result ? 1 : 0);
   const percent = (completed / session.tasks.length) * 100;
-  const modeLabel = session.mode==='practice'?'Freiwillig nachüben':session.mode==='daily'?'Meine tägliche Quest':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
+  const modeLabel = session.mode==='play'?'Bilder & Satzbau · Training':session.mode==='practice'?'Freiwillig nachüben':session.mode==='daily'?'Meine tägliche Quest':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
   return `<div class="session-top"><div class="status-row"><span class="eyebrow">${modeLabel}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
     <div class="progress" role="progressbar" aria-label="Fortschritt" aria-valuenow="${completed}" aria-valuemin="0" aria-valuemax="${session.tasks.length}"><div style="width:${percent}%"></div></div>
     ${session.mode==='daily'?`<p class="muted small">Lernziel: ${safe(session.growthTitle)} · ${session.growthType==='learned'?'an deinen Lernstand angepasst':'freiwillige neue Probelektion'} · kein SRS-Eingriff</p>`:''}
+    ${session.mode==='play'?`<p class="muted small">${session.demo?'Freiwillige Demo mit kuratierten Wörtern – kein gespeicherter Lernnachweis.':'Aus geeigneten gelernten Wörtern und nachgewiesenen Lektionen.'}</p>`:''}
     ${session.mode==='practice'?'<p class="muted small">Einmal erneut abrufen und mit dem Feedback vergleichen. Unklare Texteingaben sind keine festgestellten Fehler.</p>':''}
     ${session.mode==='guided'?`<p class="muted small">Lernziel: ${safe(session.title)} · freies Training ohne SRS-Buchung</p>`:''}
-    </div><div class="session-content">${promptCard(task)}</div><div class="session-dock" aria-label="Antwort und Navigation"><div class="session-control"></div>${session.mode==='practice'?'<button class="button ghost" type="button" data-return>← Zurück zu deiner Quest-Auswertung</button>':'<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>'}</div>`;
+    </div><div class="session-content">${promptCard(task)}</div><div class="session-dock" aria-label="Antwort und Navigation"><div class="session-control"></div><div class="session-exit-row">${session.mode==='practice'?'<button class="button ghost" type="button" data-return>← Zurück zu deiner Quest-Auswertung</button>':'<button class="button ghost" type="button" data-home>← Übersicht</button>'}<span class="effects-slot"></span></div></div>`;
 }
 
 function practiceSummary() {
@@ -131,7 +144,21 @@ function practiceSummary() {
     <div class="actions"><button class="button" type="button" data-return>Zurück zu deiner Quest-Auswertung</button><button class="button secondary" type="button" data-home>Zur Übersicht</button></div></section>`;
 }
 
+function playSummary() {
+  const pictures=state.answers.filter(a=>a.kind==='image-choice');
+  const pairs=state.answers.filter(a=>a.kind==='image-matching');
+  const tiles=state.answers.filter(a=>a.kind==='sentence-tiles');
+  const extra=pairs.reduce((n,a)=>n+a.attemptErrors,0);
+  return `<section class="panel results"><div class="flower" aria-hidden="true">🌱</div><p class="eyebrow">ZUSATZTRAINING BEENDET</p><h1>Mit Bildern und Sprache verbunden.</h1>
+    ${pictures.length?`<p>${pictures.filter(a=>a.correct===true).length} / ${pictures.length} Bilder richtig zugeordnet.</p>`:''}
+    ${pairs.length?`<p>${pairs.reduce((n,a)=>n+a.pairCount,0)} Paare gefunden · ${extra} ${extra===1?'weiterer Versuch':'weitere Versuche'}.</p>`:''}
+    ${tiles.length?`<p>Geprüfte Satzlösungen: ${tiles.filter(a=>a.correct===true).length}. Zum eigenen Vergleich unbewertet: ${tiles.filter(a=>a.correct===null).length}.</p>`:''}
+    <div class="note">${state.session.demo?'Diese Demo markiert keine Wörter oder Lektionen als gelernt. ':''}SRS, reguläre Reviews und dein Tagesabschluss bleiben unverändert. Es wird nichts gespeichert.</div>
+    <div class="actions"><button class="button" type="button" data-home>Zur Übersicht</button></div></section>`;
+}
+
 function summary() {
+  if (state.session.mode === 'play') return playSummary();
   if (state.session.mode === 'practice') return practiceSummary();
   const practice = !state.practiceOrigin && buildPractice(state.session, state.answers);
   const scored = state.answers.filter(answer => answer.correct !== null);
@@ -159,6 +186,7 @@ function summary() {
 }
 
 function render(focus = false) {
+  root.setAttribute('aria-live',state.session?.mode==='play'?'off':'polite');
   root.innerHTML = !state.session ? home() : state.index >= state.session.tasks.length ? summary() : active();
   const inTask = Boolean(state.session && state.index < state.session.tasks.length);
   document.body.classList.toggle('in-session', inTask);
@@ -178,17 +206,22 @@ function render(focus = false) {
       content.scrollTop += feedback.getBoundingClientRect().top - content.getBoundingClientRect().top;
     }
   }
+  (inTask ? root.querySelector('.effects-slot') : header).appendChild(feedbackToggle);
+  updateEffectsControls();
   if (focus) { root.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'}); }
 }
 
 function start(mode, pathId = null) {
-  const session = mode === 'daily'
+  const session = mode === 'play' || mode === 'play-demo'
+    ? buildPlaySession(state.source?.learned || [],state.save || {},todayKey(),{demo:mode==='play-demo'})
+    : mode === 'daily'
     ? buildDailyMix(state.source?.learned || [], state.save || {}, todayKey())
     : mode === 'refresh'
     ? buildRefresh(state.source?.learned || [], todayKey())
     : mode === 'guided' ? buildGuidedQuest(state.save || {}, todayKey(), pathId) : buildGrammarPreview();
   if (!session?.tasks?.length) return;
   state.practiceOrigin = null;
+  state.play = freshPlayState();
   state.session = session;
   state.index = 0;
   state.result = null;
@@ -234,12 +267,16 @@ function answer(response, skipped = false) {
     input?.reportValidity();
     return;
   }
-  const evaluated = isCorrect(task, response);
+  const playResult = state.session.mode==='play' ? evaluatePlay(task,response) : null;
+  if (playResult && !playResult.complete) return;
+  const evaluated = playResult ? playResult.correct : isCorrect(task, response);
   // A different free-text translation can be valid: never confidently mark it wrong.
   const correct = evaluated === false && (task.kind === 'production' || task.kind === 'meaning-type') ? null : evaluated;
-  state.result = { correct, response: String(response), skipped };
-  state.answers.push({ taskId: task.id, correct, response: String(response), skipped });
+  const displayed = task.kind==='sentence-tiles' ? sentenceText(task,response) : task.kind==='image-matching' ? `${response.length} Paare` : String(response);
+  state.result = { correct, response:displayed, skipped };
+  state.answers.push({taskId:task.id,kind:task.kind,correct,response:displayed,skipped,pairCount:task.pairs?.length||0,attemptErrors:state.play?.errors||0});
   render();
+  if (correct===true && task.kind!=='image-matching') void effects.success(root.querySelector('.feedback'));
   const button = root.querySelector('[data-next]');
   button?.focus({preventScroll:true});
 }
@@ -251,7 +288,8 @@ function next() {
   if (task.kind === 'lesson') state.answers.push({taskId:task.id,correct:null,acknowledged:true});
   state.index++;
   state.result = null;
-  if (state.index === state.session.tasks.length && state.session.mode !== 'practice') {
+  state.play = freshPlayState();
+  if (state.index === state.session.tasks.length && !['practice','play'].includes(state.session.mode)) {
     const completion = assessCompletion(state.session, state.answers);
     const day = todayKey(); // Credit the local calendar day of finishing, not starting.
     const alreadyDone = state.completedDays.includes(day);
@@ -261,7 +299,58 @@ function next() {
   render(true);
 }
 
+function freshPlayState(){return {image:null,word:null,matched:[],tokens:[],errors:0,note:'',busy:false,assetFailed:false};}
+function focusPlay(selector){root.querySelector(selector)?.focus({preventScroll:true});}
+function handlePlayClick(event){
+  if(state.session?.mode!=='play'||state.result||state.index>=state.session.tasks.length)return false;
+  const task=state.session.tasks[state.index],play=state.play;
+  if(event.target.closest('[data-listen]')){effects.speak(task.target.word);return true;}
+  const image=event.target.closest('[data-match-image]'),word=event.target.closest('[data-match-word]');
+  if(image||word){
+    if(play.busy||play.assetFailed)return true;
+    const id=image?image.dataset.matchImage:word.dataset.matchWord;
+    if(play.matched.includes(id))return true;
+    if(image)play.image=id;else play.word=id;
+    if(play.image&&play.word){
+      if(isPair(task,play.image,play.word)){
+        const id=play.image,session=state.session,index=state.index;
+        play.matched.push(id);play.busy=true;play.note='Paar gefunden!';
+        root.querySelectorAll(`[data-match-image="${id}"],[data-match-word="${id}"]`).forEach(el=>{el.classList.add('pair-found');el.disabled=true;});
+        void effects.success(root.querySelector(`[data-match-word="${id}"]`));
+        window.setTimeout(()=>{
+          if(state.session!==session||state.index!==index||state.play!==play)return;
+          play.busy=false;play.image=null;play.word=null;
+          if(play.matched.length===task.pairs.length)answer([...play.matched]);
+          else {render();focusPlay('[data-match-image]');}
+        },effects.reducedMotion?0:180);
+      }else{
+        play.errors++;play.image=null;play.word=null;play.note='Noch nicht dieses Paar. Probiere eine andere Verbindung.';render();focusPlay('[data-match-image]');
+      }
+    }else{render();focusPlay(image?`[data-match-image="${id}"]`:`[data-match-word="${id}"]`);}
+    return true;
+  }
+  const token=event.target.closest('[data-token]'),remove=event.target.closest('[data-remove-token]');
+  if(token){const id=token.dataset.token;if(task.tokens.some(t=>t.id===id)&&!play.tokens.includes(id))play.tokens.push(id);render();focusPlay('[data-token]:not(:disabled),[data-check-sentence]');return true;}
+  if(remove){play.tokens.splice(Number(remove.dataset.removeToken),1);render();focusPlay('[data-token]:not(:disabled)');return true;}
+  if(event.target.closest('[data-clear-sentence]')){play.tokens=[];render();focusPlay('[data-token]');return true;}
+  if(event.target.closest('[data-check-sentence]')){answer([...play.tokens]);return true;}
+  return false;
+}
+function updateEffectsControls(){
+  const toggle=feedbackToggle;
+  toggle.textContent=`Ton/Haptik: ${effects.enabled?'an':'aus'}`;toggle.setAttribute('aria-pressed',String(effects.enabled));
+  root.querySelectorAll('[data-listen]').forEach(button=>{button.disabled=!effects.enabled||!effects.canSpeak();});
+}
+feedbackToggle.addEventListener('click',()=>{effects.setEnabled(!effects.enabled);updateEffectsControls();});
+window.speechSynthesis?.addEventListener?.('voiceschanged',updateEffectsControls);
+window.addEventListener('pagehide',()=>effects.dispose());
+root.addEventListener('error',event=>{
+ if(state.session?.mode!=='play'||!event.target.matches?.('.visual-art img')||state.play.assetFailed)return;
+ state.play.assetFailed=true;render();
+},true);
+
 root.addEventListener('click', event => {
+  if (handlePlayClick(event)) return;
   const guidedButton = event.target.closest('[data-guided]');
   if (guidedButton) { start('guided', guidedButton.dataset.guided); return; }
   const startButton = event.target.closest('[data-start]');
@@ -309,6 +398,7 @@ root.addEventListener('submit', event => {
 
 root.addEventListener('keydown', event => {
   if (!state.session || state.index >= state.session.tasks.length || state.composing || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.target.closest?.('#feedbackToggle,[data-listen]')) return;
   const tag = event.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
   if (state.result && event.key === 'Enter') {
