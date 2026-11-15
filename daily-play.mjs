@@ -1,6 +1,7 @@
 /* Curated, optional supplementary training. Never official SRS evidence. */
 import {eligibleWords} from './daily-engine.mjs';
 export const ATLAS = './assets/daily/objects-v1.png';
+export const isPlayTask = task => ['image-choice','image-matching','sentence-tiles'].includes(task?.kind);
 const rows = [
  ['cat','猫','ねこ','Katze','animals',['katze','katzen']],
  ['dog','犬','いぬ','Hund','animals',['hund','hunde']],

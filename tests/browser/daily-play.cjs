@@ -69,6 +69,6 @@ const root=path.resolve(__dirname,'../..');
    console.log(`PASS play ${width}x${height}: image choices, pairs, tiles, dock, ruby, opt-in, timer cancellation, no writes`);await context.close();
   }
   // Local asset failures cannot turn into invisible correct answers.
-  const context=await browser.newContext();const page=await context.newPage();await page.route('**/assets/daily/objects-v1.png',r=>r.abort());await page.goto(origin+'/daily.html');await page.locator('[data-start=play]').click();await page.locator('[role=alert]').waitFor();assert.equal(await page.locator('.picture-card:disabled').count(),4);await context.close();console.log('PASS missing local image: explicit error, choices disabled');
+  const context=await browser.newContext();const page=await context.newPage();await page.route('**/assets/daily/objects-v1.png',r=>r.abort());await page.goto(origin+'/daily.html');await page.locator('[data-start=play]').click();await page.locator('[role=alert]').waitFor();assert.equal(await page.locator('.picture-card:disabled').count(),4);await page.locator('#dailyRoot').press('1');assert.equal(await page.locator('.feedback').count(),0,'keyboard cannot answer an unavailable image');await context.close();console.log('PASS missing local image: explicit error, choices disabled, keyboard guarded');
  }finally{await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

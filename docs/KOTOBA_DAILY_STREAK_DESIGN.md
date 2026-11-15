@@ -1,5 +1,7 @@
 # Streak: isolierter Speicherentwurf, noch nicht implementiert
 
+Aktueller Stand der gemischten Quest: [DAILY_MIX_INTEGRATED.md](DAILY_MIX_INTEGRATED.md). Eine rein flüchtige Sieben-Tage-Übersicht ergänzt die vorhandene In-Memory-Anzeige. Der Speicherentwurf und sämtliche Voraussetzungen unten bleiben unverändert; es wurde kein persistenter Adapter implementiert.
+
 Stand: 14.11.2026. Getrennter Folgeschritt nach Integration #21. Diese Änderung aktiviert **keine Persistenz**, Tagesgutschrift oder Streak-Anzeige. Die vorhandene reine Berechnung in daily-streak.mjs bleibt unverändert. Motivation: Start „Meine tägliche Quest“, Fortschrittsbalken berücksichtigt abgegebene Antworten; Abschluss nennt geübte Inhalte und den eigenen unbewerteten Transfersatz. Antworten bleiben im Arbeitsspeicher.
 
 ## Einfachstes Modell nach Sicherheitsfreigabe

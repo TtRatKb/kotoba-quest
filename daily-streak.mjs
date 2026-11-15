@@ -32,3 +32,15 @@ export function streakSummary(days, today) {
   while (completed.has(day)) { current += 1; day -= 1; }
   return {current, longest, doneToday, completedDays:numbers.length};
 }
+
+// Seven calendar days ending today. Prepared for persistence, but purely in memory.
+export function dailyOverview(days, today) {
+  const end=asDayNumber(today);
+  if(end==null)return [];
+  const completed=new Set((Array.isArray(days)?days:[]).filter(day=>asDayNumber(day)!=null));
+  return Array.from({length:7},(_,i)=>{
+    const ordinal=end-6+i, date=new Date(ordinal*86_400_000);
+    const day=date.toISOString().slice(0,10);
+    return {day,label:['So','Mo','Di','Mi','Do','Fr','Sa'][date.getUTCDay()],done:completed.has(day),today:ordinal===end};
+  });
+}

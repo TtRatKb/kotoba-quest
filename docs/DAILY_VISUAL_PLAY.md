@@ -1,5 +1,7 @@
 # Visuelles Daily-Zusatztraining – Prototyp
 
+Fortschreibung: Die [gemischte Daily Quest](DAILY_MIX_INTEGRATED.md) verwendet die persönlichen Aufgaben inzwischen auch im regulären Mix. Der separate Einstieg und die Demo bleiben wie unten beschrieben zusätzliches Training ohne eigenen Tagesabschluss. Die Angaben zum separaten Einstieg beschreiben den ursprünglichen Prototyp aus #33.
+
 ## Umfang und Einstieg
 
 Die Daily-Übersicht ergänzt die bestehenden Modi um „Mit meinem Lernstand üben“ und eine ausdrücklich freiwillige Demo. Die bisherigen Quest-, Refresh-, Mix-, Grammatik-, Partikel- und Nachübungsmodi bleiben erhalten. Eine kurze Bild-/Satzbau-Session enthält höchstens vier Aufgaben:

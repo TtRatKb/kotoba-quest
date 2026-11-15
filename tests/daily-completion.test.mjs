@@ -7,6 +7,7 @@ import { buildGrammarPreview, buildRefresh } from '../daily-engine.mjs';
 import { GUIDED_PATHS, buildGuidedQuest } from '../daily-guided.mjs';
 import { buildDailyMix } from '../daily-mix.mjs';
 import { recordDailyCompletion, streakSummary } from '../daily-streak.mjs';
+import {isPlayTask} from '../daily-play.mjs';
 
 const cards = [
   {id:'1',word:'行く',reading:'いく',meanings:['gehen'],example:'学校へ行く。',stage:2},
@@ -15,7 +16,7 @@ const cards = [
 ];
 const attempts = session => session.tasks.map(task => task.kind === 'lesson'
   ? {taskId:task.id, acknowledged:true, correct:null}
-  : {taskId:task.id, response: task.options?.[0] || (task.kind === 'meaning-type' ? 'gehen' : task.example || task.reading || '日本語'), correct:null});
+  : {taskId:task.id, response: task.options?.[0] || (task.kind === 'meaning-type' ? 'gehen' : task.example || task.reading || '日本語'), activityResponse:isPlayTask(task)?task.options?.[0] || task.pairs?.map(p=>p.id) || task.accepted[0]:undefined, correct:null});
 
 test('all existing modes and both variants qualify by participation, without a minimum score', () => {
   const sessions = [buildGrammarPreview(), buildRefresh(cards, '2026-11-14')];
