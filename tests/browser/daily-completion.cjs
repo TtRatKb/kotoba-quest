@@ -5,7 +5,7 @@ const http=require('node:http');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const root=path.resolve(__dirname,'../..');
-const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs']);
+const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs','japanese-romaji.js','daily-input.mjs']);
 const cards=[['行く','いく','gehen','学校へ行く。'],['食べる','たべる','essen','ご飯を食べる。'],['見る','みる','sehen','映画を見る。']].map(([word,reading,meaning,example],i)=>({id:String(i),word,reading,meanings:[meaning],example,stage:2}));
 const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringify(cards)}}),readSave:async()=>({data:{particlePath:{points:{'ni-target':{lessonComplete:true},'de-action':{lessonComplete:true}}}}})};`;
 (async()=>{
@@ -46,15 +46,17 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
      const input=page.locator('#dailyAnswer');
      if(await input.count()){
       await visible('#dailyAnswer');
+      await input.pressSequentially('nenrei');assert.equal(await input.inputValue(),'ねんれい');
+      await input.fill('');
       if(skip){await page.locator('[data-example]').click();}
       else{
        await input.fill('   ');await page.locator('form button[type=submit]').click();
        assert.equal(await page.locator('.feedback').count(),0,'whitespace must not advance');
        await input.fill('鍵を忘れてしまった。');
        if(ime){
-        await input.dispatchEvent('compositionstart');await page.locator('#dailyAnswerForm').evaluate(el=>el.requestSubmit());
+        await input.dispatchEvent('compositionstart');await input.fill('nenrei');assert.equal(await input.inputValue(),'nenrei','native composition is untouched');await page.locator('#dailyAnswerForm').evaluate(el=>el.requestSubmit());
         assert.equal(await page.locator('.feedback').count(),0,'IME submit must be ignored');
-        await input.dispatchEvent('compositionend');
+        await input.dispatchEvent('compositionend');await input.fill('鍵を忘れてしまった。');
        }
        await input.press('Enter');
       }
