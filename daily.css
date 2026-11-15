@@ -23,3 +23,15 @@ main{flex:1;display:flex;flex-direction:column;gap:16px;padding:10px 0 22px}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
 
 .learned-summary ul{padding-left:20px}.learned-summary li{margin-block:8px;overflow-wrap:anywhere}
+
+/* A task occupies the viewport; only its content scrolls. Controls never overlay it. */
+body.in-session{overflow:hidden;height:var(--app-height,100dvh)}
+.in-session .shell{position:fixed;top:var(--app-top,0px);left:50%;transform:translateX(-50%);height:var(--app-height,100dvh);min-height:0;padding:env(safe-area-inset-top,0px) 12px 0;overflow:hidden}
+.in-session .header{height:44px;min-height:44px;flex:none}.in-session .beta-tag,.in-session .header-mark,.in-session .footer{display:none}
+.session-root{min-height:0;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:0;padding:0;flex:1}
+.session-top{padding:6px 4px}.session-top .progress{margin:6px 0}.session-top p{margin:4px 0;font-size:.75rem;line-height:1.3}
+.session-content{min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-padding:12px;-webkit-overflow-scrolling:touch}
+.session-content .question{padding:16px;border-radius:18px;box-shadow:none}.session-content .task-jp{font-size:clamp(1.35rem,6vw,1.9rem);line-height:1.45;margin:8px 0}.session-content .task-secondary{margin:8px 0}.session-content .answers{margin-top:12px;gap:8px}.session-content .answer{min-height:48px;padding:9px 11px}.session-content .pill{padding:5px 9px}.session-content .feedback{margin-top:10px}.session-content .answered .answers{display:none}
+.session-dock{padding:8px 2px max(8px,env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--border)}
+.session-dock .answer-form,.session-dock .actions{margin:0;gap:8px}.session-dock .answer-form input{height:48px;font-size:16px}.session-dock .answer-form{grid-template-columns:1fr 1fr}.session-dock .answer-form label,.session-dock .answer-form input{grid-column:1/-1}.session-dock .button{min-height:44px;padding:9px 10px;box-shadow:none}.session-dock>.button{margin-top:6px;font-size:.8rem;min-height:40px}.session-dock .answer-form>.button:only-of-type{grid-column:1/-1}
+@media(max-height:500px){.in-session .header{display:none}.session-top p{display:none}.session-top{padding:3px}.session-content .question{padding:10px}.session-dock{padding-top:5px}.session-dock .answer-form{gap:5px}.session-dock .answer-form label{font-size:.75rem}}

@@ -22,8 +22,8 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
   const executablePath=process.env.CHROMIUM_EXECUTABLE;
   browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{}),args:['--no-sandbox']});
   const url=`http://127.0.0.1:${server.address().port}/daily.html`;
-  for(const width of [320,390,768]){
-   const context=await browser.newContext({viewport:{width,height:844},timezoneId:'Europe/Berlin'});
+  for(const [width,height] of [[320,568],[375,667],[390,844],[430,932],[320,360],[390,320]]){
+   const context=await browser.newContext({viewport:{width,height},timezoneId:'Europe/Berlin'});
    const errors=[];const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
    await context.addInitScript(()=>{
     // Fixed synthetic clock, mutable without reloading the in-memory state.
@@ -34,6 +34,7 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
     indexedDB.open=()=>{window.writes.push('indexedDB');throw Error('Unexpected IndexedDB access')};
    });
    await page.goto(url);await page.locator('[data-start=discovery]').waitFor();
+   const visible=async(selector)=>{const box=await page.locator(selector).boundingBox();assert(box && box.y>=-1 && box.y+box.height<=height+1,`out of viewport ${selector} ${width}x${height}: ${JSON.stringify(box)}`);};
    const noOverflow=async()=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${width}`);
    const home=async()=>{await page.locator('[data-home]').click();await noOverflow();};
    const start=async(mode='discovery')=>page.locator(`[data-start=${mode}]`).click();
@@ -41,8 +42,10 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
     let steps=0;
     while(!await page.locator('.results').count()){
      await noOverflow();
+     await visible('.session-dock');
      const input=page.locator('#dailyAnswer');
      if(await input.count()){
+      await visible('#dailyAnswer');
       if(skip){await page.locator('[data-example]').click();}
       else{
        await input.fill('   ');await page.locator('form button[type=submit]').click();
@@ -58,6 +61,8 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
       assert(await page.locator('.feedback').count());
      }else if(await page.locator('[data-choice]').count())await page.locator('[data-choice]').last().click();
      if(midnight&&await page.locator('.feedback').count()&&await page.locator('[data-next]').textContent()==='Auswertung ansehen →')await page.evaluate(()=>{window.testNow='2026-11-14T23:01:00Z';});
+     await visible('[data-next]');
+     if(await page.locator('.feedback').count()){const box=await page.locator('.feedback strong').boundingBox();assert(box.y>=0&&box.y<height,'feedback heading must be visible immediately');}
      await page.locator('[data-next]').click();steps++;assert(steps<=8);
     }
     await noOverflow();return steps;

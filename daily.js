@@ -109,12 +109,12 @@ function active() {
   const completed = i + (state.result ? 1 : 0);
   const percent = (completed / session.tasks.length) * 100;
   const modeLabel = session.mode==='practice'?'Freiwillig nachüben':session.mode==='daily'?'Meine tägliche Quest':session.mode==='refresh'?'Daily Refresh':session.mode==='guided'?(session.domain==='grammar'?'Grammatik · geführte Übung':'Partikel · geführte Übung'):'Daily Growth · Probe';
-  return `<div class="status-row"><span class="eyebrow">${modeLabel}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
+  return `<div class="session-top"><div class="status-row"><span class="eyebrow">${modeLabel}</span><span class="muted small">${i+1} / ${session.tasks.length}</span></div>
     <div class="progress" role="progressbar" aria-label="Fortschritt" aria-valuenow="${completed}" aria-valuemin="0" aria-valuemax="${session.tasks.length}"><div style="width:${percent}%"></div></div>
     ${session.mode==='daily'?`<p class="muted small">Lernziel: ${safe(session.growthTitle)} · ${session.growthType==='learned'?'an deinen Lernstand angepasst':'freiwillige neue Probelektion'} · kein SRS-Eingriff</p>`:''}
     ${session.mode==='practice'?'<p class="muted small">Einmal erneut abrufen und mit dem Feedback vergleichen. Unklare Texteingaben sind keine festgestellten Fehler.</p>':''}
     ${session.mode==='guided'?`<p class="muted small">Lernziel: ${safe(session.title)} · freies Training ohne SRS-Buchung</p>`:''}
-    ${promptCard(task)}${session.mode==='practice'?'<button class="button ghost" type="button" data-return>← Zurück zu deiner Quest-Auswertung</button>':'<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>'}`;
+    </div><div class="session-content">${promptCard(task)}</div><div class="session-dock" aria-label="Antwort und Navigation"><div class="session-control"></div>${session.mode==='practice'?'<button class="button ghost" type="button" data-return>← Zurück zu deiner Quest-Auswertung</button>':'<button class="button ghost" type="button" data-home>← Zur Übersicht (ohne Speicherung)</button>'}</div>`;
 }
 
 function practiceSummary() {
@@ -156,6 +156,24 @@ function summary() {
 
 function render(focus = false) {
   root.innerHTML = !state.session ? home() : state.index >= state.session.tasks.length ? summary() : active();
+  const inTask = Boolean(state.session && state.index < state.session.tasks.length);
+  document.body.classList.toggle('in-session', inTask);
+  root.classList.toggle('session-root', inTask);
+  if (inTask) {
+    const control = root.querySelector('.session-control');
+    const card = root.querySelector('.question');
+    const form = card.querySelector('.answer-form');
+    const actions = card.querySelector('.actions');
+    if (form && !state.result) control.appendChild(form);
+    else form?.remove();
+    if (actions) control.appendChild(actions);
+    if (state.result) {
+      card.classList.add('answered');
+      const content = root.querySelector('.session-content');
+      const feedback = root.querySelector('.feedback');
+      content.scrollTop += feedback.getBoundingClientRect().top - content.getBoundingClientRect().top;
+    }
+  }
   if (focus) { root.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'}); }
 }
 
@@ -311,3 +329,15 @@ async function init() {
   render();
 }
 init();
+
+// iOS may resize only the visual viewport when the keyboard opens.
+function updateViewport() {
+  const viewport = window.visualViewport;
+  if (viewport && viewport.scale !== 1) return;
+  document.documentElement.style.setProperty('--app-height', `${viewport?.height || window.innerHeight}px`);
+  document.documentElement.style.setProperty('--app-top', `${viewport?.offsetTop || 0}px`);
+}
+window.visualViewport?.addEventListener('resize', updateViewport);
+window.visualViewport?.addEventListener('scroll', updateViewport);
+window.addEventListener('resize', updateViewport);
+updateViewport();
