@@ -5,7 +5,7 @@ const http=require('node:http');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const root=path.resolve(__dirname,'../..');
-const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs','japanese-romaji.js','daily-input.mjs','kotoba-install.css','kotoba.webmanifest','assets/kotoba/icon-180-v1.png','assets/kotoba/icon-192-v1.png','assets/kotoba/icon-512-v1.png']);
+const assets=new Set(['daily.html','daily.css','daily.js','daily-engine.mjs','daily-quality.mjs','daily-furigana.mjs','daily-kanji-map.mjs','daily-mix.mjs','daily-guided.mjs','daily-guided-variety.mjs','daily-streak.mjs','daily-completion.mjs','daily-practice.mjs','japanese-romaji.js','daily-input.mjs','kotoba-install.css','kotoba.webmanifest','assets/kotoba/icon-180-v1.png','assets/kotoba/icon-192-v1.png','assets/kotoba/icon-512-v1.png']);
 const cards=[['行く','いく','gehen','学校へ行く。'],['食べる','たべる','essen','ご飯を食べる。'],['見る','みる','sehen','映画を見る。']].map(([word,reading,meaning,example],i)=>({id:String(i),word,reading,meanings:[meaning],example,stage:2}));
 const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringify(cards)}}),readSave:async()=>({data:{particlePath:{points:{'ni-target':{lessonComplete:true},'de-action':{lessonComplete:true}}}}})};`;
 (async()=>{
@@ -43,10 +43,11 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
     while(!await page.locator('.results').count()){
      await noOverflow();
      await visible('.session-dock');
+     if(await page.locator('.pill').textContent()==='Lesung abrufen')assert.equal(await page.locator('.question rt').count(),0,'explicit reading task must not reveal the answer');
      const input=page.locator('#dailyAnswer');
      if(await input.count()){
       await visible('#dailyAnswer');
-      await input.pressSequentially('nenrei');assert.equal(await input.inputValue(),'ねんれい');
+      await input.pressSequentially(input.getAttribute && await input.getAttribute('lang')==='ja'?'nenrei':'gehen');assert.equal(await input.inputValue(),await input.getAttribute('lang')==='ja'?'ねんれい':'gehen');
       await input.fill('');
       if(skip){await page.locator('[data-example]').click();}
       else{
@@ -100,7 +101,7 @@ const source=`window.KotobaDungeonSource={load:async()=>({learned:${JSON.stringi
    await page.locator('[data-practice]').click();await page.locator('[data-return]').click();
    assert.equal(await page.locator('.score').textContent(),beforeAbort,'aborting optional practice preserves original score');
    assert.equal(await page.locator('[data-practice]').count(),0);await home();
-   for(const mode of ['daily','refresh']){await start(mode);assert.equal(await finish(),8);await home();}
+   for(const mode of ['daily','refresh']){await start(mode);assert(await page.locator('.question ruby').count(),'unknown vocabulary retains ruby');assert.equal(await finish(),8);await home();}
    // Finishing across midnight credits the new date, not the start date.
    await start();await finish({midnight:true});await home();
    assert((await page.locator('.daily-day').textContent()).includes('2 Lerntage in Folge'));

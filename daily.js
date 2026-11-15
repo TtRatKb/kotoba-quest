@@ -3,6 +3,8 @@ import { buildRefresh, buildGrammarPreview, isCorrect } from './daily-engine.mjs
 import { availableGuidedPaths, buildGuidedQuest } from './daily-guided.mjs';
 import { buildDailyMix } from './daily-mix.mjs';
 import { convertJapaneseField } from './daily-input.mjs';
+import { prepareDailyCards } from './daily-quality.mjs';
+import { readingLexicon, japaneseSegments } from './daily-furigana.mjs';
 import { buildPractice } from './daily-practice.mjs';
 import { assessCompletion, localDay } from './daily-completion.mjs';
 import { recordDailyCompletion, streakSummary } from './daily-streak.mjs';
@@ -11,16 +13,15 @@ const root = document.getElementById('dailyRoot');
 const mainApp = new URLSearchParams(window.location.search).get('from') === 'index' ? './index.html' : './cloud.html';
 document.querySelector('.back').href = mainApp;
 const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false, practiceOrigin: null };
+const state = { source: null, save: null, error: '', progressError: '', session: null, index: 0, result: null, answers: [], completedDays: [], completion: null, composing: false, practiceOrigin: null, lexicon: readingLexicon([]) };
 
 const todayKey = () => localDay();
 
-function highlightExample(example, target) {
-  const source = String(example || '');
-  const word = String(target || '');
-  if (!word || !source.includes(word)) return safe(source);
-  const pos = source.indexOf(word);
-  return `${safe(source.slice(0,pos))}<mark>${safe(word)}</mark>${safe(source.slice(pos+word.length))}`;
+function japanese(value, options = {}) {
+  return japaneseSegments(value, state.lexicon, state.save, options).map(part => {
+    const word = part.reading ? `<ruby>${safe(part.text)}<rp>(</rp><rt>${safe(part.reading)}</rt><rp>)</rp></ruby>` : safe(part.text);
+    return part.highlight ? `<mark>${word}</mark>` : word;
+  }).join('');
 }
 
 function home() {
@@ -64,15 +65,15 @@ function home() {
 function promptCard(task) {
   if (task.kind === 'lesson') {
     return `<section class="panel question"><span class="pill">${safe(task.label)}</span>
-      <h1 class="task-jp" lang="ja">${safe(task.prompt)}</h1><p>${safe(task.secondary)}</p>
-      <div class="example"><span lang="ja" style="font-size:1.12rem;color:var(--ink)">${safe(task.example)}</span><span>${safe(task.exampleTranslation)}</span></div>
+      <h1 class="task-jp" lang="ja">${japanese(task.prompt)}</h1><p>${safe(task.secondary)}</p>
+      <div class="example"><span lang="ja" style="font-size:1.12rem;color:var(--ink)">${japanese(task.example)}</span><span>${safe(task.exampleTranslation)}</span></div>
       <p class="muted small">${safe(task.explanation)}</p><div class="actions"><button class="button" type="button" data-next>Verstanden · weiter →</button></div></section>`;
   }
   const answered = Boolean(state.result);
-  const isJapanese = task.kind !== 'production' && task.kind !== 'open';
-  const content = task.kind === 'context'
-    ? highlightExample(task.prompt, task.target)
-    : safe(task.prompt);
+  const isJapanese = task.readingTask || (task.kind !== 'production' && task.kind !== 'open');
+  const content = task.target && task.kind !== 'cloze'
+    ? japanese(task.prompt, {target:task.target})
+    : isJapanese ? japanese(task.prompt, {hide:task.readingTask && !answered}) : safe(task.prompt);
   let control = '';
   if (task.options) {
     control = `<div class="answers" role="group" aria-label="Antwortmöglichkeiten">${task.options.map((option,i) => {
@@ -86,7 +87,7 @@ function promptCard(task) {
       <input id="dailyAnswer" name="answer" lang="ja" inputmode="text" enterkeyhint="done" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Romaji oder Japanisch …" ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Meinen Versuch vergleichen</button><button class="button secondary" type="button" data-example>Nur Musterlösung ansehen</button>'}</form>`;
   } else {
-    control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.kind==='production'||task.kind==='cloze'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
+    control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.readingTask?'Lesung in Kana oder Romaji':task.kind==='production'||task.kind==='cloze'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
       <input id="dailyAnswer" name="answer" ${task.kind==='production'||task.kind==='cloze'?'lang="ja" inputmode="text" enterkeyhint="done"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Antwort prüfen</button>'}</form>`;
   }
@@ -94,13 +95,13 @@ function promptCard(task) {
     <strong>${state.result.skipped?'Musterlösung zum Anschauen':state.result.correct===null?(task.kind==='open'?'Eine mögliche Formulierung':task.kind==='cloze'?'Vergleiche mit dem ursprünglichen Satz':'Nicht eindeutig bewertet – bitte vergleichen'):state.result.correct?'Richtig! ✨':'Noch nicht ganz.'}</strong>
     <p>${safe(task.explanation)}</p>
     ${state.result.correct===false?`<p><b>Erwartete Antwort:</b> ${safe(task.correct || task.explanation)}</p>`:''}
-    ${task.kind==='open'?`<div class="example"><span lang="ja">${safe(task.example)}</span></div>`:''}
-    ${task.example && task.kind!=='open'?`<div class="example"><span lang="ja">${safe(task.example)}</span>${task.exampleTranslation?`<span>${safe(task.exampleTranslation)}</span>`:''}</div>`:''}
+    ${task.kind==='open'?`<div class="example"><span lang="ja">${japanese(task.example)}</span></div>`:''}
+    ${task.example && task.kind!=='open'?`<div class="example"><span lang="ja">${japanese(task.example)}</span>${task.exampleTranslation?`<span>${safe(task.exampleTranslation)}</span>`:''}</div>`:''}
   </div><div class="actions"><button class="button" type="button" data-next>${state.index+1===state.session.tasks.length?'Auswertung ansehen →':'Nächste Aufgabe →'}</button></div>` : '';
   return `<section class="panel question"><span class="pill">${safe(task.label)}</span>
     <p class="task-secondary">${safe(task.secondary)}</p>
     <div class="${isJapanese?'task-jp':'task-de'}" ${isJapanese?'lang="ja" inputmode="text" enterkeyhint="done"':''}>${content}</div>
-    ${task.kind==='context'?`<p class="subtle">Gesuchtes Wort: <span lang="ja">${safe(task.target)}</span></p>`:''}
+    ${task.target?`<p class="subtle">Gesuchtes Wort: <span lang="ja">${japanese(task.target)}</span></p>`:''}
     ${task.kind==='cloze' && task.exampleTranslation?`<p class="subtle">Satzbedeutung: ${safe(task.exampleTranslation)}</p>`:''}
     ${control}${feedback}</section>`;
 }
@@ -333,6 +334,8 @@ async function init() {
     state.save = snapshot?.data || null;
     if (!state.save) state.progressError = 'Kein vollständig lesbarer Kotoba-Spielstand';
   } catch (error) { state.progressError = String(error?.message || error); }
+  state.source = state.source ? {...state.source, learned:prepareDailyCards(state.source.learned, state.source.catalog, state.save)} : null;
+  state.lexicon = readingLexicon([...(state.source?.catalog || []),...(state.source?.learned || [])]);
   render();
 }
 init();

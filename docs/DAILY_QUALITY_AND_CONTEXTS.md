@@ -1,0 +1,23 @@
+# Daily quality, reading support and context preparation
+
+## Shipped behavior
+- Known generic metalinguistic templates (`という言葉/単語/表現を…`) are excluded from context questions, cloze generation and example feedback. This is a conservative exclusion rule, not a certificate that all remaining user/catalogue sentences are authentic. Existing good examples stay intact; cards/saves are not edited.
+- Vocabulary choices require a known compatible POS and one of a small editorial set of semantic neighbourhoods. Accepted meanings/synonyms on both sides are excluded from distractors. Unclear POS, out-of-group choices or insufficient distinct alternatives fall back to typed recall. POS is decorated on ephemeral copies using exact ID + word/reading matches; no source-adapter or hydration changes.
+- Refresh keeps eight steps. One existing production slot becomes an explicit reading-recall task where suitable: answer accepts stored readings, not the displayed Kanji spelling. Ordinary production still accepts stored Kanji/kana/variants. No official SRS evidence is inferred.
+- Ruby uses explicit whole-word readings from the existing catalogue/learned cards and a small editorial glossary for existing guided examples. Conflicting readings and substrings inside unknown compounds are not guessed. Partial sentence support is explicitly labelled; no per-Kanji on/kun reading is synthesized.
+- Furigana is retained unless every relevant Kanji has an exact current-schema (version 4) canonical individual record, lessonComplete=true, stage 5–9, without an obsolete placement flag. Missing/older/aggregate/partial data retains the aid; “always” retains it too. Only the prompt of an explicit reading task suppresses available ruby before answering. Feedback restores the aid. No normalizer, recovery or Kanji getter is called.
+
+## Context enrichment preparation — no new sentences activated
+The candidate file is deliberately empty and is not imported by Daily. `node scripts/validate-daily-contexts.mjs [candidate-file]` checks separate Japanese and German identities, author attribution, license, source URLs, direct translation relationship, target surface and editorial approval metadata. Structural validation is not proof of authorship, licensing or correctness; a reviewer must check those against the sources. Audio is rejected pending its own license review.
+
+Sources consulted 15 November 2026:
+- [Tatoeba terms, sections 6.2–6.5](https://tatoeba.org/en/terms_of_use): textual content normally uses CC BY 2.0 FR, attribution matters, and individual licensing must be respected.
+- [Tatoeba downloads](https://tatoeba.org/en/downloads): some text is CC0; audio licenses are contributor-specific. Detailed sentence exports and linked sentence pairs can support a reproducible offline review workflow.
+
+Recommended workflow: freeze a small export with IDs/attribution/licenses for both languages; verify direct translation links, usage, target meaning/form and readings; record reviewer/date and any modifications; select a sentence/translation pair atomically in a future read-only overlay. Preserve personal contexts and all word/SRS identities. No automatic learner-word queries, bulk import, audio assumption or mass replacement is included. See EXAMPLE_CONTEXT_AUDIT.md for different catalogue/saved-field precedence.
+
+## Further variety
+Existing guided grammar/particle contrasts remain prerequisite-gated. Future sentence ordering, context selection and contrast tasks should use licensed/verified sentence tokens and complete lesson prerequisites, never generated conjugations or plausible-looking automatic distractors. They remain supplementary training until the separately audited canonical SRS path is approved.
+
+## Validation and limits
+100 Node tests passed, including generic filtering, POS/semantic/synonym safeguards, exact Kanji identity/version/partial-state behavior, ambiguity and non-mutation, explicit reading recall and license-metadata rejection. Synthetic Chromium: 320/375/390/430px plus 320×360 and 390×320 reduced-height views; existing modes/day/practice/IME flows, ruby retention/hiding, dock/feedback reachability and no writes passed. Real devices, full catalogue/reading linguistic review and personal data tests remain open. No storage, SRS, Firebase, source adapter, Kanji or Life-RPG changes.
