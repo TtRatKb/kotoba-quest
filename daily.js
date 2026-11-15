@@ -2,6 +2,7 @@
 import { buildRefresh, buildGrammarPreview, isCorrect } from './daily-engine.mjs';
 import { availableGuidedPaths, buildGuidedQuest } from './daily-guided.mjs';
 import { buildDailyMix } from './daily-mix.mjs';
+import { convertJapaneseField } from './daily-input.mjs';
 import { buildPractice } from './daily-practice.mjs';
 import { assessCompletion, localDay } from './daily-completion.mjs';
 import { recordDailyCompletion, streakSummary } from './daily-streak.mjs';
@@ -80,11 +81,11 @@ function promptCard(task) {
     }).join('')}</div>`;
   } else if (task.kind === 'open') {
     control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">Dein eigener Satz</label>
-      <input id="dailyAnswer" name="answer" lang="ja" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Japanisch schreiben …" ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
+      <input id="dailyAnswer" name="answer" lang="ja" inputmode="text" enterkeyhint="done" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Romaji oder Japanisch …" ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Meinen Versuch vergleichen</button><button class="button secondary" type="button" data-example>Nur Musterlösung ansehen</button>'}</form>`;
   } else {
     control = `<form class="answer-form" id="dailyAnswerForm"><label for="dailyAnswer">${task.kind==='production'||task.kind==='cloze'?'Japanisches Wort oder Lesung':'Deutsche Bedeutung'}</label>
-      <input id="dailyAnswer" name="answer" ${task.kind==='production'||task.kind==='cloze'?'lang="ja"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
+      <input id="dailyAnswer" name="answer" ${task.kind==='production'||task.kind==='cloze'?'lang="ja" inputmode="text" enterkeyhint="done"':''} autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Antwort eintippen …" required ${answered?'disabled':''} value="${safe(state.result?.response || '')}">
       ${answered?'':'<button class="button" type="submit">Antwort prüfen</button>'}</form>`;
   }
   const feedback = answered ? `<div class="feedback ${state.result.correct===false?'error':''}" role="status">
@@ -96,7 +97,7 @@ function promptCard(task) {
   </div><div class="actions"><button class="button" type="button" data-next>${state.index+1===state.session.tasks.length?'Auswertung ansehen →':'Nächste Aufgabe →'}</button></div>` : '';
   return `<section class="panel question"><span class="pill">${safe(task.label)}</span>
     <p class="task-secondary">${safe(task.secondary)}</p>
-    <div class="${isJapanese?'task-jp':'task-de'}" ${isJapanese?'lang="ja"':''}>${content}</div>
+    <div class="${isJapanese?'task-jp':'task-de'}" ${isJapanese?'lang="ja" inputmode="text" enterkeyhint="done"':''}>${content}</div>
     ${task.kind==='context'?`<p class="subtle">Gesuchtes Wort: <span lang="ja">${safe(task.target)}</span></p>`:''}
     ${task.kind==='cloze' && task.exampleTranslation?`<p class="subtle">Satzbedeutung: ${safe(task.exampleTranslation)}</p>`:''}
     ${control}${feedback}</section>`;
@@ -277,7 +278,10 @@ root.addEventListener('click', event => {
 
 root.addEventListener('compositionstart', () => { state.composing = true; });
 root.addEventListener('compositionend', () => { state.composing = false; });
-root.addEventListener('input', event => { event.target.setCustomValidity?.(''); });
+root.addEventListener('input', event => {
+  event.target.setCustomValidity?.('');
+  if (!state.composing && !event.isComposing) convertJapaneseField(event.target);
+});
 
 // Keep a still-open page honest after midnight or returning from the background.
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !state.session) render(); });
@@ -296,6 +300,7 @@ root.addEventListener('submit', event => {
   if (event.target.id !== 'dailyAnswerForm') return;
   event.preventDefault();
   const input = event.target.querySelector('input');
+  if (!state.composing) convertJapaneseField(input, true);
   answer(input?.value || '');
 });
 

@@ -1,0 +1,7 @@
+# Daily Romaji input
+
+Inventory: index.html contains the vocabulary review's romajiToHiragana, while cloud.html's systemInteractionConsistencyBootstrap exposed a separate pure run converter through KotobaQuestJapaneseInput. This PR extracts that existing Cloud converter to japanese-romaji.js, loaded before index's app script and therefore also before injected Cloud enhancements. Cloud and Daily call this shared engine; the existing vocabulary review engine and its grading remain untouched.
+
+Daily converts only dailyAnswer fields explicitly marked lang=ja, retaining cursor/selection. German meaning fields are untouched. Native compositionstart/input/compositionend is never converted during composition; submit is still blocked while composing. Trailing n is committed only at submission; small kana aliases and common tya/tyu/tyo spellings are additive. The adapter maps a typed hyphen to the long-vowel mark. Existing Kana/Kanji remain unchanged; unknown typed variants retain existing ungraded behavior.
+
+Validation: 87 Node tests passed, including incremental nenrei/konnichiha/kann, small kana, gemination, n apostrophe, long vowels, mixed Japanese and field scoping. Browser flow includes incremental nenrei -> ねんれい and literal ASCII during synthetic native composition, at 320/375/390/430px and reduced heights, plus all previous task/day/practice behavior. Real iOS/Android IMEs and live Cloud accounts remain untested. No saved data or SRS logic changed.
