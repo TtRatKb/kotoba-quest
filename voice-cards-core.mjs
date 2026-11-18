@@ -107,7 +107,7 @@ export function gradeSpeechCandidates(task,transcripts,{lexicon=[],toHiragana=nu
       const heard=recognizedKana(transcript,lexicon,toHiragana);
       if(!heard)continue;
       if(targets.some(expected=>[...expected].length>=4 && [...heard].length>=3 &&
-          heard[0]===expected[0] && editDistanceOne(heard,expected)))
+          editDistanceOne(heard,expected)))
         return {...empty,match:'near',transcript};
     }
   }
