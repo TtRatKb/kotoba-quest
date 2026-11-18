@@ -107,9 +107,40 @@ export function gradeSpeechCandidates(task,transcripts,{lexicon=[],toHiragana=nu
       const heard=recognizedKana(transcript,lexicon,toHiragana);
       if(!heard)continue;
       if(targets.some(expected=>[...expected].length>=4 && [...heard].length>=3 &&
-          heard[0]===expected[0] && editDistanceOne(heard,expected)))
+          editDistanceOne(heard,expected)))
         return {...empty,match:'near',transcript};
     }
   }
   return empty;
+}
+
+
+/** A tiny contrast prompt for plausible homophones/mishearings.
+ * Known vocabulary readings only: no speculative phonetic decoding of kanji.
+ * These are choices about what the learner actually said, not automatic grades.
+ */
+export function spokenContrastChoices(task,transcript,{lexicon=[],toHiragana=null}={}) {
+ if(task?.direction!=='de-jp')return [];
+ const heard=recognizedKana(transcript,lexicon,toHiragana);
+ if(!heard)return [];
+ const candidates=[heard];
+ const target=String(task.card?.word||'');
+ const expected=recognizedKana(task.card?.reading,lexicon,toHiragana);
+ // e.g. お客さん vs 客: honorific お…さん can expose a useful
+ // contrast (きゃく / ひゃく) without treating the shortened noun as correct.
+ const written=target,reading=String(task.card?.reading||'');
+ if(written.startsWith('お')&&written.endsWith('さん')&&reading.startsWith('お')&&reading.endsWith('さん')){
+   const base=reading.slice(1,-2);
+   if([...base].length>=2&&base!==heard&&editDistanceOne(base,heard))candidates.unshift(base);
+ }
+ if(expected && expected!==heard && editDistanceOne(expected,heard))candidates.unshift(expected);
+ for(const word of lexicon){
+   const surface=String(word?.word||'');
+   if(!surface || !target.includes(surface) || surface===target)continue;
+   const reading=recognizedKana(word?.reading,lexicon,toHiragana);
+   if(reading && reading!==heard && [...reading].length>=2 && editDistanceOne(reading,heard) && !candidates.includes(reading))
+     candidates.unshift(reading);
+   if(candidates.length>=3)break;
+ }
+ return [...new Set(candidates)].slice(0,3);
 }
