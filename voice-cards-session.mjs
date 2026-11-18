@@ -2,7 +2,7 @@
  * Never touches SRS, Firestore, IndexedDB or localStorage.
  */
 const CORRECT=new Set(['correct','recognition-error']);
-const OUTCOMES=new Set([...CORRECT,'wrong-word','near-miss','no-answer','not-known']);
+const OUTCOMES=new Set([...CORRECT,'wrong-word','near-miss','no-answer','not-known','recognition-unclear']);
 export function createVoiceSession(deck,{maxAttempts=3}={}) {
  if(!Array.isArray(deck)||!deck.length||!Number.isInteger(maxAttempts)||maxAttempts<2||maxAttempts>5)throw new TypeError('invalid voice session');
  const entries=deck.map((task,index)=>({key:'voice-'+index,task}));
@@ -39,6 +39,7 @@ export function voiceSummary(session) {
    noAnswer:count('no-answer'),
    notKnown:count('not-known'),
    recognitionError:count('recognition-error'),
+   recognitionUnclear:count('recognition-unclear'),
    firstTry:records.filter(record=>CORRECT.has(record.attempts[0]?.kind)).length
  };
 }
