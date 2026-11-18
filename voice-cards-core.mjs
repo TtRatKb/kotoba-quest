@@ -112,6 +112,58 @@ function recognizedKana(value,lexicon,toHiragana) {
     .filter(reading=>/^[\p{Script=Hiragana}ー]+$/u.test(reading)));
   return readings.size===1?[...readings][0]:'';
 }
+/* German ASR often inserts articles or confuses long inflected words.
+ * Exact optional articles may be accepted; phonetic/typing neighbours only
+ * trigger an explicit confirmation, never an automatic correct grade.
+ */
+const germanSpoken=value=>norm(value)
+  .replace(/^[„“"'«»]+|[„“"'«»]+$/gu,'')
+  .replace(/^(?:(?:der|die|das|ein|eine|einen|einem|einer)\s+)/u,'')
+  .replace(/[.,!?;:]+$/gu,'').trim();
+function boundedDistance(a,b,max) {
+ const x=[...a],y=[...b];
+ if(Math.abs(x.length-y.length)>max)return max+1;
+ let prev=Array.from({length:y.length+1},(_,i)=>i);
+ let beforePrev=null;
+ for(let i=1;i<=x.length;i++){
+   const curr=[i];
+   for(let j=1;j<=y.length;j++){
+     const sub=x[i-1]===y[j-1]?0:1;
+     let cost=Math.min(prev[j]+1,curr[j-1]+1,prev[j-1]+sub);
+     if(i>1&&j>1&&x[i-1]===y[j-2]&&x[i-2]===y[j-1])
+       cost=Math.min(cost,(beforePrev?.[j-2]??Infinity)+1);
+     curr[j]=cost;
+   }
+   if(Math.min(...curr)>max)return max+1;
+   beforePrev=prev;prev=curr;
+ }
+ return prev[y.length];
+}
+export function gradeGermanSpeech(task,transcripts) {
+ const raw=(Array.isArray(transcripts)?transcripts:[]).filter(value=>typeof value==='string'&&norm(value));
+ const empty={match:'none',transcript:raw[0]||'',expectedReading:''};
+ if(task?.direction!=='jp-de'||!raw.length)return empty;
+ const targets=acceptedAnswers(task.card,'meaning').map(germanSpoken).filter(Boolean);
+ for(const spoken of raw){
+   const value=germanSpoken(spoken);
+   if(value&&targets.includes(value))return {...empty,match:'exact',transcript:spoken};
+ }
+ for(const spoken of raw){
+   const value=germanSpoken(spoken);
+   if(!value)continue;
+   if(targets.some(expected=>{
+     if([...value].length<6||[...expected].length<6)return false;
+     const max=Math.max([...value].length,[...expected].length)>=9?2:1;
+     const close=boundedDistance(value,expected,max)<=max;
+     const shared=expected.slice(0,6)===value.slice(0,6) && 
+       Math.min(value.length,expected.length)>=8 &&
+       Math.abs(value.length-expected.length)<=3;
+     return close||shared;
+   }))return {...empty,match:'near',transcript:spoken};
+ }
+ return empty;
+}
+
 function editDistanceOne(a,b) {
   const x=[...a],y=[...b];if(Math.abs(x.length-y.length)>1)return false;
   let i=0,j=0,edits=0;
@@ -136,6 +188,7 @@ export function gradeSpeechCandidates(task,transcripts,{lexicon=[],toHiragana=nu
       if(normalized&&allowed.includes(normalized))return {...empty,match:'exact',transcript};
     }
   }
+  if(task.direction==='jp-de')return gradeGermanSpeech(task,raw);
   if(task.direction==='de-jp'){
     // Only a hint, never an automatic pass: Japanese minimal pairs can differ
     // in one mora (including a long vowel or small kana).
