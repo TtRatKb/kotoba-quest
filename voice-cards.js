@@ -58,9 +58,10 @@ function baseCard(){
  if(!item){summary();return false;}
  const stats=voiceSummary(session),index=stats.completed;
  const value=promptFor(item),japanese=item.direction==='jp-de';
+ const directionLabel=item.direction==='de-jp'?'DE → JP':'JP → DE';
  app.innerHTML=titleBar()+
  '<div class="tracker"><div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="'+stats.total+'" aria-valuenow="'+index+'"><div style="width:'+Math.round(index/stats.total*100)+'%"></div></div><span class="counter">'+stats.completed+'/'+stats.total+'</span></div>'+
- '<div class="status-bar"><span>'+ (session.records[entry.key].attempts.length?'🔁 Wiederholung':'🎯 Neues Wort') +'</span><span>Fehlerhafte Karten kommen zurück</span></div>'+
+ '<div class="status-bar"><span>'+ (session.records[entry.key].attempts.length?'🔁 Wiederholung':item.firstDirection===false?'↔ Zweite Richtung':'🎯 Erste Richtung') +'</span><span>'+directionLabel+' · Fehlerhafte Karten kommen zurück</span></div>'+
  '<h1>Übersetze das Wort</h1>'+
  '<div class="card-stack" id="stack"><div class="flashcard" id="flashcard"><span class="word" id="word"></span><button type="button" class="word-audio" id="hear" hidden aria-label="Japanisches Wort anhören">♪ Anhören</button></div></div>'+
  '<div id="response" class="response" role="status" aria-live="polite"></div>'+
@@ -111,10 +112,15 @@ function showCard(auto=false){
  clearTimers();
  pending=null;recognitionOptions=[];lastRecognition='';repeatStartCount=0;
  phase='ready';
+ const wanted=task()?.direction==='de-jp'?'ja-JP':'de-DE';
+ const switched=Boolean(rec&&rec.lang!==wanted);
+ // Changing the recognition language requires a fresh microphone session.
+ // Do it once per language block, never automatically in a repeated loop.
+ if(switched){stopMic();autoMicAllowed=false;audioActive=false;}
  if(!baseCard())return;
  updateButtons();
  if(auto&&autoMicAllowed)startListening();
- else message('Bereit', 'Tippe auf das Mikrofon, um zu sprechen.');
+ else message('Bereit',switched?'Sprachrichtung gewechselt. Bitte einmal auf Einsprechen tippen.':'Tippe auf das Mikrofon, um zu sprechen.');
 }
 function countSilent(){
  if(silenceTimer!==null)clearTimeout(silenceTimer);
@@ -127,6 +133,7 @@ function countSilent(){
 function startListening({retry=false}={}){
  if(!session||!task())return;
  clearTimers();
+ if(rec&&rec.lang!==(task().direction==='de-jp'?'ja-JP':'de-DE'))stopMic();
  if(rec){
    phase='listening';speechStarted=false;
    silenceDeadline=Date.now()+SILENCE_MS;
@@ -159,7 +166,10 @@ function startListening({retry=false}={}){
    };
    recognition.onresult=event=>{
      if(token!==current||phase!=='listening')return;
-     const alternatives=Array.from(event.results?.[0]||[]).map(x=>x.transcript).filter(Boolean);
+     // Continuous SpeechRecognition retains earlier results in its list.
+     // Always evaluate the *new* result, never replay the first card's audio.
+     const latest=event.results?.[event.resultIndex??(event.results.length-1)];
+     const alternatives=Array.from(latest||[]).map(x=>x.transcript).filter(Boolean);
      clearTimers();
      recognitionOptions=alternatives;lastRecognition=alternatives[0]||'';
      if(!alternatives.length){phase='ready';message('Nichts erkannt','Tippe erneut auf das Mikrofon.','warn');updateButtons();return;}
@@ -195,7 +205,7 @@ function startListening({retry=false}={}){
        updateButtons();
      }
    };
-   recognition.start();
+   recognition.start();autoMicAllowed=true;
    updateButtons();
    autoTimer=setTimeout(()=>{
      if(token!==current||phase!=='listening'||audioActive)return;
@@ -297,11 +307,14 @@ function summary(){
    const record=session.records[entry.key];
    const first=record.attempts[0]?.kind||'';
    const firstText={correct:'Direkt richtig','recognition-error':'Erkennung korrigiert','wrong-word':'Falsches Wort','near-miss':'Fast richtig / unklar','no-answer':'Keine Antwort','not-known':'Nicht gewusst','recognition-unclear':'Mikrofon unklar'}[first]||'–';
-   lines.push('<li><span>'+safe(promptFor(entry.task))+'</span><small>'+safe(firstText)+' · '+(record.mastered?'am Ende richtig':'weiter üben')+'</small></li>');
+   const direct=entry.task.direction==='de-jp'?'DE → JP':'JP → DE';
+   const primed=record.attempts[0]?.otherDirectionPreviouslySeen?' · zweite Richtung':' · zuerst gezeigt';
+   lines.push('<li><span>'+safe(promptFor(entry.task))+' <small>('+direct+')</small></span><small>'+safe(firstText)+primed+' · '+(record.mastered?'am Ende richtig':'weiter üben')+'</small></li>');
  }
  app.innerHTML=titleBar()+
  '<section class="summary"><h1>Runde geschafft! ✨</h1>'+
- '<p>'+stats.mastered+' von '+stats.total+' Wörtern schließlich richtig · '+stats.firstTry+' beim ersten Versuch.</p>'+
+ '<p>'+stats.mastered+' von '+stats.total+' Richtungsfragen schließlich richtig · '+stats.firstTry+' beim ersten Versuch.</p>'+
+ '<p>DE → JP: '+stats.byDirection['de-jp'].firstTry+' / '+stats.byDirection['de-jp'].cards+' direkt richtig · JP → DE: '+stats.byDirection['jp-de'].firstTry+' / '+stats.byDirection['jp-de'].cards+' direkt richtig.</p>'+
  '<div class="summary-grid"><span>Falsches Wort</span><strong>'+stats.wrongWord+'</strong><span>Fast / unsicher</span><strong>'+stats.nearMiss+'</strong><span>Keine Antwort</span><strong>'+stats.noAnswer+'</strong><span>Nicht gewusst</span><strong>'+stats.notKnown+'</strong><span>Erkennung korrigiert</span><strong>'+stats.recognitionError+'</strong><span>Mikrofon unklar</span><strong>'+stats.recognitionUnclear+'</strong><span>Noch weiter üben</span><strong>'+stats.needsPractice+'</strong></div>'+
  '<h2>Deine Karten</h2><ul class="result-cards">'+lines.join('')+'</ul>'+
  '<p class="privacy-note">Auswertung nur für diese Runde. Es wurden keine echten SRS-Stufen verändert oder Lernantworten dauerhaft gespeichert.</p>'+
