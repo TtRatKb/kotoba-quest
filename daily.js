@@ -67,6 +67,7 @@ function home() {
       <span class="icon" aria-hidden="true">✨</span><span><strong>Daily Growth · Probelektion</strong><small>4 Schritte · 〜てしまう verstehen, Nuancen unterscheiden und selbst formulieren</small></span><span class="arrow" aria-hidden="true">›</span>
     </button>
   </div>
+  <section class="panel"><span class="eyebrow">🎙 SPRECHKARTEN · PILOT</span><h2>Vokabeln mit der Stimme üben</h2><p class="small muted">Große Karteikarten wie im mobilen Vokabeltraining: sagen oder tippen, die Richtung wechseln, direktes Feedback erhalten. Nur mit deinem bereits gelernten Wortschatz – ohne SRS-Änderungen.</p><div class="actions"><a class="button" style="text-decoration:none;display:inline-flex;align-items:center" href="./voice-cards.html">Sprechkarten ausprobieren →</a></div></section>
   <section class="panel"><span class="eyebrow">🎨 VISUELL & SPIELERISCH</span><h2>Mit Bildern und Bausteinen üben</h2><p class="small muted">Bildauswahl, Paare und Satzbau · freiwilliges Zusatztraining, keine SRS-Reviews und kein zusätzlicher Tagesabschluss.</p>
     <div class="actions"><button class="button" type="button" data-start="play" ${playAvailable?'':'disabled'}>Mit meinem Lernstand üben</button><button class="button secondary" type="button" data-start="play-demo">Kuratiertes Probetraining ansehen</button></div>
     ${playAvailable?'':'<p class="small muted">Noch keine passenden gelernten Bildwörter oder abgeschlossenen Satzbau-Voraussetzungen gefunden. Die freiwillige Demo bleibt zugänglich.</p>'}
