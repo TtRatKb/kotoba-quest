@@ -8,7 +8,7 @@ const app=document.getElementById('app');
 const SpeechApi=window.SpeechRecognition||window.webkitSpeechRecognition;
 const back=new URLSearchParams(window.location.search).get('from')==='index'?'./index.html':'./daily.html';
 const SILENCE_MS=10000;
-let learned=[],lexicon=[],direction='de-jp',session=null,phase='intro',rec=null,token=0;
+let learned=[],lexicon=[],direction='both',session=null,phase='intro',rec=null,token=0,autoMicAllowed=true;
 let silenceTimer=null,autoTimer=null,speechStarted=false,pending=null,recognitionOptions=[],lastRecognition='',repeatStartCount=0,silenceDeadline=0,audioActive=false;
 const safe=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[ch]));
 const task=()=>currentVoiceCard(session)?.task;
@@ -32,8 +32,8 @@ function intro(){
  stopAll();phase='intro';session=null;
  app.innerHTML=titleBar()+
  '<section class="intro-panel"><div class="intro-mark" aria-hidden="true">🎙️</div>'+
- '<h1>Sprechkarten</h1><p>Einmal auf Los tippen, dann die Karten nacheinander einsprechen. Nach etwa 10 Sekunden Stille oder einem falschen Wort kommt die Lösung – und die Karte später erneut.</p>'+
- '<label for="direction">Übungsrichtung</label><select id="direction"><option value="de-jp">Deutsch → Japanisch</option><option value="jp-de">Japanisch → Deutsch</option><option value="mixed">Gemischt</option></select>'+
+ '<h1>Sprechkarten</h1><p>Einmal auf Los tippen, dann die Karten möglichst am Stück einsprechen. Wenn du länger still bist oder ein Wort nicht weißt, kommt die Lösung – und die Karte später erneut.</p>'+
+ '<label for="direction">Übungsrichtung</label><select id="direction"><option value="both">Beide Richtungen pro Wort (empfohlen)</option><option value="de-jp">Nur Deutsch → Japanisch</option><option value="jp-de">Nur Japanisch → Deutsch</option><option value="mixed">Gemischte Einzelkarten</option></select>'+
  '<button class="big-button start-button" id="start">Los! ✨</button>'+
  '<p class="privacy-note">Die Karten verwenden deinen gelernten Wortschatz, ohne SRS oder Cloud zu verändern. Ergebnisse bleiben nur in dieser geöffneten Runde. Spracherkennung kann Audiodaten an den Dienst deines Browsers übertragen.</p></section>';
  node('#direction').value=direction;
@@ -42,10 +42,10 @@ function intro(){
 }
 function startRound(){
  stopAll();
- const deck=buildVoiceDeck(learned,{direction,limit:8,seed:String(Date.now())});
+ const deck=buildVoiceDeck(learned,{direction,limit:direction==='both'?6:8,seed:String(Date.now())});
  if(!deck.length){empty('Noch keine gelernten Wörter in diesem Browser gefunden. Bitte Kotoba Quest hier öffnen und deinen Lernstand prüfen.');return;}
  session=createVoiceSession(deck,{maxAttempts:3});
- pending=null;repeatStartCount=0;
+ pending=null;repeatStartCount=0;autoMicAllowed=true;
  showCard(true);
 }
 function empty(message){
@@ -64,7 +64,7 @@ function baseCard(){
  '<h1>Übersetze das Wort</h1>'+
  '<div class="card-stack" id="stack"><div class="flashcard" id="flashcard"><span class="word" id="word"></span><button type="button" class="word-audio" id="hear" hidden aria-label="Japanisches Wort anhören">♪ Anhören</button></div></div>'+
  '<div id="response" class="response" role="status" aria-live="polite"></div>'+
- '<div id="countdown" class="countdown" hidden><span id="countdownFill"></span></div>'+
+
  '<div id="controls"><div class="controls"><button type="button" id="microphone" class="big-button">🎙 Jetzt sprechen</button><button type="button" id="repeat" class="again" aria-label="Nochmals einsprechen">↻</button></div>'+
  '<div class="actions"><button class="text-link" type="button" id="typing">ANTWORT TIPPEN</button><button class="text-link" type="button" id="dontKnow">Weiß nicht</button><button class="text-link" type="button" id="pause">Pause</button></div>'+
  '<form id="answerForm" class="input-row" hidden><input id="typed" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"><button type="submit">Prüfen</button></form></div>'+
@@ -77,7 +77,7 @@ function baseCard(){
  node('#repeat').addEventListener('click',startListening);
  node('#typing').addEventListener('click',()=>{
    clearTimers();stopMic();phase='typing';
-   node('#answerForm').hidden=false;node('#countdown').hidden=true;
+   node('#answerForm').hidden=false;
    node('#response').textContent='Schreibe die Antwort oder nutze die Diktierfunktion deiner Tastatur.';
    node('#typed').focus();updateButtons();
  });
@@ -108,29 +108,32 @@ function message(title,detail='',kind=''){
  if(detail){const span=document.createElement('span');span.textContent=detail;el.append(span);}
 }
 function showCard(auto=false){
- stopAll();
+ clearTimers();
  pending=null;recognitionOptions=[];lastRecognition='';repeatStartCount=0;
  phase='ready';
  if(!baseCard())return;
  updateButtons();
- if(auto)startListening();
+ if(auto&&autoMicAllowed)startListening();
  else message('Bereit', 'Tippe auf das Mikrofon, um zu sprechen.');
 }
 function countSilent(){
- const el=node('#countdown');if(!el)return;
- el.hidden=false;
- const fill=node('#countdownFill');
- fill.style.animation='none';void fill.offsetWidth;fill.style.animation='countdown '+Math.max(0.2,(silenceDeadline-Date.now())/1000)+'s linear forwards';
  if(silenceTimer!==null)clearTimeout(silenceTimer);
  silenceTimer=setTimeout(()=>{
    silenceTimer=null;
    if(phase!=='listening'||speechStarted)return;
-   feedback('no-answer','','10 Sekunden ohne Antwort');
+   feedback('no-answer','','Keine Antwort gehört');
  },Math.max(100,silenceDeadline-Date.now()));
 }
 function startListening({retry=false}={}){
  if(!session||!task())return;
- clearTimers();stopMic();
+ clearTimers();
+ if(rec){
+   phase='listening';speechStarted=false;
+   silenceDeadline=Date.now()+SILENCE_MS;
+   updateButtons();countSilent();
+   message('Ich höre zu …','Sprich deine Antwort.');
+   return;
+ }
  if(!retry)silenceDeadline=Date.now()+SILENCE_MS;
  if(!SpeechApi){phase='ready';message('Mikrofon nicht verfügbar','Nutze die Tastatur oder die Diktierfunktion deines Handys.','warn');updateButtons();return;}
  phase='listening';speechStarted=false;audioActive=false;
@@ -139,7 +142,7 @@ function startListening({retry=false}={}){
  try{
    recognition=new SpeechApi();
    recognition.lang=task().direction==='de-jp'?'ja-JP':'de-DE';
-   recognition.interimResults=false;recognition.maxAlternatives=10;recognition.continuous=false;
+   recognition.interimResults=false;recognition.maxAlternatives=10;recognition.continuous=true;
    rec=recognition;
    recognition.onaudiostart=()=>{
      if(token!==current)return;
@@ -153,13 +156,11 @@ function startListening({retry=false}={}){
      speechStarted=true;audioActive=true;
      if(autoTimer!==null)clearTimeout(autoTimer);autoTimer=null;
      if(silenceTimer!==null)clearTimeout(silenceTimer);silenceTimer=null;
-     node('#countdown').hidden=true;
    };
    recognition.onresult=event=>{
      if(token!==current||phase!=='listening')return;
      const alternatives=Array.from(event.results?.[0]||[]).map(x=>x.transcript).filter(Boolean);
-     stopMic();clearTimers();
-     node('#countdown').hidden=true;
+     clearTimers();
      recognitionOptions=alternatives;lastRecognition=alternatives[0]||'';
      if(!alternatives.length){phase='ready';message('Nichts erkannt','Tippe erneut auf das Mikrofon.','warn');updateButtons();return;}
      const opts={lexicon,toHiragana:window.KotobaRomaji?.toHiragana};
@@ -175,8 +176,7 @@ function startListening({retry=false}={}){
    };
    recognition.onerror=e=>{
      if(token!==current||phase!=='listening')return;
-     stopMic();clearTimers();
-     node('#countdown').hidden=true;
+     stopMic();clearTimers();autoMicAllowed=false;
      const blocked=['not-allowed','service-not-allowed','audio-capture'].includes(e.error);
      phase='ready';
      message(blocked?'Mikrofonzugriff prüfen':'Erkennung hat nicht funktioniert',
@@ -184,19 +184,14 @@ function startListening({retry=false}={}){
      updateButtons();
    };
    recognition.onend=()=>{
-     if(token!==current||phase!=='listening')return;
-     rec=null;
-     // Browser stopped without a transcript. Do not falsely score silence.
-     if(repeatStartCount<1&&!speechStarted){
-       repeatStartCount++;
-       setTimeout(()=>{if(token===current&&phase==='listening'){
-         if(Date.now()>=silenceDeadline)feedback('no-answer','','10 Sekunden ohne Antwort');
-         else startListening({retry:true});
-       }},150);
-     }else{
+     if(token!==current)return;
+     rec=null;audioActive=false;
+     // Safari can end recognition after each utterance even with continuous=true.
+     // Never auto-restart: its system microphone sounds otherwise repeat forever.
+     autoMicAllowed=false;
+     if(phase==='listening'){
        clearTimers();phase='ready';
-       node('#countdown').hidden=true;
-       message('Erkennung beendet','Bitte noch einmal auf das Mikrofon tippen. Diese Karte wird nicht als Fehler gewertet.','warn');
+       message('Mikrofon wurde beendet','Tippe für die nächste Antwort auf Einsprechen. Das wird nicht als Fehler gewertet.','warn');
        updateButtons();
      }
    };
@@ -208,10 +203,10 @@ function startListening({retry=false}={}){
      message('Mikrofon reagiert nicht','Das zählt nicht als Fehler. Tippe auf das Mikrofon oder nutze die Tastatur.','warn');
      updateButtons();
    },6500);
-   message('Mikrofon wird gestartet …','Wenn es aktiv ist, hast du etwa 10 Sekunden zum Antworten.');
+   message('Mikrofon wird gestartet …','Sprich deine Antwort, sobald es aktiv ist.');
  }catch(_){
    stopMic();clearTimers();phase='ready';
-   node('#countdown').hidden=true;
+   autoMicAllowed=false;
    message('Automatisches Mikrofon nicht möglich','Tippe auf Einsprechen. Manche iPhone-Browser verlangen für jede Karte einen eigenen Tipp.','warn');
    updateButtons();
  }
@@ -227,8 +222,7 @@ function say(text){
  }catch(_){}
 }
 function confirmSpeech(title,choices,heard){
- stopMic();clearTimers();phase='confirm';
- node('#countdown').hidden=true;
+ clearTimers();phase='confirm';
  const target=task(),answer=solutionFor(target);
  message(title, 'Die Spracherkennung schrieb: '+heard,'warn');
  const zone=node('#controls');zone.replaceChildren();
@@ -251,12 +245,12 @@ function confirmSpeech(title,choices,heard){
 }
 function feedback(kind,transcript='',note=''){
  if(!task()||phase==='feedback'||phase==='swiping')return;
- stopAll();
- pending={kind,transcript,spokenReading:note};
+ clearTimers();
+ if(phase==='typing')stopMic();
+ pending={kind,transcript,spokenReading:note,inputMethod:phase==='typing'?'typing':kind==='no-answer'?'silence':'speech'};
  phase='feedback';
  const correct=['correct','recognition-error'].includes(kind);
  message(correct?'Richtig! ✨':kind==='no-answer'?'Keine Antwort':kind==='near-miss'?'Fast – das üben wir nochmal':'Die richtige Lösung:',correct?(solutionFor(task())):(solutionFor(task())+' · kommt später noch einmal'),correct?'good':'warn');
- node('#countdown').hidden=true;
  node('#controls').replaceChildren();
  const actions=node('#controls');actions.className='feedback-actions';
  const next=document.createElement('button');next.type='button';next.className='next';next.textContent='Weiter →';next.addEventListener('click',advance);actions.append(next);
@@ -293,9 +287,8 @@ function advance(){
 function pause(){
  stopAll();phase='paused';
  message('Pause','Tippe auf Fortsetzen, wenn du bereit bist.');
- node('#countdown').hidden=true;
  node('#controls').innerHTML='<button type="button" class="big-button" id="resume">Fortsetzen ▶</button>';
- node('#resume').addEventListener('click',()=>{showCard(true);});
+ node('#resume').addEventListener('click',()=>{autoMicAllowed=true;showCard(true);});
 }
 function summary(){
  stopAll();phase='done';
@@ -325,7 +318,21 @@ async function init(){
    if(!window.KotobaDungeonSource?.load)throw new Error('Lesemodul nicht verfügbar');
    const source=await window.KotobaDungeonSource.load();
    if(!source?.hasLiveSave){empty('Hier wurde kein Kotoba-Lernstand gefunden. Bitte verwende denselben Browser und dieselbe Adresse wie für Kotoba Quest.');return;}
-   learned=source.learned||[];lexicon=[...(source.catalog||[]),...learned];
+   // Read-only enrichment: canonical counters govern the existing alternating
+   // first-direction rule. Never mutate the persisted card or SRS stage.
+   const snapshot=await window.KotobaDungeonSource.readSave?.();
+   const persisted=Array.isArray(snapshot?.data?.vocabulary)?snapshot.data.vocabulary:[];
+   const exact=new Map();
+   for(const row of persisted){
+     const id=String(row.packEntryId||row.id||'');
+     if(id&&!exact.has(id))exact.set(id,row);
+   }
+   learned=(source.learned||[]).map(card=>{
+     const row=exact.get(String(card.id||''));
+     const verified=row&&row.word===card.word&&row.reading===card.reading;
+     return verified?{...card,correct:Number(row.correct)||0,incorrect:Number(row.incorrect)||0}:card;
+   });
+   lexicon=[...(source.catalog||[]),...learned];
    if(!learned.length){empty('Noch keine gelernten Wörter gefunden.');return;}
    intro();
  }catch(error){empty('Lernstand konnte nicht sicher gelesen werden: '+String(error?.message||error));}
