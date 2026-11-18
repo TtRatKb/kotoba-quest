@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {buildVoiceDeck,firstVocabularyDirection,acceptsVoiceAnswer,gradeSpeechCandidates,promptFor,solutionFor} from '../voice-cards-core.mjs';
+import {buildVoiceDeck,firstVocabularyDirection,acceptsVoiceAnswer,gradeSpeechCandidates,gradeGermanSpeech,promptFor,solutionFor} from '../voice-cards-core.mjs';
 
 const cards=[
  {id:'1',word:'慣れる',reading:'なれる',meanings:['sich gewöhnen an'],stage:2,acceptedReadings:[]},
@@ -109,4 +109,39 @@ test('canonical first-question selection alternates with completed review count'
  const first=firstVocabularyDirection(card);
  assert.equal(firstVocabularyDirection({...card,correct:1}),first==='de-jp'?'jp-de':'de-jp');
  assert.equal(firstVocabularyDirection({...card,incorrect:1}),first==='de-jp'?'jp-de':'de-jp');
+});
+
+test('German dictation accepts common extra articles, not unrelated words',()=>{
+ const task={card:{id:'editing',word:'編集',reading:'へんしゅう',meanings:['Bearbeitung'],stage:2},direction:'jp-de'};
+ assert.equal(gradeSpeechCandidates(task,['Bearbeitung']).match,'exact');
+ assert.equal(gradeSpeechCandidates(task,['die Bearbeitung.']).match,'exact');
+ assert.equal(gradeSpeechCandidates(task,['eine Bearbeitung!']).match,'exact');
+ assert.equal(gradeSpeechCandidates(task,['die Bedeutung']).match,'none');
+ assert.equal(gradeSpeechCandidates(task,['Beratung']).match,'none');
+ assert.equal(gradeSpeechCandidates(task,['Bedeutung']).match,'none');
+});
+test('German near-recognition is a confirmation request, not an automatic correct answer',()=>{
+ const task={card:{id:'editing',word:'編集',reading:'へんしゅう',meanings:['Bearbeitung'],stage:2},direction:'jp-de'};
+ assert.equal(gradeSpeechCandidates(task,['Bearbeitng']).match,'near');
+ assert.equal(gradeGermanSpeech(task,['Bearbeitungen']).match,'near');
+ assert.equal(gradeGermanSpeech(task,['Bearbeiten']).match,'near');
+ assert.equal(gradeGermanSpeech(task,['Blume']).match,'none');
+ assert.equal(gradeSpeechCandidates(task,['Bearbeiten','Bearbeitung']).match,'exact');
+ assert.equal(acceptsVoiceAnswer(task,'Bearbeiten'),false);
+});
+test('German speech flexibility cannot make typed answers more permissive',()=>{
+ const task={card:{id:'editing',word:'編集',reading:'へんしゅう',meanings:['Bearbeitung'],stage:2},direction:'jp-de'};
+ assert.equal(acceptsVoiceAnswer(task,'die Bearbeitung'),false);
+ assert.equal(acceptsVoiceAnswer(task,'Bearbeitng'),false);
+ assert.equal(gradeSpeechCandidates(task,['die Bearbeitung']).match,'exact');
+});
+test('experimental live language change fails closed to a manual restart',()=>{
+ const source=readFileSync(new URL('../voice-cards.js',import.meta.url),'utf8');
+ assert.match(source,/experimentalLiveSwitch/);
+ assert.match(source,/rec\.lang=wanted/);
+ assert.match(source,/languageUnverified/);
+ assert.match(source,/offerLanguageRestart/);
+ assert.match(source,/restartLanguageRecognition/);
+ assert.match(source,/id="liveSwitch"/);
+ assert.doesNotMatch(source,/\.transaction\s*\(|\.save\s*\(|\.setItem\s*\(/);
 });
