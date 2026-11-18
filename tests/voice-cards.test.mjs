@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {buildVoiceDeck,acceptsVoiceAnswer,promptFor,solutionFor} from '../voice-cards-core.mjs';
+import {buildVoiceDeck,acceptsVoiceAnswer,gradeSpeechCandidates,promptFor,solutionFor} from '../voice-cards-core.mjs';
 
 const cards=[
  {id:'1',word:'慣れる',reading:'なれる',meanings:['sich gewöhnen an'],stage:2,acceptedReadings:[]},
@@ -47,4 +47,38 @@ test('the optional entry point reads via Dungeon source and cannot write progres
  assert.match(html,/voice-cards\.js/);
  assert.match(daily,/href="\.\/voice-cards\.html"/);
  assert.doesNotMatch(js,/(?:localStorage|sessionStorage)\.(?:setItem|removeItem|clear)\s*\(|\.transaction\s*\(|\.commitVocabulary|\.save\s*\(/);
+});
+
+
+test('speech recognition recognizes correct alternative even if its first guess is wrong',()=>{
+ const task={card:{id:'colleague',word:'同僚',reading:'どうりょう',meanings:['Kollege'],stage:2},direction:'de-jp'};
+ assert.deepEqual(gradeSpeechCandidates(task,['同様','同僚']).match,'exact');
+ assert.equal(gradeSpeechCandidates(task,['ドウリョウ']).match,'exact');
+ assert.equal(gradeSpeechCandidates(task,['どうりょう。']).match,'exact');
+ assert.equal(gradeSpeechCandidates(task,['同量'],{lexicon:[{word:'同量',reading:'どうりょう'}]}).match,'exact');
+});
+test('recognized close pronunciation offers confirmation but never passes automatically',()=>{
+ const task={card:{id:'colleague',word:'同僚',reading:'どうりょう',meanings:['Kollege'],stage:2},direction:'de-jp'};
+ const near=gradeSpeechCandidates(task,['どりょう']);
+ assert.equal(near.match,'near');
+ assert.equal(near.transcript,'どりょう');
+ assert.equal(gradeSpeechCandidates(task,['どうりょ']).match,'near');
+ assert.equal(gradeSpeechCandidates(task,['むりょう']).match,'none');
+ assert.equal(gradeSpeechCandidates(task,['りょう']).match,'none');
+ assert.equal(gradeSpeechCandidates(task,['同じ']).match,'none');
+ assert.equal(gradeSpeechCandidates(task,['同じ'],{lexicon:[{word:'同じ',reading:'おなじ'}]}).match,'none');
+});
+test('romanized speech recognition alternatives can be converted with the existing adapter',()=>{
+ const task={card:{word:'同僚',reading:'どうりょう',meanings:['Kollege'],stage:2},direction:'de-jp'};
+ const toHiragana=value=>({'douryou':'どうりょう','doryou':'どりょう'}[value]??value);
+ assert.equal(gradeSpeechCandidates(task,['douryou'],{toHiragana}).match,'exact');
+ assert.equal(gradeSpeechCandidates(task,['doryou'],{toHiragana}).match,'near');
+});
+test('short Japanese words and typed answers stay strictly checked',()=>{
+ const task={card:{word:'猫',reading:'ねこ',meanings:['Katze'],stage:2},direction:'de-jp'};
+ assert.equal(gradeSpeechCandidates(task,['ねご']).match,'none');
+ assert.equal(gradeSpeechCandidates(task,['ねこ']).match,'exact');
+ assert.equal(acceptsVoiceAnswer(task,'ねご'),false);
+ assert.equal(gradeSpeechCandidates({card:cards[1],direction:'jp-de'},['leise','rauschen']).match,'exact');
+ assert.equal(gradeSpeechCandidates({card:cards[1],direction:'jp-de'},['leiseee']).match,'none');
 });

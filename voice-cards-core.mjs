@@ -47,3 +47,69 @@ export function acceptsVoiceAnswer(task,spoken) {
   const normalize=target==='japanese'?jp:norm;
   return alternatives.some(a=>normalize(a)===normalize(spoken));
 }
+
+
+/* Browser speech transcripts are not proof of pronunciation quality.
+ * The recognizer can choose different kanji for the very same spoken sound.
+ * Exact known readings count; one-kana approximations only suggest manual review.
+ */
+const kanaForm=value=>jp(value).replace(/[「」『』（）()[\]｛｝{}]/gu,'').replace(/[\s\u200b-\u200d\ufeff]/gu,'');
+const latinKana=(value,toHiragana)=>{
+  if(typeof toHiragana!=='function')return '';
+  const input=norm(value).replace(/ō/g,'ou').replace(/ū/g,'uu').replace(/ā/g,'aa').replace(/ī/g,'ii').replace(/ē/g,'ee');
+  if(!/^[a-z'-]+$/iu.test(input))return '';
+  const converted=toHiragana(input,true);
+  return /^[\p{Script=Hiragana}ー]+$/u.test(converted)?kanaForm(converted):'';
+};
+function recognizedKana(value,lexicon,toHiragana) {
+  const surface=kanaForm(value);
+  if(/^[\p{Script=Hiragana}ー]+$/u.test(surface))return surface;
+  const romanized=latinKana(value,toHiragana);
+  if(romanized)return romanized;
+  // Only use unique readings from our own known vocabulary. Arbitrary kanji
+  // are not phonetic and must not be guessed from their written appearance.
+  const readings=new Set((Array.isArray(lexicon)?lexicon:[])
+    .filter(card=>kanaForm(card?.word)===surface)
+    .map(card=>kanaForm(card?.reading))
+    .filter(reading=>/^[\p{Script=Hiragana}ー]+$/u.test(reading)));
+  return readings.size===1?[...readings][0]:'';
+}
+function editDistanceOne(a,b) {
+  const x=[...a],y=[...b];if(Math.abs(x.length-y.length)>1)return false;
+  let i=0,j=0,edits=0;
+  while(i<x.length&&j<y.length){
+    if(x[i]===y[j]){i++;j++;continue;}
+    if(++edits>1)return false;
+    if(x.length>y.length)i++;
+    else if(x.length<y.length)j++;
+    else{i++;j++;}
+  }
+  return edits+x.length-i+y.length-j===1;
+}
+export function gradeSpeechCandidates(task,transcripts,{lexicon=[],toHiragana=null}={}) {
+  const raw=(Array.isArray(transcripts)?transcripts:[]).filter(value=>typeof value==='string'&&norm(value));
+  const empty={match:'none',transcript:raw[0]||'',expectedReading:task?.card?.reading||''};
+  if(!task||!raw.length)return empty;
+  for(const transcript of raw){
+    if(acceptsVoiceAnswer(task,transcript))return {...empty,match:'exact',transcript};
+    if(task.direction==='de-jp'){
+      const normalized=recognizedKana(transcript,lexicon,toHiragana);
+      const allowed=[task.card.word,task.card.reading,...(task.card.acceptedReadings||[])].map(kanaForm).filter(v=>/^[\p{Script=Hiragana}ー]+$/u.test(v));
+      if(normalized&&allowed.includes(normalized))return {...empty,match:'exact',transcript};
+    }
+  }
+  if(task.direction==='de-jp'){
+    // Only a hint, never an automatic pass: Japanese minimal pairs can differ
+    // in one mora (including a long vowel or small kana).
+    const targets=[task.card.reading,...(task.card.acceptedReadings||[])]
+      .map(kanaForm).filter(value=>/^[\p{Script=Hiragana}ー]+$/u.test(value));
+    for(const transcript of raw){
+      const heard=recognizedKana(transcript,lexicon,toHiragana);
+      if(!heard)continue;
+      if(targets.some(expected=>[...expected].length>=4 && [...heard].length>=3 &&
+          heard[0]===expected[0] && editDistanceOne(heard,expected)))
+        return {...empty,match:'near',transcript};
+    }
+  }
+  return empty;
+}
