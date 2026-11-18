@@ -70,3 +70,6 @@ h1{font-size:clamp(1.35rem,6vw,1.7rem);line-height:1.25;margin:12px 0 22px}
 @media(prefers-reduced-motion:reduce){.flashcard.swipe-away{animation:none;opacity:0}}
 
 [hidden]{display:none!important}
+
+.live-switch{display:flex;align-items:center;text-align:left;gap:10px;font-size:.83rem;line-height:1.45;color:var(--muted);border:1px solid var(--line);border-radius:15px;padding:12px}
+.live-switch input{width:21px;height:21px;accent-color:var(--blue);flex-shrink:0}
