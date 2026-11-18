@@ -37,3 +37,13 @@ test('mixed mode alternates directions and excludes new/invalid cards',()=>{
  assert.deepEqual(deck.map(item=>item.direction),['de-jp','jp-de','de-jp']);
  assert.deepEqual(buildVoiceDeck(cards,{direction:'unsupported'}),[]);
 });
+
+test('the optional entry point reads via Dungeon source and cannot write progress',()=>{
+ const html=readFileSync(new URL('../voice-cards.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../voice-cards.js',import.meta.url),'utf8');
+ const daily=readFileSync(new URL('../daily.js',import.meta.url),'utf8');
+ assert.match(html,/dungeon-source\.js/);
+ assert.match(html,/voice-cards\.js/);
+ assert.match(daily,/href="\.\/voice-cards\.html"/);
+ assert.doesNotMatch(js,/(?:localStorage|sessionStorage)\.(?:setItem|removeItem|clear)\s*\(|\.transaction\s*\(|\.commitVocabulary|\.save\s*\(/);
+});
