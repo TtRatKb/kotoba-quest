@@ -43,11 +43,24 @@ export function buildVoiceDeck(cards,{direction='de-jp',limit=8,seed='voice-prev
     // Separate first and second exposures by the entire first block, just as
     // the canonical vocabulary reviews do. Never count one as the other.
     const first=selected.map(card=>({card,direction:firstVocabularyDirection(card),firstDirection:true}));
-    return [...first,...first.map(item=>({
+    // Speech recognition normally needs a separate language model for German
+    // and Japanese. Group each pass by language to avoid mic on/off sounds
+    // at every card; preserve each word's first-versus-second exposure.
+    const firstLang=first[0]?.direction;
+    first.sort((a,b)=>Number(a.direction!==firstLang)-Number(b.direction!==firstLang));
+    const second=first.map(item=>({
       card:item.card,
       direction:item.direction==='de-jp'?'jp-de':'de-jp',
       firstDirection:false
-    }))];
+    }));
+    const startSecond=first.at(-1)?.direction;
+    second.sort((a,b)=>Number(a.direction!==startSecond)-Number(b.direction!==startSecond));
+    // Avoid immediately repeating the same word at the pass boundary.
+    if(first.length>1 && second[0]?.card===first.at(-1)?.card){
+      const swap=second.findIndex((item,i)=>i>0 && item.direction===second[0].direction && item.card!==first.at(-1).card);
+      if(swap>0)[second[0],second[swap]]=[second[swap],second[0]];
+    }
+    return [...first,...second];
   }
   return selected.map((card,index)=>({
     card,
