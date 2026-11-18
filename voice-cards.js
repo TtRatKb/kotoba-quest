@@ -8,7 +8,7 @@ const app=document.getElementById('app');
 const SpeechApi=window.SpeechRecognition||window.webkitSpeechRecognition;
 const back=new URLSearchParams(window.location.search).get('from')==='index'?'./index.html':'./daily.html';
 const SILENCE_MS=10000;
-let learned=[],lexicon=[],direction='both',session=null,phase='intro',rec=null,token=0,autoMicAllowed=true;
+let learned=[],lexicon=[],direction='both',session=null,phase='intro',rec=null,token=0,autoMicAllowed=true,experimentalLiveSwitch=true,languageUnverified=null;
 let silenceTimer=null,autoTimer=null,speechStarted=false,pending=null,recognitionOptions=[],lastRecognition='',repeatStartCount=0,silenceDeadline=0,audioActive=false;
 const safe=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[ch]));
 const task=()=>currentVoiceCard(session)?.task;
@@ -24,7 +24,7 @@ function stopMic(){
   const active=rec;rec=null;
   if(active){try{active.abort();}catch(_){}}
 }
-function stopAll(){clearTimers();stopMic();try{window.speechSynthesis?.cancel();}catch(_){}}
+function stopAll(){clearTimers();stopMic();languageUnverified=null;try{window.speechSynthesis?.cancel();}catch(_){}}
 function titleBar(){
  return '<div class="top"><a class="back" href="'+back+'" aria-label="Zurück">←</a><span class="title">✿ Kotoba Sprechkarten</span><span style="width:28px" aria-hidden="true"></span></div>';
 }
@@ -33,11 +33,13 @@ function intro(){
  app.innerHTML=titleBar()+
  '<section class="intro-panel"><div class="intro-mark" aria-hidden="true">🎙️</div>'+
  '<h1>Sprechkarten</h1><p>Einmal auf Los tippen, dann die Karten möglichst am Stück einsprechen. Wenn du länger still bist oder ein Wort nicht weißt, kommt die Lösung – und die Karte später erneut.</p>'+
- '<label for="direction">Übungsrichtung</label><select id="direction"><option value="both">Beide Richtungen pro Wort (empfohlen)</option><option value="de-jp">Nur Deutsch → Japanisch</option><option value="jp-de">Nur Japanisch → Deutsch</option><option value="mixed">Gemischte Einzelkarten</option></select>'+
+ '<label for="direction">Übungsrichtung</label><select id="direction"><option value="both">Beide Richtungen pro Wort (empfohlen)</option><option value="de-jp">Nur Deutsch → Japanisch</option><option value="jp-de">Nur Japanisch → Deutsch</option><option value="mixed">Gemischte Einzelkarten</option></select>'+ '<label class="live-switch"><input type="checkbox" id="liveSwitch"> Sprachwechsel ohne Mikrofon-Neustart (experimentell)</label>'+ 
  '<button class="big-button start-button" id="start">Los! ✨</button>'+
  '<p class="privacy-note">Die Karten verwenden deinen gelernten Wortschatz, ohne SRS oder Cloud zu verändern. Ergebnisse bleiben nur in dieser geöffneten Runde. Spracherkennung kann Audiodaten an den Dienst deines Browsers übertragen.</p></section>';
  node('#direction').value=direction;
  node('#direction').addEventListener('change',e=>direction=e.target.value);
+ node('#liveSwitch').checked=experimentalLiveSwitch;
+ node('#liveSwitch').addEventListener('change',e=>experimentalLiveSwitch=e.target.checked);
  node('#start').addEventListener('click',startRound);
 }
 function startRound(){
@@ -45,7 +47,7 @@ function startRound(){
  const deck=buildVoiceDeck(learned,{direction,limit:direction==='both'?6:8,seed:String(Date.now())});
  if(!deck.length){empty('Noch keine gelernten Wörter in diesem Browser gefunden. Bitte Kotoba Quest hier öffnen und deinen Lernstand prüfen.');return;}
  session=createVoiceSession(deck,{maxAttempts:3});
- pending=null;repeatStartCount=0;autoMicAllowed=true;
+ pending=null;repeatStartCount=0;autoMicAllowed=true;languageUnverified=null;
  showCard(true);
 }
 function empty(message){
@@ -114,26 +116,37 @@ function showCard(auto=false){
  phase='ready';
  const wanted=task()?.direction==='de-jp'?'ja-JP':'de-DE';
  const switched=Boolean(rec&&rec.lang!==wanted);
- // Changing the recognition language requires a fresh microphone session.
- // Do it once per language block, never automatically in a repeated loop.
- if(switched){stopMic();autoMicAllowed=false;audioActive=false;}
+ // Changing SpeechRecognition.lang while running is a best-effort experiment:
+ // browsers can defer the new language until the next start(). If recognition
+ // mismatches, prompt for an explicit restart instead of scoring the learner.
+ if(switched){
+   if(experimentalLiveSwitch){
+     try{
+       rec.lang=wanted;
+       if(rec.lang!==wanted)throw new Error('language was not accepted');
+       languageUnverified=wanted;
+     }catch(_){stopMic();autoMicAllowed=false;languageUnverified=null;}
+   }else{stopMic();autoMicAllowed=false;languageUnverified=null;}
+   audioActive=false;
+ }
  if(!baseCard())return;
  updateButtons();
  if(auto&&autoMicAllowed)startListening();
- else message('Bereit',switched?'Sprachrichtung gewechselt. Bitte einmal auf Einsprechen tippen.':'Tippe auf das Mikrofon, um zu sprechen.');
+ else message('Bereit',switched?'Sprachwechsel benötigt einen neuen Start – bitte auf Einsprechen tippen.':'Tippe auf das Mikrofon, um zu sprechen.');
 }
 function countSilent(){
  if(silenceTimer!==null)clearTimeout(silenceTimer);
  silenceTimer=setTimeout(()=>{
    silenceTimer=null;
    if(phase!=='listening'||speechStarted)return;
+   if(languageUnverified){offerLanguageRestart('',true);return;}
    feedback('no-answer','','Keine Antwort gehört');
  },Math.max(100,silenceDeadline-Date.now()));
 }
 function startListening({retry=false}={}){
  if(!session||!task())return;
  clearTimers();
- if(rec&&rec.lang!==(task().direction==='de-jp'?'ja-JP':'de-DE'))stopMic();
+ if(rec&&rec.lang!==(task().direction==='de-jp'?'ja-JP':'de-DE')){stopMic();languageUnverified=null;}
  if(rec){
    phase='listening';speechStarted=false;
    silenceDeadline=Date.now()+SILENCE_MS;
@@ -172,16 +185,20 @@ function startListening({retry=false}={}){
      const alternatives=Array.from(latest||[]).map(x=>x.transcript).filter(Boolean);
      clearTimers();
      recognitionOptions=alternatives;lastRecognition=alternatives[0]||'';
-     if(!alternatives.length){phase='ready';message('Nichts erkannt','Tippe erneut auf das Mikrofon.','warn');updateButtons();return;}
+     if(!alternatives.length){
+       if(languageUnverified){offerLanguageRestart('',false);return;}
+       phase='ready';message('Nichts erkannt','Tippe erneut auf das Mikrofon.','warn');updateButtons();return;
+     }
      const opts={lexicon,toHiragana:window.KotobaRomaji?.toHiragana};
      const top=gradeSpeechCandidates(task(),alternatives.slice(0,1),opts);
      const all=gradeSpeechCandidates(task(),alternatives,opts);
      const contrasting=spokenContrastChoices(task(),alternatives[0],opts);
-     if(top.match==='exact'){feedback('correct',top.transcript,'Direkt erkannt');return;}
+     if(top.match==='exact'){languageUnverified=null;feedback('correct',top.transcript,'Direkt erkannt');return;}
      if(all.match==='exact'||top.match==='near'||contrasting.length>1){
-       confirmSpeech(all.match==='exact'?'Auch eine mögliche richtige Erkennung dabei':top.match==='near'?'Sehr ähnlich erkannt':'Zwei ähnlich klingende Wörter',contrasting,alternatives[0]);
+       confirmSpeech(all.match==='exact'?'Auch eine mögliche richtige Erkennung dabei':top.match==='near'?'Sehr ähnlich erkannt':'Ähnlich erkannt – bitte prüfen',contrasting,alternatives[0]);
        return;
      }
+     if(languageUnverified){offerLanguageRestart(alternatives[0],false);return;}
      feedback('wrong-word',alternatives[0],'Nicht als Zielwort erkannt');
    };
    recognition.onerror=e=>{
@@ -195,7 +212,7 @@ function startListening({retry=false}={}){
    };
    recognition.onend=()=>{
      if(token!==current)return;
-     rec=null;audioActive=false;
+     rec=null;audioActive=false;languageUnverified=null;
      // Safari can end recognition after each utterance even with continuous=true.
      // Never auto-restart: its system microphone sounds otherwise repeat forever.
      autoMicAllowed=false;
@@ -241,6 +258,13 @@ function confirmSpeech(title,choices,heard){
  const add=(label,callback,style='secondary')=>{
   const b=document.createElement('button');b.type='button';b.className=style;b.textContent=label;b.addEventListener('click',callback);zone.append(b);
  };
+ if(target.direction==='jp-de'){
+   add('Ja, ich habe „'+answer+'“ gesagt',()=>{languageUnverified=null;feedback('recognition-error',heard,'Von dir als korrekt bestätigt');},'confirmation-choice');
+   add('Nein, ich habe „'+heard+'“ gesagt',()=>{languageUnverified=null;feedback('near-miss',heard,'Andere oder unklare Aussprache');},'confirmation-choice');
+   if(languageUnverified)add('Deutsch-Erkennung neu starten',restartLanguageRecognition,'confirmation-choice');
+   add('Noch einmal sprechen',()=>{phase='ready';startListening();},'text-link');
+   return;
+ }
  add('Die richtige Lösung: '+answer,()=>feedback('recognition-error',heard,'Von dir als korrekt bestätigt'),'confirmation-choice');
  const expected=String(target.card.reading||'');
  for(const reading of choices){
@@ -253,6 +277,23 @@ function confirmSpeech(title,choices,heard){
  add('Ein ganz anderes Wort',()=>feedback('wrong-word',heard,'Anderes Wort gesprochen'),'confirmation-choice');
  add('Ich bin nicht sicher',()=>feedback('near-miss',heard,'Unsicher bei der Erkennung'),'text-link');
 }
+function offerLanguageRestart(heard='',silence=false){
+ clearTimers();phase='confirm';
+ message('Sprachwechsel nicht sicher erkannt',
+   silence?'Der Browser hört möglicherweise noch in der vorherigen Sprache.':
+   'Erkannt: '+heard+'. Möglicherweise benutzt der Browser noch die vorherige Sprache.','warn');
+ const zone=node('#controls');zone.replaceChildren();
+ const restart=document.createElement('button');restart.type='button';restart.className='confirmation-choice';
+ restart.textContent='Erkennung in '+(task()?.direction==='de-jp'?'Japanisch':'Deutsch')+' neu starten';
+ restart.addEventListener('click',restartLanguageRecognition);zone.append(restart);
+ const typed=document.createElement('button');typed.type='button';typed.className='text-link';
+ typed.textContent='Lieber eintippen';typed.addEventListener('click',()=>{
+   stopMic();languageUnverified=null;phase='ready';baseCard();node('#typing')?.click();
+ });zone.append(typed);
+}
+function restartLanguageRecognition(){
+ stopMic();languageUnverified=null;autoMicAllowed=true;phase='ready';startListening();
+}
 function feedback(kind,transcript='',note=''){
  if(!task()||phase==='feedback'||phase==='swiping')return;
  clearTimers();
@@ -260,7 +301,9 @@ function feedback(kind,transcript='',note=''){
  pending={kind,transcript,spokenReading:note,inputMethod:phase==='typing'?'typing':kind==='no-answer'?'silence':'speech'};
  phase='feedback';
  const correct=['correct','recognition-error'].includes(kind);
- message(correct?'Richtig! ✨':kind==='no-answer'?'Keine Antwort':kind==='near-miss'?'Fast – das üben wir nochmal':'Die richtige Lösung:',correct?(solutionFor(task())):(solutionFor(task())+' · kommt später noch einmal'),correct?'good':'warn');
+ message(correct?'Richtig! ✨':kind==='no-answer'?'Keine Antwort':kind==='near-miss'?'Fast – das üben wir nochmal':'Die richtige Lösung:',
+   (correct?solutionFor(task()):solutionFor(task())+' · kommt später noch einmal')+
+   (!correct && transcript && task()?.direction==='jp-de'?' · Erkannt: '+transcript:''),correct?'good':'warn');
  node('#controls').replaceChildren();
  const actions=node('#controls');actions.className='feedback-actions';
  const next=document.createElement('button');next.type='button';next.className='next';next.textContent='Weiter →';next.addEventListener('click',advance);actions.append(next);
@@ -279,7 +322,7 @@ function feedback(kind,transcript='',note=''){
    });actions.append(b);
  }
  const listen=document.createElement('button');listen.type='button';listen.className='text-link';listen.textContent='♪ Lösung anhören';listen.addEventListener('click',()=>say(task().card.word));actions.append(listen);
- autoTimer=setTimeout(advance,correct?1450:2600);
+ autoTimer=setTimeout(advance,correct?1450:task()?.direction==='jp-de'?4800:2600);
 }
 function advance(){
  if(phase!=='feedback')return;
