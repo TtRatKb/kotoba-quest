@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {buildVoiceDeck,acceptsVoiceAnswer,gradeSpeechCandidates,promptFor,solutionFor} from '../voice-cards-core.mjs';
+import {buildVoiceDeck,firstVocabularyDirection,acceptsVoiceAnswer,gradeSpeechCandidates,promptFor,solutionFor} from '../voice-cards-core.mjs';
 
 const cards=[
  {id:'1',word:'慣れる',reading:'なれる',meanings:['sich gewöhnen an'],stage:2,acceptedReadings:[]},
@@ -81,4 +81,32 @@ test('short Japanese words and typed answers stay strictly checked',()=>{
  assert.equal(acceptsVoiceAnswer(task,'ねご'),false);
  assert.equal(gradeSpeechCandidates({card:cards[1],direction:'jp-de'},['leise','rauschen']).match,'exact');
  assert.equal(gradeSpeechCandidates({card:cards[1],direction:'jp-de'},['leiseee']).match,'none');
+});
+
+test('each word is studied twice, with the first direction decided by the existing review parity',()=>{
+ const items=[...cards.slice(0,3),...['書く','読む','聞く'].map((word,i)=>({id:String(10+i),word,reading:['かく','よむ','きく'][i],meanings:['schreiben','lesen','hören'][i],stage:2}))];
+ const before=JSON.stringify(items);
+ const deck=buildVoiceDeck(items,{direction:'both',limit:6,seed:'2026-11-18'});
+ assert.equal(deck.length,12);
+ const first=deck.slice(0,6),second=deck.slice(6);
+ for(const card of items){
+   const entries=deck.filter(entry=>entry.card.id===card.id);
+   assert.equal(entries.length,2);
+   assert.notEqual(entries[0].direction,entries[1].direction);
+   assert.equal(entries[0].direction,firstVocabularyDirection(card));
+   assert.equal(entries[0].firstDirection,true);
+   assert.equal(entries[1].firstDirection,false);
+   assert(first.some(item=>item.card.id===card.id));
+   assert(second.some(item=>item.card.id===card.id));
+ }
+ const switches=deck.filter((entry,i)=>i>0&&deck[i-1].direction!==entry.direction).length;
+ assert(switches<=3,'language grouping should reduce repeated microphone starts');
+ assert.notEqual(first.at(-1).card.id,second[0].card.id);
+ assert.equal(JSON.stringify(items),before);
+});
+test('canonical first-question selection alternates with completed review count',()=>{
+ const card={id:'1',word:'猫',reading:'ねこ',meanings:['Katze'],stage:3,correct:0,incorrect:0};
+ const first=firstVocabularyDirection(card);
+ assert.equal(firstVocabularyDirection({...card,correct:1}),first==='de-jp'?'jp-de':'de-jp');
+ assert.equal(firstVocabularyDirection({...card,incorrect:1}),first==='de-jp'?'jp-de':'de-jp');
 });
