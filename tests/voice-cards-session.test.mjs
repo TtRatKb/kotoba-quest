@@ -51,7 +51,7 @@ test('repeated failures are capped, never create an endless review loop',()=>{
  assert.equal(session.queue.length,0);
  assert.deepEqual(voiceSummary(session),{
   total:1,completed:1,mastered:0,needsPractice:1,attempts:3,
-  wrongWord:1,nearMiss:1,noAnswer:1,notKnown:0,recognitionError:0,firstTry:0
+  wrongWord:1,nearMiss:1,noAnswer:1,notKnown:0,recognitionError:0,recognitionUnclear:0,firstTry:0
  });
 });
 test('unknown outcome or invalid session fails closed',()=>{
@@ -76,4 +76,12 @@ test('UI stays entirely outside official SRS and includes one-start timer/retry 
  assert.match(source,/startListening/);
  assert.match(source,/confirmSpeech/);
  assert.doesNotMatch(source,/(?:localStorage|sessionStorage)\.(?:setItem|removeItem|clear)\s*\(|\.transaction\s*\(|commitVocabulary|writeBatch|addDoc\(/);
+});
+
+test('a microphone recognition failure can be retried without counting as silence',()=>{
+ let session=createVoiceSession([cards[0]]);
+ session=recordVoiceAttempt(session,{kind:'recognition-unclear'});
+ assert.equal(voiceSummary(session).recognitionUnclear,1);
+ assert.equal(voiceSummary(session).noAnswer,0);
+ assert.equal(currentVoiceCard(session).task.card.word,'台本');
 });
