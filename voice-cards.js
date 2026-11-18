@@ -9,7 +9,7 @@ const SpeechApi=window.SpeechRecognition||window.webkitSpeechRecognition;
 const back=new URLSearchParams(window.location.search).get('from')==='index'?'./index.html':'./daily.html';
 const SILENCE_MS=10000;
 let learned=[],lexicon=[],direction='de-jp',session=null,phase='intro',rec=null,token=0;
-let silenceTimer=null,autoTimer=null,speechStarted=false,pending=null,recognitionOptions=[],lastRecognition='',repeatStartCount=0,silenceDeadline=0;
+let silenceTimer=null,autoTimer=null,speechStarted=false,pending=null,recognitionOptions=[],lastRecognition='',repeatStartCount=0,silenceDeadline=0,audioActive=false;
 const safe=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[ch]));
 const task=()=>currentVoiceCard(session)?.task;
 const node=selector=>app.querySelector(selector);
@@ -133,7 +133,7 @@ function startListening({retry=false}={}){
  clearTimers();stopMic();
  if(!retry)silenceDeadline=Date.now()+SILENCE_MS;
  if(!SpeechApi){phase='ready';message('Mikrofon nicht verfügbar','Nutze die Tastatur oder die Diktierfunktion deines Handys.','warn');updateButtons();return;}
- phase='listening';speechStarted=false;
+ phase='listening';speechStarted=false;audioActive=false;
  node('#answerForm').hidden=true;
  const current=++token;let recognition;
  try{
@@ -141,9 +141,17 @@ function startListening({retry=false}={}){
    recognition.lang=task().direction==='de-jp'?'ja-JP':'de-DE';
    recognition.interimResults=false;recognition.maxAlternatives=10;recognition.continuous=false;
    rec=recognition;
+   recognition.onaudiostart=()=>{
+     if(token!==current)return;
+     audioActive=true;
+     if(autoTimer!==null)clearTimeout(autoTimer);autoTimer=null;
+     if(!silenceDeadline||!retry)silenceDeadline=Date.now()+SILENCE_MS;
+     countSilent();
+   };
    recognition.onspeechstart=()=>{
      if(token!==current)return;
-     speechStarted=true;
+     speechStarted=true;audioActive=true;
+     if(autoTimer!==null)clearTimeout(autoTimer);autoTimer=null;
      if(silenceTimer!==null)clearTimeout(silenceTimer);silenceTimer=null;
      node('#countdown').hidden=true;
    };
@@ -194,8 +202,13 @@ function startListening({retry=false}={}){
    };
    recognition.start();
    updateButtons();
-   countSilent();
-   message('Ich höre zu …','Antworte jetzt. Nach 10 Sekunden ohne Sprache erscheint die Lösung.');
+   autoTimer=setTimeout(()=>{
+     if(token!==current||phase!=='listening'||audioActive)return;
+     stopMic();clearTimers();phase='ready';
+     message('Mikrofon reagiert nicht','Das zählt nicht als Fehler. Tippe auf das Mikrofon oder nutze die Tastatur.','warn');
+     updateButtons();
+   },6500);
+   message('Mikrofon wird gestartet …','Wenn es aktiv ist, hast du etwa 10 Sekunden zum Antworten.');
  }catch(_){
    stopMic();clearTimers();phase='ready';
    node('#countdown').hidden=true;
@@ -247,6 +260,11 @@ function feedback(kind,transcript='',note=''){
  node('#controls').replaceChildren();
  const actions=node('#controls');actions.className='feedback-actions';
  const next=document.createElement('button');next.type='button';next.className='next';next.textContent='Weiter →';next.addEventListener('click',advance);actions.append(next);
+ if(kind==='no-answer'){
+   const b=document.createElement('button');b.type='button';b.className='text-link';b.textContent='Ich habe gesprochen, das Mikrofon reagierte nicht';b.addEventListener('click',()=>{
+     pending.kind='recognition-unclear';message('Erkennung unsicher','Nicht als fehlendes Wissen gewertet · kommt noch einmal','warn');b.remove();
+   });actions.append(b);
+ }
  if(kind==='correct'){
    const b=document.createElement('button');b.type='button';b.className='text-link';b.textContent='Das habe ich nicht gesagt';b.addEventListener('click',()=>{
      pending.kind='wrong-word';message('Anderes Wort gesagt',solutionFor(task())+' · kommt später noch einmal','warn');b.remove();
@@ -285,13 +303,13 @@ function summary(){
  for(const entry of session.entries){
    const record=session.records[entry.key];
    const first=record.attempts[0]?.kind||'';
-   const firstText={correct:'Direkt richtig','recognition-error':'Erkennung korrigiert','wrong-word':'Falsches Wort','near-miss':'Fast richtig / unklar','no-answer':'Keine Antwort','not-known':'Nicht gewusst'}[first]||'–';
+   const firstText={correct:'Direkt richtig','recognition-error':'Erkennung korrigiert','wrong-word':'Falsches Wort','near-miss':'Fast richtig / unklar','no-answer':'Keine Antwort','not-known':'Nicht gewusst','recognition-unclear':'Mikrofon unklar'}[first]||'–';
    lines.push('<li><span>'+safe(promptFor(entry.task))+'</span><small>'+safe(firstText)+' · '+(record.mastered?'am Ende richtig':'weiter üben')+'</small></li>');
  }
  app.innerHTML=titleBar()+
  '<section class="summary"><h1>Runde geschafft! ✨</h1>'+
  '<p>'+stats.mastered+' von '+stats.total+' Wörtern schließlich richtig · '+stats.firstTry+' beim ersten Versuch.</p>'+
- '<div class="summary-grid"><span>Falsches Wort</span><strong>'+stats.wrongWord+'</strong><span>Fast / unsicher</span><strong>'+stats.nearMiss+'</strong><span>Keine Antwort</span><strong>'+stats.noAnswer+'</strong><span>Nicht gewusst</span><strong>'+stats.notKnown+'</strong><span>Erkennung korrigiert</span><strong>'+stats.recognitionError+'</strong><span>Noch weiter üben</span><strong>'+stats.needsPractice+'</strong></div>'+
+ '<div class="summary-grid"><span>Falsches Wort</span><strong>'+stats.wrongWord+'</strong><span>Fast / unsicher</span><strong>'+stats.nearMiss+'</strong><span>Keine Antwort</span><strong>'+stats.noAnswer+'</strong><span>Nicht gewusst</span><strong>'+stats.notKnown+'</strong><span>Erkennung korrigiert</span><strong>'+stats.recognitionError+'</strong><span>Mikrofon unklar</span><strong>'+stats.recognitionUnclear+'</strong><span>Noch weiter üben</span><strong>'+stats.needsPractice+'</strong></div>'+
  '<h2>Deine Karten</h2><ul class="result-cards">'+lines.join('')+'</ul>'+
  '<p class="privacy-note">Auswertung nur für diese Runde. Es wurden keine echten SRS-Stufen verändert oder Lernantworten dauerhaft gespeichert.</p>'+
  '<button type="button" id="restart" class="big-button">Noch eine Runde</button><button type="button" id="home" class="secondary">Zur Auswahl</button></section>';
