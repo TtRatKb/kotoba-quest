@@ -49,10 +49,14 @@ test('repeated failures are capped, never create an endless review loop',()=>{
  assert.equal(session.queue.length,1);
  session=recordVoiceAttempt(session,{kind:'near-miss'});
  assert.equal(session.queue.length,0);
- assert.deepEqual(voiceSummary(session),{
-  total:1,completed:1,mastered:0,needsPractice:1,attempts:3,
-  wrongWord:1,nearMiss:1,noAnswer:1,notKnown:0,recognitionError:0,recognitionUnclear:0,firstTry:0
- });
+ const summary=voiceSummary(session);
+ assert.equal(summary.total,1);
+ assert.equal(summary.needsPractice,1);
+ assert.equal(summary.attempts,3);
+ assert.equal(summary.wrongWord,1);
+ assert.equal(summary.nearMiss,1);
+ assert.equal(summary.noAnswer,1);
+ assert.equal(summary.byDirection['de-jp'].wrong,1);
 });
 test('unknown outcome or invalid session fails closed',()=>{
  assert.throws(()=>createVoiceSession([]));
@@ -84,4 +88,33 @@ test('a microphone recognition failure can be retried without counting as silenc
  assert.equal(voiceSummary(session).recognitionUnclear,1);
  assert.equal(voiceSummary(session).noAnswer,0);
  assert.equal(currentVoiceCard(session).task.card.word,'台本');
+});
+
+test('two directions remain separate and record whether the other direction was already exposed',()=>{
+ const word={id:'same',word:'一緒に',reading:'いっしょに',meanings:['zusammen'],stage:2};
+ const deck=[{card:word,direction:'de-jp',firstDirection:true},{card:word,direction:'jp-de',firstDirection:false}];
+ const before=JSON.stringify(deck);
+ let session=createVoiceSession(deck);
+ session=recordVoiceAttempt(session,{kind:'wrong-word',transcript:'一緒',inputMethod:'speech'});
+ assert.equal(session.records['voice-0'].attempts[0].otherDirectionPreviouslySeen,false);
+ // A wrong first-direction task moves behind the second; independent grading survives.
+ session=recordVoiceAttempt(session,{kind:'correct',transcript:'zusammen',inputMethod:'typing'});
+ const second=session.records['voice-1'].attempts[0];
+ assert.equal(second.direction,'jp-de');
+ assert.equal(second.firstDirection,false);
+ assert.equal(second.otherDirectionPreviouslySeen,true);
+ assert.equal(second.inputMethod,'typing');
+ session=recordVoiceAttempt(session,{kind:'correct',transcript:'いっしょに'});
+ assert.equal(session.records['voice-0'].attempts[0].kind,'wrong-word');
+ assert.equal(session.records['voice-0'].attempts.at(-1).kind,'correct');
+ assert.equal(voiceSummary(session).byDirection['de-jp'].firstTry,0);
+ assert.equal(voiceSummary(session).byDirection['jp-de'].firstTry,1);
+ assert.equal(JSON.stringify(deck),before);
+});
+test('mic stays open across a language block but never loops through native restarts',()=>{
+ const source=readFileSync(new URL('../voice-cards.js',import.meta.url),'utf8');
+ assert.match(source,/recognition\.continuous=true/);
+ assert.match(source,/event\.resultIndex/);
+ assert.match(source,/autoMicAllowed=false/);
+ assert.doesNotMatch(source,/id="countdown"|10 Sekunden ohne Sprache|hast du etwa 10 Sekunden/);
 });

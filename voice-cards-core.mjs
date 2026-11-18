@@ -22,12 +22,50 @@ function shuffle(items,seed) {
 }
 const rank = card => Number(card.stage)>=1 && Number(card.stage)<=4 ? 0 : Number(card.stage)<=6 ? 1 : 2;
 
+/** Mirror the existing core-review first-direction rule, read-only.
+ * Correct/incorrect totals must come from the actual saved card, never from
+ * a guessed or restored counter.
+ */
+export function firstVocabularyDirection(card) {
+  const id=String(card.packEntryId || card.id || `${card.word || ''}/${card.reading || ''}`);
+  let parity=0;
+  for(const character of id)parity=(parity+character.codePointAt(0))%2;
+  const completed=Math.max(0,Math.trunc(Number(card.correct)||0))
+    +Math.max(0,Math.trunc(Number(card.incorrect)||0));
+  return (parity+completed)%2===0 ? 'de-jp' : 'jp-de';
+}
+
 export function buildVoiceDeck(cards,{direction='de-jp',limit=8,seed='voice-preview'}={}) {
-  if(!['de-jp','jp-de','mixed'].includes(direction))return [];
+  if(!['de-jp','jp-de','mixed','both'].includes(direction))return [];
   const ordered=shuffle(eligibleWords(cards),seed).sort((a,b)=>rank(a)-rank(b));
-  return ordered.slice(0,Math.max(0,Math.min(12,limit))).map((card,index)=>({
+  const selected=ordered.slice(0,Math.max(0,Math.min(12,limit)));
+  if(direction==='both'){
+    // Separate first and second exposures by the entire first block, just as
+    // the canonical vocabulary reviews do. Never count one as the other.
+    const first=selected.map(card=>({card,direction:firstVocabularyDirection(card),firstDirection:true}));
+    // Speech recognition normally needs a separate language model for German
+    // and Japanese. Group each pass by language to avoid mic on/off sounds
+    // at every card; preserve each word's first-versus-second exposure.
+    const firstLang=first[0]?.direction;
+    first.sort((a,b)=>Number(a.direction!==firstLang)-Number(b.direction!==firstLang));
+    const second=first.map(item=>({
+      card:item.card,
+      direction:item.direction==='de-jp'?'jp-de':'de-jp',
+      firstDirection:false
+    }));
+    const startSecond=first.at(-1)?.direction;
+    second.sort((a,b)=>Number(a.direction!==startSecond)-Number(b.direction!==startSecond));
+    // Avoid immediately repeating the same word at the pass boundary.
+    if(first.length>1 && second[0]?.card===first.at(-1)?.card){
+      const swap=second.findIndex((item,i)=>i>0 && item.direction===second[0].direction && item.card!==first.at(-1).card);
+      if(swap>0)[second[0],second[swap]]=[second[swap],second[0]];
+    }
+    return [...first,...second];
+  }
+  return selected.map((card,index)=>({
     card,
-    direction:direction==='mixed'?(index%2===0?'de-jp':'jp-de'):direction
+    direction:direction==='mixed'?(index%2===0?'de-jp':'jp-de'):direction,
+    firstDirection:true
   }));
 }
 export function promptFor(task) {
