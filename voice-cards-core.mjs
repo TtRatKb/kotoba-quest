@@ -113,3 +113,27 @@ export function gradeSpeechCandidates(task,transcripts,{lexicon=[],toHiragana=nu
   }
   return empty;
 }
+
+
+/** A tiny contrast prompt for plausible homophones/mishearings.
+ * Known vocabulary readings only: no speculative phonetic decoding of kanji.
+ * These are choices about what the learner actually said, not automatic grades.
+ */
+export function spokenContrastChoices(task,transcript,{lexicon=[],toHiragana=null}={}) {
+ if(task?.direction!=='de-jp')return [];
+ const heard=recognizedKana(transcript,lexicon,toHiragana);
+ if(!heard)return [];
+ const candidates=[heard];
+ const target=String(task.card?.word||'');
+ const expected=recognizedKana(task.card?.reading,lexicon,toHiragana);
+ if(expected && expected!==heard && editDistanceOne(expected,heard))candidates.unshift(expected);
+ for(const word of lexicon){
+   const surface=String(word?.word||'');
+   if(!surface || !target.includes(surface) || surface===target)continue;
+   const reading=recognizedKana(word?.reading,lexicon,toHiragana);
+   if(reading && reading!==heard && [...reading].length>=2 && editDistanceOne(reading,heard) && !candidates.includes(reading))
+     candidates.unshift(reading);
+   if(candidates.length>=3)break;
+ }
+ return [...new Set(candidates)].slice(0,3);
+}
