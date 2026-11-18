@@ -84,7 +84,7 @@ test('short Japanese words and typed answers stay strictly checked',()=>{
 });
 
 test('each word is studied twice, with the first direction decided by the existing review parity',()=>{
- const items=[...cards.slice(0,3),...['書く','読む','聞く'].map((word,i)=>({id:String(10+i),word,reading:['かく','よむ','きく'][i],meanings:['schreiben','lesen','hören'][i],stage:2}))];
+ const items=[...cards.slice(0,3),...['書く','読む','聞く'].map((word,i)=>({id:String(10+i),word,reading:['かく','よむ','きく'][i],meanings:[['schreiben','lesen','hören'][i]],stage:2}))];
  const before=JSON.stringify(items);
  const deck=buildVoiceDeck(items,{direction:'both',limit:6,seed:'2026-11-18'});
  assert.equal(deck.length,12);
