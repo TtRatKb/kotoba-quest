@@ -9,7 +9,7 @@ const SpeechApi=window.SpeechRecognition||window.webkitSpeechRecognition;
 const back=new URLSearchParams(window.location.search).get('from')==='index'?'./index.html':'./daily.html';
 const SILENCE_MS=10000;
 let learned=[],lexicon=[],direction='de-jp',session=null,phase='intro',rec=null,token=0;
-let silenceTimer=null,autoTimer=null,speechStarted=false,pending=null,recognitionOptions=[],lastRecognition='',repeatStartCount=0;
+let silenceTimer=null,autoTimer=null,speechStarted=false,pending=null,recognitionOptions=[],lastRecognition='',repeatStartCount=0,silenceDeadline=0;
 const safe=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[ch]));
 const task=()=>currentVoiceCard(session)?.task;
 const node=selector=>app.querySelector(selector);
@@ -120,17 +120,18 @@ function countSilent(){
  const el=node('#countdown');if(!el)return;
  el.hidden=false;
  const fill=node('#countdownFill');
- fill.style.animation='none';void fill.offsetWidth;fill.style.animation='countdown 10s linear forwards';
+ fill.style.animation='none';void fill.offsetWidth;fill.style.animation='countdown '+Math.max(0.2,(silenceDeadline-Date.now())/1000)+'s linear forwards';
  if(silenceTimer!==null)clearTimeout(silenceTimer);
  silenceTimer=setTimeout(()=>{
    silenceTimer=null;
    if(phase!=='listening'||speechStarted)return;
    feedback('no-answer','','10 Sekunden ohne Antwort');
- },SILENCE_MS);
+ },Math.max(100,silenceDeadline-Date.now()));
 }
-function startListening(){
+function startListening({retry=false}={}){
  if(!session||!task())return;
  clearTimers();stopMic();
+ if(!retry)silenceDeadline=Date.now()+SILENCE_MS;
  if(!SpeechApi){phase='ready';message('Mikrofon nicht verfügbar','Nutze die Tastatur oder die Diktierfunktion deines Handys.','warn');updateButtons();return;}
  phase='listening';speechStarted=false;
  node('#answerForm').hidden=true;
@@ -180,7 +181,10 @@ function startListening(){
      // Browser stopped without a transcript. Do not falsely score silence.
      if(repeatStartCount<1&&!speechStarted){
        repeatStartCount++;
-       setTimeout(()=>{if(token===current&&phase==='listening')startListening();},150);
+       setTimeout(()=>{if(token===current&&phase==='listening'){
+         if(Date.now()>=silenceDeadline)feedback('no-answer','','10 Sekunden ohne Antwort');
+         else startListening({retry:true});
+       }},150);
      }else{
        clearTimers();phase='ready';
        node('#countdown').hidden=true;
@@ -224,7 +228,10 @@ function confirmSpeech(title,choices,heard){
  const expected=String(target.card.reading||'');
  for(const reading of choices){
    if(reading===expected)continue;
-   add('Ich sagte: '+reading,()=>feedback('near-miss',heard,'Aussprache/ähnlicher Begriff: '+reading),'confirmation-choice');
+   const related=lexicon.some(row=>row?.word && target.card.word.includes(row.word) && row.word!==target.card.word && row.reading===reading);
+   const near=gradeSpeechCandidates(target,[reading],{lexicon,toHiragana:window.KotobaRomaji?.toHiragana}).match==='near';
+   const label=related||near?'near-miss':'wrong-word';
+   add('Ich sagte: '+reading,()=>feedback(label,heard,'Tatsächlich gesprochen: '+reading),'confirmation-choice');
  }
  add('Ein ganz anderes Wort',()=>feedback('wrong-word',heard,'Anderes Wort gesprochen'),'confirmation-choice');
  add('Ich bin nicht sicher',()=>feedback('near-miss',heard,'Unsicher bei der Erkennung'),'text-link');
