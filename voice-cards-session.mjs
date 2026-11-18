@@ -13,12 +13,25 @@ export function currentVoiceCard(session) {
  const key=session?.queue?.[0];
  return key?session.entries.find(entry=>entry.key===key)||null:null;
 }
-export function recordVoiceAttempt(session,{kind,transcript='',spokenReading=''}={}) {
+export function recordVoiceAttempt(session,{kind,transcript='',spokenReading='',inputMethod='speech'}={}) {
  if(!OUTCOMES.has(kind))throw new TypeError('invalid voice outcome');
  const current=currentVoiceCard(session);
  if(!current)throw new Error('session complete');
  const prev=session.records[current.key];
- const attempts=[...prev.attempts,{kind,transcript:String(transcript).slice(0,180),spokenReading:String(spokenReading).slice(0,50)}];
+ const precedingOpposite=session.entries.some(entry=>
+   entry.key!==current.key &&
+   entry.task.card===current.task.card &&
+   entry.task.direction!==current.task.direction &&
+   session.records[entry.key]?.attempts?.length>0
+ );
+ const attempts=[...prev.attempts,{
+   kind,transcript:String(transcript).slice(0,180),
+   spokenReading:String(spokenReading).slice(0,50),
+   direction:current.task.direction,
+   firstDirection:current.task.firstDirection!==false,
+   otherDirectionPreviouslySeen:precedingOpposite,
+   inputMethod:['speech','typing','silence'].includes(inputMethod)?inputMethod:'speech'
+ }];
  const mastered=CORRECT.has(kind),complete=mastered||attempts.length>=session.maxAttempts;
  const records={...session.records,[current.key]:{attempts,complete,mastered}};
  const queue=[...session.queue.slice(1),...(complete?[]:[current.key])];
@@ -40,6 +53,15 @@ export function voiceSummary(session) {
    notKnown:count('not-known'),
    recognitionError:count('recognition-error'),
    recognitionUnclear:count('recognition-unclear'),
-   firstTry:records.filter(record=>CORRECT.has(record.attempts[0]?.kind)).length
+   firstTry:records.filter(record=>CORRECT.has(record.attempts[0]?.kind)).length,
+   byDirection:Object.fromEntries(['de-jp','jp-de'].map(direction=>{
+     const matching=session.entries.filter(entry=>entry.task.direction===direction);
+     return [direction,{
+       cards:matching.length,
+       firstTry:matching.filter(entry=>CORRECT.has(session.records[entry.key].attempts[0]?.kind)).length,
+       wrong:matching.filter(entry=>['wrong-word','near-miss','not-known','no-answer'].includes(session.records[entry.key].attempts[0]?.kind)).length,
+       primed:matching.filter(entry=>session.records[entry.key].attempts[0]?.otherDirectionPreviouslySeen===true).length
+     }];
+   }))
  };
 }
