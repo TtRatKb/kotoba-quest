@@ -34,6 +34,7 @@ function response(message,kind='',detail=''){
 function setMainButton(){
   const button=app.querySelector('#microphone');
   if(!button)return;
+  if(app.querySelector('#again'))app.querySelector('#again').disabled=Boolean(result?.done);
   if(result?.done){
     button.textContent=index===deck.length-1?'Ergebnis ansehen →':'Nächste Karte →';
     button.classList.remove('listening');button.disabled=false;
@@ -55,7 +56,8 @@ function pass(manual=false){
 function attempt(text,{spoken=false}={}){
   if(result?.done)return;
   const task=deck[index];
-  if(acceptsVoiceAnswer(task,text)){pass();return;}
+  const accepted=acceptsVoiceAnswer(task,text)|| (task.direction==='de-jp' && Boolean(window.KotobaRomaji) && acceptsVoiceAnswer(task,window.KotobaRomaji.toHiragana(text,true)));
+  if(accepted){pass();return;}
   const prefix=spoken?'Erkannt: ':'Deine Eingabe: ';
   response('Noch nicht sicher', 'warn',prefix+text+'. Du kannst es erneut versuchen.');
   app.querySelector('#manual').hidden=!spoken;
@@ -135,7 +137,7 @@ function render(){
   app.querySelector('#typed').lang=japanese?'de':'ja';
   app.querySelector('#typed').placeholder=japanese?'Deutsche Bedeutung':'Japanisches Wort';
   app.querySelector('#microphone').addEventListener('click',listen);
-  app.querySelector('#again').addEventListener('click',()=>{haltSpeech();result=null;response('');app.querySelector('#manual').hidden=true;app.querySelector('#reveal').hidden=false;setMainButton();});
+  app.querySelector('#again').addEventListener('click',()=>{if(result?.done)return;haltSpeech();result=null;response('');app.querySelector('#manual').hidden=true;app.querySelector('#reveal').hidden=false;setMainButton();});
   app.querySelector('#reveal').addEventListener('click',showSolution);
   app.querySelector('#manual').addEventListener('click',()=>pass(true));
   app.querySelector('#direction').addEventListener('change',event=>{direction=event.target.value;newDeck();});
