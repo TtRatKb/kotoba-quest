@@ -126,6 +126,13 @@ export function spokenContrastChoices(task,transcript,{lexicon=[],toHiragana=nul
  const candidates=[heard];
  const target=String(task.card?.word||'');
  const expected=recognizedKana(task.card?.reading,lexicon,toHiragana);
+ // e.g. お客さん vs 客: honorific お…さん can expose a useful
+ // contrast (きゃく / ひゃく) without treating the shortened noun as correct.
+ const written=target,reading=String(task.card?.reading||'');
+ if(written.startsWith('お')&&written.endsWith('さん')&&reading.startsWith('お')&&reading.endsWith('さん')){
+   const base=reading.slice(1,-2);
+   if([...base].length>=2&&base!==heard&&editDistanceOne(base,heard))candidates.unshift(base);
+ }
  if(expected && expected!==heard && editDistanceOne(expected,heard))candidates.unshift(expected);
  for(const word of lexicon){
    const surface=String(word?.word||'');
