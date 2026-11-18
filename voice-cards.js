@@ -1,11 +1,11 @@
 /* Standalone, read-only speaking-card pilot. No SRS/storage/analytics writes. */
-import {buildVoiceDeck,promptFor,solutionFor,acceptsVoiceAnswer} from './voice-cards-core.mjs';
+import {buildVoiceDeck,promptFor,solutionFor,acceptsVoiceAnswer,gradeSpeechCandidates} from './voice-cards-core.mjs';
 
 const app=document.getElementById('app');
 const SpeechApi=window.SpeechRecognition||window.webkitSpeechRecognition;
 const params=new URLSearchParams(window.location.search);
 const back=params.get('from')==='index'?'./index.html':'./daily.html';
-let learned=[],deck=[],index=0,correct=0,direction='de-jp',typing=false,result=null,recognizer=null,serial=0;
+let learned=[],recognitionLexicon=[],deck=[],index=0,correct=0,direction='de-jp',typing=false,result=null,recognizer=null,serial=0;
 
 function haltSpeech(){
   serial++;
@@ -53,14 +53,21 @@ function pass(manual=false){
   app.querySelector('#reveal').hidden=true;
   setMainButton();
 }
-function attempt(text,{spoken=false}={}){
+function attempt(text,{spoken=false,grade=null}={}){
   if(result?.done)return;
   const task=deck[index];
-  const accepted=acceptsVoiceAnswer(task,text)|| (task.direction==='de-jp' && Boolean(window.KotobaRomaji) && acceptsVoiceAnswer(task,window.KotobaRomaji.toHiragana(text,true)));
+  const accepted=spoken ? grade?.match==='exact' : acceptsVoiceAnswer(task,text)||
+    (task.direction==='de-jp' && Boolean(window.KotobaRomaji) &&
+     acceptsVoiceAnswer(task,window.KotobaRomaji.toHiragana(text,true)));
   if(accepted){pass();return;}
+  const near=spoken&&grade?.match==='near';
   const prefix=spoken?'Erkannt: ':'Deine Eingabe: ';
-  response('Noch nicht sicher', 'warn',prefix+text+'. Du kannst es erneut versuchen.');
-  app.querySelector('#manual').hidden=!spoken;
+  response(near?'Klingt ähnlich – bitte prüfen':'Noch nicht sicher','warn',
+    prefix+text+(near?' · Vielleicht hat die Erkennung eine Silbe oder einen langen Vokal überhört.':' · Du kannst es erneut versuchen.'));
+  const manual=app.querySelector('#manual');
+  manual.hidden=!spoken;
+  manual.textContent=near?'Ja, das habe ich gesagt ✓':'Ich habe es richtig gesagt';
+  if(spoken)app.querySelector('#speak').hidden=false;
 }
 function showSolution(){
   haltSpeech();result={done:true,passed:false};
@@ -82,14 +89,16 @@ function listen(){
   try {
     const rec=new SpeechApi();
     rec.lang=deck[index].direction==='de-jp'?'ja-JP':'de-DE';
-    rec.interimResults=false;rec.maxAlternatives=5;rec.continuous=false;
+    rec.interimResults=false;rec.maxAlternatives=10;rec.continuous=false;
     recognizer=rec;
     rec.onresult=event=>{
       if(token!==serial || result?.done)return;
       const options=Array.from(event.results?.[0]||[]).map(value=>value.transcript).filter(Boolean);
-      const matching=options.find(value=>acceptsVoiceAnswer(deck[index],value));
+      const grade=gradeSpeechCandidates(deck[index],options,{
+        lexicon:recognitionLexicon,toHiragana:window.KotobaRomaji?.toHiragana
+      });
       recognizer=null;setMainButton();
-      if(options.length)attempt(matching||options[0],{spoken:true});
+      if(options.length)attempt(grade.transcript,{spoken:true,grade});
       else response('Nichts verstanden','','Versuche es noch einmal.');
     };
     rec.onerror=event=>{
@@ -137,7 +146,7 @@ function render(){
   app.querySelector('#typed').lang=japanese?'de':'ja';
   app.querySelector('#typed').placeholder=japanese?'Deutsche Bedeutung':'Japanisches Wort';
   app.querySelector('#microphone').addEventListener('click',listen);
-  app.querySelector('#again').addEventListener('click',()=>{if(result?.done)return;haltSpeech();result=null;response('');app.querySelector('#manual').hidden=true;app.querySelector('#reveal').hidden=false;setMainButton();});
+  app.querySelector('#again').addEventListener('click',()=>{if(result?.done)return;haltSpeech();result=null;response('');app.querySelector('#manual').hidden=true;app.querySelector('#speak').hidden=!japanese;app.querySelector('#reveal').hidden=false;setMainButton();});
   app.querySelector('#reveal').addEventListener('click',showSolution);
   app.querySelector('#manual').addEventListener('click',()=>pass(true));
   app.querySelector('#direction').addEventListener('change',event=>{direction=event.target.value;newDeck();});
@@ -164,6 +173,7 @@ async function init(){
     const source=await window.KotobaDungeonSource.load();
     if(!source?.hasLiveSave){empty('Kein gespeicherter Kotoba-Lernstand in diesem Browser gefunden. Bitte starte die App über denselben Browser und dieselbe Adresse wie Kotoba Quest.');return;}
     learned=source.learned||[];
+    recognitionLexicon=[...(source.catalog||[]),...learned];
     newDeck();
   } catch(error){empty('Deine Vokabeln konnten nicht sicher gelesen werden: '+String(error?.message||error));}
 }
