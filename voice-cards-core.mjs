@@ -22,12 +22,37 @@ function shuffle(items,seed) {
 }
 const rank = card => Number(card.stage)>=1 && Number(card.stage)<=4 ? 0 : Number(card.stage)<=6 ? 1 : 2;
 
+/** Mirror the existing core-review first-direction rule, read-only.
+ * Correct/incorrect totals must come from the actual saved card, never from
+ * a guessed or restored counter.
+ */
+export function firstVocabularyDirection(card) {
+  const id=String(card.packEntryId || card.id || `${card.word || ''}/${card.reading || ''}`);
+  let parity=0;
+  for(const character of id)parity=(parity+character.codePointAt(0))%2;
+  const completed=Math.max(0,Math.trunc(Number(card.correct)||0))
+    +Math.max(0,Math.trunc(Number(card.incorrect)||0));
+  return (parity+completed)%2===0 ? 'de-jp' : 'jp-de';
+}
+
 export function buildVoiceDeck(cards,{direction='de-jp',limit=8,seed='voice-preview'}={}) {
-  if(!['de-jp','jp-de','mixed'].includes(direction))return [];
+  if(!['de-jp','jp-de','mixed','both'].includes(direction))return [];
   const ordered=shuffle(eligibleWords(cards),seed).sort((a,b)=>rank(a)-rank(b));
-  return ordered.slice(0,Math.max(0,Math.min(12,limit))).map((card,index)=>({
+  const selected=ordered.slice(0,Math.max(0,Math.min(12,limit)));
+  if(direction==='both'){
+    // Separate first and second exposures by the entire first block, just as
+    // the canonical vocabulary reviews do. Never count one as the other.
+    const first=selected.map(card=>({card,direction:firstVocabularyDirection(card),firstDirection:true}));
+    return [...first,...first.map(item=>({
+      card:item.card,
+      direction:item.direction==='de-jp'?'jp-de':'de-jp',
+      firstDirection:false
+    }))];
+  }
+  return selected.map((card,index)=>({
     card,
-    direction:direction==='mixed'?(index%2===0?'de-jp':'jp-de'):direction
+    direction:direction==='mixed'?(index%2===0?'de-jp':'jp-de'):direction,
+    firstDirection:true
   }));
 }
 export function promptFor(task) {
